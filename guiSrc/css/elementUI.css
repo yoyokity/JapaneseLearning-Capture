@@ -1,0 +1,31 @@
+:root {
+    --el-color-primary: rgb(134, 48, 254);
+    --el-color-primary-light-3: rgb(140, 70, 248);
+    --el-color-primary-light-5: rgb(166, 104, 253);
+    --el-color-primary-light-7: rgb(195, 152, 255);
+    --el-color-primary-light-8: rgb(220, 197, 253);
+    --el-color-primary-light-9: rgb(237, 227, 250);
+    --el-color-primary-dark-2:  rgb( 86, 31,162);
+}
+
+#tab-设置 {
+    position: absolute;
+    bottom: 3rem;
+}
+
+.tab-drag-container {
+    width: 4rem;
+    height: calc(100vh - 2rem - 2.9rem * 2 - 4rem);
+    position: absolute;
+    bottom: 4rem;
+}
+
+.el-select-dropdown__item, .el-autocomplete-suggestion li {
+    height: 2em;
+    line-height: 2em;
+    font-size: 13px;
+}
+
+.el-scrollbar{
+    --el-scrollbar-bg-color: var(--color-text-secondary) !important;
+}

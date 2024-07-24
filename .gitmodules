@@ -1,0 +1,4 @@
+[submodule "yo-electron-lib"]
+	path = yo-electron-lib
+	url = https://github.com/yoyokity/yo-electron-lib.git
+	branch = master

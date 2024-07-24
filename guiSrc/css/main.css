@@ -1,0 +1,52 @@
+@import '../../yo-electron-lib/css/reset.css';
+@import './elementUI.css';
+
+:root {
+    --color-primary: #ffffff;
+    --color-secondary: rgb(237,237,237);
+    --color-secondary-light: rgb(245,245,245);
+    --color-accent: rgb(134, 48,254);
+    --color-accent-dark: rgb(94, 94, 94);
+    --color-accent-hover: rgb(158, 90,253);
+    --color-accent-active: rgb( 86, 31,162);
+
+    --color-text-primary: rgb(40, 40, 40);
+    --color-text-secondary: rgb(80, 80, 80);
+    --color-text-secondary-light: rgb(140, 140, 140);
+
+    --font-size: 13px;
+    --parameter-container-width: 18rem;
+}
+
+@font-face {
+    font-family: "user-font";
+    src: url("@/../resources/font.ttf");
+}
+
+body {
+    font-family: user-font, sans-serif !important;
+    font-size: var(--font-size);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+}
+
+button {
+    font-family: user-font, sans-serif !important;
+    font-size: var(--font-size) !important;
+}
+
+input{
+    font-family: user-font, sans-serif !important;
+}
+
+#app {
+    display: flex;
+    width: 100vw;
+    height: 100%;
+}
+
+.app-drag-container {
+    -webkit-app-region: drag;
+}
