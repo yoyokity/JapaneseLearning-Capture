@@ -2,6 +2,7 @@ import Video from './Video.js'
 import { Helper } from '../../yo-electron-lib/Helper/helper.js'
 import { pathToFileURL } from 'url'
 import Nfo from './Nfo.js'
+import Actor from './Actor.js'
 
 class Scraper {
     /** 刮削器子类 */
@@ -137,7 +138,7 @@ class Scraper {
      * 需要包含姓名、照片链接（可包含性别、出生年月、三围等info，可以放在视频简介里，因为nfo读取不到这些信息）
      * @abstract
      * @param {string} page 网页文本
-     * @returns {Promise<Map<string, {name:string, imgUrl:string, gender:string, info:string}>>}
+     * @returns {Promise<Map<string, Actor>>}
      */
     async actor (page) {}
 

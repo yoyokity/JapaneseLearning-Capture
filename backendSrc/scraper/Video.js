@@ -1,4 +1,5 @@
 import Nfo from './Nfo.js'
+import Actor from './Actor.js'
 
 class Video {
 
@@ -53,7 +54,7 @@ class Video {
     director = ''
     /**
      * 演员，需要包含姓名、照片链接（可包含性别、出生年月、三围，可以放在视频简介里，因为nfo读取不到这些信息）
-     * @type {Map<string, {name:string, imgUrl:string, gender:string, birthdate:string, measurements:string}>}>}
+     * @type {Map<string, Actor>}
      */
     actor = new Map()
     /**
@@ -122,11 +123,12 @@ class Video {
         this.addElement(root, 'director')
 
         this.actor.forEach((value, key, map) => {
-            root.ele('actor')
-                .ele('name').txt(value.name).up()
-                .ele('thumb').txt(value.imgUrl).up()
+            let actor = root.ele('actor')
+            actor.ele('name').txt(key)
+            if (value.imgUrl) {
+                actor.ele('thumb').txt(value.imgUrl)
+            }
         })
-        this.addElement(root, 'actor')
 
         this.addElement(root, 'studio')
         this.addElement(root, 'maker')

@@ -1,5 +1,6 @@
 <script setup>
 import { Settings, FileTable, Scraper, Progress } from '@/js/globalState/globalState.js'
+import { fileTableRef } from '@/js/globalState/fileTable.js'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { Plus, Delete, Select, CloseBold } from '@element-plus/icons-vue'
 import Tooltip from '@/vue/control/tooltip.vue'
@@ -52,17 +53,25 @@ function dropFile (e) {
     }
 }
 
+//文件列表改变选中
+function selectionChange (selection) {
+    fileTable.updateSelectedFiles(selection)
+}
+
 //开始刮削按钮
 function run () {
-    if (fileTable.scrapingTable.length === 0) {
+    let files = fileTable.selectedFiles
+    files = files.filter(file => !file.state) //忽略已完成的
+
+    if (files.length === 0) {
         showElMessage.warning('请添加要刮削的文件')
         return
     }
 
-    progress.begin(fileTable.scrapingTable.length) //弹出进度对话框
+    progress.begin(files.length) //弹出进度对话框
 
     let handle = wsClient.invoke('beginScrap', {
-        files: fileTable.scrapingTable,
+        files: files,
         type: scraper.currentScraper,
         outputPath: scraper.getCurrentScraperOutputPath
     })
@@ -137,8 +146,10 @@ async function addFiles (files) {
             </div>
 
             <el-table class="video-table"
+                      ref="fileTableRef"
                       :data="fileTable.scrapingTable"
                       height="calc(100vh - 7rem)"
+                      @selection-change="selectionChange"
             >
                 <el-table-column type="selection" width="50"/>
                 <el-table-column prop="jav" label="番号" align="center" width="130"></el-table-column>

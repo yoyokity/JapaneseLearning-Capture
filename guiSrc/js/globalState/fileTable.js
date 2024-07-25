@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
 /**
  * 获取文件大小的格式化字符串
@@ -71,9 +72,11 @@ function getJavNumber (fileName) {
     }
 }
 
+export const fileTableRef = ref()
 export const FileTable = defineStore('fileTable', {
     state: () => ({
         scrapingTable: [],
+        selectedFiles: [],
     }),
     actions: {
         /**
@@ -88,7 +91,7 @@ export const FileTable = defineStore('fileTable', {
             file.longJavNumber = jav.longJavNumber
             file.state = false
             this.scrapingTable.push(file)
-            console.log(file)
+            fileTableRef.value.toggleRowSelection(file, true)
         },
         scrapingTable_clear () {
             this.scrapingTable = []
@@ -96,6 +99,9 @@ export const FileTable = defineStore('fileTable', {
         updateState (path, state) {
             let file = this.scrapingTable.find((item) => item.path === path)
             file.state = state
+        },
+        updateSelectedFiles(selection) {
+            this.selectedFiles = selection
         }
     },
 })
