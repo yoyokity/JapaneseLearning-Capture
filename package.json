@@ -34,7 +34,7 @@
     "vite": "^5.2.0"
   },
   "build": {
-    "appId": "nya.gogofiman.JapLC",
+    "appId": "nya.yoyokity.JapLC",
     "productName": "JapLC",
     "copyright": "Copyright © 2022 yoyokity",
     "win": {
