@@ -249,12 +249,14 @@ class Scraper {
      * @returns {Promise<boolean|null>}
      */
     async run (outputPath, saveFileName, filePath) {
+        Helper.logging.log(`开始刮削：${saveFileName}`)
+
         this.saveFileName = saveFileName
         this.directory = this.getDirectory(outputPath)
 
         let page = await this.searchPage(this.video)
         if (!page) {
-            console.warn(`找不到影片：${this.video.title}`)
+            Helper.logging.warn(`找不到影片：${this.video.title}`)
             return null
         }
 
@@ -262,132 +264,132 @@ class Scraper {
         if (title) {
             this.video.title = title
         } else {
-            console.warn(`title未解析`)
+            Helper.logging.warn(`title未解析`)
         }
 
         let originaltitle = await this.originaltitle(page)
         if (originaltitle) {
             this.video.originaltitle = originaltitle
         } else {
-            console.warn(`originaltitle未解析`)
+            Helper.logging.warn(`originaltitle未解析`)
         }
 
         let sorttitle = await this.sorttitle(page)
         if (sorttitle) {
             this.video.sorttitle = sorttitle
         } else {
-            console.warn(`sorttitle未解析`)
+            Helper.logging.warn(`sorttitle未解析`)
         }
 
         let tagline = await this.tagline(page)
         if (tagline) {
             this.video.tagline = tagline
         } else {
-            console.warn(`tagline未解析`)
+            Helper.logging.warn(`tagline未解析`)
         }
 
         let num = await this.num(page)
         if (num) {
             this.video.num = num
         } else {
-            console.warn(`num未解析`)
+            Helper.logging.warn(`num未解析`)
         }
 
         let mpaa = await this.mpaa(page)
         if (mpaa) {
             this.video.mpaa = mpaa
         } else {
-            console.warn(`mpaa未解析`)
+            Helper.logging.warn(`mpaa未解析`)
         }
 
         let rating = await this.rating(page)
         if (rating) {
             this.video.rating = rating
         } else {
-            console.warn(`rating未解析`)
+            Helper.logging.warn(`rating未解析`)
         }
 
         let director = await this.director(page)
         if (director) {
             this.video.director = director
         } else {
-            console.warn(`director未解析`)
+            Helper.logging.warn(`director未解析`)
         }
 
         let actor = await this.actor(page)
         if (actor) {
             this.video.actor = actor
         } else {
-            console.warn(`actor未解析`)
+            Helper.logging.warn(`actor未解析`)
         }
 
         let maker = await this.maker(page)
         if (maker) {
             this.video.maker = maker
         } else {
-            console.warn(`maker未解析`)
+            Helper.logging.warn(`maker未解析`)
         }
 
         let studio = await this.studio(page)
         if (studio) {
             this.video.studio = studio
         } else {
-            console.warn(`studio未解析`)
+            Helper.logging.warn(`studio未解析`)
         }
 
         let set = await this.set(page)
         if (set) {
             this.video.set = set
         } else {
-            console.warn(`set未解析`)
+            Helper.logging.warn(`set未解析`)
         }
 
         let tag = await this.tag(page)
         if (tag) {
             this.video.tag = tag
         } else {
-            console.warn(`tag未解析`)
+            Helper.logging.warn(`tag未解析`)
         }
 
         let genre = await this.genre(page)
         if (genre) {
             this.video.genre = genre
         } else {
-            console.warn(`genre未解析`)
+            Helper.logging.warn(`genre未解析`)
         }
 
         let plot = await this.plot(page)
         if (plot) {
             this.video.plot = plot
         } else {
-            console.warn(`plot未解析`)
+            Helper.logging.warn(`plot未解析`)
         }
 
         let year = await this.year(page)
         if (year) {
             this.video.year = year
         } else {
-            console.warn(`year未解析`)
+            Helper.logging.warn(`year未解析`)
         }
 
         let premiered = await this.premiered(page)
         if (premiered) {
             this.video.premiered = premiered
         } else {
-            console.warn(`premiered未解析`)
+            Helper.logging.warn(`premiered未解析`)
         }
 
         let releasedate = await this.releasedate(page)
         if (releasedate) {
             this.video.releasedate = releasedate
         } else {
-            console.warn(`releasedate未解析`)
+            Helper.logging.warn(`releasedate未解析`)
         }
 
         await this.createDirectory(page, this.directory, this.saveFileName, filePath)
 
         if (!await this.downloadImage(page, this.directory, `${this.directory}\\extrafanart`)) {
-            console.warn(`image下载失败`)
+            Helper.logging.warn(`image下载失败`)
             return null
         }
 

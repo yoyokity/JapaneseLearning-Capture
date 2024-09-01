@@ -278,7 +278,7 @@ class JavDB extends Scraper {
 
                 const measurements = text.match(/[\d ]+-[\d ]+-[\d ]+cm/)?.[0]
                 if (measurements) {
-                    actor.measurements = measurements.trim()
+                    actor.measurements = measurements.trim().replace(' ','')
                 }
                 const cup = text.match(/[A-Z]\n/)?.[0]
                 if (cup) {
