@@ -257,6 +257,7 @@ class Scraper {
         let page = await this.searchPage(this.video)
         if (!page) {
             Helper.logging.warn(`找不到影片：${this.video.title}`)
+            Helper.logging.log(`刮削结束：${saveFileName}`)
             return null
         }
 
@@ -390,9 +391,11 @@ class Scraper {
 
         if (!await this.downloadImage(page, this.directory, `${this.directory}\\extrafanart`)) {
             Helper.logging.warn(`image下载失败`)
+            Helper.logging.log(`刮削结束：${saveFileName}`)
             return null
         }
 
+        Helper.logging.log(`刮削结束：${saveFileName}`)
         return true
     }
 }

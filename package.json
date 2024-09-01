@@ -1,5 +1,8 @@
 {
   "name": "japanese-learning-capture",
+  "author": "yoyokity",
+  "license": "MIT",
+  "description": "japanese-learning-capture",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,9 +10,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "start /b vite build && electron .",
     "start-without-gui-build": "start /b vite && set SERVER=on&& electron .",
-    "app-build": "electron-builder",
-    "make": "electron-forge make"
+    "app-build": "start /b vite build && electron-builder"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -32,7 +35,6 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3",
-    "electron-forge": "^5.2.4",
     "vite": "^5.2.0"
   },
   "build": {
@@ -58,7 +60,7 @@
       "package.json",
       "LICENSE",
       "backendSrc",
-      "guiSrc",
+      "guiSrc/dist",
       "yo-electron-lib"
     ]
   }

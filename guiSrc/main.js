@@ -14,23 +14,27 @@ import { Scraper, Settings } from '@/js/globalState/globalState.js'
 //globalFunction
 initGlobalFunction()
 
-//ws
-window.wsClient = new WsClient('mainWindow')
-await wsClient.connect()
+async function init () {
+    //ws
+    window.wsClient = new WsClient('mainWindow')
+    await wsClient.connect()
 
-//vue
-const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+    //vue
+    const pinia = createPinia()
+    pinia.use(piniaPluginPersistedstate)
 
-const app = createApp(App)
-app.use(pinia)
-app.use(ElementPlus)
-app.mount('#app')
+    const app = createApp(App)
+    app.use(pinia)
+    app.use(ElementPlus)
+    app.mount('#app')
 
-//后端设置初始化
-const settings = Settings()
-const scraper = Scraper()
-wsClient.onConnect(()=>{
-    settings.sendWS()
-    scraper.load()
-})
+    //后端设置初始化
+    const settings = Settings()
+    const scraper = Scraper()
+    wsClient.onConnect(() => {
+        settings.sendWS()
+        scraper.load()
+    })
+}
+
+init()

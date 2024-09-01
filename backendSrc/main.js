@@ -33,3 +33,5 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {if (process.platform !== 'darwin') {app.quit()}})
+
+Helper.logging.log('程序初始化完成...')
