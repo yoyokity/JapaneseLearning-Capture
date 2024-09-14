@@ -1,6 +1,6 @@
 import { load as cheerioLoad } from 'cheerio'
 
-import Scraper from '../scraper/Scraper.js'
+import { Scraper } from '../scraper/Scraper.js'
 import Video from '../scraper/Video.js'
 import Session from '../scraper/tool/session.js'
 import translate from '../scraper/tool/translator.js'
@@ -278,7 +278,7 @@ class JavDB extends Scraper {
 
                 const measurements = text.match(/[\d ]+-[\d ]+-[\d ]+cm/)?.[0]
                 if (measurements) {
-                    actor.measurements = measurements.trim().replace(' ','')
+                    actor.measurements = measurements.trim().replace(' ', '')
                 }
                 const cup = text.match(/[A-Z]\n/)?.[0]
                 if (cup) {

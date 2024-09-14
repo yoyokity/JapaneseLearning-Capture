@@ -1,5 +1,5 @@
 <script setup>
-import { Settings, FileTable, Scraper, Progress } from '@/js/globalState/globalState.js'
+import { Settings, FileTable, Scraper, Progress, SubProgress } from '@/js/globalState/globalState.js'
 import { fileTableRef } from '@/js/globalState/fileTable.js'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { Plus, Delete, Select, CloseBold } from '@element-plus/icons-vue'
@@ -8,6 +8,7 @@ import Tooltip from '@/vue/control/tooltip.vue'
 const fileTable = FileTable()
 const scraper = Scraper()
 const progress = Progress()
+const subProgress = SubProgress()
 
 const fileExtension = {
     mp4: '#7862DA',
@@ -69,6 +70,7 @@ function run () {
     }
 
     progress.begin(files.length) //弹出进度对话框
+    subProgress.begin()
 
     let handle = wsClient.invoke('beginScrap', {
         files: files,
@@ -76,11 +78,24 @@ function run () {
         outputPath: scraper.getCurrentScraperOutputPath
     })
     handle.onRespond((message) => {
-        let path = message.data.filePath
-        let state = message.data.state
-        progress.update()
+        //判断是否取消刮削
+        if (message.data === 'end') {
+            progress.end()
+            window.showElMessage.error('刮削已取消')
+            return
+        }
 
-        fileTable.updateState(path, state)
+        if ('type' in message.data) {
+            //单个步骤
+            subProgress.update(message.data.text)
+        } else {
+            let path = message.data.filePath
+            let state = message.data.state
+            subProgress.begin()
+            progress.update()
+
+            fileTable.updateState(path, state)
+        }
     })
 }
 

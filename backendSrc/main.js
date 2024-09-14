@@ -8,13 +8,14 @@ yoyoNode.store = new Store()
 
 //ws
 import { wsServer } from './wsApi.js'
+
 wsServer.start()
 
 //Helper初始化
 import { Helper } from '../yo-electron-lib/Helper/helper.js'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
-import Scraper from './scraper/Scraper.js'
+import { Scraper } from './scraper/Scraper.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 Helper.init(app.getAppPath(), join(__dirname, '../'))

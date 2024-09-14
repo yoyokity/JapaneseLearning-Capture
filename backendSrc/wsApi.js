@@ -7,7 +7,7 @@ import WsServer from '../yo-electron-lib/webSocket/server.js'
 import { Helper } from '../yo-electron-lib/Helper/helper.js'
 import Session from './scraper/tool/session.js'
 import translator from './scraper/tool/translator.js'
-import Scraper from './scraper/Scraper.js'
+import { Scraper, scraping } from './scraper/Scraper.js'
 import Video from './scraper/Video.js'
 
 export const wsServer = new WsServer()
@@ -95,6 +95,7 @@ wsServer.onInvoke('getScrapers', async (message, client) => {
 
 //开始刮削
 wsServer.onInvoke('beginScrap', async (message, client) => {
+    scraping.value = true
     let scraperType = message.data.type
     let files = message.data.files
     let outputPath = message.data.outputPath
@@ -107,7 +108,7 @@ wsServer.onInvoke('beginScrap', async (message, client) => {
         const video = new Video(file.jav)
         video.scraperName = scraperType
         const scraper = new Scraper.subclasses[scraperType](video)
-        if (await scraper.run(outputPath, file.longJavNumber, file.path)) {
+        if (await scraper.run(outputPath, file.longJavNumber, file.path, client)) {
             client.respond({
                 filePath: file.path,
                 state: true
@@ -118,5 +119,15 @@ wsServer.onInvoke('beginScrap', async (message, client) => {
                 state: false
             })
         }
+
+        if (!scraping.value) {
+            client.respond('end')
+            return
+        }
     }
+})
+
+//结束刮削
+wsServer.onSend('endScrap', async (message) => {
+    scraping.value = false
 })

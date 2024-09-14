@@ -4,7 +4,7 @@ import { pathToFileURL } from 'url'
 import Nfo from './Nfo.js'
 import Actor from './Actor.js'
 
-class Scraper {
+export class Scraper {
     /** 刮削器子类 */
     static subclasses = {}
 
@@ -246,158 +246,267 @@ class Scraper {
      * @param {string} outputPath 媒体库路径
      * @param {string} saveFileName 保存文件名，不带路径和后缀
      * @param {string} filePath 源文件路径
+     * @param {InvokeClient} client
      * @returns {Promise<boolean|null>}
      */
-    async run (outputPath, saveFileName, filePath) {
+    async run (outputPath, saveFileName, filePath, client) {
         Helper.logging.log(`开始刮削：${saveFileName}`)
+        if (!scraping.value) return null
 
         this.saveFileName = saveFileName
         this.directory = this.getDirectory(outputPath)
 
+        if (!scraping.value) return null
         let page = await this.searchPage(this.video)
         if (!page) {
             Helper.logging.warn(`找不到影片：${this.video.title}`)
             Helper.logging.log(`刮削结束：${saveFileName}`)
             return null
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削title'
+        })
 
+        if (!scraping.value) return null
         let title = await this.title(page)
         if (title) {
             this.video.title = title
         } else {
             Helper.logging.warn(`title未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削originaltitle'
+        })
 
+        if (!scraping.value) return null
         let originaltitle = await this.originaltitle(page)
         if (originaltitle) {
             this.video.originaltitle = originaltitle
         } else {
             Helper.logging.warn(`originaltitle未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削sorttitle'
+        })
 
+        if (!scraping.value) return null
         let sorttitle = await this.sorttitle(page)
         if (sorttitle) {
             this.video.sorttitle = sorttitle
         } else {
             Helper.logging.warn(`sorttitle未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削tagline'
+        })
 
+        if (!scraping.value) return null
         let tagline = await this.tagline(page)
         if (tagline) {
             this.video.tagline = tagline
         } else {
             Helper.logging.warn(`tagline未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削num'
+        })
 
+        if (!scraping.value) return null
         let num = await this.num(page)
         if (num) {
             this.video.num = num
         } else {
             Helper.logging.warn(`num未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削mpaa'
+        })
 
+        if (!scraping.value) return null
         let mpaa = await this.mpaa(page)
         if (mpaa) {
             this.video.mpaa = mpaa
         } else {
             Helper.logging.warn(`mpaa未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削rating'
+        })
 
+        if (!scraping.value) return null
         let rating = await this.rating(page)
         if (rating) {
             this.video.rating = rating
         } else {
             Helper.logging.warn(`rating未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削director'
+        })
 
+        if (!scraping.value) return null
         let director = await this.director(page)
         if (director) {
             this.video.director = director
         } else {
             Helper.logging.warn(`director未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削actor'
+        })
 
+        if (!scraping.value) return null
         let actor = await this.actor(page)
         if (actor) {
             this.video.actor = actor
         } else {
             Helper.logging.warn(`actor未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削maker'
+        })
 
+        if (!scraping.value) return null
         let maker = await this.maker(page)
         if (maker) {
             this.video.maker = maker
         } else {
             Helper.logging.warn(`maker未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削studio'
+        })
 
+        if (!scraping.value) return null
         let studio = await this.studio(page)
         if (studio) {
             this.video.studio = studio
         } else {
             Helper.logging.warn(`studio未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削set'
+        })
 
+        if (!scraping.value) return null
         let set = await this.set(page)
         if (set) {
             this.video.set = set
         } else {
             Helper.logging.warn(`set未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削tag'
+        })
 
+        if (!scraping.value) return null
         let tag = await this.tag(page)
         if (tag) {
             this.video.tag = tag
         } else {
             Helper.logging.warn(`tag未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削genre'
+        })
 
+        if (!scraping.value) return null
         let genre = await this.genre(page)
         if (genre) {
             this.video.genre = genre
         } else {
             Helper.logging.warn(`genre未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削plot'
+        })
 
+        if (!scraping.value) return null
         let plot = await this.plot(page)
         if (plot) {
             this.video.plot = plot
         } else {
             Helper.logging.warn(`plot未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削year'
+        })
 
+        if (!scraping.value) return null
         let year = await this.year(page)
         if (year) {
             this.video.year = year
         } else {
             Helper.logging.warn(`year未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削premiered'
+        })
 
+        if (!scraping.value) return null
         let premiered = await this.premiered(page)
         if (premiered) {
             this.video.premiered = premiered
         } else {
             Helper.logging.warn(`premiered未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '刮削releasedate'
+        })
 
+        if (!scraping.value) return null
         let releasedate = await this.releasedate(page)
         if (releasedate) {
             this.video.releasedate = releasedate
         } else {
             Helper.logging.warn(`releasedate未解析`)
         }
+        client.respond({
+            type: 'sub',
+            text: '移动文件'
+        })
 
+        if (!scraping.value) return null
         await this.createDirectory(page, this.directory, this.saveFileName, filePath)
+        client.respond({
+            type: 'sub',
+            text: '下载图片'
+        })
 
+        if (!scraping.value) return null
         if (!await this.downloadImage(page, this.directory, `${this.directory}\\extrafanart`)) {
             Helper.logging.warn(`image下载失败`)
             Helper.logging.log(`刮削结束：${saveFileName}`)
             return null
         }
+        client.respond({
+            type: 'sub',
+            text: '结束刮削'
+        })
 
         Helper.logging.log(`刮削结束：${saveFileName}`)
         return true
     }
 }
 
-export default Scraper
+export let scraping = {
+    value: true
+}

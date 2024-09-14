@@ -1,10 +1,11 @@
 <script setup>
-import { Settings, Progress } from '@/js/globalState/globalState.js'
+import { Settings, Progress, SubProgress } from '@/js/globalState/globalState.js'
 import { transDialogShow } from '@/js/globalState/globalState.js'
 import ControlLine from '@/vue/control/controlLine.vue'
 
 const settings = Settings()
 const progress = Progress()
+const subProgress = SubProgress()
 
 function openLink (url) {
     wsClient.send('openLink', url)
@@ -19,6 +20,12 @@ function checkTrans () {
             showElMessage.warning('API测试无效！')
         }
     })
+}
+
+function endScraper () {
+    subProgress.button = '正在取消'
+    subProgress.buttonDisabled = true
+    wsClient.send('endScrap', null)
 }
 
 
@@ -79,18 +86,34 @@ function checkTrans () {
                :close-on-click-modal="false"
                style="border-radius: 6px">
         <div class="dialog-body">
-            <div style="font-weight: bold">
-                <span style="margin-right: 1em">刮削进度:</span>
+            <div class="center-vertically">
+                <span style="font-weight: bold">总进度</span>
+                <el-progress type="circle"
+                             :percentage="progress.getPercent"
+                             :duration="10"
+                             :stroke-width="10"
+                             :show-text="false"
+                             style="margin:1em 0 2em 0"/>
                 <span>{{ progress.current }} / {{ progress.total }}</span>
             </div>
-            <el-progress
-                :percentage="progress.getPercent"
-                :stroke-width="15"
-                :duration="10"
-                :show-text="false"
-                style="margin-bottom: 1em;margin-top: 1em"
-                striped striped-flow/>
+            <div class="center-vertically">
+                <span style="font-weight: bold">单个进度</span>
+                <el-progress type="circle"
+                             :percentage="subProgress.getPercent"
+                             :duration="10"
+                             :stroke-width="10"
+                             :show-text="false"
+                             style="margin: 1em 0 2em 0"/>
+                <span>正在{{ subProgress.getText }}...</span>
+            </div>
         </div>
+        <template #footer>
+            <div class="dialog-footer" style="justify-content: center;margin-top: 1em">
+                <el-button @click="endScraper()" :disabled="subProgress.buttonDisabled" round plain>
+                    {{ subProgress.button }}
+                </el-button>
+            </div>
+        </template>
     </el-dialog>
 </template>
 
@@ -109,6 +132,14 @@ function checkTrans () {
 
 .dialog-body {
     padding: 0 2em 0 2.5em;
+    display: flex;
+    justify-content: space-around;
+}
+
+.center-vertically {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 span {
