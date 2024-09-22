@@ -8,14 +8,16 @@ export class Scraper {
     /** 刮削器子类 */
     static subclasses = {}
 
-    static load () {
+    static async load () {
         const modulesDir = Helper.path.dataDir.join('backendSrc/plugins')
         const files = Helper.path.searchFiles(modulesDir.str, ['.js'])
-        files.forEach(async (file) => {
+        for (const file of files) {
             const fileUrl = pathToFileURL(file).href
             const module = await import(fileUrl)
-            Scraper.subclasses[module.default.name] = module.default
-        })
+            if (module.default) {
+                Scraper.subclasses[module.default.name] = module.default
+            }
+        }
     }
 
     /** @type {Video} */
