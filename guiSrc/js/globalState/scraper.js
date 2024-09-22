@@ -11,14 +11,35 @@ export const Scraper = defineStore('scraper', {
     },
     actions: {
         load () {
+            let cache = {}
+            this.ScraperList.forEach((value, index) => {
+                cache[value.label] = value.output
+            })
+
             let handle = wsClient.invoke('getScrapers', null)
             handle.onEnd((message) => {
+                /** @type {string[]} */
                 let plugins = message.data
-                this.ScraperList = plugins.map((item, index) => ({
-                    value: item,
-                    label: item,
-                    output: this.ScraperList.length === 0 ? `${item}_output` : this.ScraperList[index].output
-                }))
+
+                //添加
+                plugins.forEach((plugin, index) => {
+                    if (!cache[plugin]) {
+                        cache[plugin] = `${plugin}_output`
+                    }
+                })
+
+                //更新
+                this.ScraperList = []
+                for (let key in cache) {
+                    if (plugins.includes(key)) {
+                        this.ScraperList.push({
+                            value: key,
+                            label: key,
+                            output: cache[key]
+                        })
+                    }
+                }
+
                 if (!this.currentScraper) {
                     this.currentScraper = this.ScraperList[0].value
                 }
