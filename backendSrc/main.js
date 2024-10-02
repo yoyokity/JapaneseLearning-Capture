@@ -19,7 +19,7 @@ import { Scraper } from './scraper/Scraper.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 Helper.init(app.getAppPath(), join(__dirname, '../'))
-Scraper.load()
+await Scraper.load()
 
 //electron加载
 app.enableSandbox()

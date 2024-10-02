@@ -92,7 +92,16 @@ async function translateGoogle (s_text, targetLanguage = 'zh-CN') {
     try {
         const session = new Session('')
         let res = await session.post(url, new URLSearchParams(form).toString(), headers)
-        return res.data['sentences'][0].trans
+        let sentences = res.data['sentences']
+        if (sentences.length === 2) {
+            return sentences[0].trans
+        }else{
+            let text = ''
+            for (let i = 0; i < sentences.length-1; i++) {
+                text += sentences[i].trans
+            }
+            return text
+        }
     } catch (e) {
         return null
     }
@@ -118,6 +127,7 @@ class Translator {
      */
     translate (text) {
         if (!this.translateOn) return null
+        if (!text) return null
 
         let targetLanguage = this.translateTarget
 

@@ -156,6 +156,38 @@ class Session {
 
         return null
     }
+
+    async getArrayBuffer(url, headers = null, cookie = null){
+        let config = {
+            responseType: 'arraybuffer'
+        }
+        if (headers) {
+            config.headers = headers
+        }
+        if (cookie) {
+            if (!config.headers) {
+                config.headers = {}
+            }
+            config.headers.Cookie = serializeObjectToCookieText(cookie)
+        }
+
+        //重连次数
+        for (let i = 0; i <= Session.retry; i++) {
+            try {
+                let response = await this.axiosInstance.get(url, config)
+                if (response.status === 200) {
+                    return response
+                }
+            } catch (e) {}
+
+            if (i !== Session.retry) {
+                let url_ = url.startsWith('/') ? `${this.baseURL}${url}` : url
+                console.warn(`请求失败，重试第 ${i + 1} 次: ${url_}`)
+            }
+        }
+
+        return null
+    }
 }
 
 function sleep (time) {

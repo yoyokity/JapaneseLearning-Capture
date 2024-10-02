@@ -66,6 +66,7 @@ export class Scraper {
     /**
      * 搜索影片首页，返回网页文本，失败返回null
      * @abstract
+     * @param {Video} video
      * @returns {Promise<string>}
      */
     async searchPage (video) {}
@@ -256,7 +257,6 @@ export class Scraper {
         if (!scraping.value) return null
 
         this.saveFileName = saveFileName
-        this.directory = this.getDirectory(outputPath)
 
         if (!scraping.value) return null
         let page = await this.searchPage(this.video)
@@ -485,6 +485,8 @@ export class Scraper {
             type: 'sub',
             text: '移动文件'
         })
+
+        this.directory = this.getDirectory(outputPath)
 
         if (!scraping.value) return null
         await this.createDirectory(page, this.directory, this.saveFileName, filePath)
