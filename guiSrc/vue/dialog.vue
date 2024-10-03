@@ -60,7 +60,7 @@ function endScraper () {
             </div>
         </template>
 
-        <div class="dialog-body">
+        <div class="dialog-body" style="flex-direction: column;">
             <control-line label="id" right-width="20rem">
                 <el-input v-if="settings.trans_engine==='腾讯翻译'" v-model="settings.trans_tencent_id"
                           size="small"></el-input>

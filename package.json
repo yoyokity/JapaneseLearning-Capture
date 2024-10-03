@@ -8,12 +8,12 @@
   "type": "module",
   "main": "backendSrc/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "start": "start /b vite build && electron .",
-    "start-without-gui-build": "start /b vite && set SERVER=on&& electron .",
+    "web-dev": "vite",
+    "web-build": "vite build",
+    "app-start": "start /b vite build && electron .",
+    "app-start&web-dev": "start /b vite && set SERVER=on&& electron .",
     "app-build": "electron-builder",
-    "sessionDebug": "node backendSrc/debug/sessionDebug.js"
+    "debug-session": "node backendSrc/debug/sessionDebug.js"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
