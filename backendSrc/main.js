@@ -1,5 +1,5 @@
 import Store from 'electron-store'
-import { app, BrowserWindow, ipcMain } from 'electron/main'
+import { app, BrowserWindow } from 'electron/main'
 import { createWindow } from './window.js'
 
 global.yoyoNode = {}
@@ -18,7 +18,7 @@ import { join, dirname } from 'path'
 import { Scraper } from './scraper/Scraper.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-Helper.init(app.getAppPath(), join(__dirname, '../'))
+Helper.init(process.cwd(), join(__dirname, '../'))
 await Scraper.load()
 
 //electron加载

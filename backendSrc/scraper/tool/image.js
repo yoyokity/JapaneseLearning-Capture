@@ -50,7 +50,7 @@ class Image {
             ]
 
             //超分
-            const realesrganPath = Helper.path.appDir.join('tools/realesrgan/realesrgan-ncnn-vulkan.exe')
+            const realesrganPath = Helper.path.appDir.join('resources/tools/realesrgan/realesrgan-ncnn-vulkan.exe')
             const realesrgan = new Helper.Cmd(realesrganPath.str)
             let cmd = realesrgan.run(ars)
             cmd.onExit((code, text) => {

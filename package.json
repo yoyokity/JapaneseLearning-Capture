@@ -13,7 +13,11 @@
     "app-start": "start /b vite build && electron .",
     "app-start&web-dev": "start /b vite && set SERVER=on&& electron .",
     "app-build": "electron-builder",
-    "debug-session": "node backendSrc/debug/sessionDebug.js"
+    "debug-session": "node backendSrc/debug/sessionDebug.js",
+    "build-start": "electron-forge start",
+    "build-package": "electron-forge package",
+    "build-make": "electron-forge make",
+    "build-publish": "electron-forge publish"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -24,7 +28,7 @@
     "element-plus": "^2.7.7",
     "md5": "^2.3.0",
     "pinia": "^2.1.7",
-    "pinia-plugin-persistedstate": "^3.2.1",
+    "pinia-plugin-persistedstate": "^4.0.2",
     "sharp": "^0.33.4",
     "tencentcloud-sdk-nodejs-tmt": "^4.0.890",
     "tslib": "^2.6.3",
@@ -33,36 +37,16 @@
     "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.5.0",
+    "@electron-forge/maker-deb": "^7.5.0",
+    "@electron-forge/maker-rpm": "^7.5.0",
+    "@electron-forge/maker-squirrel": "^7.5.0",
+    "@electron-forge/maker-zip": "^7.5.0",
     "@vitejs/plugin-vue": "^5.0.4",
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.3",
+    "electron": "^32.1.2",
     "vite": "^5.2.0"
   },
-  "build": {
-    "appId": "nya.yoyokity.JapLC",
-    "productName": "JapLC",
-    "copyright": "Copyright © 2022 yoyokity",
-    "win": {
-      "icon": "resources/icon.ico"
-    },
-    "extraFiles": [
-      "tools"
-    ],
-    "files": [
-      {
-        "from": "resources",
-        "to": "resources",
-        "filter": [
-          "font.ttf"
-        ]
-      },
-      "!**/*",
-      "node_modules",
-      "package.json",
-      "LICENSE",
-      "backendSrc",
-      "guiSrc/dist",
-      "yo-electron-lib"
-    ]
+  "config": {
+    "forge": "./forge.config.js"
   }
 }

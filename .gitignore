@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+out
 dist
 dist-ssr
 *.local
@@ -22,7 +23,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-/tools/realesrgan/input.jpg
-/tools/realesrgan/input2.jpg
-/tools/realesrgan/onepiece_demo.mp4
-/tools/realesrgan/README_windows.md
+/resources/tools/realesrgan/input.jpg
+/resources/tools/realesrgan/input2.jpg
+/resources/tools/realesrgan/onepiece_demo.mp4
+/resources/tools/realesrgan/README_windows.md

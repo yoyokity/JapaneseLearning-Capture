@@ -43,7 +43,7 @@ function dropFile (e) {
         .map((file) => {
             return {
                 name: file.name,
-                path: file.path,
+                path: window.electronAPI.getFilePath(file),
                 size: file.size,
                 basename: file.name.replace(/\.[^/.]+$/, '')
             }
