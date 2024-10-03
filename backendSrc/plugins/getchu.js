@@ -73,7 +73,7 @@ class getchu extends Scraper {
         const $ = cheerioLoad(page)
 
         // 封面
-        let url = $('table#soft_table').find('img').first().attr('src').replace(/^\.\/ */, '')
+        let url = $('table#soft_table').find('a').first().attr('href').replace(/^\.\/ */, '')
         let img = await this.session.getImage(url)
 
         if (img) {
