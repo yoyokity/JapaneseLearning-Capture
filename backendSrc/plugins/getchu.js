@@ -87,8 +87,8 @@ class getchu extends Scraper {
         let targetElement = $('div.tabletitle').filter(function () {
             return $(this).text().includes('サンプル画像')
         })
-        let hrefs = targetElement.next().find('img').map(function () {
-            return $(this).attr('src').replace(/^\.\/ */, '')
+        let hrefs = targetElement.next().find('a').map(function () {
+            return $(this).attr('href').replace(/^\.\/ */, '')
         })
 
         let index = 0
