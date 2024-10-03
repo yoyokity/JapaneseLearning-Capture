@@ -108,7 +108,12 @@ class getchu extends Scraper {
     }
 
     getDirectory (outputPath) {
-        return `${outputPath}\\${this._bigTitle}`
+        if (this._title === this._bigTitle) {
+            return `${outputPath}\\${this._title}`
+        }
+
+        // 如果有集数，则多一层目录 （bigtitle不同于title时）
+        return `${outputPath}\\${this._bigTitle}\\${this._title}`
     }
 
     async maker (page) {
