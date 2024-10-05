@@ -9,7 +9,7 @@
 - 本项目不提供任何视频下载，只管理本地资源
 
 - 本项目和项目成果仅供技术，学术交流和electron性能测试使用
-- 本项目贡献者编写该项目旨在学习electron ，提高编程水平
+- 本项目贡献者编写该项目旨在学习electron，提高编程水平
 - 如有问题可在issue提出
 - 永久全部开源免费
 
@@ -17,4 +17,18 @@
 
 ## 预览
 
-<p align='center'><img src='doc/img/preview.png' width=500/></p>
+<p align='center'><img src='resources/preview.jpg' width=500/></p>
+
+
+
+
+
+## 手动打包
+
+```bash
+npm install
+npm run web-build
+npm run build-package
+```
+
+遇到网络问题可以开梯子，还有问题开tun模式
