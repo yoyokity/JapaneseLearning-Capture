@@ -35,7 +35,25 @@ class JavDB extends Scraper {
     }
 
     getDirectory (outputPath) {
-        return `${outputPath}\\${this.video.title}`
+        let actors = this._actors
+
+        let females = []
+        actors.forEach(actor => {
+          if (actor.gender === 'female') {
+            females.push(actor)
+          }
+        })
+
+        let name = null
+        if (females.length === 0) {
+            return `${outputPath}\\${this.video.title}`
+        }
+        if (females.length > 1) {
+            name = '多人合作'
+        }else{
+            name= females[0].name
+        }
+        return `${outputPath}\\${name}\\${this.video.title}`
     }
 
     async searchPage (video) {

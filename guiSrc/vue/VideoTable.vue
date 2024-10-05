@@ -201,7 +201,7 @@ async function addFiles (files) {
             <el-table class="video-table"
                       ref="fileTableRef"
                       :data="fileTable.scrapingTable"
-                      height="calc(100vh - 7rem)"
+                      height="calc(100vh - 8rem)"
                       @selection-change="selectionChange"
                       @row-contextmenu="editNum"
             >
