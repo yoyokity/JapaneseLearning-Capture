@@ -77,6 +77,10 @@ export const FileTable = defineStore('fileTable', {
     state: () => ({
         scrapingTable: [],
         selectedFiles: [],
+        showEditNum: false,
+        currentEditFile: null,
+        currentEditNum: null,
+        currentEditSuffix:[],
     }),
     actions: {
         /**
@@ -89,9 +93,36 @@ export const FileTable = defineStore('fileTable', {
             file.uncensored = jav.uncensored
             file.subtitle = jav.subtitle
             file.longJavNumber = jav.longJavNumber
+            file.suffix = jav.longJavNumber.replace(jav.javNumber, '');
             file.state = false
             this.scrapingTable.push(file)
             fileTableRef.value.toggleRowSelection(file, true)
+        },
+        scrapingTable_remove (file) {
+            const index = this.scrapingTable.findIndex(f => f === file);
+            if (index !== -1) {
+                this.scrapingTable.splice(index, 1);
+            }
+        },
+        editNum(){
+            this.currentEditFile.subtitle = this.currentEditSuffix.includes('C');
+            this.currentEditFile.uncensored = this.currentEditSuffix.includes('U');
+
+            let jav = getJavNumber(this.currentEditNum).javNumber
+            let longJav = jav
+            if (this.currentEditFile.subtitle && this.currentEditFile.uncensored) {
+                longJav = jav + '-UC'
+            } else if (this.currentEditFile.subtitle) {
+                longJav = jav + '-C'
+            } else if (this.currentEditFile.uncensored) {
+                longJav = jav + '-U'
+            }
+
+            this.currentEditFile.jav = jav
+            this.currentEditFile.longJavNumber = longJav
+            this.currentEditFile.suffix = longJav.replace(jav, '');
+
+            this.showEditNum = false
         },
         scrapingTable_clear () {
             this.scrapingTable = []

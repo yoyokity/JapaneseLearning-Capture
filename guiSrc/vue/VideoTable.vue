@@ -1,5 +1,5 @@
 <script setup>
-import { Settings, FileTable, Scraper, Progress, SubProgress } from '@/js/globalState/globalState.js'
+import { ContextMenu, FileTable, Scraper, Progress, SubProgress } from '@/js/globalState/globalState.js'
 import { fileTableRef } from '@/js/globalState/fileTable.js'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { Plus, Delete, Select, CloseBold } from '@element-plus/icons-vue'
@@ -9,6 +9,7 @@ const fileTable = FileTable()
 const scraper = Scraper()
 const progress = Progress()
 const subProgress = SubProgress()
+const contextMenu = ContextMenu()
 
 const fileExtension = {
     mp4: '#7862DA',
@@ -57,6 +58,43 @@ function dropFile (e) {
 //文件列表改变选中
 function selectionChange (selection) {
     fileTable.updateSelectedFiles(selection)
+}
+
+//编辑番号 和 删除番号
+function editNum (file, column, event) {
+    /** @type {HTMLElement} */
+    let rowDiv = event.target.closest('.el-table__row')
+    Array.from(rowDiv.children).forEach((td) => {
+        td.style.backgroundColor = 'var(--el-table-row-hover-bg-color)'
+    })
+
+    contextMenu.showMenu({
+            '编辑番号': () => {
+                // fileTable.editNum()
+                fileTable.showEditNum = true
+                fileTable.currentEditFile = file
+                fileTable.currentEditNum = file.jav
+
+                fileTable.currentEditSuffix = []
+                if (file.subtitle) {
+                    fileTable.currentEditSuffix.push('C')
+                }
+                if (file.uncensored) {
+                    fileTable.currentEditSuffix.push('U')
+                }
+            },
+            '删除': () => {
+                fileTable.scrapingTable_remove(file)
+            }
+        },
+        event.pageX,
+        event.pageY,
+        null,
+        () => {
+            Array.from(rowDiv.children).forEach((td) => {
+                td.style.backgroundColor = ''
+            })
+        })
 }
 
 //开始刮削按钮
@@ -165,9 +203,11 @@ async function addFiles (files) {
                       :data="fileTable.scrapingTable"
                       height="calc(100vh - 7rem)"
                       @selection-change="selectionChange"
+                      @row-contextmenu="editNum"
             >
                 <el-table-column type="selection" width="50"/>
                 <el-table-column prop="jav" label="番号" align="center" width="130"></el-table-column>
+                <el-table-column prop="suffix" label="后缀" align="left" width="80"></el-table-column>
                 <el-table-column prop="name" label="文件名" min-width="250"></el-table-column>
                 <el-table-column prop="size" label="大小" align="center" width="100"></el-table-column>
                 <el-table-column label="状态" align="center" width="80">

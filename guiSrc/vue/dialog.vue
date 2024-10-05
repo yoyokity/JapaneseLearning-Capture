@@ -1,11 +1,12 @@
 <script setup>
-import { Settings, Progress, SubProgress } from '@/js/globalState/globalState.js'
+import { Settings, Progress, SubProgress, FileTable } from '@/js/globalState/globalState.js'
 import { transDialogShow } from '@/js/globalState/globalState.js'
 import ControlLine from '@/vue/control/controlLine.vue'
 
 const settings = Settings()
 const progress = Progress()
 const subProgress = SubProgress()
+const fileTable = FileTable()
 
 function openLink (url) {
     wsClient.send('openLink', url)
@@ -75,6 +76,31 @@ function endScraper () {
             </control-line>
         </div>
 
+    </el-dialog>
+
+    <!--    编辑番号对话框-->
+    <el-dialog v-model="fileTable.showEditNum"
+               class="dialog"
+               width="300"
+               :show-close="false"
+               style="border-radius: 6px">
+        <div class="dialog-body" style="flex-direction: column;">
+            <control-line label="番号">
+                <el-input  v-model="fileTable.currentEditNum" spellcheck="false" size="small"></el-input>
+            </control-line>
+            <control-line label="后缀">
+                <el-checkbox-group v-model="fileTable.currentEditSuffix"  size="small">
+                    <el-checkbox-button  key="C" value="C">-C</el-checkbox-button>
+                    <el-checkbox-button  key="U" value="U">-U</el-checkbox-button>
+                </el-checkbox-group>
+            </control-line>
+        </div>
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="fileTable.showEditNum = false" round plain>关闭</el-button>
+                <el-button @click="fileTable.editNum()" type="primary" round plain>确定</el-button>
+            </div>
+        </template>
     </el-dialog>
 
     <!--    刮削进度对话框-->
