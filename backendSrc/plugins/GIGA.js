@@ -1,25 +1,24 @@
 import { load as cheerioLoad } from 'cheerio'
 
 import { Scraper } from '../scraper/Scraper.js'
-import Video from '../scraper/Video.js'
 import Session from '../scraper/tool/session.js'
-import translate from '../scraper/tool/translator.js'
 import Actor from '../scraper/Actor.js'
 
 const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Upgrade-Insecure-Requests': '1',
     'Referer': 'https://www.giga-web.jp/top.php',
-}
-const cookie = {
-    'old_check': 'yes', 'layout': 'jpn'
 }
 
 class GIGA extends Scraper {
-    session = new Session('https://www.giga-web.jp/', headers, cookie)
+    session = new Session('https://www.giga-web.jp/', headers)
 
     async actor (page) {
-        return Promise.resolve(undefined)
+        let name = this.parseWorksText('出演女優').text().trim()
+        let actor = new Actor()
+        actor.name = name
+        actor.gender = 'female'
+
+
+        return
     }
 
     async checkConnect () {
@@ -34,8 +33,47 @@ class GIGA extends Scraper {
         super(video)
     }
 
+    async searchPage (video) {
+        //获取cookie
+        let newCookie = await this.session.getCookie('cookie_set.php', null)
+        if (!newCookie) { return null }
+
+        this.session = new Session('https://www.giga-web.jp/', headers, {
+            'PHPSESSID': newCookie.PHPSESSID,
+            'old_check': 'yes', 'layout': 'jpn',
+            'WSLB': newCookie.WSLB
+        })
+
+        //搜索页面
+        let search_url = `search/?keyword=${video.title}`
+        let response = await this.session.get(search_url)
+        if (response.includes('あなたは18歳以上ですか？')){
+            console.warn('18岁页面不过')
+            return null
+        }
+        if (!response) { return null }
+
+        let $ = cheerioLoad(response)
+        const targetDiv = $('.search_sam_box').filter((i, el) => {
+            return $(el)?.text().includes(video.title)
+        })?.first()
+
+        if (targetDiv.length > 0) {
+            let href = targetDiv.find('a').first().attr('href')
+
+            //影片页面
+            response = await this.session.get(href)
+            if (!response) { return null }
+
+            this._page = response
+            return response
+        }
+
+        return null
+    }
+
     async director (page) {
-        return Promise.resolve('')
+        return this.parseWorksText('監督').text().trim()
     }
 
     async downloadImage (page, directory, extrafanartPath) {
@@ -43,7 +81,12 @@ class GIGA extends Scraper {
     }
 
     async genre (page) {
-        return Promise.resolve([])
+        this._tags = []
+        let $ = cheerioLoad(page)
+        $('#tag_main').find('a').each((i, el) => {
+            this._tags.push($(el).text().trim())
+        })
+        return this._tags
     }
 
     getDirectory (outputPath) {
@@ -51,19 +94,20 @@ class GIGA extends Scraper {
     }
 
     async maker (page) {
-        return Promise.resolve('')
+        return 'GIGA'
     }
 
     async mpaa (page) {
-        return Promise.resolve('')
+        return 'JP-18+'
     }
 
     async num (page) {
-        return Promise.resolve('')
+        return this._title
     }
 
     async originaltitle (page) {
-        return Promise.resolve('')
+        let  $ = cheerioLoad(page)
+        return $('h5').text().trim()
     }
 
     async plot (page) {
@@ -75,14 +119,10 @@ class GIGA extends Scraper {
     }
 
     async rating (page) {
-        return Promise.resolve('')
+        return null
     }
 
     async releasedate (page) {
-        return Promise.resolve('')
-    }
-
-    async searchPage (video) {
         return Promise.resolve('')
     }
 
@@ -91,7 +131,7 @@ class GIGA extends Scraper {
     }
 
     async sorttitle (page) {
-        return Promise.resolve('')
+        return this._title
     }
 
     async studio (page) {
@@ -99,19 +139,31 @@ class GIGA extends Scraper {
     }
 
     async tag (page) {
-        return Promise.resolve([])
+        return this._tags
     }
 
     async tagline (page) {
-        return Promise.resolve('')
+        return null
     }
 
     async title (page) {
-        return Promise.resolve('')
+        let t = this.parseWorksText('作品番号').text().trim()
+        this._title = t
+        return t
     }
 
     async year (page) {
         return Promise.resolve('')
+    }
+
+    /**
+     * @param {string} label
+     */
+    parseWorksText(label){
+        let $ = cheerioLoad(this._page)
+        return $('#works_txt').find('dt').filter((i, el) => {
+            return $(el)?.text().includes(label)
+        }).next()
     }
 }
 

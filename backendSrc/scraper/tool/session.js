@@ -129,11 +129,12 @@ class Session {
         try {
             let re = await this.instance.get(url, config)
             if (re) {
-                return re.body
+                return re?.body
             }
 
             return null
         } catch (e) {
+            console.error(e)
             return null
         }
     }
@@ -213,6 +214,37 @@ class Session {
                 let data = re.body
                 if (data instanceof Buffer) {
                     return new Image(data)
+                }
+            }
+
+            return null
+        } catch (e) {
+            return null
+        }
+    }
+
+    /**
+     * 获取二进制数据，失败返回null，不会重定向访问
+     * @param {string|null} url path或完整url
+     * @param {object|null} headers 会覆盖
+     * @param {object|null} cookie 会覆盖
+     * @return {Promise<Buffer|null>}
+     */
+    async getArrayBuffer (url = null, headers = null, cookie = null) {
+        url = combineUrl(this.#baseUrl, url)
+        if (!url) return null
+
+        let config = {
+            responseType: 'buffer',
+            headers: createHeaders(headers, cookie)
+        }
+
+        try {
+            let re = await this.instance.get(url, config)
+            if (re) {
+                let data = re.body
+                if (data instanceof Buffer) {
+                    return data
                 }
             }
 

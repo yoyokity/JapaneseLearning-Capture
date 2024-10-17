@@ -39,9 +39,9 @@ class JavDB extends Scraper {
 
         let females = []
         actors.forEach(actor => {
-          if (actor.gender === 'female') {
-            females.push(actor)
-          }
+            if (actor.gender === 'female') {
+                females.push(actor)
+            }
         })
 
         let name = null
@@ -50,27 +50,30 @@ class JavDB extends Scraper {
         }
         if (females.length > 1) {
             name = '多人合作'
-        }else{
-            name= females[0].name
+        } else {
+            name = females[0].name
         }
         return `${outputPath}\\${name}\\${this.video.title}`
     }
 
     async searchPage (video) {
-        const search_url = `search?q=${this.video.title}&f=all`
+        const search_url = `search?q=${video.title}&f=all`
         const response = await this.session.get(search_url)
 
-        if (!response.status) { return null }
-        const $ = cheerioLoad(response.data)
+        if (!response) { return null }
+        const $ = cheerioLoad(response)
 
-        const jav_number = $('.video-title strong').first().text()
-        if (jav_number === '') { return null }
+        let div = $('a.box').filter((i, el) => {
+            let jav_number = $(el).find('.video-title strong').text().trim()
+            if (jav_number === '') { return false }
+            return !!(video.title.includes(jav_number) || jav_number.includes(video.title))
+        })
 
-        if (this.video.title.includes(jav_number) || jav_number.includes(this.video.title)) {
-            const url = $('a.box').attr().href
+        if (div.length > 0) {
+            const url = $(div).attr().href
             const response = await this.session.get(url)
             if (response) {
-                return response.data
+                return response
             }
         }
 
@@ -130,28 +133,20 @@ class JavDB extends Scraper {
             const actors = new Map()
 
             div.find('a').each((index, element) => {
-                    let actor = new Actor()
+                    let actor = new Actor($(element).text())
 
-                    actor.name = $(element).text()
-                    actor.url = $(element).attr().href
+                    let url = $(element).attr().href
+                    let gender = null
                     const genderSymbol = $(element).next('strong').text()
-
                     if (genderSymbol === '♀') {
-                        actor.gender = 'female'
+                        gender = 'female'
                     } else if (genderSymbol === '♂') {
-                        actor.gender = 'male'
+                        gender = 'male'
                     }
-
+                    actor.search(url, gender === 'female')
                     actors.set(actor.name, actor)
                 }
             )
-
-            //搜索其余属性
-            for (const [name, actor] of actors.entries()) {
-                if (actor.gender !== 'female') continue  //忽略男人
-                const newActor = await this.searchActor(actor, actor.url)
-                actors.set(name, newActor)
-            }
 
             /** @type {Map<string,Actor>} */
             this._actors = actors
@@ -263,63 +258,6 @@ class JavDB extends Scraper {
         }
 
         return true
-    }
-
-    /**
-     * @private
-     * @param {Actor} actor
-     * @param {string} url
-     * @return {Promise<Actor>}
-     */
-    async searchActor (actor, url) {
-        delete actor.url
-
-        //检查数据库中是否已有演员信息
-        let _actor = Actor.get(actor.name)
-        if (_actor) {
-            return _actor
-        }
-
-        //从wiki获取基本信息
-        let session = new Session('https://ja.wikipedia.org/')
-        let response = await session.get(`wiki/${encodeURIComponent(actor.name)}`)
-        if (response) {
-            const $ = cheerioLoad(response.data)
-            const infobox = $('.infobox')
-            if (infobox) {
-                const text = infobox.text()
-
-                const birthdate = text.match(/\d{4}年\d+月\d+日/)?.[0]
-                if (birthdate) {
-                    actor.birthdate = birthdate.trim()
-                }
-
-                const measurements = text.match(/[\d ]+-[\d ]+-[\d ]+cm/)?.[0]
-                if (measurements) {
-                    actor.measurements = measurements.trim().replace(' ', '')
-                }
-                const cup = text.match(/[A-Z]\n/)?.[0]
-                if (cup) {
-                    actor.cup = cup.trim()
-                }
-            }
-        }
-
-        //使用javdb自带的头像
-        response = await this.session.get(url)
-        if (response) {
-            const $ = cheerioLoad(response.data)
-            const elements = $('.column.actor-avatar')
-            if (elements.length > 0) {
-                let url = elements.html().match(/https:.+\.jpg/)?.[0]
-                if (url) {
-                    actor.imgUrl = url
-                }
-            }
-        }
-
-        Actor.set(actor)
-        return actor
     }
 }
 

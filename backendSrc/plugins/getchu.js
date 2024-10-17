@@ -39,10 +39,10 @@ class getchu extends Scraper {
         const search_url = `soft.phtml?id=${video.title}`
         const response = await this.session.getArrayBuffer(search_url)
 
-        if (!response.status) { return null }
+        if (!response) { return null }
 
         let decoder = new TextDecoder('EUC-JP')
-        let u8arr = new Uint8Array(response.data)
+        let u8arr = new Uint8Array(response)
 
         return decoder.decode(u8arr)
     }
@@ -50,7 +50,7 @@ class getchu extends Scraper {
     async director (page) {
         const $ = cheerioLoad(page)
         const text = $('div#wrapper').text()
-        let regex = /監督(.*?)：(?<name>.*)[\n ]/
+        let regex = /監督(.*?)：(?<name>.*)[\n ／]/
         let match = text.match(regex)
         if (match && match.groups) {
             this._director = match.groups.name
