@@ -142,23 +142,34 @@ class Session {
     /**
      * 发送post请求
      * @param {string|null} url path或完整url
+     * @param {object|null} formData
      * @param {object|null} headers 会覆盖
      * @param {object|null} cookie 会覆盖
-     * @return {Promise<boolean>} 成功为true，否贼为false
+     * @return {Promise<string|null>}
      */
-    async post (url = null, headers = null, cookie = null) {
+    async post (url = null,formData = null, headers = null, cookie = null) {
         url = combineUrl(this.#baseUrl, url)
-        if (!url) return false
+        if (!url) return null
 
         let config = {
-            headers: createHeaders(headers, cookie)
+            headers: createHeaders(headers, cookie),
+        }
+
+        if (formData) {
+            config.form = formData
+            config.headers['content-type'] = 'application/x-www-form-urlencoded'
         }
 
         try {
             let re = await this.instance.post(url, config)
-            return re.statusCode < 400;
+            if (re) {
+                return re?.body
+            }
+
+            return null
         } catch (e) {
-            return false
+            console.error(e)
+            return null
         }
     }
 

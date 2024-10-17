@@ -59,7 +59,7 @@ export default class Actor {
     }
 
     /**
-     * 搜索演员信息，数据库中存在则直接拿取
+     * 搜索演员信息，数据库中存在则直接拿取 (注意是异步函数)
      * @param {string|null} javDB_url 演员的javdb链接，忽略则根据名字搜索
      * @param {boolean} female 是否为女人
      * @returns {Promise<void>}
@@ -67,9 +67,9 @@ export default class Actor {
     async search (javDB_url = null, female = true) {
 
         //检查数据库中是否已有演员信息
-        // if (this.get()) {
-        //     return
-        // }
+        if (this.get()) {
+            return
+        }
         
         //没有则搜索
 
@@ -77,7 +77,6 @@ export default class Actor {
         if (female) {
             this.gender = 'female'
             let response = await new Session('https://ja.wikipedia.org/').get(`wiki/${encodeURIComponent(this.name)}`)
-            console.log(response)
             if (response) {
                 const $ = cheerioLoad(response)
                 const infobox = $('.infobox')
@@ -93,7 +92,7 @@ export default class Actor {
                     if (measurements) {
                         this.measurements = measurements.trim().replace(' ', '')
                     }
-                    const cup = text.match(/[A-Z]\n/)?.[0]
+                    const cup = text.match(/[A-Z][0-9]*?\n/)?.[0]
                     if (cup) {
                         this.cup = cup.trim()
                     }
@@ -131,6 +130,7 @@ export default class Actor {
      * @private
      */
     get () {
+        if (typeof yoyoNode === 'undefined') return false
         let a = yoyoNode.store.get(this.name)
         if (a) {
             this.imgUrl = a?.imgUrl
@@ -148,6 +148,7 @@ export default class Actor {
      * @private
      */
     set () {
+        if (typeof yoyoNode === 'undefined') return
         yoyoNode.store.set(this.name, JSON.parse(JSON.stringify(this)))
     }
 }

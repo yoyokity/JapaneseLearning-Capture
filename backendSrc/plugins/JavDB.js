@@ -132,21 +132,20 @@ class JavDB extends Scraper {
             /** @type {Map<string, Actor>} */
             const actors = new Map()
 
-            div.find('a').each((index, element) => {
-                    let actor = new Actor($(element).text())
+            for (const element of div.find('a')) {
+                let actor = new Actor($(element).text())
 
-                    let url = $(element).attr().href
-                    let gender = null
-                    const genderSymbol = $(element).next('strong').text()
-                    if (genderSymbol === '♀') {
-                        gender = 'female'
-                    } else if (genderSymbol === '♂') {
-                        gender = 'male'
-                    }
-                    actor.search(url, gender === 'female')
-                    actors.set(actor.name, actor)
+                let url = $(element).attr().href
+                let gender = null
+                const genderSymbol = $(element).next('strong').text()
+                if (genderSymbol === '♀') {
+                    gender = 'female'
+                } else if (genderSymbol === '♂') {
+                    gender = 'male'
                 }
-            )
+                await actor.search(url, gender === 'female')
+                actors.set(actor.name, actor)
+            }
 
             /** @type {Map<string,Actor>} */
             this._actors = actors
@@ -197,7 +196,7 @@ class JavDB extends Scraper {
     }
 
     async plot (page) {
-        let text = await translate.translate(this._originaltitle) || ''
+        let text = await translate.translate(this._originaltitle) || this._originaltitle
         //添加演员信息
         for (const actor of this._actors.values()) {
             if (actor.gender !== 'female') continue
@@ -228,6 +227,13 @@ class JavDB extends Scraper {
         // 封面用别的，javdb有水印，不行
         let session = new Session('https://eightcha.com/')
         let img = await session.getImage(`${this._jav_number.toLowerCase()}/cover.jpg`)
+
+        if (!img) {
+            //没有就用javdb的
+            const $ = cheerioLoad(page)
+            const url = $('.video-meta-panel').find('img').attr('src')
+            img = await session.getImage(url)
+        }
 
         if (img) {
             img.save(`${directory}\\poster.jpg`)

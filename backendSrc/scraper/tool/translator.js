@@ -65,7 +65,7 @@ async function translateBaidu (text, id, key, targetLanguage = 'zh') {
         const session = new Session('')
         let res = await session.get('https://fanyi-api.baidu.com/api/trans/vip/translate?'
             + querystring.stringify(params))
-        return res.data['trans_result'][0]['dst']
+        return JSON.parse(res)['trans_result'][0]['dst']
     } catch (e) {
         return null
     }
@@ -91,8 +91,8 @@ async function translateGoogle (s_text, targetLanguage = 'zh-CN') {
 
     try {
         const session = new Session('')
-        let res = await session.post(url, new URLSearchParams(form).toString(), headers)
-        let sentences = res.data['sentences']
+        let res = await session.post(url, form, headers)
+        let sentences = JSON.parse(res)['sentences']
         if (sentences.length === 2) {
             return sentences[0].trans
         }else{
