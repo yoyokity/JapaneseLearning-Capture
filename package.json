@@ -4,7 +4,7 @@
   "license": "MIT",
   "description": "japanese-learning-capture",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "backendSrc/main.js",
   "engines": {
@@ -15,7 +15,6 @@
     "web-build": "vite build",
     "app-start": "start /b vite build && electron .",
     "app-start&web-dev": "start /b vite && set SERVER=on&& electron .",
-    "app-build": "electron-builder",
     "debug-session": "node backendSrc/debug/sessionDebug.js",
     "build-start": "electron-forge start",
     "build-package": "electron-forge package",

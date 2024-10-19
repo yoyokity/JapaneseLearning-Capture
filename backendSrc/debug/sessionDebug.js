@@ -1,8 +1,8 @@
 ////////////////////
 //修改参数
 let file_path = 'D:\\W2xExTmp\\新建文件夹\\性欲つよつよ 第1巻.mkv'
-let jav_num = 'GHLS-013'
-let scraper_name = 'JavDB'
+let jav_num = '960821'
+let scraper_name = 'getchu'
 let outputPath = 'D:\\W2xExTmp\\新建文件夹'
 /////////////////////////////
 

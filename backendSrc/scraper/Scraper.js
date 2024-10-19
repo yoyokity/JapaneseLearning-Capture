@@ -54,7 +54,7 @@ export class Scraper {
     async checkConnect () {}
 
     /**
-     * 返回保存影片的文件夹地址，该目录应包含媒体文件，nfo文件，图片文件等
+     * 20、返回保存影片的文件夹地址，该目录应包含媒体文件，nfo文件，图片文件等
      * @abstract
      * @param outputPath 输出目录
      * @returns {string}
@@ -64,7 +64,7 @@ export class Scraper {
     //刮削
 
     /**
-     * 搜索影片首页，返回网页文本，失败返回null
+     * 1、搜索影片首页，返回网页文本，失败返回null
      * @abstract
      * @param {Video} video
      * @returns {Promise<string>}
@@ -72,7 +72,7 @@ export class Scraper {
     async searchPage (video) {}
 
     /**
-     * 解析-大标题 并返回，失败返回null
+     * 2、解析-大标题 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -80,7 +80,7 @@ export class Scraper {
     async title (page) {}
 
     /**
-     * 解析-原始标题（jellyfin中会显示在大标题下方作为小标题）并返回，失败返回null
+     * 3、解析-原始标题（jellyfin中会显示在大标题下方作为小标题）并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -88,7 +88,7 @@ export class Scraper {
     async originaltitle (page) {}
 
     /**
-     * 解析-排序标题（名称排序时会以此为标准）并返回，失败返回null
+     * 4、解析-排序标题（名称排序时会以此为标准）并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -96,7 +96,7 @@ export class Scraper {
     async sorttitle (page) {}
 
     /**
-     * 解析-宣传词 并返回，失败返回null
+     * 5、解析-宣传词 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -104,7 +104,7 @@ export class Scraper {
     async tagline (page) {}
 
     /**
-     * 解析-编号（如番号、网站-编号）并返回，失败返回null
+     * 6、解析-编号（如番号、网站-编号）并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -112,7 +112,7 @@ export class Scraper {
     async num (page) {}
 
     /**
-     * 解析-分级（如JP-18+)并返回，失败返回null
+     * 7、解析-分级（如JP-18+)并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -120,7 +120,7 @@ export class Scraper {
     async mpaa (page) {}
 
     /**
-     * 解析-评分（尽量以10分为满分）并返回，失败返回null
+     * 8、解析-评分（尽量以10分为满分）并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -128,7 +128,7 @@ export class Scraper {
     async rating (page) {}
 
     /**
-     * 解析-导演 并返回，失败返回null
+     * 9、解析-导演 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -136,7 +136,7 @@ export class Scraper {
     async director (page) {}
 
     /**
-     * 解析-演员 并返回Map，失败返回null
+     * 10、解析-演员 并返回Map，失败返回null
      *
      * 需要包含姓名、照片链接（可包含性别、出生年月、三围等info，可以放在视频简介里，因为nfo读取不到这些信息）
      * @abstract
@@ -146,7 +146,7 @@ export class Scraper {
     async actor (page) {}
 
     /**
-     * 解析-制片商 并返回，失败返回null
+     * 11、解析-制片商 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -154,7 +154,7 @@ export class Scraper {
     async maker (page) {}
 
     /**
-     * 解析-发行商 并返回，失败返回null
+     * 12、解析-发行商 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -162,7 +162,7 @@ export class Scraper {
     async studio (page) {}
 
     /**
-     * 解析-影片系列 并返回，失败返回null
+     * 13、解析-影片系列 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -170,7 +170,7 @@ export class Scraper {
     async set (page) {}
 
     /**
-     * 解析-影片标签 并返回，失败返回null
+     * 14、解析-影片标签 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<[string]>}
@@ -178,7 +178,7 @@ export class Scraper {
     async tag (page) {}
 
     /**
-     * 解析-影片类型 并返回，失败返回null
+     * 15、解析-影片类型 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<[string]>}
@@ -186,7 +186,7 @@ export class Scraper {
     async genre (page) {}
 
     /**
-     * 解析-简介 并返回，失败返回null
+     * 16、解析-简介 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -194,7 +194,7 @@ export class Scraper {
     async plot (page) {}
 
     /**
-     * 解析-发行年份 并返回，失败返回null
+     * 17、解析-发行年份 并返回，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -202,7 +202,7 @@ export class Scraper {
     async year (page) {}
 
     /**
-     * 解析-首映日期 并返回，失败返回null
+     * 18、解析-首映日期 并返回 (年-月-日)，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -210,7 +210,7 @@ export class Scraper {
     async premiered (page) {}
 
     /**
-     * 解析-上映日期 并返回，失败返回null
+     * 19、解析-上映日期 并返回 (年-月-日)，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @returns {Promise<string>}
@@ -218,7 +218,7 @@ export class Scraper {
     async releasedate (page) {}
 
     /**
-     * 创建目录，创建nfo文件，移动视频
+     * 21、创建目录，创建nfo文件，移动视频
      * @param {string} page 网页文本
      * @param {string} directory 影片的目录
      * @param {string} saveFileName 保存文件名，不带路径和后缀
@@ -235,7 +235,7 @@ export class Scraper {
     }
 
     /**
-     * 下载图片，成功返回true，失败返回null
+     * 22、下载图片，成功返回true，失败返回null
      * @abstract
      * @param {string} page 网页文本
      * @param {string} directory 影片的目录

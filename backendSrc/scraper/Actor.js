@@ -111,12 +111,12 @@ export default class Actor {
             let url = `search?f=actor&q=${encodeURIComponent(this.name)}`
             let response = await session.get(url)
             const $ = cheerioLoad(response)
-            const elements = $('div#actor')
+            const elements = $('div#actors')
             if (elements.length > 0) {
                 let a = elements.first().find('a')
                 let title = a.attr('title')
                 let url = a.attr('href')
-                if (title.include(this.name) && url) {
+                if (title.includes(this.name) && url) {
                     this.imgUrl = await getImgFromJavDB(url)
                 }
             }

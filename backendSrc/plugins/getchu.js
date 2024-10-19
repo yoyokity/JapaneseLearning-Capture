@@ -50,10 +50,10 @@ class getchu extends Scraper {
     async director (page) {
         const $ = cheerioLoad(page)
         const text = $('div#wrapper').text()
-        let regex = /監督(.*?)：(?<name>.*)[\n ／]/
+        let regex = /監督(.*?)：\n?(?<name>[^／\n ]+)/
         let match = text.match(regex)
         if (match && match.groups) {
-            this._director = match.groups.name
+            this._director = match.groups.name.trim()
             return match.groups.name
         }
 
@@ -148,7 +148,7 @@ class getchu extends Scraper {
         })
         let plot = targetElement.next().text().trim() || null
         if (plot) {
-            return await translate.translate(plot)
+            return await translate.translate(plot) || plot
         }
 
         //简介没有ストーリー就用商品紹介
@@ -157,7 +157,7 @@ class getchu extends Scraper {
         })
         plot = targetElement.next().text().trim() || null
         if (plot) {
-            return await translate.translate(plot)
+            return await translate.translate(plot) || plot
         }
 
         return null
@@ -171,7 +171,7 @@ class getchu extends Scraper {
 
         let time = targetElement.next().text().trim() || null
         if (time) {
-            this._date = time.replace('/', '-')
+            this._date = time.replaceAll('/', '-')
             return time.slice(0, 4)
         }
 
@@ -218,6 +218,7 @@ class getchu extends Scraper {
                 return this.type === 'text'
             })
             .text().trim() || null
+        title = title.replace(/＜.*版＞/g, '').trim()
         this._originaltitle = title
 
         let a = formatTitle(title)
