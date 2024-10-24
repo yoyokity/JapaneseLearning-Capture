@@ -180,19 +180,19 @@ class Translator {
         if (this.translateEngine === 'google') {
             let re = await translateGoogle('i', 'zh-CN')
             if (!re) {
-                return 'google'
+                return 'google翻译'
             }
         }
         if (this.translateEngine === 'baidu') {
             let re = await translateBaidu('i', this.baiduApi.id, this.baiduApi.key, 'zh')
             if (!re) {
-                return '百度'
+                return '百度翻译'
             }
         }
         if (this.translateEngine === 'tencent') {
             let re = await translateTencent('i', this.tencentApi.id, this.tencentApi.key, 'zh')
             if (!re) {
-                return '腾讯'
+                return '腾讯翻译'
             }
         }
         return true
