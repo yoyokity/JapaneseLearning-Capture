@@ -1,5 +1,12 @@
 <script setup>
-import { ContextMenu, FileTable, Scraper, Progress, SubProgress } from '@/js/globalState/globalState.js'
+import {
+    ContextMenu,
+    FileTable,
+    Scraper,
+    Progress,
+    SubProgress,
+    transConnectDialogShow
+} from '@/js/globalState/globalState.js'
 import { fileTableRef } from '@/js/globalState/fileTable.js'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { Plus, Delete, Select, CloseBold } from '@element-plus/icons-vue'
@@ -107,32 +114,46 @@ function run () {
         return
     }
 
-    progress.begin(files.length) //弹出进度对话框
-    subProgress.begin()
-
-    let handle = wsClient.invoke('beginScrap', {
-        files: files,
+    //检测网络连通性
+    transConnectDialogShow.value = true
+    let handle = wsClient.invoke('checkNetwork', {
         type: scraper.currentScraper,
-        outputPath: scraper.getCurrentScraperOutputPath
     })
-    handle.onRespond((message) => {
-        //判断是否取消刮削
-        if (message.data === 'end') {
-            progress.end()
-            window.showElMessage.error('刮削已取消')
-            return
-        }
-
-        if ('type' in message.data) {
-            //单个步骤
-            subProgress.update(message.data.text)
-        } else {
-            let path = message.data.filePath
-            let state = message.data.state
+    handle.onEnd((message) => {
+        if (message.data === true) {
+            transConnectDialogShow.value = false
+            //开始刮削
+            progress.begin(files.length) //弹出进度对话框
             subProgress.begin()
-            progress.update()
 
-            fileTable.updateState(path, state)
+            let handle = wsClient.invoke('beginScrap', {
+                files: files,
+                type: scraper.currentScraper,
+                outputPath: scraper.getCurrentScraperOutputPath
+            })
+            handle.onRespond((message) => {
+                //判断是否取消刮削
+                if (message.data === 'end') {
+                    progress.end()
+                    showElMessage.error('刮削已取消')
+                    return
+                }
+
+                if ('type' in message.data) {
+                    //单个步骤
+                    subProgress.update(message.data.text)
+                } else {
+                    let path = message.data.filePath
+                    let state = message.data.state
+                    subProgress.begin()
+                    progress.update()
+
+                    fileTable.updateState(path, state)
+                }
+            })
+        } else {
+            transConnectDialogShow.value = false
+            showElMessage.error(`无法连接到${message.data}站点`)
         }
     })
 }

@@ -6,4 +6,5 @@ export { Scraper } from './scraper.js'
 export { Progress, SubProgress } from './progress.js'
 export { ContextMenu } from './contextMenu.js'
 
-export const transDialogShow = ref(false)
+export let transDialogShow = ref(false)
+export let transConnectDialogShow = ref(false)

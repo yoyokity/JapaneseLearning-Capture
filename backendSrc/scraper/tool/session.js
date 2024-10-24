@@ -73,15 +73,15 @@ class Session {
                         let hostName = options.url.hostname
                         let isImg = href.match(/\.(jpeg|jpg|gif|png|webp)$/i)
                         if (!isImg) {
-                            const currentTime = Date.now();
-                            const nextAvailableTime = Session.delayDict.get(hostName) || 0;
+                            const currentTime = Date.now()
+                            const nextAvailableTime = Session.delayDict.get(hostName) || 0
 
                             if (currentTime < nextAvailableTime) {
-                                const delay = nextAvailableTime - currentTime;
-                                await sleep(delay);
+                                const delay = nextAvailableTime - currentTime
+                                await sleep(delay)
                             }
 
-                            Session.delayDict.set(hostName, Date.now() + Session.delay);
+                            Session.delayDict.set(hostName, Date.now() + Session.delay)
                         }
                     }
                 ]
@@ -147,7 +147,7 @@ class Session {
      * @param {object|null} cookie 会覆盖
      * @return {Promise<string|null>}
      */
-    async post (url = null,formData = null, headers = null, cookie = null) {
+    async post (url = null, formData = null, headers = null, cookie = null) {
         url = combineUrl(this.#baseUrl, url)
         if (!url) return null
 
@@ -198,6 +198,7 @@ class Session {
 
             return null
         } catch (e) {
+            console.error(e)
             return null
         }
     }
@@ -230,6 +231,7 @@ class Session {
 
             return null
         } catch (e) {
+            console.error(e)
             return null
         }
     }
@@ -261,7 +263,30 @@ class Session {
 
             return null
         } catch (e) {
+            console.error(e)
             return null
+        }
+    }
+
+    /**
+     * 检查是否可访问
+     * @return {Promise<boolean>}
+     */
+    async ping () {
+        let config = {
+            followRedirect: false, //禁止重定向
+            retry: {
+                limit: 0,
+            },
+        }
+
+        try {
+            let re = await this.instance.get(this.#baseUrl, config)
+            return !!re
+
+        } catch (e) {
+            console.error(e)
+            return false
         }
     }
 }

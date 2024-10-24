@@ -9,6 +9,7 @@ import Session from './scraper/tool/session.js'
 import translator from './scraper/tool/translator.js'
 import { Scraper, scraping } from './scraper/Scraper.js'
 import Video from './scraper/Video.js'
+import translate from './scraper/tool/translator.js'
 
 export const wsServer = new WsServer()
 
@@ -93,6 +94,21 @@ wsServer.onInvoke('getScrapers', async (message, client) => {
     client.end(res)
 })
 
+//检测网络连接性
+wsServer.onInvoke('checkNetwork', async (message, client) => {
+    let scraperType = message.data.type
+    let re = await translate.checkConnect()
+    if (re === true) {
+        let video = new Video('')
+        /** @type {Scraper} */
+        const scraper = new Scraper.subclasses[scraperType](video)
+        let re = await scraper.checkConnect()
+        client.end(re)
+    }else {
+        client.end(re)
+    }
+})
+
 //开始刮削
 wsServer.onInvoke('beginScrap', async (message, client) => {
     scraping.value = true
@@ -107,6 +123,7 @@ wsServer.onInvoke('beginScrap', async (message, client) => {
     for (const file of files) {
         const video = new Video(file.jav)
         video.scraperName = scraperType
+        /** @type {Scraper} */
         const scraper = new Scraper.subclasses[scraperType](video)
         if (await scraper.run(outputPath, file.longJavNumber, file.path, client)) {
             client.respond({

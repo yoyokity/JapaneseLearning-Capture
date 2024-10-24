@@ -19,6 +19,7 @@ export const Progress = defineStore('progress', {
             this.current++
             if (this.current === this.total) {
                 this.dialogShow = false
+                showElMessage.success('刮削完成')
             }
         },
         end () {

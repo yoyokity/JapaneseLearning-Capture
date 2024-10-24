@@ -27,11 +27,11 @@ class JavDB extends Scraper {
     }
 
     async checkConnect () {
-        let response = await this.session.get('')
-        if (response) {
-            return true
+        let re = await Actor.checkConnect()
+        if (re !== true) {
+            return re
         }
-        return null
+        return true
     }
 
     getDirectory (outputPath) {

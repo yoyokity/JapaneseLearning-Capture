@@ -29,11 +29,17 @@ class GIGA extends Scraper {
     }
 
     async checkConnect () {
-        let response = await this.session.get('')
-        if (response) {
-            return true
+        let re = await Actor.checkConnect()
+        if (re !== true) {
+            return re
         }
-        return null
+
+        re = await this.session.ping()
+        if (!re) {
+            return 'giga'
+        }
+
+        return true
     }
 
     constructor (video) {

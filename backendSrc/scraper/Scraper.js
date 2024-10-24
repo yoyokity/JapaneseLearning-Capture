@@ -47,9 +47,9 @@ export class Scraper {
     }
 
     /**
-     * 检查连接，成功返回true，失败返回null
+     * 检查连接，成功返回true，失败返回连接失败的站点
      * @abstract
-     * @returns {Promise<boolean>}
+     * @returns {Promise<boolean|string>}
      */
     async checkConnect () {}
 

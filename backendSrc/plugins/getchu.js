@@ -27,11 +27,11 @@ class getchu extends Scraper {
     }
 
     async checkConnect () {
-        let response = await this.session.get('')
-        if (response) {
-            return true
+        let re = await this.session.ping()
+        if (!re) {
+            return 'getchu'
         }
-        return null
+        return true
     }
 
     async searchPage (video) {

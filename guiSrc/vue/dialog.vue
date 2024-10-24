@@ -1,6 +1,6 @@
 <script setup>
 import { Settings, Progress, SubProgress, FileTable } from '@/js/globalState/globalState.js'
-import { transDialogShow } from '@/js/globalState/globalState.js'
+import { transDialogShow, transConnectDialogShow } from '@/js/globalState/globalState.js'
 import ControlLine from '@/vue/control/controlLine.vue'
 
 const settings = Settings()
@@ -86,12 +86,12 @@ function endScraper () {
                style="border-radius: 6px">
         <div class="dialog-body" style="flex-direction: column;">
             <control-line label="番号">
-                <el-input  v-model="fileTable.currentEditNum" spellcheck="false" size="small"></el-input>
+                <el-input v-model="fileTable.currentEditNum" spellcheck="false" size="small"></el-input>
             </control-line>
             <control-line label="后缀">
-                <el-checkbox-group v-model="fileTable.currentEditSuffix"  size="small">
-                    <el-checkbox-button  key="C" value="C">-C</el-checkbox-button>
-                    <el-checkbox-button  key="U" value="U">-U</el-checkbox-button>
+                <el-checkbox-group v-model="fileTable.currentEditSuffix" size="small">
+                    <el-checkbox-button key="C" value="C">-C</el-checkbox-button>
+                    <el-checkbox-button key="U" value="U">-U</el-checkbox-button>
                 </el-checkbox-group>
             </control-line>
         </div>
@@ -101,6 +101,27 @@ function endScraper () {
                 <el-button @click="fileTable.editNum()" type="primary" round plain>确定</el-button>
             </div>
         </template>
+    </el-dialog>
+
+    <!--    检测网络连接性对话框-->
+    <el-dialog v-model="transConnectDialogShow"
+               class="dialog"
+               width="500"
+               :show-close="false"
+               :close-on-press-escape="false"
+               :close-on-click-modal="false"
+               style="border-radius: 6px">
+        <div class="dialog-body" style="margin-bottom: 10px">
+            <div style="display: flex;align-items: center">
+                <div class="loader">
+                    <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                        <path
+                            d="M469.333333 128a42.666667 42.666667 0 0 1 42.666667-42.666667c235.648 0 426.666667 191.018667 426.666667 426.666667a42.666667 42.666667 0 1 1-85.333334 0 341.333333 341.333333 0 0 0-341.333333-341.333333 42.666667 42.666667 0 0 1-42.666667-42.666667z"></path>
+                    </svg>
+                </div>
+                正在检测网络连接性...
+            </div>
+        </div>
     </el-dialog>
 
     <!--    刮削进度对话框-->
@@ -170,5 +191,26 @@ function endScraper () {
 
 span {
     font-size: var(--font-size);
+}
+
+.loader {
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 20px;
+    fill: var(--color-accent-hover);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+:deep(.el-progress-circle__path) {
+    stroke: var(--color-accent-hover) !important;
 }
 </style>

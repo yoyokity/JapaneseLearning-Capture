@@ -95,9 +95,9 @@ async function translateGoogle (s_text, targetLanguage = 'zh-CN') {
         let sentences = JSON.parse(res)['sentences']
         if (sentences.length === 2) {
             return sentences[0].trans
-        }else{
+        } else {
             let text = ''
-            for (let i = 0; i < sentences.length-1; i++) {
+            for (let i = 0; i < sentences.length - 1; i++) {
                 text += sentences[i].trans
             }
             return text
@@ -169,6 +169,33 @@ class Translator {
      */
     translateSC (text) {
         return toSimplified(text, true)
+    }
+
+    /**
+     * 检测网络连接性
+     * @return {Promise<boolean|string>} 连通返回true，否则返回连接失败的站点
+     */
+    async checkConnect () {
+        if (!this.translateOn) return true
+        if (this.translateEngine === 'google') {
+            let re = await translateGoogle('i', 'zh-CN')
+            if (!re) {
+                return 'google'
+            }
+        }
+        if (this.translateEngine === 'baidu') {
+            let re = await translateBaidu('i', this.baiduApi.id, this.baiduApi.key, 'zh')
+            if (!re) {
+                return '百度'
+            }
+        }
+        if (this.translateEngine === 'tencent') {
+            let re = await translateTencent('i', this.tencentApi.id, this.tencentApi.key, 'zh')
+            if (!re) {
+                return '腾讯'
+            }
+        }
+        return true
     }
 }
 

@@ -70,7 +70,7 @@ export default class Actor {
         if (this.get()) {
             return
         }
-        
+
         //没有则搜索
 
         //从wiki获取基本信息
@@ -98,7 +98,7 @@ export default class Actor {
                     }
                 }
             }
-        }else {
+        } else {
             this.gender = 'male'
         }
 
@@ -150,6 +150,22 @@ export default class Actor {
     set () {
         if (typeof yoyoNode === 'undefined') return
         yoyoNode.store.set(this.name, JSON.parse(JSON.stringify(this)))
+    }
+
+    /**
+     * 检测网络连通性
+     * @return {Promise<boolean|string>} 连通返回true，否则返回连接失败的站点
+     */
+    static async checkConnect () {
+        let session = new Session('https://javdb.com/', headers, cookie)
+        if (!await session.ping()) {
+            return 'javdb'
+        }
+        session = new Session('https://ja.wikipedia.org/')
+        if (!await session.ping()) {
+            return 'wiki'
+        }
+        return true
     }
 }
 
