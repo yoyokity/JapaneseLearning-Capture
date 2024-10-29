@@ -13,6 +13,7 @@ const containerRef = ref(null)
                 <el-anchor-link href="#info-JavDB" title="JavDB"></el-anchor-link>
                 <el-anchor-link href="#info-getchu" title="getchu"></el-anchor-link>
             </el-anchor>
+            <div class="info-container-dividing"></div>
         </div>
         <div class="info-container-right" ref="containerRef">
             <div id="info-概述" class="section">
@@ -66,9 +67,21 @@ const containerRef = ref(null)
     display: flex;
     flex-direction: row-reverse;
     justify-content: center;
+    position: relative;
 
     :deep(.el-anchor__link) {
         font-size: var(--font-size) !important;
+    }
+
+    .info-container-dividing {
+        height: 60%;
+        width: 2px;
+        position: absolute;
+        right: 3em;
+        opacity: .1;
+        border-radius: 10px;
+        top: 3em;
+        background-color: var(--color-accent);
     }
 }
 
