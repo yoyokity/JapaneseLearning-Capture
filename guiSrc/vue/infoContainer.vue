@@ -18,16 +18,18 @@ const containerRef = ref(null)
         <div class="info-container-right" ref="containerRef">
             <div id="info-概述" class="section">
                 <h1>概述</h1>
-                <p>Japanese Learning Capture用于刮削视频信息，管理本地视频文件夹</p>
-                <h6>（本工具不提供任何视频下载功能）</h6>
-                <br>
-                <br>
+                <p>名称：Japanese Learning Capture</p>
+                <p>版本：v1.0.1</p>
                 <p>主页：<a target="_blank" href="https://github.com/yoyokity/JapaneseLearning-Capture">https://github.com/yoyokity/JapaneseLearning-Capture</a>
                 </p>
                 <p>反馈：<a target="_blank" href="https://github.com/yoyokity/JapaneseLearning-Capture/issues">https://github.com/yoyokity/JapaneseLearning-Capture/issues</a>
                 </p>
                 <p>下载：<a target="_blank" href="https://github.com/yoyokity/JapaneseLearning-Capture/releases">https://github.com/yoyokity/JapaneseLearning-Capture/releases</a>
                 </p>
+                <br>
+                <br>
+                <p>用于刮削视频信息，管理本地视频文件夹</p>
+                <h6>（本工具不提供任何视频下载功能）</h6>
             </div>
             <div id="info-使用方法" class="section">
                 <h1>使用方法</h1>
