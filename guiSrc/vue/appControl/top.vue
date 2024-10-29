@@ -20,6 +20,7 @@ const props = defineProps({
     width: 100%;
     height: 3rem;
     border-bottom: 1px solid var(--el-border-color);
+    box-sizing: border-box;
 
     & .top-title {
         font-size: 16px;

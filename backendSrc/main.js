@@ -1,5 +1,5 @@
 import Store from 'electron-store'
-import { app, BrowserWindow } from 'electron/main'
+import { app, BrowserWindow, ipcMain } from 'electron/main'
 import { createWindow } from './window.js'
 
 global.yoyoNode = {}
@@ -16,6 +16,7 @@ import { Helper } from '../yo-electron-lib/Helper/helper.js'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 import { Scraper } from './scraper/Scraper.js'
+import { shell } from 'electron'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 Helper.init(process.cwd(), join(__dirname, '../'))
@@ -43,6 +44,14 @@ app.whenReady().then(() => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow()
         }
+    })
+
+    //使用默认浏览器打开链接
+    app.on('web-contents-created', (e, webContents) => {
+        webContents.setWindowOpenHandler(({ url, frameName }) => {
+            shell.openExternal(url)
+            return { action: 'deny' }
+        })
     })
 })
 

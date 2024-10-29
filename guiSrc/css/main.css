@@ -3,12 +3,12 @@
 
 :root {
     --color-primary: #ffffff;
-    --color-secondary: rgb(237,237,237);
-    --color-secondary-light: rgb(245,245,245);
-    --color-accent: rgb(134, 48,254);
+    --color-secondary: rgb(237, 237, 237);
+    --color-secondary-light: rgb(245, 245, 245);
+    --color-accent: rgb(134, 48, 254);
     --color-accent-dark: rgb(94, 94, 94);
-    --color-accent-hover: rgb(158, 90,253);
-    --color-accent-active: rgb( 86, 31,162);
+    --color-accent-hover: rgb(158, 90, 253);
+    --color-accent-active: rgb(86, 31, 162);
 
     --color-text-primary: rgb(40, 40, 40);
     --color-text-secondary: rgb(80, 80, 80);
@@ -37,7 +37,7 @@ button {
     font-size: var(--font-size) !important;
 }
 
-input{
+input {
     font-family: user-font, sans-serif !important;
 }
 

@@ -5,19 +5,24 @@
     --el-color-primary-light-7: rgb(195, 152, 255);
     --el-color-primary-light-8: rgb(220, 197, 253);
     --el-color-primary-light-9: rgb(237, 227, 250);
-    --el-color-primary-dark-2:  rgb( 86, 31,162);
+    --el-color-primary-dark-2: rgb(86, 31, 162);
 }
 
 #tab-设置 {
+    position: absolute;
+    bottom: 0;
+}
+
+#tab-关于 {
     position: absolute;
     bottom: 3rem;
 }
 
 .tab-drag-container {
     width: 4rem;
-    height: calc(100vh - 2rem - 2.9rem * 2 - 4rem);
+    height: calc(100vh - 2rem - 2.9rem * 3 - 4rem);
     position: absolute;
-    bottom: 4rem;
+    bottom: 7rem;
 }
 
 .el-select-dropdown__item, .el-autocomplete-suggestion li {
@@ -26,6 +31,6 @@
     font-size: 13px;
 }
 
-.el-scrollbar{
+.el-scrollbar {
     --el-scrollbar-bg-color: var(--color-text-secondary) !important;
 }
