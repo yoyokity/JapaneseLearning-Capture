@@ -51,6 +51,9 @@ export default class Actor {
      * @return {string}
      */
     infoText () {
+        if (!(this.birthdate || this.birthdate || this.cup)){
+            return ''
+        }
         let text = `${this.name}:\n`
         if (this.birthdate) text += this.birthdate + '\n'
         if (this.measurements) text += this.measurements

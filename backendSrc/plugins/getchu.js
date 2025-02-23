@@ -273,7 +273,8 @@ export function formatTitle (title) {
         title2 = title2.split('＃')[0].trim()
     }
 
-    let bigTitle = title2
+    let bigTitle = Helper.path.sanitizePath(title2)
+    title = Helper.path.sanitizePath(title)
     return { title, bigTitle }
 }
 

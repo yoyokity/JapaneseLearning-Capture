@@ -481,12 +481,16 @@ export class Scraper {
         } else {
             Helper.logging.warn(`releasedate未解析`)
         }
-        client.respond({
-            type: 'sub',
-            text: '移动文件'
-        })
 
         this.directory = this.getDirectory(outputPath)
+        client.respond({
+            type: 'sub',
+            text: '移动文件',
+            video: this.video,
+            directory: this.directory,
+            saveFileName: this.saveFileName,
+            filePath: filePath
+        })
 
         if (!scraping.value) return null
         await this.createDirectory(page, this.directory, this.saveFileName, filePath)
