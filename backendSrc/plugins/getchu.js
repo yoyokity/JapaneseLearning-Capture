@@ -275,6 +275,9 @@ export function formatTitle (title) {
     if (title.includes('#')) {
         title2 = title2.split('#')[0].trim()
     }
+    if (title.includes('Vol.')) {
+        title2 = title2.split('Vol.')[0].trim()
+    }
 
     let bigTitle = Helper.path.sanitizePath(title2)
     title = Helper.path.sanitizePath(title)
