@@ -27,3 +27,5 @@ dist-ssr
 /resources/tools/realesrgan/input2.jpg
 /resources/tools/realesrgan/onepiece_demo.mp4
 /resources/tools/realesrgan/README_windows.md
+
+.gitattributes
