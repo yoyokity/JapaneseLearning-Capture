@@ -1,9 +1,9 @@
 ////////////////////
 //修改参数
-let file_path = 'D:\\W2xExTmp\\新建文件夹\\性欲つよつよ 第1巻.mkv'
-let jav_num = '960821'
-let scraper_name = 'JavDB'
-let outputPath = 'D:\\W2xExTmp\\新建文件夹'
+let file_path = 'F:\\gogogo\\Anime\\[encoded][KyokuSai] 妻ネトリ 零 -僕の過ち 彼女の選択- [1080P][WEBRip][HEVC 10bit]_1_prob4.mkv'
+let jav_num = '妻ネトリ 零'
+let scraper_name = 'DLsite'
+let outputPath = 'F:\\gogogo\\Anime\\新建文件夹'
 /////////////////////////////
 
 //代理和翻译

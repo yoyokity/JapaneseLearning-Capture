@@ -4,7 +4,7 @@
   "license": "MIT",
   "description": "japanese-learning-capture",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.0",
   "type": "module",
   "main": "backendSrc/main.js",
   "engines": {

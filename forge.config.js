@@ -6,7 +6,7 @@ export default {
         'asar': {
             'unpack': '**/node_modules/@img/**'
         },
-        'appVersion': '1.0.2',
+        'appVersion': '1.1.0',
         'appCopyright': 'Copyright © 2080 yoyokity',
         'extraResource': [
             'resources/tools'

@@ -11,6 +11,7 @@ const containerRef = ref(null)
                 <el-anchor-link href="#info-概述" title="概述"></el-anchor-link>
                 <el-anchor-link href="#info-使用方法" title="使用方法"></el-anchor-link>
                 <el-anchor-link href="#info-JavDB" title="JavDB"></el-anchor-link>
+                <el-anchor-link href="#info-DLsite" title="DLsite"></el-anchor-link>
                 <el-anchor-link href="#info-getchu" title="getchu"></el-anchor-link>
             </el-anchor>
             <div class="info-container-dividing"></div>
@@ -19,7 +20,7 @@ const containerRef = ref(null)
             <div id="info-概述" class="section">
                 <h1>概述</h1>
                 <p>名称：Japanese Learning Capture</p>
-                <p>版本：v1.0.1</p>
+                <p>版本：v1.1.0</p>
                 <p>主页：<a target="_blank" href="https://github.com/yoyokity/JapaneseLearning-Capture">https://github.com/yoyokity/JapaneseLearning-Capture</a>
                 </p>
                 <p>反馈：<a target="_blank" href="https://github.com/yoyokity/JapaneseLearning-Capture/issues">https://github.com/yoyokity/JapaneseLearning-Capture/issues</a>
@@ -42,6 +43,12 @@ const containerRef = ref(null)
             <div id="info-JavDB" class="section">
                 <h1>JavDB刮削器</h1>
                 <h6>请不要使用日本地区代理，网站会登不上去</h6>
+            </div>
+            <div id="info-DLsite" class="section">
+                <h1>DLsite刮削器</h1>
+                <p>主要用于动画番剧相关的信息刮削。</p>
+                <h6>· 将番号编辑为动画完整名(确保能搜索到)</h6>
+                <h6>· 或者将番号编辑为DLsite编号id，在对应页面的网址中就能找到，product_id/后那串东西，就可以跳过搜索直达页面</h6>
             </div>
             <div id="info-getchu" class="section">
                 <h1>Getchu刮削器</h1>
