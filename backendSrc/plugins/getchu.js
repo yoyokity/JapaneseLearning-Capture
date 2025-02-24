@@ -272,6 +272,9 @@ export function formatTitle (title) {
     if (title.includes('＃')) {
         title2 = title2.split('＃')[0].trim()
     }
+    if (title.includes('#')) {
+        title2 = title2.split('#')[0].trim()
+    }
 
     let bigTitle = Helper.path.sanitizePath(title2)
     title = Helper.path.sanitizePath(title)
@@ -284,8 +287,10 @@ export function formatTitle (title) {
 export const maker_trans = {
     'ピンクパイナップル': 'pinkpineapple',
     'ばにぃうぉ〜か〜': 'lune-soft',
+    'ばにぃうぉ～か～': 'lune-soft',
     'あんてきぬすっ': 'lune-soft',
     'じゅうしぃまんご〜': 'lune-soft',
     'ショーテン': 'showten',
     'メリー・ジェーン': 'mary-jane',
+    'ZIZ [ジズ]': 'ZIZ'
 }
