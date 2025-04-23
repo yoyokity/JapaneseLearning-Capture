@@ -166,8 +166,12 @@ class GIGA extends Scraper {
     async plot (page) {
         let $ = cheerioLoad(page)
         let div = $('#story_list2')
-        if (!div) {
+        if (div.length === 0) {
             div = $('#story_list1')
+        }
+        
+        if (div.length === 0) {
+            return null
         }
 
         let text = div.find('li.story_window')[0].firstChild.data.trim()

@@ -76,7 +76,11 @@ class DLsite extends Scraper {
     async title (page) {
         const $ = cheerioLoad(page)
         let title = $('#work_name').contents().text().trim() || null
-        title = title.replace(/【.*?】/, '').replace('HD版', '').trim()
+        title = title
+            .replace(/【.*?】/, '')
+            .replace('HD版', '')
+            .replace('通常版', '')
+            .trim()
         this._originaltitle = title
 
         let a = formatTitle(title)
