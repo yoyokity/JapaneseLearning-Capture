@@ -144,7 +144,7 @@ class getchu extends Scraper {
         const $ = cheerioLoad(page)
         const j = $('div.tabletitle')
         let targetElement = j.filter(function () {
-            return $(this).text().trim() === 'ストーリー'
+            return $(this).text().trim() === 'ストーリー' || $(this).text().trim() === 'ストーリ―'
         })
         let plot = targetElement.next().text().trim() || null
         if (plot) {
