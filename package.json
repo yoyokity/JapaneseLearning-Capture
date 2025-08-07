@@ -1,58 +1,6 @@
 {
-  "name": "japanese-learning-capture",
-  "author": "yoyokity",
-  "license": "MIT",
-  "description": "japanese-learning-capture",
-  "private": true,
-  "version": "1.1.0",
-  "type": "module",
-  "main": "backendSrc/main.js",
-  "engines": {
-    "node": ">=20.x"
-  },
   "scripts": {
-    "web-dev": "vite",
-    "web-build": "vite build",
-    "app-start": "start /b vite build && electron .",
-    "app-start&web-dev": "start /b vite && set SERVER=on&& electron .",
-    "debug-session": "node backendSrc/debug/sessionDebug.js",
-    "build-start": "electron-forge start",
-    "build-package": "electron-forge package",
-    "build-make": "electron-forge make",
-    "build-publish": "electron-forge publish"
-  },
-  "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
-    "@types/got": "^9.6.12",
-    "axios-https-proxy-fix": "^0.17.1",
-    "cheerio": "^1.0.0-rc.12",
-    "chinese-simple2traditional": "^2.2.2",
-    "electron-store": "^10.0.0",
-    "element-plus": "^2.7.7",
-    "got": "^14.4.2",
-    "hpagent": "^1.2.0",
-    "md5": "^2.3.0",
-    "pinia": "^2.1.7",
-    "pinia-plugin-persistedstate": "^4.1.1",
-    "sharp": "^0.33.4",
-    "tencentcloud-sdk-nodejs-tmt": "^4.0.890",
-    "tslib": "^2.6.3",
-    "vue": "^3.5.11",
-    "ws": "^8.18.0",
-    "xmlbuilder2": "^3.1.1"
-  },
-  "devDependencies": {
-    "@electron-forge/cli": "^7.7.0",
-    "@electron-forge/maker-deb": "^7.7.0",
-    "@electron-forge/maker-rpm": "^7.7.0",
-    "@electron-forge/maker-squirrel": "^7.7.0",
-    "@electron-forge/maker-zip": "^7.7.0",
-    "@vitejs/plugin-vue": "^5.2.1",
-    "cross-env": "^7.0.3",
-    "electron": "^32.1.2",
-    "vite": "^6.1.1"
-  },
-  "config": {
-    "forge": "./forge.config.js"
+    "app:dev": "neu run -- --window-enable-inspector",
+    "app:build": "neu build"
   }
 }

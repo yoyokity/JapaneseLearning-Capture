@@ -1,0 +1,37 @@
+{
+  "applicationId": "js.neutralino.zero",
+  "version": "1.0.0",
+  "defaultMode": "window",
+  "documentRoot": "/resources/dist/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "nativeAllowList": [
+    "app.*",
+    "os.*"
+  ],
+  "modes": {
+    "window": {
+      "title": "JapaneseLearning-Capture",
+      "width": 800,
+      "height": 500,
+      "minWidth": 400,
+      "minHeight": 200,
+      "icon": "/resources/public/favicon.ico",
+      "center": true
+    }
+  },
+  "cli": {
+    "binaryName": "JapaneseLearning-Capture",
+    "resourcesPath": "/resources/dist/",
+    "extensionsPath": "/tools/",
+    "frontendLibrary": {
+      "patchFile": "/resources/index.html",
+      "devUrl": "http://localhost:3157",
+      "projectPath": "/resources/",
+      "initCommand": "pnpm i",
+      "devCommand": "npm run dev",
+      "buildCommand": "npm run build"
+    }
+  }
+}
