@@ -6,6 +6,10 @@
   "url": "/",
   "enableServer": true,
   "enableNativeAPI": true,
+  "logging": {
+    "enabled": false,
+    "writeToLogFile": false
+  },
   "nativeAllowList": [
     "app.*",
     "os.*"
@@ -13,11 +17,11 @@
   "modes": {
     "window": {
       "title": "JapaneseLearning-Capture",
-      "width": 800,
-      "height": 500,
+      "width": 1280,
+      "height": 720,
       "minWidth": 400,
       "minHeight": 200,
-      "icon": "/resources/public/favicon.ico",
+      "icon": "/resources/public/icon.ico",
       "center": true
     }
   },

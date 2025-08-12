@@ -8,20 +8,20 @@ import svgLoader from 'vite-svg-loader'
 
 // https://vite.dev/config/
 export default defineConfig({
-    server: {
-        port: 3157
-    },
-    plugins: [
-        vue(),
-        vueDevTools(),
-        neutralino({
-            rootPath: '../'
-        }),
-        svgLoader()
-    ],
-    resolve: {
-        alias: {
-            '@': fileURLToPath(new URL('./src', import.meta.url))
-        }
-    }
+	server: {
+		port: 3157
+	},
+	plugins: [
+		vue(),
+		vueDevTools(),
+		neutralino({
+			rootPath: '../'
+		}),
+		svgLoader()
+	],
+	resolve: {
+		alias: {
+			'@': fileURLToPath(new URL('./src', import.meta.url))
+		}
+	}
 })

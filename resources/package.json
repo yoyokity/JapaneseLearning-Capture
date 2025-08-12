@@ -13,7 +13,10 @@
   },
   "dependencies": {
     "@neutralinojs/lib": "^6.2.0",
+    "@primeuix/themes": "^1.2.3",
     "pinia": "^3.0.3",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.7",
     "vue": "^3.5.18"
   },
   "devDependencies": {
@@ -22,11 +25,12 @@
     "@vue/tsconfig": "^0.7.0",
     "npm-run-all2": "^8.0.4",
     "prettier": "3.6.2",
+    "sass": "^1.90.0",
     "typescript": "~5.9.2",
     "vite": "^7.0.6",
     "vite-plugin-neutralino": "^1.0.3",
     "vite-plugin-vue-devtools": "^8.0.0",
-    "vue-tsc": "^3.0.5",
-    "vite-svg-loader": "^5.1.0"
+    "vite-svg-loader": "^5.1.0",
+    "vue-tsc": "^3.0.5"
   }
 }
