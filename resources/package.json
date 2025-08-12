@@ -14,6 +14,9 @@
   "dependencies": {
     "@neutralinojs/lib": "^6.2.0",
     "@primeuix/themes": "^1.2.3",
+    "axios": "^1.11.0",
+    "chinese-simple2traditional": "^2.2.2",
+    "es-toolkit": "^1.39.9",
     "pinia": "^3.0.3",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.7",

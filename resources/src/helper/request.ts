@@ -1,0 +1,197 @@
+import axios, {
+	type AxiosInstance,
+	type AxiosProxyConfig,
+	type AxiosRequestConfig,
+	type RawAxiosRequestHeaders
+} from 'axios'
+import { delay } from 'es-toolkit'
+
+/**
+ * HTTP 客户端类，用于处理网络请求
+ */
+export class HttpClient {
+	/**
+	 * 超时时间
+	 */
+	static timeout = 10000
+	/**
+	 * 重试次数
+	 */
+	static retry = 3
+	/**
+	 * 每个实例每次发送请求的间隔时间
+	 */
+	static delay = 3000
+	/**
+	 * 代理
+	 */
+	static proxy: AxiosProxyConfig | null = null
+
+	/**
+	 * 创建 HttpClient 实例
+	 * @param baseUrl 基础 URL
+	 * @param headers 请求头
+	 */
+	static create(baseUrl: string, headers?: RawAxiosRequestHeaders): HttpClient {
+		return new HttpClient(baseUrl, headers)
+	}
+
+	private readonly baseUrl: string
+	private readonly instance: AxiosInstance
+	private lastRequestTime: number = 0
+
+	private constructor(baseUrl: string, headers?: RawAxiosRequestHeaders) {
+		this.baseUrl = baseUrl
+		const config: AxiosRequestConfig = {
+			baseURL: this.baseUrl,
+			timeout: HttpClient.timeout
+		}
+
+		// 添加请求头
+		if (headers) {
+			config.headers = headers
+		}
+
+		// 只有当代理不为null时才添加到配置中
+		if (HttpClient.proxy) {
+			config.proxy = HttpClient.proxy
+		}
+
+		this.instance = axios.create(config)
+
+		// 请求拦截器
+		this.instance.interceptors.request.use(
+			async (config) => {
+				// 确保请求之间的最小间隔
+				const now = Date.now()
+				const timeSinceLastRequest = now - this.lastRequestTime
+
+				if (timeSinceLastRequest < HttpClient.delay && this.lastRequestTime !== 0) {
+					// 需要等待的时间
+					const waitTime = HttpClient.delay - timeSinceLastRequest
+					await delay(waitTime)
+				}
+
+				// 更新最后请求时间
+				this.lastRequestTime = Date.now()
+
+				return config
+			},
+			(error) => {
+				return Promise.reject(error)
+			}
+		)
+
+		// 响应拦截器
+		this.instance.interceptors.response.use(
+			(response) => {
+				return response
+			},
+			(error) => {
+				return Promise.reject(error)
+			}
+		)
+	}
+
+	/**
+	 * 发送 GET 请求
+	 * @param url 请求路径
+	 * @param params 查询参数
+	 * @returns Promise 包含响应数据，错误时返回 null
+	 */
+	async get<T>(url: string, params?: Record<string, any>): Promise<T | null> {
+		try {
+			const config: AxiosRequestConfig = { params }
+
+			return await this.sendRequestWithRetry<T>(() => this.instance.get<T>(url, config))
+		} catch (error) {
+			console.error(`GET ERROR: ${url}`, error)
+			return null
+		}
+	}
+
+	/**
+	 * 发送 POST 请求
+	 * @param url 请求路径
+	 * @param data 请求体数据
+	 * @param headers 请求头
+	 * @returns Promise 包含响应数据，错误时返回 null
+	 */
+	async post<T>(url: string, data?: any, headers?: RawAxiosRequestHeaders): Promise<T | null> {
+		try {
+			// 深度处理对象中的所有字符串字段，去除空格和换行
+			if (data) {
+				data = this.deepTrimData(data)
+			}
+
+			const config: AxiosRequestConfig = {}
+			if (headers) {
+				config.headers = headers
+			}
+
+			return await this.sendRequestWithRetry<T>(() =>
+				this.instance.post<T>(url, data, config)
+			)
+		} catch (error) {
+			console.error(`POST ERROR: ${url}`, error)
+			return null
+		}
+	}
+
+	/**
+	 * 使用重试机制发送请求
+	 * @param requestFn 请求函数
+	 * @returns Promise 包含响应数据
+	 */
+	private async sendRequestWithRetry<T>(requestFn: () => Promise<any>): Promise<T> {
+		let retries = 0
+		let lastError: any = null
+
+		while (retries < HttpClient.retry) {
+			try {
+				const response = await requestFn()
+				return response.data
+			} catch (error) {
+				lastError = error
+				retries++
+
+				if (retries >= HttpClient.retry) {
+					break
+				}
+			}
+		}
+
+		throw lastError
+	}
+
+	/**
+	 * 递归处理对象中的所有字符串字段，去除两边的空格和换行
+	 * @param data 需要处理的数据
+	 * @returns 处理后的数据
+	 */
+	private deepTrimData(data: any): any {
+		if (!data) return data
+
+		// 处理字符串
+		if (typeof data === 'string') {
+			return data.trim()
+		}
+
+		// 处理数组
+		if (Array.isArray(data)) {
+			return data.map((item) => this.deepTrimData(item))
+		}
+
+		// 处理对象
+		if (typeof data === 'object') {
+			const result = { ...data }
+			Object.keys(result).forEach((key) => {
+				result[key] = this.deepTrimData(result[key])
+			})
+			return result
+		}
+
+		// 其他类型直接返回
+		return data
+	}
+}
