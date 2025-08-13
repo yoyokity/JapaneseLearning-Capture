@@ -5,14 +5,26 @@ import { HttpHelper } from '@/helper/HttpHelper.ts'
 // 注入短语库，提高准确性
 setupEnhance()
 
-export class Translator {
+type TranslateEngine = keyof typeof translators
+
+/**
+ * 翻译相关
+ */
+export class TransHelper {
 	/**
 	 * 是否启用翻译
 	 */
 	static translateOn = false
-	static translateEngine = 'google'
+	static translateEngine: TranslateEngine = 'google'
 
-	static translate(text: string) {}
+	/**
+	 * 翻译
+	 * @return 如果翻译失败，则返回原文
+	 */
+	static async translate(text: string) {
+		if (!this.translateOn) return text
+		return await translators[this.translateEngine](text)
+	}
 
 	/**
 	 * 繁体转化为简体
@@ -23,7 +35,7 @@ export class Translator {
 }
 
 const translators = {
-	google: async (s_text: string, targetLanguage = 'zh-CN'): Promise<string | Error> => {
+	google: async (s_text: string, targetLanguage = 'zh-CN'): Promise<string> => {
 		const url = [
 			`https://translate.google.com/translate_a/single`,
 			'?client=at',
@@ -40,9 +52,9 @@ const translators = {
 			q: s_text
 		}
 
-		try {
-			const session = HttpHelper.create('')
-			let res = await session.post<any>(url, form, headers)
+		const session = HttpHelper.create('')
+		const res = await session.post<any>(url, form, headers)
+		if (res !== null) {
 			let sentences = res['sentences']
 			if (sentences.length === 2) {
 				return sentences[0].trans
@@ -53,8 +65,9 @@ const translators = {
 				}
 				return text
 			}
-		} catch (e) {
-			return e
 		}
+
+		// 翻译失败则原文返回
+		return s_text
 	}
-}
+} as const

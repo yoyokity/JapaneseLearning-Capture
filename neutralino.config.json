@@ -13,10 +13,12 @@
   "nativeAllowList": [
     "app.*",
     "os.*",
-    "filesystem.*"
+    "filesystem.*",
+    "window.*"
   ],
   "modes": {
     "window": {
+      "webviewArgs": "--disable-web-security",
       "title": "JapaneseLearning-Capture",
       "width": 1280,
       "height": 720,

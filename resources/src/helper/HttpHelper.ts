@@ -31,8 +31,8 @@ export class HttpHelper {
 	private readonly instance: AxiosInstance
 	private lastRequestTime: number = 0
 
-	private constructor(baseUrl: string, headers?: RawAxiosRequestHeaders) {
-		this.baseUrl = baseUrl
+	private constructor(baseUrl?: string, headers?: RawAxiosRequestHeaders) {
+		this.baseUrl = baseUrl || ''
 		const config: AxiosRequestConfig = {
 			baseURL: this.baseUrl,
 			timeout: HttpHelper.timeout
@@ -102,7 +102,7 @@ export class HttpHelper {
 	 * @param baseUrl 基础 URL
 	 * @param headers 请求头
 	 */
-	static create(baseUrl: string, headers?: RawAxiosRequestHeaders): HttpHelper {
+	static create(baseUrl?: string, headers?: RawAxiosRequestHeaders): HttpHelper {
 		return new HttpHelper(baseUrl, headers)
 	}
 
@@ -166,7 +166,9 @@ export class HttpHelper {
 		let retries = 0
 		let lastError: any = null
 
-		while (retries < HttpHelper.retry) {
+		while (retries <= HttpHelper.retry) {
+			if (retries > 0) DebugHelper.warn(`请求失败，进行第${retries}次重试`)
+
 			try {
 				const response = await requestFn()
 				return response.data
@@ -174,7 +176,7 @@ export class HttpHelper {
 				lastError = error
 				retries++
 
-				if (retries >= HttpHelper.retry) {
+				if (retries >= HttpHelper.retry + 1) {
 					break
 				}
 			}

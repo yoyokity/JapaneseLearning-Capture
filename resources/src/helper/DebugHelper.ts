@@ -42,7 +42,7 @@ export class DebugHelper {
 				if (arg === null) return 'null'
 				if (arg === undefined) return 'undefined'
 				//处理Error
-				if (arg instanceof Error) return `${arg.name}: ${arg.message}\n${arg.stack}`
+				if (arg instanceof Error) return `${arg.stack}`
 				//处理Neutralino Error
 				if (typeof arg === 'object' && 'message' in arg && 'code' in arg) return arg.message
 				return arg.toString()
