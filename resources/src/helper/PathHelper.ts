@@ -169,16 +169,17 @@ export class PathHelper {
 	/**
 	 * 递归创建目录
 	 * @description 如果目录已存在，则跳过
+	 * @return 最终path存在则返回true，否则返回false
 	 * @remarks 最短用时300ms左右
 	 */
-	static async createDir(path: Path | string) {
+	static async createDir(path: Path | string): Promise<boolean> {
 		if (typeof path === 'string') path = new Path(path)
 
 		// 如果目录已存在，则不需要创建
-		if (await path.isExist()) return
+		if (await path.isExist()) return true
 
 		const re = await DebugHelper.tryExecute(filesystem.createDirectory, path.toString())
-		if (re.error === null) {
+		if (!re.hasError) {
 			return true
 		} else {
 			DebugHelper.error(`创建目录失败：`, re.error)
@@ -192,14 +193,17 @@ export class PathHelper {
 	 * @param [recursive=true] 是否递归读取子目录
 	 * @remarks 用时300ms-1s左右
 	 */
-	static async readDir(path: Path | string, recursive: boolean = true) {
+	static async readDir(
+		path: Path | string,
+		recursive: boolean = true
+	): Promise<filesystem.DirectoryEntry[]> {
 		if (typeof path === 'string') path = new Path(path)
 
 		const re = await DebugHelper.tryExecute(filesystem.readDirectory, path.toString(), {
 			recursive
 		})
 
-		if (re.error === null) {
+		if (!re.hasError) {
 			return re.result
 		} else {
 			DebugHelper.error(`读取目录失败：`, re.error)
@@ -211,11 +215,11 @@ export class PathHelper {
 	 * 删除文件或目录
 	 * @remarks 用时300ms左右
 	 */
-	static async remove(path: Path | string) {
+	static async remove(path: Path | string): Promise<boolean> {
 		if (typeof path === 'string') path = new Path(path)
 
 		const re = await DebugHelper.tryExecute(filesystem.remove, path.toString())
-		if (re.error === null) {
+		if (!re.hasError) {
 			return true
 		} else {
 			DebugHelper.error(`删除文件或目录失败：`, re.error)
@@ -230,16 +234,19 @@ export class PathHelper {
 	 * @description 如果目标路径的父目录不存在，则会自动创建
 	 * @remarks 用时1ms左右
 	 */
-	static async writeFile(path: Path | string, data: string) {
+	static async writeFile(path: Path | string, data: string): Promise<boolean> {
 		if (typeof path === 'string') path = new Path(path)
 
 		// 如果父目录不存在，则先创建
 		if (!(await path.parent.isExist())) {
-			await this.createDir(path.parent)
+			if (!(await this.createDir(path.parent))) {
+				DebugHelper.error(`写入文件失败：无法创建目标父目录`, path)
+				return false
+			}
 		}
 
 		const re = await DebugHelper.tryExecute(filesystem.writeFile, path.toString(), data)
-		if (re.error === null) {
+		if (!re.hasError) {
 			return true
 		} else {
 			DebugHelper.error(`写入文件失败：`, re.error)
@@ -254,11 +261,11 @@ export class PathHelper {
 	 * @description 需要自行判断父目录是否存在（毕竟每次都判断的话会影响性能）
 	 * @remarks 创建文件用时1ms左右，追加用时0.6ms左右
 	 */
-	static async appendFile(path: Path | string, data: string) {
+	static async appendFile(path: Path | string, data: string): Promise<boolean> {
 		if (typeof path === 'string') path = new Path(path)
 
 		const re = await DebugHelper.tryExecute(filesystem.appendFile, path.toString(), data)
-		if (re.error === null) {
+		if (!re.hasError) {
 			return true
 		} else {
 			DebugHelper.error(`追加文件内容失败：`, re.error)
@@ -273,16 +280,19 @@ export class PathHelper {
 	 * @description 如果目标路径的父目录不存在，则会自动创建
 	 * @remarks 用时1ms左右
 	 */
-	static async writeBinaryFile(path: Path | string, data: ArrayBuffer) {
+	static async writeBinaryFile(path: Path | string, data: ArrayBuffer): Promise<boolean> {
 		if (typeof path === 'string') path = new Path(path)
 
 		// 如果父目录不存在，则先创建
 		if (!(await path.parent.isExist())) {
-			await this.createDir(path.parent)
+			if (!(await this.createDir(path.parent))) {
+				DebugHelper.error(`写入文件失败：无法创建目标父目录`, path)
+				return false
+			}
 		}
 
 		const re = await DebugHelper.tryExecute(filesystem.writeBinaryFile, path.toString(), data)
-		if (re.error === null) {
+		if (!re.hasError) {
 			return true
 		} else {
 			DebugHelper.error(`写入二进制文件失败：`, re.error)
@@ -297,11 +307,11 @@ export class PathHelper {
 	 * @description 需要自行判断父目录是否存在（毕竟每次都判断的话会影响性能）
 	 * @remarks 创建文件用时1ms左右，追加用时0.6ms左右
 	 */
-	static async appendBinaryFile(path: Path | string, data: ArrayBuffer) {
+	static async appendBinaryFile(path: Path | string, data: ArrayBuffer): Promise<boolean> {
 		if (typeof path === 'string') path = new Path(path)
 
 		const re = await DebugHelper.tryExecute(filesystem.appendBinaryFile, path.toString(), data)
-		if (re.error === null) {
+		if (!re.hasError) {
 			return true
 		} else {
 			DebugHelper.error(`追加二进制文件内容失败：`, re.error)
@@ -313,13 +323,17 @@ export class PathHelper {
 	 * 读取文本文件
 	 * @param path 文件路径
 	 * @param options 选项，可选参数 pos: 文件指针位置（字节），size: 读取缓冲区大小（字节）
+	 * @return 返回null代表读取失败
 	 * @remarks 用时300ms左右
 	 */
-	static async readFile(path: Path | string, options?: { pos?: number; size?: number }) {
+	static async readFile(
+		path: Path | string,
+		options?: { pos?: number; size?: number }
+	): Promise<string | null> {
 		if (typeof path === 'string') path = new Path(path)
 
 		const re = await DebugHelper.tryExecute(filesystem.readFile, path.toString(), options)
-		if (re.error === null) {
+		if (!re.hasError) {
 			return re.result
 		} else {
 			DebugHelper.error(`读取文件失败：`, re.error)
@@ -331,13 +345,17 @@ export class PathHelper {
 	 * 读取二进制文件
 	 * @param path 文件路径
 	 * @param options 选项，可选参数 pos: 文件指针位置（字节），size: 读取缓冲区大小（字节）
+	 * @return 返回null代表读取失败
 	 * @remarks 用时300ms左右
 	 */
-	static async readBinaryFile(path: Path | string, options?: { pos?: number; size?: number }) {
+	static async readBinaryFile(
+		path: Path | string,
+		options?: { pos?: number; size?: number }
+	): Promise<ArrayBuffer | null> {
 		if (typeof path === 'string') path = new Path(path)
 
 		const re = await DebugHelper.tryExecute(filesystem.readBinaryFile, path.toString(), options)
-		if (re.error === null) {
+		if (!re.hasError) {
 			return re.result
 		} else {
 			DebugHelper.error(`读取二进制文件失败：`, re.error)
@@ -360,7 +378,7 @@ export class PathHelper {
 		recursive: boolean = true,
 		overwrite: boolean = true,
 		skip: boolean = false
-	) {
+	): Promise<boolean> {
 		if (typeof source === 'string') source = new Path(source)
 		if (typeof destination === 'string') destination = new Path(destination)
 
@@ -375,25 +393,21 @@ export class PathHelper {
 			}
 		}
 
-		try {
-			const re = await DebugHelper.tryExecute(
-				filesystem.copy,
-				source.toString(),
-				destination.toString(),
-				{
-					recursive,
-					overwrite,
-					skip
-				}
-			)
-			if (re.error === null) {
-				return true
-			} else {
-				DebugHelper.error(`复制文件或目录失败：`, re.error)
-				return false
+		const re = await DebugHelper.tryExecute(
+			filesystem.copy,
+			source.toString(),
+			destination.toString(),
+			{
+				recursive,
+				overwrite,
+				skip
 			}
-		} catch (error) {
-			DebugHelper.error(`复制文件或目录失败：`, error)
+		)
+
+		if (!re.hasError) {
+			return true
+		} else {
+			DebugHelper.error(`复制文件或目录失败：`, re.error)
 			return false
 		}
 	}
@@ -404,7 +418,7 @@ export class PathHelper {
 	 * @param destination 目标路径
 	 * @description 如果目标路径的父目录不存在，会自动创建
 	 */
-	static async move(source: Path | string, destination: Path | string) {
+	static async move(source: Path | string, destination: Path | string): Promise<boolean> {
 		if (typeof source === 'string') source = new Path(source)
 		if (typeof destination === 'string') destination = new Path(destination)
 
@@ -419,20 +433,16 @@ export class PathHelper {
 			}
 		}
 
-		try {
-			const re = await DebugHelper.tryExecute(
-				filesystem.move,
-				source.toString(),
-				destination.toString()
-			)
-			if (re.error === null) {
-				return true
-			} else {
-				DebugHelper.error(`移动文件或目录失败：`, re.error)
-				return false
-			}
-		} catch (error) {
-			DebugHelper.error(`移动文件或目录失败：`, error)
+		const re = await DebugHelper.tryExecute(
+			filesystem.move,
+			source.toString(),
+			destination.toString()
+		)
+
+		if (!re.hasError) {
+			return true
+		} else {
+			DebugHelper.error(`移动文件或目录失败：`, re.error)
 			return false
 		}
 	}

@@ -10,6 +10,8 @@ import App from './App.vue'
 import { theme } from '@/style/theme.ts'
 import { DebugHelper, initHelper } from '@/helper'
 
+initHelper()
+
 createApp(App)
 	.use(createPinia())
 	.use(PrimeVue, {
@@ -20,8 +22,6 @@ createApp(App)
 	.mount('#app')
 
 init()
-
-initHelper()
 
 DebugHelper.success('初始化完成，开始运行')
 

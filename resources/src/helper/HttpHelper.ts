@@ -5,6 +5,7 @@ import axios, {
 	type RawAxiosRequestHeaders
 } from 'axios'
 import { delay } from 'es-toolkit'
+import { DebugHelper } from '@/helper/DebugHelper.ts'
 
 /**
  * HTTP 请求相关
@@ -56,7 +57,20 @@ export class HttpHelper {
 				const now = Date.now()
 				const timeSinceLastRequest = now - this.lastRequestTime
 
-				if (timeSinceLastRequest < HttpHelper.delay && this.lastRequestTime !== 0) {
+				// 判断是否为图片请求
+				const isImageRequest =
+					config.url?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
+					(typeof config.headers?.['Content-Type'] === 'string' &&
+						config.headers['Content-Type'].includes('image')) ||
+					config.responseType === 'blob' ||
+					config.url?.includes('image')
+
+				// 如果不是图片请求，则应用间隔延迟限制
+				if (
+					!isImageRequest &&
+					timeSinceLastRequest < HttpHelper.delay &&
+					this.lastRequestTime !== 0
+				) {
 					// 需要等待的时间
 					const waitTime = HttpHelper.delay - timeSinceLastRequest
 					await delay(waitTime)
@@ -99,12 +113,16 @@ export class HttpHelper {
 	 * @returns Promise 包含响应数据，错误时返回 null
 	 */
 	async get<T>(url: string, params?: Record<string, any>): Promise<T | null> {
-		try {
-			const config: AxiosRequestConfig = { params }
+		const config: AxiosRequestConfig = { params }
 
-			return await this.sendRequestWithRetry<T>(() => this.instance.get<T>(url, config))
-		} catch (error) {
-			console.error(`GET ERROR: ${url}`, error)
+		const re = await DebugHelper.tryExecute(this.sendRequestWithRetry<T>, () =>
+			this.instance.get<T>(url, config)
+		)
+
+		if (!re.hasError) {
+			return re.result
+		} else {
+			DebugHelper.error(`GET请求错误，url：${url}\n`, re.error)
 			return null
 		}
 	}
@@ -117,22 +135,24 @@ export class HttpHelper {
 	 * @returns Promise 包含响应数据，错误时返回 null
 	 */
 	async post<T>(url: string, data?: any, headers?: RawAxiosRequestHeaders): Promise<T | null> {
-		try {
-			// 深度处理对象中的所有字符串字段，去除空格和换行
-			if (data) {
-				data = this.deepTrimData(data)
-			}
+		// 深度处理对象中的所有字符串字段，去除空格和换行
+		if (data) {
+			data = this.deepTrimData(data)
+		}
 
-			const config: AxiosRequestConfig = {}
-			if (headers) {
-				config.headers = headers
-			}
+		const config: AxiosRequestConfig = {}
+		if (headers) {
+			config.headers = headers
+		}
 
-			return await this.sendRequestWithRetry<T>(() =>
-				this.instance.post<T>(url, data, config)
-			)
-		} catch (error) {
-			console.error(`POST ERROR: ${url}`, error)
+		const re = await DebugHelper.tryExecute(this.sendRequestWithRetry<T>, () =>
+			this.instance.post<T>(url, data, config)
+		)
+
+		if (!re.hasError) {
+			return re.result
+		} else {
+			DebugHelper.error(`Post请求错误，url：${url}\n`, re.error)
 			return null
 		}
 	}

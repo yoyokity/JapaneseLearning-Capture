@@ -6,29 +6,6 @@ import { PathHelper } from '@/helper/PathHelper.ts'
  */
 export class DebugHelper {
 	private static queue = new PQueue({ concurrency: 1 })
-	private static writeLog(type: 'success' | 'info' | 'warn' | 'error', data: string) {
-		const now = new Date()
-
-		const year = now.getFullYear()
-		const month = (now.getMonth() + 1).toString().padStart(2, '0')
-		const day = now.getDate().toString().padStart(2, '0')
-		const hour = now.getHours().toString().padStart(2, '0')
-		const minute = now.getMinutes().toString().padStart(2, '0')
-		const second = now.getSeconds().toString().padStart(2, '0')
-		const millisecond = now.getMilliseconds().toString().padStart(3, '0')
-
-		const fileName = `${year}-${month}-${day}`
-		const filePath = PathHelper.logPath.join(`${fileName}.log`)
-
-		const timeStr = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`
-
-		let text = `[${timeStr}] [${type.toUpperCase()}] ${data}\n`
-		console.log(text)
-
-		this.queue.add(async () => {
-			await PathHelper.appendFile(filePath, text)
-		})
-	}
 
 	/**
 	 * 打印成功的日志
@@ -100,7 +77,7 @@ export class DebugHelper {
 	 * 通过try-catch执行函数并返回结果或错误
 	 * @param fn 要执行的函数
 	 * @param args 函数参数
-	 * @returns 包含执行结果和可能的错误的对象，如果有报错则result为null，无报错则error为null
+	 * @returns 包含执行结果和可能的错误的对象，如果有报错则hasError为true
 	 * @example
 	 * ```ts
 	 * const { result, error } = await debug.tryExecute(someFunction, arg1, arg2);
@@ -109,16 +86,21 @@ export class DebugHelper {
 	static async tryExecute<T>(
 		fn: (...args: any[]) => T | Promise<T>,
 		...args: any[]
-	): Promise<{ result: T | null; error: unknown | null }> {
+	): Promise<
+		| { hasError: false; result: T; error: null }
+		| { hasError: true; result: null; error: unknown }
+	> {
 		try {
 			const result = await fn(...args)
 			return {
 				result,
+				hasError: false,
 				error: null
 			}
 		} catch (error) {
 			return {
 				result: null,
+				hasError: true,
 				error
 			}
 		}
@@ -128,7 +110,7 @@ export class DebugHelper {
 	 * 通过try-catch同步执行函数并返回结果或错误
 	 * @param fn 要执行的函数
 	 * @param args 函数参数
-	 * @returns 包含执行结果和可能的错误的对象，如果有报错则result为null，无报错则error为null
+	 * @returns 包含执行结果和可能的错误的对象，如果有报错则hasError为true
 	 * @example
 	 * ```ts
 	 * const { result, error } = debug.tryExecuteSync(someFunction, arg1, arg2);
@@ -141,18 +123,46 @@ export class DebugHelper {
 	static tryExecuteSync<T>(
 		fn: (...args: any[]) => T,
 		...args: any[]
-	): { result: T | null; error: unknown | null } {
+	):
+		| { hasError: false; result: T; error: null }
+		| { hasError: true; result: null; error: unknown } {
 		try {
 			const result = fn(...args)
 			return {
 				result,
+				hasError: false,
 				error: null
 			}
 		} catch (error) {
 			return {
 				result: null,
+				hasError: true,
 				error
 			}
 		}
+	}
+
+	private static writeLog(type: 'success' | 'info' | 'warn' | 'error', data: string) {
+		const now = new Date()
+
+		const year = now.getFullYear()
+		const month = (now.getMonth() + 1).toString().padStart(2, '0')
+		const day = now.getDate().toString().padStart(2, '0')
+		const hour = now.getHours().toString().padStart(2, '0')
+		const minute = now.getMinutes().toString().padStart(2, '0')
+		const second = now.getSeconds().toString().padStart(2, '0')
+		const millisecond = now.getMilliseconds().toString().padStart(3, '0')
+
+		const fileName = `${year}-${month}-${day}`
+		const filePath = PathHelper.logPath.join(`${fileName}.log`)
+
+		const timeStr = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`
+
+		let text = `[${timeStr}] [${type.toUpperCase()}] ${data}\n`
+		console.log(text)
+
+		this.queue.add(async () => {
+			await PathHelper.appendFile(filePath, text)
+		})
 	}
 }
