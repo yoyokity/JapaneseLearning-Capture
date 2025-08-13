@@ -23,6 +23,9 @@ importers:
       es-toolkit:
         specifier: ^1.39.9
         version: 1.39.9
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
       pinia:
         specifier: ^3.0.3
         version: 3.0.3(typescript@5.9.2)(vue@3.5.18(typescript@5.9.2))

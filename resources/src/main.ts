@@ -8,6 +8,7 @@ import PrimeVue from 'primevue/config'
 
 import App from './App.vue'
 import { theme } from '@/style/theme.ts'
+import { Helper } from '@/helper'
 
 createApp(App)
 	.use(createPinia())
@@ -20,4 +21,4 @@ createApp(App)
 
 init()
 
-console.log(window.NL_ARCH)
+Helper.init()

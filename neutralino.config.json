@@ -12,7 +12,8 @@
   },
   "nativeAllowList": [
     "app.*",
-    "os.*"
+    "os.*",
+    "filesystem.*"
   ],
   "modes": {
     "window": {

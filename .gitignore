@@ -12,3 +12,7 @@ neutralino.js
 .storage
 *.log
 .idea
+/.cursor/
+
+/.log/
+/.tmp/

@@ -26,16 +26,6 @@ export class HttpClient {
 	 * 代理
 	 */
 	static proxy: AxiosProxyConfig | null = null
-
-	/**
-	 * 创建 HttpClient 实例
-	 * @param baseUrl 基础 URL
-	 * @param headers 请求头
-	 */
-	static create(baseUrl: string, headers?: RawAxiosRequestHeaders): HttpClient {
-		return new HttpClient(baseUrl, headers)
-	}
-
 	private readonly baseUrl: string
 	private readonly instance: AxiosInstance
 	private lastRequestTime: number = 0
@@ -91,6 +81,15 @@ export class HttpClient {
 				return Promise.reject(error)
 			}
 		)
+	}
+
+	/**
+	 * 创建 HttpClient 实例
+	 * @param baseUrl 基础 URL
+	 * @param headers 请求头
+	 */
+	static create(baseUrl: string, headers?: RawAxiosRequestHeaders): HttpClient {
+		return new HttpClient(baseUrl, headers)
 	}
 
 	/**
