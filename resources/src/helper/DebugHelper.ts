@@ -1,15 +1,62 @@
+import PQueue from 'p-queue'
+import { PathHelper } from '@/helper/PathHelper.ts'
+
 /**
  * debug相关，用于调试、日志记录等
  */
 export class DebugHelper {
-	static info(...args: any[]) {
-		console.info(...args)
+	private static queue = new PQueue({ concurrency: 1 })
+	private static writeLog(type: 'success' | 'info' | 'warn' | 'error', data: string) {
+		const now = new Date()
+
+		const year = now.getFullYear()
+		const month = (now.getMonth() + 1).toString().padStart(2, '0')
+		const day = now.getDate().toString().padStart(2, '0')
+		const hour = now.getHours().toString().padStart(2, '0')
+		const minute = now.getMinutes().toString().padStart(2, '0')
+		const second = now.getSeconds().toString().padStart(2, '0')
+		const millisecond = now.getMilliseconds().toString().padStart(3, '0')
+
+		const fileName = `${year}-${month}-${day}`
+		const filePath = PathHelper.logPath.join(`${fileName}.log`)
+
+		const timeStr = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`
+
+		let text = `[${timeStr}] [${type.toUpperCase()}] ${data}\n`
+		console.log(text)
+
+		this.queue.add(async () => {
+			await PathHelper.appendFile(filePath, text)
+		})
 	}
 
+	/**
+	 * 打印成功的日志
+	 */
+	static success(...args: any[]) {
+		console.info(...args)
+		this.writeLog('success', args.join(' '))
+	}
+
+	/**
+	 * 打印信息日志
+	 */
+	static info(...args: any[]) {
+		console.log(...args)
+		this.writeLog('info', args.join(' '))
+	}
+
+	/**
+	 * 打印警告日志
+	 */
 	static warn(...args: any[]) {
 		console.warn(...args)
+		this.writeLog('warn', args.join(' '))
 	}
 
+	/**
+	 * 打印错误日志
+	 */
 	static error(...args: any[]) {
 		console.error(...args)
 
@@ -25,7 +72,7 @@ export class DebugHelper {
 			})
 			.join(' ')
 
-		console.log(text)
+		this.writeLog('error', text)
 	}
 
 	/**
