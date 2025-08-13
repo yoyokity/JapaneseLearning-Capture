@@ -1,6 +1,6 @@
 import { toSimplified } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
-import { HttpClient } from '@/helper/request.ts'
+import { HttpHelper } from '@/helper/HttpHelper.ts'
 
 // 注入短语库，提高准确性
 setupEnhance()
@@ -41,7 +41,7 @@ const translators = {
 		}
 
 		try {
-			const session = HttpClient.create('')
+			const session = HttpHelper.create('')
 			let res = await session.post<any>(url, form, headers)
 			let sentences = res['sentences']
 			if (sentences.length === 2) {

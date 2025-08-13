@@ -1,13 +1,16 @@
-export class Debug {
-	info(...args: any[]) {
+/**
+ * debug相关，用于调试、日志记录等
+ */
+export class DebugHelper {
+	static info(...args: any[]) {
 		console.info(...args)
 	}
 
-	warn(...args: any[]) {
+	static warn(...args: any[]) {
 		console.warn(...args)
 	}
 
-	error(...args: any[]) {
+	static error(...args: any[]) {
 		console.error(...args)
 
 		let text = args
@@ -31,7 +34,7 @@ export class Debug {
 	 * @param args 函数参数
 	 * @returns 包含执行结果和执行时间的对象
 	 */
-	async executeWithTime<T>(
+	static async executeWithTime<T>(
 		fn: (...args: any[]) => T | Promise<T>,
 		...args: any[]
 	): Promise<{ result: T; executionTime: number }> {
@@ -56,7 +59,7 @@ export class Debug {
 	 * const { result, error } = await debug.tryExecute(someFunction, arg1, arg2);
 	 * ```
 	 */
-	async tryExecute<T>(
+	static async tryExecute<T>(
 		fn: (...args: any[]) => T | Promise<T>,
 		...args: any[]
 	): Promise<{ result: T | null; error: unknown | null }> {
@@ -88,7 +91,7 @@ export class Debug {
 	 * result将会是Promise对象本身，而不是Promise解析后的值。
 	 * 对于异步函数，请使用tryExecute方法代替。
 	 */
-	tryExecuteSync<T>(
+	static tryExecuteSync<T>(
 		fn: (...args: any[]) => T,
 		...args: any[]
 	): { result: T | null; error: unknown | null } {

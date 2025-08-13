@@ -1,30 +1,13 @@
-import { HttpClient } from '@/helper/request.ts'
-import { PathLib } from '@/helper/path.ts'
-import { Debug } from '@/helper/debug.ts'
+import { PathHelper } from '@/helper/PathHelper.ts'
 
-export class Helper {
-	/**
-	 * http请求相关
-	 */
-	static request = HttpClient
-
-	/**
-	 * 路径相关
-	 */
-	static path = new PathLib()
-
-	/**
-	 * debug相关，包括日志打印等
-	 */
-	static debug = new Debug()
-
-	/**
-	 * 初始化，把该创建的目录创建一下
-	 */
-	static init() {
-		this.path.createDir(this.path.logPath)
-		this.path.createDir(this.path.tempPath)
-	}
+/**
+ * 初始化，把该创建的目录创建一下
+ */
+export function initHelper() {
+	PathHelper.createDir(PathHelper.logPath)
+	PathHelper.createDir(PathHelper.tempPath)
 }
 
-export * from '@/helper/path.ts'
+export * from '@/helper/PathHelper.ts'
+export * from '@/helper/HttpHelper.ts'
+export * from '@/helper/DebugHelper.ts'

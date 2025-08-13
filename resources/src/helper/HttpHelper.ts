@@ -7,9 +7,9 @@ import axios, {
 import { delay } from 'es-toolkit'
 
 /**
- * HTTP 客户端类，用于处理网络请求
+ * HTTP 请求相关
  */
-export class HttpClient {
+export class HttpHelper {
 	/**
 	 * 超时时间
 	 */
@@ -34,7 +34,7 @@ export class HttpClient {
 		this.baseUrl = baseUrl
 		const config: AxiosRequestConfig = {
 			baseURL: this.baseUrl,
-			timeout: HttpClient.timeout
+			timeout: HttpHelper.timeout
 		}
 
 		// 添加请求头
@@ -43,8 +43,8 @@ export class HttpClient {
 		}
 
 		// 只有当代理不为null时才添加到配置中
-		if (HttpClient.proxy) {
-			config.proxy = HttpClient.proxy
+		if (HttpHelper.proxy) {
+			config.proxy = HttpHelper.proxy
 		}
 
 		this.instance = axios.create(config)
@@ -56,9 +56,9 @@ export class HttpClient {
 				const now = Date.now()
 				const timeSinceLastRequest = now - this.lastRequestTime
 
-				if (timeSinceLastRequest < HttpClient.delay && this.lastRequestTime !== 0) {
+				if (timeSinceLastRequest < HttpHelper.delay && this.lastRequestTime !== 0) {
 					// 需要等待的时间
-					const waitTime = HttpClient.delay - timeSinceLastRequest
+					const waitTime = HttpHelper.delay - timeSinceLastRequest
 					await delay(waitTime)
 				}
 
@@ -88,8 +88,8 @@ export class HttpClient {
 	 * @param baseUrl 基础 URL
 	 * @param headers 请求头
 	 */
-	static create(baseUrl: string, headers?: RawAxiosRequestHeaders): HttpClient {
-		return new HttpClient(baseUrl, headers)
+	static create(baseUrl: string, headers?: RawAxiosRequestHeaders): HttpHelper {
+		return new HttpHelper(baseUrl, headers)
 	}
 
 	/**
@@ -146,7 +146,7 @@ export class HttpClient {
 		let retries = 0
 		let lastError: any = null
 
-		while (retries < HttpClient.retry) {
+		while (retries < HttpHelper.retry) {
 			try {
 				const response = await requestFn()
 				return response.data
@@ -154,7 +154,7 @@ export class HttpClient {
 				lastError = error
 				retries++
 
-				if (retries >= HttpClient.retry) {
+				if (retries >= HttpHelper.retry) {
 					break
 				}
 			}
