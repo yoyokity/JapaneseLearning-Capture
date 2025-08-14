@@ -1,6 +1,6 @@
 import { toSimplified } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
-import { HttpHelper } from '@/helper/HttpHelper.ts'
+import { HttpHelper } from './HttpHelper.ts'
 
 // 注入短语库，提高准确性
 setupEnhance()

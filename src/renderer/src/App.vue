@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import TabContainer from '@/components/tabContainer.vue'
+import TabContainer from '@renderer/components/tabContainer.vue'
 </script>
 
 <template>

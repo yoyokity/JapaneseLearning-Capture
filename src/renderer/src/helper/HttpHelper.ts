@@ -5,7 +5,7 @@ import axios, {
 	type RawAxiosRequestHeaders
 } from 'axios'
 import { delay } from 'es-toolkit'
-import { DebugHelper } from '@/helper/DebugHelper.ts'
+import { DebugHelper } from './DebugHelper.ts'
 
 /**
  * HTTP 请求相关

@@ -1,11 +1,9 @@
-import PQueue from 'p-queue'
-import { PathHelper } from '@/helper/PathHelper.ts'
+import { PathHelper } from './PathHelper.ts'
 
 /**
  * debug相关，用于调试、日志记录等
  */
 export class DebugHelper {
-	private static queue = new PQueue({ concurrency: 1 })
 
 	/**
 	 * 打印成功的日志
@@ -53,7 +51,7 @@ export class DebugHelper {
 	}
 
 	/**
-	 * 执行函数并返回结果及执行时间
+	 * 执行函数并返回结果及执行时间，毫秒
 	 * @param fn 要执行的函数
 	 * @param args 函数参数
 	 * @returns 包含执行结果和执行时间的对象
@@ -161,8 +159,8 @@ export class DebugHelper {
 		let text = `[${timeStr}] [${type.toUpperCase()}] ${data}\n`
 		console.log(text)
 
-		this.queue.add(async () => {
-			await PathHelper.appendFile(filePath, text)
-		})
+		// this.queue.add(async () => {
+		// 	await PathHelper.appendFile(filePath, text)
+		// })
 	}
 }

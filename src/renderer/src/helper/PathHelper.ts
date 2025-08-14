@@ -1,6 +1,5 @@
 import * as pathe from 'pathe'
-import { filesystem } from '@neutralinojs/lib'
-import { DebugHelper } from '@/helper/DebugHelper.ts'
+import { DebugHelper } from './DebugHelper.ts'
 
 export class Path {
 	private readonly _path: string
