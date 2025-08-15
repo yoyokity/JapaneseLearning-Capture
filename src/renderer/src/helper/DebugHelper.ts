@@ -4,7 +4,6 @@ import { PathHelper } from './PathHelper.ts'
  * debug相关，用于调试、日志记录等
  */
 export class DebugHelper {
-
 	/**
 	 * 打印成功的日志
 	 */

@@ -8,9 +8,7 @@ module.exports = {
 		win32metadata: {
 			ProductName: 'Japanese Learning Capture'
 		},
-		extraResource: [
-			'tools'
-		],
+		extraResource: ['tools'],
 		ignore: [
 			/^\/src/,
 			/^\/build/,
@@ -20,7 +18,7 @@ module.exports = {
 			'.idea',
 			'data',
 			'tools',
-			
+
 			'.gitignore',
 			'.npmrc',
 			'.prettierignore',

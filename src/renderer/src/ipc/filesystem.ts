@@ -116,13 +116,6 @@ const to = '/home/user/app/dist';
 
 export interface Stats extends StatsBase<number> {}
 interface StatsBase<T> {
-	isFile(): boolean
-	isDirectory(): boolean
-	isBlockDevice(): boolean
-	isCharacterDevice(): boolean
-	isSymbolicLink(): boolean
-	isFIFO(): boolean
-	isSocket(): boolean
 	dev: T
 	ino: T
 	mode: T
@@ -141,6 +134,20 @@ interface StatsBase<T> {
 	mtime: Date
 	ctime: Date
 	birthtime: Date
+
+	isFile(): boolean
+
+	isDirectory(): boolean
+
+	isBlockDevice(): boolean
+
+	isCharacterDevice(): boolean
+
+	isSymbolicLink(): boolean
+
+	isFIFO(): boolean
+
+	isSocket(): boolean
 }
 
 export interface FormatInputPathObject {
@@ -175,6 +182,10 @@ export interface ArsrPath {
 	 * arsr资源目录
 	 */
 	resources: string
+	/**
+	 * arsr的父目录，包含了arsr以及其他extraResource资源
+	 */
+	extraResource: string
 	/**
 	 * 前端web代码根目录
 	 */

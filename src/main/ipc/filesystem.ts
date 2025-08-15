@@ -7,6 +7,7 @@ export const appPath = {
 	root: '',
 	arsr: '',
 	resources: '',
+	extraResource: '',
 	renderer: ''
 }
 
@@ -21,6 +22,7 @@ ipcMain.handle('filesystem:arsrPath', () => {
 		return {
 			root: appPath.arsr,
 			resources: appPath.resources,
+			extraResource: appPath.extraResource,
 			renderer: appPath.renderer
 		}
 	})
