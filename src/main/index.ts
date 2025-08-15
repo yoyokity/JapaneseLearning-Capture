@@ -3,7 +3,7 @@ import { electronApp } from '@electron-toolkit/utils'
 import { createWindow } from './window'
 import { join } from 'path'
 import './ipc'
-import { appPath } from './ipc/filesystem'
+import { appPath } from './ipc'
 
 // 设置app路径
 appPath.root = process.cwd()

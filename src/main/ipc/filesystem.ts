@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import * as fs from 'node:fs'
 import { appendFileSync, readFileSync } from 'node:fs'
 import * as path from 'node:path'
@@ -8,36 +8,6 @@ import pkg from 'fs-extra'
 import log from 'electron-log'
 
 const { ensureDirSync, removeSync, copySync, moveSync, outputFileSync } = pkg
-
-export const appPath = {
-	root: '',
-	arsr: '',
-	resources: '',
-	extraResource: '',
-	renderer: ''
-}
-
-// 返回app的工作路径
-ipcMain.handle('filesystem:appPath', () => appPath.root)
-
-// 返回app的arsr路径
-ipcMain.handle('filesystem:arsrPath', () => {
-	return {
-		root: appPath.arsr,
-		resources: appPath.resources,
-		extraResource: appPath.extraResource,
-		renderer: appPath.renderer
-	}
-})
-
-// 返回userData路径
-ipcMain.handle('filesystem:userPath', () => app.getPath('userData'))
-
-// 返回logs路径
-ipcMain.handle('filesystem:logsPath', () => app.getPath('logs'))
-
-// 返回temp路径
-ipcMain.handle('filesystem:tempPath', () => app.getPath('temp'))
 
 // 判断path是否存在于磁盘上
 ipcMain.handle('filesystem:isExist', (_, path: string) => {

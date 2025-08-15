@@ -1,6 +1,8 @@
 import { filesystem } from '@renderer/ipc/filesystem.ts'
+import { app } from '@renderer/ipc/app.ts'
 
 export class Ipc {
+	static app = app
 	static filesystem = filesystem
 
 	/**

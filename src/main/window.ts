@@ -50,7 +50,7 @@ export function createWindow(): void {
 		webPreferences: {
 			preload: join(__dirname, '../preload/index.mjs'),
 			sandbox: false,
-			webSecurity: false // web安全性
+			webSecurity: true // web安全性
 		}
 	})
 	mainWindow.menuBarVisible = false // 隐藏菜单栏

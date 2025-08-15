@@ -137,7 +137,7 @@ export class PathHelper {
 	static tempPath: Path
 
 	static async init() {
-		const appPath = await DebugHelper.tryExecute(Ipc.filesystem.appPath)
+		const appPath = await DebugHelper.tryExecute(Ipc.app.appPath)
 		if (!appPath.hasError) {
 			DebugHelper.info(`获取appPath成功：`, appPath.result)
 			PathHelper.appPath = new Path(appPath.result)
@@ -145,7 +145,7 @@ export class PathHelper {
 			DebugHelper.error(`获取appPath失败：`, appPath.error)
 		}
 
-		const arsrPath = await DebugHelper.tryExecute(Ipc.filesystem.arsrPath)
+		const arsrPath = await DebugHelper.tryExecute(Ipc.app.arsrPath)
 		if (!arsrPath.hasError) {
 			DebugHelper.info(`获取arsrPath成功：`, arsrPath.result.root)
 			PathHelper.arsrPath = {
@@ -158,7 +158,7 @@ export class PathHelper {
 			DebugHelper.error(`获取arsrPath失败：`, arsrPath.error)
 		}
 
-		const userDataPath = await DebugHelper.tryExecute(Ipc.filesystem.userPath)
+		const userDataPath = await DebugHelper.tryExecute(Ipc.app.userPath)
 		if (!userDataPath.hasError) {
 			DebugHelper.info(`获取userDataPath成功：`, userDataPath.result)
 			PathHelper.userPath = new Path(userDataPath.result)
@@ -166,7 +166,7 @@ export class PathHelper {
 			DebugHelper.error(`获取userDataPath失败：`, userDataPath.error)
 		}
 
-		const logsPath = await DebugHelper.tryExecute(Ipc.filesystem.logsPath)
+		const logsPath = await DebugHelper.tryExecute(Ipc.app.logsPath)
 		if (!logsPath.hasError) {
 			DebugHelper.info(`获取logsPath成功：`, logsPath.result)
 			PathHelper.logsPath = new Path(logsPath.result)
@@ -174,7 +174,7 @@ export class PathHelper {
 			DebugHelper.error(`获取logsPath失败：`, logsPath.error)
 		}
 
-		const tempPath = await DebugHelper.tryExecute(Ipc.filesystem.tempPath)
+		const tempPath = await DebugHelper.tryExecute(Ipc.app.tempPath)
 		if (!tempPath.hasError) {
 			DebugHelper.info(`获取tempPath成功：`, tempPath.result)
 			PathHelper.tempPath = new Path(tempPath.result)
