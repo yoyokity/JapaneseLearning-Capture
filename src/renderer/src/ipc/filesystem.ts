@@ -1,4 +1,4 @@
-import { invoke } from '@renderer/ipc/func.ts'
+import { invoke, send } from '@renderer/ipc/func.ts'
 
 /**
  * 文件系统
@@ -7,27 +7,28 @@ export const filesystem = {
 	/**
 	 * 返回app的工作目录，正常情况下就是exe所在的目录
 	 */
-	appPath: (): Promise<string> => invoke('filesystem:appPath'),
+	appPath: (): Promise<string> => window.electron.ipcRenderer.invoke('filesystem:appPath'),
 
 	/**
 	 * 返回arsr所在的路径
 	 */
-	arsrPath: (): Promise<ArsrPath> => invoke('filesystem:arsrPath'),
+	arsrPath: (): Promise<ArsrPathString> =>
+		window.electron.ipcRenderer.invoke('filesystem:arsrPath'),
 
 	/**
 	 * 返回userData路径，用于存储用户数据
 	 */
-	userPath: (): Promise<string> => invoke('filesystem:userPath'),
+	userPath: (): Promise<string> => window.electron.ipcRenderer.invoke('filesystem:userPath'),
 
 	/**
 	 * 返回logs路径，用于记录日志
 	 */
-	logsPath: (): Promise<string> => invoke('filesystem:logsPath'),
+	logsPath: (): Promise<string> => window.electron.ipcRenderer.invoke('filesystem:logsPath'),
 
 	/**
 	 * 返回temp路径，用于记录临时文件，关闭程序时自动删除
 	 */
-	tempPath: (): Promise<string> => invoke('filesystem:tempPath'),
+	tempPath: (): Promise<string> => window.electron.ipcRenderer.invoke('filesystem:tempPath'),
 
 	/**
 	 * 判断path是否存在于磁盘上
@@ -58,6 +59,12 @@ export const filesystem = {
 	 * @remarks 用时 <10ms
 	 */
 	join: (...paths: string[]): Promise<string> => invoke('filesystem:join', ...paths),
+
+	/**
+	 * 拼接并解析绝对路径
+	 * @remarks 用时 <10ms
+	 */
+	resolve: (...paths: string[]): Promise<string> => invoke('filesystem:resolve', ...paths),
 
 	/**
 	 * 获取文件扩展名，如果为目录则返回''
@@ -111,7 +118,146 @@ const to = '/home/user/app/dist';
 // 返回: '../dist'
 	 * ```
 	 */
-	relative: (from: string, to: string): Promise<string> => invoke('filesystem:relative', from, to)
+	relative: (from: string, to: string): Promise<string> =>
+		invoke('filesystem:relative', from, to),
+
+	/**
+	 * 递归创建目录
+	 * @description 如果目录已存在则跳过，最终根据目录是否存在（包括创建完成后）来返回boolean
+	 * @remarks 用时 <10ms
+	 * @param dirPath 要创建的目录路径
+	 * @returns 目录是否存在或创建成功
+	 */
+	createDirectory: (dirPath: string): Promise<boolean> =>
+		invoke('filesystem:createDirectory', dirPath),
+
+	/**
+	 * 使用fast-glob搜索文件和目录
+	 * @remarks 用时与文件数量相关，在5-100ms左右，正常10ms上下
+	 * @description 由于ipc原因，不提供stats选项，需要获取文件状态请使用getSatus
+	 * @param patterns 搜索模式，支持通配符，如 '**\/*.js'
+	 * @param options 搜索选项
+	 * @example
+	 * ```ts
+	 * // 搜索所有js文件
+	 * const files = await filesystem.readDirectory('**\/*.js', { cwd: '/path/to/dir' });
+	 *
+	 * // 只搜索目录
+	 * const dirs = await filesystem.readDirectory('**', { onlyDirectories: true });
+	 *
+	 * // 限制搜索深度
+	 * const shallow = await filesystem.readDirectory('**', { deep: 2 });
+	 *
+	 * // 获取文件统计信息
+	 * const withStats = await filesystem.readDirectory('**\/*.js', { stats: true });
+	 * ```
+	 */
+	readDirectory: (
+		patterns: string | string[],
+		options?: ReadDirectoryOptions
+	): Promise<string[]> => invoke('filesystem:readDirectory', patterns, options),
+
+	/**
+	 * 删除文件或目录
+	 * @remarks 用时 <10ms
+	 * @param targetPath 要删除的文件或目录路径
+	 * @returns 目标是否已不存在
+	 */
+	remove: (targetPath: string): Promise<boolean> => invoke('filesystem:remove', targetPath),
+
+	/**
+	 * 复制文件或目录
+	 * @remarks 用时与文件大小和数量相关
+	 * @param sourcePath 源文件或目录路径
+	 * @param destPath 目标路径
+	 * @param overwrite 是否覆盖已存在的文件或目录，默认为true
+	 * @param filter 过滤函数，返回true表示复制该文件，false表示跳过
+	 */
+	copy: (
+		sourcePath: string,
+		destPath: string,
+		overwrite: boolean = true,
+		filter?: (src: string, dest: string) => boolean
+	): Promise<boolean> => invoke('filesystem:copy', sourcePath, destPath, overwrite, filter),
+
+	/**
+	 * 移动文件或目录
+	 * @remarks 用时与文件大小和数量相关
+	 * @param sourcePath 源文件或目录路径
+	 * @param destPath 目标路径
+	 * @param overwrite 是否覆盖已存在的文件或目录，默认为true
+	 */
+	move: (sourcePath: string, destPath: string, overwrite: boolean = true): Promise<boolean> =>
+		invoke('filesystem:move', sourcePath, destPath, overwrite),
+
+	/**
+	 * 写入文件（如果目录不存在自动则创建）
+	 * @remarks 用时 <10ms
+	 * @param filePath 文件路径
+	 * @param data 要写入的数据
+	 */
+	writeFile: (filePath: string, data: string | ArrayBufferView): Promise<boolean> =>
+		invoke('filesystem:writeFile', filePath, data),
+
+	/**
+	 * 追加内容到文件（如果文件不存在则自动创建）
+	 * @remarks 用时 <10ms
+	 * @param filePath 文件路径
+	 * @param data 要追加的数据
+	 */
+	appendFile: (filePath: string, data: string | Uint8Array): Promise<boolean> =>
+		invoke('filesystem:appendFile', filePath, data),
+
+	readFile,
+
+	/**
+	 * 写入日志
+	 * @remarks 用时 <10ms
+	 */
+	writeLog: (type: 'log' | 'error' | 'warn' | 'info', ...params: any[]): void =>
+		send('filesystem:writeLog', type, ...params)
+}
+
+function readFile(filePath: string, encoding: BufferEncoding): Promise<string>
+function readFile(filePath: string, encoding: 'buffer'): Promise<Buffer>
+function readFile(filePath: string): Promise<Buffer>
+/**
+ * 读取文件内容
+ * @remarks 用时 <10ms
+ * @param filePath 文件路径
+ * @param [encoding='utf-8'] 文件编码
+ */
+function readFile(
+	filePath: string,
+	encoding: BufferEncoding | 'buffer' = 'utf-8'
+): Promise<string | Buffer> {
+	return invoke('filesystem:readFile', filePath, encoding || undefined)
+}
+
+export interface ReadDirectoryOptions {
+	/**
+	 * 指定搜索的起始目录
+	 */
+	cwd?: string
+	/**
+	 * 要忽略的文件或目录模式数组
+	 * @example ['node_modules/**', '*.tmp']
+	 */
+	ignore?: string[]
+	/**
+	 * 是否只搜索文件
+	 */
+	onlyFiles?: boolean
+	/**
+	 * 是否只搜索目录
+	 */
+	onlyDirectories?: boolean
+	/**
+	 * 搜索的最大深度
+	 * @example 1 - 只在指定目录中搜索
+	 * @example 2 - 搜索指定目录及其直接子目录
+	 */
+	deep?: number
 }
 
 export interface Stats extends StatsBase<number> {}
@@ -173,7 +319,7 @@ export interface FormatInputPathObject {
 	name?: string | undefined
 }
 
-export interface ArsrPath {
+export interface ArsrPathString {
 	/**
 	 * arsr根目录
 	 */

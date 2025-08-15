@@ -1,5 +1,6 @@
 import * as pathe from 'pathe'
 import { DebugHelper } from './DebugHelper.ts'
+import { Ipc } from '@renderer/ipc'
 
 export class Path {
 	private readonly _path: string
@@ -36,6 +37,13 @@ export class Path {
 		return new Path(pathe.dirname(this._path))
 	}
 
+	/**
+	 * 是否为绝对路径
+	 */
+	get isAbsolute() {
+		return pathe.isAbsolute(this._path)
+	}
+
 	toString() {
 		return this._path
 	}
@@ -48,64 +56,57 @@ export class Path {
 	}
 
 	/**
-	 * 是否为绝对路径
-	 */
-	isAbsolute() {
-		return pathe.isAbsolute(this._path)
-	}
-
-	/**
-	 * 判断path是否存在于磁盘上，用时300ms左右
+	 * 判断path是否存在于磁盘上
+	 * @remarks 用时 <10ms
 	 */
 	async isExist() {
-		return !!(await this.getSats())
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.isExist, this._path)
+		if (!re.hasError) {
+			return re.result
+		} else {
+			DebugHelper.error(`判断path是否存在失败：`, re.error)
+			return false
+		}
 	}
-
 	/**
 	 * 判断path是否为目录
-	 *
-	 * 如果是.开头的目录，请用stringBased=false来判断，否则会被判断为文件
-	 * @param [stringBased=true] 是否仅使用字符串判断，否则通过后端判断，用时300ms左右
+	 * @remarks 用时 <10ms
 	 */
-	async isDir(stringBased: boolean = true) {
-		if (stringBased) {
-			// 通过字符串判断，检查路径是否以/或\结尾，或者没有扩展名
-			return (
-				this._path.endsWith('/') || this._path.endsWith('\\') || !pathe.extname(this._path)
-			)
+	async isDirectory() {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.isDirectory, this._path)
+		if (!re.hasError) {
+			return re.result
 		} else {
-			// 通过filesystem.getStats判断
-			const re = await this.getSats()
-			return re && re.isDirectory
+			DebugHelper.error(`判断path是否为目录失败：`, re.error)
+			return false
 		}
 	}
 
 	/**
 	 * 判断path是否为文件
-	 *
-	 * 如果是.开头的目录，请用stringBased=false来判断，否则会被判断为文件
-	 * @param [stringBased=true] 是否仅使用字符串判断，否则通过后端判断，用时300ms左右
+	 * @remarks 用时 <10ms
 	 */
-	async isFile(stringBased: boolean = true) {
-		if (stringBased) {
-			// 通过字符串判断，检查路径是否有扩展名且不以/或\结尾
-			return (
-				!this._path.endsWith('/') &&
-				!this._path.endsWith('\\') &&
-				!!pathe.extname(this._path)
-			)
+	async isFile() {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.isFile, this._path)
+		if (!re.hasError) {
+			return re.result
 		} else {
-			// 通过filesystem.getStats判断
-			const re = await this.getSats()
-			return re && re.isFile
+			DebugHelper.error(`判断path是否为文件失败：`, re.error)
+			return false
 		}
 	}
 
-	private async getSats() {
-		try {
-			return await filesystem.getStats(this._path)
-		} catch (e: any) {
-			return false
+	/**
+	 * 获取path的状态信息
+	 * @remarks 用时 <10ms
+	 */
+	async getSats() {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.getSatus, this._path)
+		if (!re.hasError) {
+			return re.result
+		} else {
+			DebugHelper.error(`获取path的状态信息失败：`, re.error)
+			return null
 		}
 	}
 }
@@ -115,24 +116,71 @@ export class Path {
  */
 export class PathHelper {
 	/**
-	 * 当前的工作目录，即exe所在路径
+	 * 返回app的工作目录，正常情况下就是exe所在的目录
 	 */
-	static get appPath() {
-		return new Path(window.NL_CWD)
-	}
-
+	static appPath: Path
 	/**
-	 * 用于储存日志的目录
+	 * 返回arsr所在的路径
 	 */
-	static get logPath() {
-		return this.appPath.join('.log')
-	}
-
+	static arsrPath: ArsrPath
 	/**
-	 * 用于储存临时文件的目录
+	 * 返回userData路径，用于存储用户数据
 	 */
-	static get tempPath() {
-		return this.appPath.join('.tmp')
+	static userPath: Path
+	/**
+	 * 返回logs路径，用于记录日志
+	 */
+	static logsPath: Path
+	/**
+	 * 返回temp路径，用于记录临时文件，关闭程序时自动删除
+	 */
+	static tempPath: Path
+
+	static async init() {
+		const appPath = await DebugHelper.tryExecute(Ipc.filesystem.appPath)
+		if (!appPath.hasError) {
+			DebugHelper.info(`获取appPath成功：`, appPath.result)
+			PathHelper.appPath = new Path(appPath.result)
+		} else {
+			DebugHelper.error(`获取appPath失败：`, appPath.error)
+		}
+
+		const arsrPath = await DebugHelper.tryExecute(Ipc.filesystem.arsrPath)
+		if (!arsrPath.hasError) {
+			DebugHelper.info(`获取arsrPath成功：`, arsrPath.result.root)
+			PathHelper.arsrPath = {
+				root: new Path(arsrPath.result.root),
+				resources: new Path(arsrPath.result.resources),
+				extraResource: new Path(arsrPath.result.extraResource),
+				renderer: new Path(arsrPath.result.renderer)
+			}
+		} else {
+			DebugHelper.error(`获取arsrPath失败：`, arsrPath.error)
+		}
+
+		const userDataPath = await DebugHelper.tryExecute(Ipc.filesystem.userPath)
+		if (!userDataPath.hasError) {
+			DebugHelper.info(`获取userDataPath成功：`, userDataPath.result)
+			PathHelper.userPath = new Path(userDataPath.result)
+		} else {
+			DebugHelper.error(`获取userDataPath失败：`, userDataPath.error)
+		}
+
+		const logsPath = await DebugHelper.tryExecute(Ipc.filesystem.logsPath)
+		if (!logsPath.hasError) {
+			DebugHelper.info(`获取logsPath成功：`, logsPath.result)
+			PathHelper.logsPath = new Path(logsPath.result)
+		} else {
+			DebugHelper.error(`获取logsPath失败：`, logsPath.error)
+		}
+
+		const tempPath = await DebugHelper.tryExecute(Ipc.filesystem.tempPath)
+		if (!tempPath.hasError) {
+			DebugHelper.info(`获取tempPath成功：`, tempPath.result)
+			PathHelper.tempPath = new Path(tempPath.result)
+		} else {
+			DebugHelper.error(`获取tempPath失败：`, tempPath.error)
+		}
 	}
 
 	/**
@@ -167,19 +215,15 @@ export class PathHelper {
 
 	/**
 	 * 递归创建目录
-	 * @description 如果目录已存在，则跳过
-	 * @return 最终path存在则返回true，否则返回false
-	 * @remarks 最短用时300ms左右
+	 * @description 如果目录已存在则跳过，最终根据目录是否存在（包括创建完成后）来返回boolean
+	 * @remarks 用时 <10ms
+	 * @param path 要创建的目录路径
+	 * @returns 目录是否存在或创建成功
 	 */
-	static async createDir(path: Path | string): Promise<boolean> {
-		if (typeof path === 'string') path = new Path(path)
-
-		// 如果目录已存在，则不需要创建
-		if (await path.isExist()) return true
-
-		const re = await DebugHelper.tryExecute(filesystem.createDirectory, path.toString())
+	static async createDirectory(path: Path | string): Promise<boolean> {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.createDirectory, path.toString())
 		if (!re.hasError) {
-			return true
+			return re.result
 		} else {
 			DebugHelper.error(`创建目录失败：`, re.error)
 			return false
@@ -187,21 +231,29 @@ export class PathHelper {
 	}
 
 	/**
-	 * 读取目录内容
-	 * @param path 目录路径
-	 * @param [recursive=true] 是否递归读取子目录
-	 * @remarks 用时300ms-1s左右
+	 * 使用fast-glob搜索文件和目录
+	 * @remarks 用时与文件数量相关，在5-100ms左右，正常10ms上下
+	 * @description 由于ipc原因，不提供stats选项，需要获取文件状态请使用getSatus
+	 * @param path 搜索的路径
+	 * @param [type= 'all'] 搜索的类型
+	 * @param [filter= '**\/*'] 搜索通配符
+	 * @param ignore 忽略的通配符
+	 * @param deep 搜索深度，undefined为无限，1为仅当前目录
 	 */
-	static async readDir(
+	static async readDirectory(
 		path: Path | string,
-		recursive: boolean = true
-	): Promise<filesystem.DirectoryEntry[]> {
-		if (typeof path === 'string') path = new Path(path)
-
-		const re = await DebugHelper.tryExecute(filesystem.readDirectory, path.toString(), {
-			recursive
+		type: 'file' | 'directory' | 'all' = 'all',
+		filter: string | string[] = '**/*',
+		ignore?: string[],
+		deep?: number
+	): Promise<string[]> {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.readDirectory, filter, {
+			cwd: path.toString(),
+			deep,
+			onlyFiles: type === 'file' ? true : undefined,
+			onlyDirectories: type === 'directory' ? true : undefined,
+			ignore
 		})
-
 		if (!re.hasError) {
 			return re.result
 		} else {
@@ -212,12 +264,11 @@ export class PathHelper {
 
 	/**
 	 * 删除文件或目录
-	 * @remarks 用时300ms左右
+	 * @remarks 用时 <10ms
+	 * @returns 目标是否已不存在
 	 */
 	static async remove(path: Path | string): Promise<boolean> {
-		if (typeof path === 'string') path = new Path(path)
-
-		const re = await DebugHelper.tryExecute(filesystem.remove, path.toString())
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.remove, path.toString())
 		if (!re.hasError) {
 			return true
 		} else {
@@ -227,24 +278,13 @@ export class PathHelper {
 	}
 
 	/**
-	 * 写入文本文件。如果文件不存在，则创建一个
+	 * 写入文件（如果目录不存在自动则创建）
+	 * @remarks 用时 <10ms
 	 * @param path 文件路径
-	 * @param data 文件内容
-	 * @description 如果目标路径的父目录不存在，则会自动创建
-	 * @remarks 用时1ms左右
+	 * @param data 要写入的数据
 	 */
-	static async writeFile(path: Path | string, data: string): Promise<boolean> {
-		if (typeof path === 'string') path = new Path(path)
-
-		// 如果父目录不存在，则先创建
-		if (!(await path.parent.isExist())) {
-			if (!(await this.createDir(path.parent))) {
-				DebugHelper.error(`写入文件失败：无法创建目标父目录`, path)
-				return false
-			}
-		}
-
-		const re = await DebugHelper.tryExecute(filesystem.writeFile, path.toString(), data)
+	static async writeFile(path: Path | string, data: string | ArrayBufferView): Promise<boolean> {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.writeFile, path.toString(), data)
 		if (!re.hasError) {
 			return true
 		} else {
@@ -254,16 +294,13 @@ export class PathHelper {
 	}
 
 	/**
-	 * 追加文本到文件。如果文件不存在，则创建一个
+	 * 追加内容到文件（如果文件不存在则自动创建）
+	 * @remarks 用时 <10ms
 	 * @param path 文件路径
-	 * @param data 要追加的内容
-	 * @description 需要自行判断父目录是否存在（毕竟每次都判断的话会影响性能）
-	 * @remarks 创建文件用时1ms左右，追加用时0.6ms左右
+	 * @param data 要追加的数据
 	 */
-	static async appendFile(path: Path | string, data: string): Promise<boolean> {
-		if (typeof path === 'string') path = new Path(path)
-
-		const re = await DebugHelper.tryExecute(filesystem.appendFile, path.toString(), data)
+	static async appendFile(path: Path | string, data: string | Uint8Array): Promise<boolean> {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.appendFile, path.toString(), data)
 		if (!re.hasError) {
 			return true
 		} else {
@@ -273,65 +310,16 @@ export class PathHelper {
 	}
 
 	/**
-	 * 写入二进制文件。如果文件不存在，则创建一个
+	 * 读取文件内容
+	 * @remarks 用时 <10ms
 	 * @param path 文件路径
-	 * @param data 二进制数据
-	 * @description 如果目标路径的父目录不存在，则会自动创建
-	 * @remarks 用时1ms左右
-	 */
-	static async writeBinaryFile(path: Path | string, data: ArrayBuffer): Promise<boolean> {
-		if (typeof path === 'string') path = new Path(path)
-
-		// 如果父目录不存在，则先创建
-		if (!(await path.parent.isExist())) {
-			if (!(await this.createDir(path.parent))) {
-				DebugHelper.error(`写入文件失败：无法创建目标父目录`, path)
-				return false
-			}
-		}
-
-		const re = await DebugHelper.tryExecute(filesystem.writeBinaryFile, path.toString(), data)
-		if (!re.hasError) {
-			return true
-		} else {
-			DebugHelper.error(`写入二进制文件失败：`, re.error)
-			return false
-		}
-	}
-
-	/**
-	 * 追加二进制数据到文件。如果文件不存在，则创建一个
-	 * @param path 文件路径
-	 * @param data 要追加的二进制数据
-	 * @description 需要自行判断父目录是否存在（毕竟每次都判断的话会影响性能）
-	 * @remarks 创建文件用时1ms左右，追加用时0.6ms左右
-	 */
-	static async appendBinaryFile(path: Path | string, data: ArrayBuffer): Promise<boolean> {
-		if (typeof path === 'string') path = new Path(path)
-
-		const re = await DebugHelper.tryExecute(filesystem.appendBinaryFile, path.toString(), data)
-		if (!re.hasError) {
-			return true
-		} else {
-			DebugHelper.error(`追加二进制文件内容失败：`, re.error)
-			return false
-		}
-	}
-
-	/**
-	 * 读取文本文件
-	 * @param path 文件路径
-	 * @param options 选项，可选参数 pos: 文件指针位置（字节），size: 读取缓冲区大小（字节）
-	 * @return 返回null代表读取失败
-	 * @remarks 用时300ms左右
+	 * @param [encoding='utf-8'] 文件编码
 	 */
 	static async readFile(
 		path: Path | string,
-		options?: { pos?: number; size?: number }
-	): Promise<string | null> {
-		if (typeof path === 'string') path = new Path(path)
-
-		const re = await DebugHelper.tryExecute(filesystem.readFile, path.toString(), options)
+		encoding: BufferEncoding | 'buffer' = 'utf-8'
+	): Promise<string | Buffer | null> {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.readFile, path.toString(), encoding)
 		if (!re.hasError) {
 			return re.result
 		} else {
@@ -341,68 +329,26 @@ export class PathHelper {
 	}
 
 	/**
-	 * 读取二进制文件
-	 * @param path 文件路径
-	 * @param options 选项，可选参数 pos: 文件指针位置（字节），size: 读取缓冲区大小（字节）
-	 * @return 返回null代表读取失败
-	 * @remarks 用时300ms左右
-	 */
-	static async readBinaryFile(
-		path: Path | string,
-		options?: { pos?: number; size?: number }
-	): Promise<ArrayBuffer | null> {
-		if (typeof path === 'string') path = new Path(path)
-
-		const re = await DebugHelper.tryExecute(filesystem.readBinaryFile, path.toString(), options)
-		if (!re.hasError) {
-			return re.result
-		} else {
-			DebugHelper.error(`读取二进制文件失败：`, re.error)
-			return null
-		}
-	}
-
-	/**
-	 * 复制文件或目录到新的位置
-	 * @param source 源文件或目录路径
-	 * @param destination 目标路径
-	 * @param [recursive=true] 是否递归复制子目录
-	 * @param [overwrite=true] 是否覆盖同名文件
-	 * @param [skip=false] 是否跳过同名文件
-	 * @description 如果目标路径的父目录不存在，会自动创建
+	 * 复制文件或目录
+	 * @remarks 用时与文件大小和数量相关
+	 * @param sourcePath 源文件或目录路径
+	 * @param destPath 目标路径
+	 * @param overwrite 是否覆盖已存在的文件或目录，默认为true
+	 * @param filter 过滤函数，返回true表示复制该文件，false表示跳过
 	 */
 	static async copy(
-		source: Path | string,
-		destination: Path | string,
-		recursive: boolean = true,
+		sourcePath: Path | string,
+		destPath: Path | string,
 		overwrite: boolean = true,
-		skip: boolean = false
+		filter?: (src: string, dest: string) => boolean
 	): Promise<boolean> {
-		if (typeof source === 'string') source = new Path(source)
-		if (typeof destination === 'string') destination = new Path(destination)
-
-		// 如果目标路径的父目录不存在，则创建
-		if (!(await destination.parent.isExist())) {
-			const createDirResult = await this.createDir(destination.parent)
-			if (!createDirResult) {
-				DebugHelper.error(
-					`复制文件或目录失败：无法创建目标父目录。源路径：${source}, 目标路径：${destination}`
-				)
-				return false
-			}
-		}
-
 		const re = await DebugHelper.tryExecute(
-			filesystem.copy,
-			source.toString(),
-			destination.toString(),
-			{
-				recursive,
-				overwrite,
-				skip
-			}
+			Ipc.filesystem.copy,
+			sourcePath.toString(),
+			destPath.toString(),
+			overwrite,
+			filter
 		)
-
 		if (!re.hasError) {
 			return true
 		} else {
@@ -412,32 +358,23 @@ export class PathHelper {
 	}
 
 	/**
-	 * 移动文件或目录到新的位置
-	 * @param source 源文件或目录路径
-	 * @param destination 目标路径
-	 * @description 如果目标路径的父目录不存在，会自动创建
+	 * 移动文件或目录
+	 * @remarks 用时与文件大小和数量相关
+	 * @param sourcePath 源文件或目录路径
+	 * @param destPath 目标路径
+	 * @param overwrite 是否覆盖已存在的文件或目录，默认为true
 	 */
-	static async move(source: Path | string, destination: Path | string): Promise<boolean> {
-		if (typeof source === 'string') source = new Path(source)
-		if (typeof destination === 'string') destination = new Path(destination)
-
-		// 如果目标路径的父目录不存在，则创建
-		if (!(await destination.parent.isExist())) {
-			const createDirResult = await this.createDir(destination.parent)
-			if (!createDirResult) {
-				DebugHelper.error(
-					`移动文件或目录失败：无法创建目标父目录。源路径：${source}, 目标路径：${destination}`
-				)
-				return false
-			}
-		}
-
+	static async move(
+		sourcePath: Path | string,
+		destPath: Path | string,
+		overwrite: boolean = true
+	): Promise<boolean> {
 		const re = await DebugHelper.tryExecute(
-			filesystem.move,
-			source.toString(),
-			destination.toString()
+			Ipc.filesystem.move,
+			sourcePath.toString(),
+			destPath.toString(),
+			overwrite
 		)
-
 		if (!re.hasError) {
 			return true
 		} else {
@@ -445,4 +382,22 @@ export class PathHelper {
 			return false
 		}
 	}
+}
+export interface ArsrPath {
+	/**
+	 * arsr根目录
+	 */
+	root: Path
+	/**
+	 * arsr资源目录
+	 */
+	resources: Path
+	/**
+	 * arsr的父目录，包含了arsr以及其他extraResource资源
+	 */
+	extraResource: Path
+	/**
+	 * 前端web代码根目录
+	 */
+	renderer: Path
 }

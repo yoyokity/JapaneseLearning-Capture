@@ -1,7 +1,13 @@
 import { app, ipcMain } from 'electron'
 import * as fs from 'node:fs'
+import { appendFileSync, readFileSync } from 'node:fs'
 import * as path from 'node:path'
-import { tryExecuteSync } from './func'
+import { tryExecute, tryExecuteSync } from './func'
+import fg from 'fast-glob'
+import pkg from 'fs-extra'
+import log from 'electron-log'
+
+const { ensureDirSync, removeSync, copySync, moveSync, outputFileSync } = pkg
 
 export const appPath = {
 	root: '',
@@ -12,20 +18,16 @@ export const appPath = {
 }
 
 // 返回app的工作路径
-ipcMain.handle('filesystem:appPath', () => {
-	return tryExecuteSync(() => appPath.root)
-})
+ipcMain.handle('filesystem:appPath', () => appPath.root)
 
 // 返回app的arsr路径
 ipcMain.handle('filesystem:arsrPath', () => {
-	return tryExecuteSync(() => {
-		return {
-			root: appPath.arsr,
-			resources: appPath.resources,
-			extraResource: appPath.extraResource,
-			renderer: appPath.renderer
-		}
-	})
+	return {
+		root: appPath.arsr,
+		resources: appPath.resources,
+		extraResource: appPath.extraResource,
+		renderer: appPath.renderer
+	}
 })
 
 // 返回userData路径
@@ -62,6 +64,11 @@ ipcMain.handle('filesystem:join', (_, ...pathSegments: string[]) => {
 	return tryExecuteSync(path.join, ...pathSegments)
 })
 
+// 路径拼接
+ipcMain.handle('filesystem:resolve', (_, ...pathSegments: string[]) => {
+	return tryExecuteSync(path.resolve, ...pathSegments)
+})
+
 // 获取文件扩展名
 ipcMain.handle('filesystem:extname', (_, filePath: string) => {
 	return tryExecuteSync(path.extname, filePath)
@@ -91,3 +98,140 @@ ipcMain.handle('filesystem:isAbsolute', (_, filePath: string) => {
 ipcMain.handle('filesystem:relative', (_, from: string, to: string) => {
 	return tryExecuteSync(path.relative, from, to)
 })
+
+// 递归创建目录，如果目录已存在则跳过
+ipcMain.handle('filesystem:createDirectory', (_, dirPath: string) => {
+	return tryExecuteSync(() => {
+		if (fs.existsSync(dirPath)) {
+			return true
+		}
+
+		ensureDirSync(dirPath)
+		return fs.existsSync(dirPath)
+	})
+})
+
+// 使用fast-glob搜索文件和目录
+ipcMain.handle(
+	'filesystem:readDirectory',
+	async (
+		_,
+		patterns: string | string[],
+		options: {
+			cwd?: string
+			ignore?: string[]
+			onlyFiles?: boolean
+			onlyDirectories?: boolean
+			deep?: number
+		}
+	) => {
+		return await tryExecute(async () => {
+			const searchOptions = {
+				...options,
+				absolute: true,
+				dot: true,
+				stats: false
+			}
+
+			// 如果没有明确指定只要文件或只要目录，则默认获取两者
+			if (options.onlyFiles === undefined && options.onlyDirectories === undefined) {
+				searchOptions.onlyFiles = false
+			}
+
+			return await fg.glob(patterns, searchOptions)
+		})
+	}
+)
+
+// 删除文件或目录
+ipcMain.handle('filesystem:remove', (_, targetPath: string) => {
+	return tryExecuteSync(() => {
+		if (!fs.existsSync(targetPath)) {
+			return true // 目标已经不存在，视为删除成功
+		}
+
+		removeSync(targetPath)
+
+		// 返回目标是否已不存在（删除成功）
+		return !fs.existsSync(targetPath)
+	})
+})
+
+// 复制文件或目录
+ipcMain.handle(
+	'filesystem:copy',
+	(
+		_,
+		sourcePath: string,
+		destPath: string,
+		overwrite: boolean = true,
+		filter?: (src: string, dest: string) => boolean
+	) => {
+		return tryExecuteSync(() => {
+			const options = {
+				overwrite,
+				filter
+			}
+			copySync(sourcePath, destPath, options)
+			return true
+		})
+	}
+)
+
+// 移动文件或目录
+ipcMain.handle(
+	'filesystem:move',
+	(_, sourcePath: string, destPath: string, overwrite: boolean = true) => {
+		return tryExecuteSync(() => {
+			moveSync(sourcePath, destPath, { overwrite })
+			return true
+		})
+	}
+)
+
+// 写入文件（如果目录不存在则创建）
+ipcMain.handle(
+	'filesystem:writeFile',
+	(_, filePath: string, data: string | NodeJS.ArrayBufferView) => {
+		return tryExecuteSync(() => {
+			outputFileSync(filePath, data)
+			return true
+		})
+	}
+)
+
+// 追加内容到文件（如果文件不存在则创建）
+ipcMain.handle('filesystem:appendFile', (_, filePath: string, data: string | Uint8Array) => {
+	return tryExecuteSync(() => {
+		appendFileSync(filePath, data)
+		return true
+	})
+})
+
+// 读取文件内容
+ipcMain.handle(
+	'filesystem:readFile',
+	(_, filePath: string, encoding: BufferEncoding | 'buffer') => {
+		return tryExecuteSync(() => {
+			if (encoding === 'buffer') {
+				// 如果 encoding 为 null，返回 Buffer
+				return readFileSync(filePath)
+			} else {
+				// 否则使用指定的编码（默认为 'utf-8'）
+				return readFileSync(filePath, encoding)
+			}
+		})
+	}
+)
+
+// 写入log文件
+ipcMain.on(
+	'filesystem:writeLog',
+	(_, type: 'log' | 'error' | 'warn' | 'info', ...params: any[]) => {
+		try {
+			log[type](...params)
+		} catch (e) {
+			console.warn(`log写入失败: [${type}] ${params.join(' ')}`, e)
+		}
+	}
+)

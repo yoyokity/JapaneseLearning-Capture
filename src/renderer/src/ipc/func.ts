@@ -12,3 +12,13 @@ export async function invoke(channel: string, ...args: any[]) {
 		throw re.error
 	}
 }
+
+/**
+ * send的包装函数，用于向主进程发送单向消息
+ * @param channel 消息通道名
+ * @param args 传入参数
+ * @description 该函数不会等待主进程响应，适用于不需要返回值的场景
+ */
+export function send(channel: string, ...args: any[]) {
+	window.electron.ipcRenderer.send(channel, ...args)
+}

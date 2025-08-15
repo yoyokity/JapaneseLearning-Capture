@@ -8,12 +8,12 @@ import PrimeVue from 'primevue/config'
 
 import App from '@renderer/App.vue'
 import { theme } from '@renderer/style/theme'
-import { Ipc } from '@renderer/ipc'
 import { DebugHelper } from '@renderer/helper'
+import { PathHelper } from '@renderer/helper/PathHelper.ts'
 
-console.log(await Ipc.check())
-console.log(await Ipc.filesystem.appPath())
-console.log(await DebugHelper.executeWithTime(Ipc.filesystem.arsrPath))
+DebugHelper.log('============================')
+DebugHelper.log('应用初始化中...')
+await PathHelper.init()
 
 createApp(App)
 	.use(createPinia())
@@ -23,3 +23,5 @@ createApp(App)
 		}
 	})
 	.mount('#app')
+
+DebugHelper.info('应用初始化完成')

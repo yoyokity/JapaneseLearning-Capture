@@ -1,4 +1,4 @@
-import { PathHelper } from './PathHelper.ts'
+import { Ipc } from '@renderer/ipc'
 
 /**
  * debug相关，用于调试、日志记录等
@@ -7,17 +7,17 @@ export class DebugHelper {
 	/**
 	 * 打印成功的日志
 	 */
-	static success(...args: any[]) {
+	static info(...args: any[]) {
 		console.info(...args)
-		this.writeLog('success', args.join(' '))
+		Ipc.filesystem.writeLog('info', ...args)
 	}
 
 	/**
 	 * 打印信息日志
 	 */
-	static info(...args: any[]) {
+	static log(...args: any[]) {
 		console.log(...args)
-		this.writeLog('info', args.join(' '))
+		Ipc.filesystem.writeLog('log', ...args)
 	}
 
 	/**
@@ -25,7 +25,7 @@ export class DebugHelper {
 	 */
 	static warn(...args: any[]) {
 		console.warn(...args)
-		this.writeLog('warn', args.join(' '))
+		Ipc.filesystem.writeLog('warn', ...args)
 	}
 
 	/**
@@ -33,20 +33,7 @@ export class DebugHelper {
 	 */
 	static error(...args: any[]) {
 		console.error(...args)
-
-		let text = args
-			.map((arg) => {
-				if (arg === null) return 'null'
-				if (arg === undefined) return 'undefined'
-				//处理Error
-				if (arg instanceof Error) return `${arg.stack}`
-				//处理Neutralino Error
-				if (typeof arg === 'object' && 'message' in arg && 'code' in arg) return arg.message
-				return arg.toString()
-			})
-			.join(' ')
-
-		this.writeLog('error', text)
+		Ipc.filesystem.writeLog('error', ...args)
 	}
 
 	/**
@@ -137,29 +124,5 @@ export class DebugHelper {
 				error
 			}
 		}
-	}
-
-	private static writeLog(type: 'success' | 'info' | 'warn' | 'error', data: string) {
-		const now = new Date()
-
-		const year = now.getFullYear()
-		const month = (now.getMonth() + 1).toString().padStart(2, '0')
-		const day = now.getDate().toString().padStart(2, '0')
-		const hour = now.getHours().toString().padStart(2, '0')
-		const minute = now.getMinutes().toString().padStart(2, '0')
-		const second = now.getSeconds().toString().padStart(2, '0')
-		const millisecond = now.getMilliseconds().toString().padStart(3, '0')
-
-		const fileName = `${year}-${month}-${day}`
-		const filePath = PathHelper.logPath.join(`${fileName}.log`)
-
-		const timeStr = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`
-
-		let text = `[${timeStr}] [${type.toUpperCase()}] ${data}\n`
-		console.log(text)
-
-		// this.queue.add(async () => {
-		// 	await PathHelper.appendFile(filePath, text)
-		// })
 	}
 }
