@@ -160,7 +160,7 @@ const translators = {
 			system_instruction: {
 				parts: [
 					{
-						text: `你是一个翻译助手，你会讲我说的话翻译成${targetLanguage}。同时不要返回md格式，按照原文的排版格式，返回纯文本给我。标点符号之类的转为${targetLanguage}的标点。`
+						text: `你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。同时不要返回md格式，按照原文的排版格式，返回纯文本给我。标点符号之类的转为${targetLanguage}的标点。`
 					}
 				]
 			},
