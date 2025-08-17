@@ -56,9 +56,9 @@ export class NetHelper {
 		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
 		const settings = settingsStore()
-		let timeout = settings.net.timeout
-		let delay = settings.net.delay
-		let retry = settings.net.retry
+		let timeout: number = settings.net.timeout
+		let delay: number = settings.net.delay
+		let retry: number = settings.net.retry
 
 		if (options) {
 			timeout = options.timeout || timeout
@@ -135,9 +135,9 @@ export class NetHelper {
 		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
 		const settings = settingsStore()
-		let timeout = settings.net.timeout
-		let delay = settings.net.delay
-		let retry = settings.net.retry
+		let timeout: number = settings.net.timeout
+		let delay: number = settings.net.delay
+		let retry: number = settings.net.retry
 
 		if (options) {
 			timeout = options.timeout || timeout
@@ -197,13 +197,13 @@ export interface IRequestOptions {
 	/**
 	 * 请求超时时间
 	 */
-	timeout: number
+	timeout?: number
 	/**
 	 * 重试次数
 	 */
-	retry: number
+	retry?: number
 	/**
 	 * 每次相同网站的请求间隔
 	 */
-	delay: number
+	delay?: number
 }

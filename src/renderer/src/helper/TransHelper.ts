@@ -1,6 +1,7 @@
 import { toSimplified } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
+import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
 
 // 注入短语库，提高准确性
 setupEnhance()
@@ -36,37 +37,93 @@ export class TransHelper {
 
 const translators = {
 	google: async (s_text: string, targetLanguage = 'zh-CN'): Promise<string> => {
-		const url = [
-			`https://translate.google.com/translate_a/single`,
-			'?client=at',
-			'&dt=t',
-			'&dt=rm',
-			'&dj=1'
-		].join('')
-		const headers = {
-			'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
-		}
-		const form = {
-			sl: 'auto',
-			tl: targetLanguage,
-			q: s_text
+		const translateOptions = {
+			from: 'auto',
+			to: targetLanguage,
+			hl: 'zh-CN', // Host language
+			tld: 'com',
+			rpcids: 'MkEWBc'
 		}
 
-		const re = await NetHelper.post(url, form, 'text', false, headers)
+		//url
+		const searchParams = new URLSearchParams({
+			rpcids: translateOptions.rpcids,
+			'source-path': '/',
+			hl: translateOptions.hl,
+			'soc-app': '1',
+			'soc-platform': '1',
+			'soc-device': '1'
+		})
+		const url = `https://translate.google.${translateOptions.tld}/_/TranslateWebserverUi/data/batchexecute?${searchParams}`
+
+		//body
+		const normalizedText = escapeSpecialSymbols(s_text.trim())
+		const encodedData = encodeURIComponent(
+			`[[["${translateOptions.rpcids}","[[\\"${normalizedText}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
+		)
+		const body = `f.req=${encodedData}&`
+
+		//headers
+		const headers = {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'Content-Length': String(body.length)
+		}
+
+		const re = await NetHelper.post(url, body, 'text', headers, {
+			delay: 1000
+		})
+
 		if (re.ok) {
-			let sentences = re.body['sentences']
-			if (sentences.length === 2) {
-				return sentences[0].trans
-			} else {
-				let text = ''
-				for (let i = 0; i < sentences.length - 1; i++) {
-					text += sentences[i].trans
-				}
-				return text
+			try {
+				return normaliseResponse(re.body).text
+			} catch (e) {
+				DebugHelper.error(`google翻译返回内容解析失败：`, re.body, e)
 			}
 		}
 
 		// 翻译失败则原文返回
 		return s_text
+
+		function parseData(data: string) {
+			try {
+				const content = JSON.parse(data.replace(/^\)]}'/, ''))
+				const translationResponse = JSON.parse(content[0][2])
+
+				return translationResponse
+			} catch (e) {
+				throw new Error('Data is either empty or corrupted')
+			}
+		}
+
+		function normaliseResponse(rawBody: string) {
+			const data = parseData(rawBody)
+			const translatedPhrases = data[1][0][0][5] as Array<[string]>
+			const text = translatedPhrases.reduce((fullText, [textBlock]) => {
+				return fullText ? `${fullText} ${textBlock}` : textBlock
+			}, '')
+
+			return {
+				text,
+				pronunciation: data[1][0][0][1],
+				from: {
+					language: {
+						didYouMean: Boolean(data[0][1]),
+						iso: data[2]
+					},
+					text: {
+						pronunciation: data[0][0],
+						autoCorrected: Boolean(data[0][1]),
+						value: data[0][6][0],
+						didYouMean: data[0][1] ? data[0][1][0][4] : null
+					}
+				}
+			}
+		}
 	}
 } as const
+
+//转义特殊符号
+function escapeSpecialSymbols(inputString: string): string {
+	const escapedString = inputString.replace(/"/g, '\\\\\\$&')
+	return escapedString.replace(/\r\n|\r|\n/g, '\\\\n')
+}

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { reactive, watch } from 'vue'
-import { IRequestOptions, NetHelper } from '@renderer/helper'
+import { NetHelper } from '@renderer/helper'
 
 export const settingsStore = defineStore(
 	'settings',
@@ -27,7 +27,7 @@ export const settingsStore = defineStore(
 		)
 
 		// 网络
-		const net = reactive<IRequestOptions>({
+		const net = reactive({
 			/**
 			 * 请求超时时间
 			 */
