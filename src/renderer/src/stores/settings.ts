@@ -10,14 +10,14 @@ export const settingsStore = defineStore(
 		const proxy = reactive({
 			enable: true,
 			host: '127.0.0.1',
-			port: '7890'
+			port: 7890
 		})
 
 		// 监听 proxy 的变化，自动设置
 		watch(
 			proxy,
 			(newValue) => {
-				NetHelper.setProxy(newValue.enable, newValue.host, newValue.port)
+				NetHelper.setProxy(newValue.enable, newValue.host, newValue.port.toString())
 			},
 			{
 				// 在 Store 初始化时立即执行一次，并监听后续变化
@@ -51,6 +51,11 @@ export const settingsStore = defineStore(
 			gemini: {
 				apiKey: '',
 				model: 'gemini-2.5-flash-lite'
+			},
+			localLLM: {
+				host: '127.0.0.1',
+				port: 1234,
+				model: ''
 			}
 		})
 

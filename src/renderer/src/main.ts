@@ -15,8 +15,9 @@ DebugHelper.log('============================')
 DebugHelper.log('应用初始化中...')
 await PathHelper.init()
 
+const pinia = createPinia().use(piniaPluginPersistedstate)
 createApp(App)
-	.use(createPinia().use(piniaPluginPersistedstate))
+	.use(pinia)
 	.use(PrimeVue, {
 		theme: {
 			preset: theme

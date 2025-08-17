@@ -17,6 +17,16 @@ export interface ITranslateSettings {
 		apiKey: string
 		model: string
 	}
+	localLLM: {
+		port: number
+		model: string
+		host: string
+	}
+}
+
+export interface ITranslateResult {
+	ok: boolean
+	text: string
 }
 
 /**
@@ -34,13 +44,37 @@ export class TransHelper {
 	 * 翻译
 	 * @return 如果翻译失败，则返回原文
 	 */
-	static async translate(text: string) {
+	static async translate(text: string): Promise<ITranslateResult> {
 		const settings = settingsStore()
-		if (!settings.translate.enable) return text
+		if (!settings.translate.enable) return { ok: true, text }
 		return await translators[settings.translate.translateEngine](
 			text,
 			settings.translate.targetLanguage
 		)
+	}
+
+	/**
+	 * 获取本地所有翻译模型
+	 */
+	static async getLLMModels(): Promise<[]> {
+		const settings = settingsStore()
+		const re = await NetHelper.get(
+			`http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1/models`,
+			'json'
+		)
+
+		if (re.ok) {
+			try {
+				return re.body.data.map((item: any) => {
+					return item.id
+				})
+			} catch (e) {
+				DebugHelper.error(`获取LLM模型失败：`, e)
+			}
+		}
+
+		DebugHelper.error(`获取LLM模型失败：`, re)
+		return []
 	}
 
 	/**
@@ -59,7 +93,7 @@ export class TransHelper {
 }
 
 const translators = {
-	google: async (s_text: string, targetLanguage = 'zh-CN'): Promise<string> => {
+	google: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
 		const translateOptions = {
 			from: 'auto',
 			to: targetLanguage,
@@ -98,14 +132,18 @@ const translators = {
 
 		if (re.ok) {
 			try {
-				return normaliseResponse(re.body).text
+				const text = normaliseResponse(re.body).text.trim()
+				return {
+					ok: true,
+					text
+				}
 			} catch (e) {
 				DebugHelper.error(`google翻译返回内容解析失败：`, re.body, e)
 			}
 		}
 
 		// 翻译失败则原文返回
-		return s_text
+		return { ok: false, text: s_text }
 
 		function parseData(data: string) {
 			try {
@@ -143,7 +181,7 @@ const translators = {
 			}
 		}
 	},
-	gemini: async (s_text: string, targetLanguage = 'zh-CN'): Promise<string> => {
+	gemini: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
 		const settings = settingsStore()
 
 		//url
@@ -168,7 +206,7 @@ const translators = {
 				{
 					parts: [
 						{
-							text: `${escapeSpecialSymbols(s_text)} `
+							text: escapeSpecialSymbols(s_text)
 						}
 					]
 				}
@@ -185,14 +223,68 @@ const translators = {
 					throw new Error('布豪！翻译结果包含违禁词，傻逼谷歌不给返回力！')
 				}
 
-				return re.body['candidates'][0]['content']['parts'][0]['text']
+				const text = parseLLM(
+					re.body['candidates'][0]['content']['parts'][0]['text']
+				).trim()
+				return {
+					ok: true,
+					text
+				}
 			} catch (e) {
 				DebugHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
 			}
 		}
 
 		// 翻译失败则原文返回
-		return s_text
+		return { ok: false, text: s_text }
+	},
+	localLLM: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
+		const settings = settingsStore()
+
+		//url
+		const url = `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1/chat/completions`
+
+		//headers
+		const headers = {
+			'Content-Type': 'application/json'
+		}
+
+		//body
+		const body = {
+			model: settings.translate.localLLM.model,
+			messages: [
+				{
+					role: 'system',
+					content: `你是一个翻译模型，可以通顺地使用给定的术语表以指定的风格将原文翻译成${targetLanguage}，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的特殊符号，也不要擅自增加或减少换行。`
+				},
+				{
+					role: 'user',
+					content: escapeSpecialSymbols(s_text)
+				}
+			],
+			temperature: 0.3,
+			max_tokens: -1,
+			stream: false
+		}
+
+		const re = await NetHelper.post(url, body, 'json', headers, {
+			delay: 500
+		})
+
+		if (re.ok) {
+			try {
+				const text = parseLLM(re.body['choices'][0]['message']['content']).trim()
+				return {
+					ok: true,
+					text
+				}
+			} catch (e) {
+				DebugHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
+			}
+		}
+
+		// 翻译失败则原文返回
+		return { ok: false, text: s_text }
 	}
 } as const
 
@@ -200,4 +292,18 @@ const translators = {
 function escapeSpecialSymbols(inputString: string): string {
 	const escapedString = inputString.trim().replace(/"/g, '\\\\\\$&')
 	return escapedString.replace(/\r\n|\r|\n/g, '\\\\n')
+}
+
+function parseLLM(inputString: string) {
+	// 检查文本是否包含<think>标签
+	const thinkRegex = /<think>([\s\S]*?)<\/think>\n?([\s\S]*)/
+	const match = inputString.match(thinkRegex)
+
+	// 如果匹配到<think>标签，则返回</think>后面的文本
+	if (match && match[2]) {
+		return match[2].trim()
+	}
+
+	// 如果没有匹配到<think>标签，则返回原文
+	return inputString
 }
