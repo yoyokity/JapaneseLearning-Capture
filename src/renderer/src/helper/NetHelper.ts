@@ -3,14 +3,16 @@ import { Ipc } from '@renderer/ipc'
 import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
 import { IFetchOptions, IFetchParse, IResult, ParseResultType } from '@renderer/ipc/net.ts'
 
+/**
+ * 网络相关
+ */
 export class NetHelper {
 	/**
 	 * 设置代理
 	 */
-	static async setProxy() {
-		const settings = settingsStore()
-		if (settings.proxy.enable && settings.proxy.host && settings.proxy.port) {
-			const proxyRules = `http://${settings.proxy.host}:${settings.proxy.port}`
+	static async setProxy(enable: boolean, host: string, port: string) {
+		if (enable && host && port) {
+			const proxyRules = `http://${host}:${port}`
 			const proxyBypassRules = 'localhost'
 
 			const re = await DebugHelper.tryExecute(Ipc.net.setProxy, {
@@ -36,8 +38,8 @@ export class NetHelper {
 	 * GET请求
 	 * @param url
 	 * @param [parse='text'] 将返回的body数据解析成什么类型
-	 * @param [interval=true] 是否启用间隔，启用后相同host的请求会有个最小间隔时间，以免爬虫被ban（图片之类的资源一般不用启用）
 	 * @param headers
+	 * @param [options] 请求选项，当前请求会覆盖掉settings设置的
 	 * @return 只有status在200-299之间，ok字段才为true
 	 * @example
 	 * ```ts
@@ -50,13 +52,20 @@ export class NetHelper {
 	static async get<P extends IFetchParse>(
 		url: string,
 		parse: P = 'text' as P,
-		interval = true,
-		headers?: Record<string, string>
+		headers?: Record<string, string>,
+		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
 		const settings = settingsStore()
-		const timeout = settings.net.timeout
-		const delay = settings.net.delay
-		const retry = settings.net.retry
+		let timeout = settings.net.timeout
+		let delay = settings.net.delay
+		let retry = settings.net.retry
+
+		if (options) {
+			timeout = options.timeout || timeout
+			delay = options.delay || delay
+			retry = options.retry || retry
+		}
+
 		const config: IFetchOptions = {
 			headers,
 			timeout,
@@ -72,7 +81,7 @@ export class NetHelper {
 				DebugHelper.warn(`GET请求重试第${retryCount}次：${url}`)
 			}
 
-			if (interval) {
+			if (retry > 0) {
 				const hostName = new URL(url).hostname
 				re = await DebugHelper.queueWithInterval(hostName, delay, false, async () =>
 					DebugHelper.tryExecute(async () => await Ipc.net.get(url, config))
@@ -107,8 +116,8 @@ export class NetHelper {
 	 * @param url
 	 * @param data 请求体body数据
 	 * @param [parse='text'] 将返回的body数据解析成什么类型
-	 * @param [interval=true] 是否启用间隔，启用后相同host的请求会有个最小间隔时间，以免爬虫被ban
 	 * @param headers
+	 * @param [options] 请求选项，当前请求会覆盖掉settings设置的
 	 * @return 只有status在200-299之间，ok字段才为true
 	 * @example
 	 * ```ts
@@ -122,13 +131,20 @@ export class NetHelper {
 		url: string,
 		data: any,
 		parse: P = 'text' as P,
-		interval = true,
-		headers?: Record<string, string>
+		headers?: Record<string, string>,
+		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
 		const settings = settingsStore()
-		const timeout = settings.net.timeout
-		const delay = settings.net.delay
-		const retry = settings.net.retry
+		let timeout = settings.net.timeout
+		let delay = settings.net.delay
+		let retry = settings.net.retry
+
+		if (options) {
+			timeout = options.timeout || timeout
+			delay = options.delay || delay
+			retry = options.retry || retry
+		}
+
 		const config: IFetchOptions = {
 			headers,
 			timeout,
@@ -144,7 +160,7 @@ export class NetHelper {
 				DebugHelper.warn(`POST请求重试第${retryCount}次：${url}`)
 			}
 
-			if (interval) {
+			if (retry > 0) {
 				const hostName = new URL(url).hostname
 				re = await DebugHelper.queueWithInterval(hostName, delay, false, async () =>
 					DebugHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
@@ -157,6 +173,8 @@ export class NetHelper {
 				const result = re.result as IResult<ParseResultType<P>>
 				if (result.ok) {
 					return result
+				} else {
+					DebugHelper.warn(`POST请求失败：${url}`, re.result)
 				}
 			} else {
 				DebugHelper.error(`POST请求失败：${url}`, re.error)
@@ -173,4 +191,19 @@ export class NetHelper {
 			body: undefined as any
 		}
 	}
+}
+
+export interface IRequestOptions {
+	/**
+	 * 请求超时时间
+	 */
+	timeout: number
+	/**
+	 * 重试次数
+	 */
+	retry: number
+	/**
+	 * 每次相同网站的请求间隔
+	 */
+	delay: number
 }

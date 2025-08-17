@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
+import { IRequestOptions, NetHelper } from '@renderer/helper'
 
 export const settingsStore = defineStore(
 	'settings',
@@ -11,8 +12,22 @@ export const settingsStore = defineStore(
 			port: '7890'
 		})
 
+		// 监听 proxy 的变化，自动设置
+		watch(
+			proxy,
+			(newValue) => {
+				NetHelper.setProxy(newValue.enable, newValue.host, newValue.port)
+			},
+			{
+				// 在 Store 初始化时立即执行一次，并监听后续变化
+				immediate: true,
+				// 深度监听，确保所有嵌套属性的变化都能被捕获
+				deep: true
+			}
+		)
+
 		// 网络
-		const net = reactive({
+		const net = reactive<IRequestOptions>({
 			/**
 			 * 请求超时时间
 			 */

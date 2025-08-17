@@ -1,6 +1,6 @@
 import { toSimplified } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
-import { HttpHelper } from './HttpHelper.ts'
+import { NetHelper } from '@renderer/helper/NetHelper.ts'
 
 // 注入短语库，提高准确性
 setupEnhance()
@@ -52,10 +52,9 @@ const translators = {
 			q: s_text
 		}
 
-		const session = HttpHelper.create('')
-		const res = await session.post<any>(url, form, headers)
-		if (res !== null) {
-			let sentences = res['sentences']
+		const re = await NetHelper.post(url, form, 'text', false, headers)
+		if (re.ok) {
+			let sentences = re.body['sentences']
 			if (sentences.length === 2) {
 				return sentences[0].trans
 			} else {
