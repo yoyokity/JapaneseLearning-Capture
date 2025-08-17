@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { reactive, watch } from 'vue'
 import { NetHelper } from '@renderer/helper'
+import { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
 export const settingsStore = defineStore(
 	'settings',
@@ -42,9 +43,21 @@ export const settingsStore = defineStore(
 			delay: 3000
 		})
 
+		//翻译
+		const translate = reactive<ITranslateSettings>({
+			enable: false,
+			targetLanguage: 'zh-CN',
+			translateEngine: 'google',
+			gemini: {
+				apiKey: '',
+				model: 'gemini-2.5-flash-lite'
+			}
+		})
+
 		return {
 			proxy,
-			net
+			net,
+			translate
 		}
 	},
 	{
