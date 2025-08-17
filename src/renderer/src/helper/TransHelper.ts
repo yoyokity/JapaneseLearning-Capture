@@ -91,7 +91,7 @@ const translators = {
 
 				return translationResponse
 			} catch (e) {
-				throw new Error('Data is either empty or corrupted')
+				throw new Error('数据为空或损坏')
 			}
 		}
 
