@@ -26,7 +26,7 @@ export const filesystem = {
 	 * 获取path状态信息
 	 * @remarks 用时 <10ms
 	 */
-	getSatus: (path: string): Promise<Stats> => invoke('filesystem:getStatus', path),
+	getSatus: (path: string): Promise<IStats> => invoke('filesystem:getStatus', path),
 
 	/**
 	 * 路径拼接
@@ -71,7 +71,7 @@ export const filesystem = {
 	 * @remarks 用时 <10ms
 	 * @param pathObject 包含路径组件的对象
 	 */
-	format: (pathObject: FormatInputPathObject): Promise<string> =>
+	format: (pathObject: IFormatInputPathObject): Promise<string> =>
 		invoke('filesystem:format', pathObject),
 
 	/**
@@ -234,8 +234,8 @@ export interface ReadDirectoryOptions {
 	deep?: number
 }
 
-export interface Stats extends StatsBase<number> {}
-interface StatsBase<T> {
+export interface IStats extends IStatsBase<number> {}
+interface IStatsBase<T> {
 	dev: T
 	ino: T
 	mode: T
@@ -270,7 +270,7 @@ interface StatsBase<T> {
 	isSocket(): boolean
 }
 
-export interface FormatInputPathObject {
+export interface IFormatInputPathObject {
 	/**
 	 * 路径的根部分，例如 '/' 或 'c:\'
 	 */

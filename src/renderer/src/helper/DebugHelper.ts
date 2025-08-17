@@ -1,9 +1,20 @@
 import { Ipc } from '@renderer/ipc'
+import PQueue from 'p-queue'
+import { delay } from 'es-toolkit'
 
 /**
  * debug相关，用于调试、日志记录等
  */
 export class DebugHelper {
+	/**
+	 * 任务队列映射，用于存储不同任务名称的队列
+	 */
+	private static _taskQueues: Map<string, PQueue> = new Map()
+	/**
+	 * 任务最后执行时间映射
+	 */
+	private static _lastExecutionTimes: Map<string, number> = new Map()
+
 	/**
 	 * 打印成功的日志
 	 */
@@ -124,5 +135,72 @@ export class DebugHelper {
 				error
 			}
 		}
+	}
+
+	/**
+	 * 使用队列执行函数，确保同名任务之间的执行间隔不小于指定时间
+	 * @param [taskName='default'] 任务名称，相同名称的任务会共享同一个队列和间隔限制
+	 * @param [intervalMs=3000] 最小间隔时间（毫秒）
+	 * @param [updateTimeAfterExecution=true] 是否在任务执行后更新最后执行时间，true表示在任务结束时更新，false表示在任务开始时更新
+	 * @param fn 要执行的函数
+	 * @param args 函数参数
+	 * @returns 函数执行的结果
+	 * @example
+	 * ```ts
+	 * // 确保名为"api-call"的任务每次执行间隔至少为1000毫秒
+	 * const result = await DebugHelper.queueWithInterval(
+	 *   "api-call",
+	 *   1000,
+	 *   fetchData,
+	 *   param1, param2
+	 * );
+	 * ```
+	 */
+	static async queueWithInterval<T>(
+		taskName: string = 'default',
+		intervalMs: number = 3000,
+		updateTimeAfterExecution: boolean = true,
+		fn: (...args: any[]) => T | Promise<T>,
+		...args: any[]
+	): Promise<T> {
+		// 获取或创建任务队列
+		if (!this._taskQueues.has(taskName)) {
+			this._taskQueues.set(taskName, new PQueue({ concurrency: 1 }))
+			this._lastExecutionTimes.set(taskName, 0)
+		}
+
+		const queue = this._taskQueues.get(taskName)!
+		const lastExecutionTime = this._lastExecutionTimes.get(taskName)!
+
+		// 创建一个任务函数，用于在队列中执行
+		const task = async (): Promise<T> => {
+			const now = Date.now()
+			const timeSinceLastExecution = now - lastExecutionTime
+
+			// 如果距离上次执行时间不足指定间隔，则等待
+			if (timeSinceLastExecution < intervalMs) {
+				const waitTime = intervalMs - timeSinceLastExecution
+				await delay(waitTime)
+			}
+
+			// 如果选择在任务开始时更新最后执行时间
+			if (!updateTimeAfterExecution) {
+				this._lastExecutionTimes.set(taskName, Date.now())
+			}
+
+			// 执行函数
+			const result = await fn(...args)
+
+			// 如果选择在任务结束时更新最后执行时间
+			if (updateTimeAfterExecution) {
+				this._lastExecutionTimes.set(taskName, Date.now())
+			}
+
+			return result
+		}
+
+		// 添加任务到队列并返回结果
+		// 使用类型断言确保返回类型正确
+		return queue.add(task) as Promise<T>
 	}
 }

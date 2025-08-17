@@ -15,6 +15,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "electron-fetch": "^1.9.1",
     "electron-log": "^5.4.2",
     "electron-store": "^10.1.0",
     "electron-updater": "^6.3.9",
@@ -39,8 +40,10 @@
     "electron-icon-builder": "^2.0.1",
     "electron-vite": "^4.0.0",
     "es-toolkit": "^1.39.9",
+    "p-queue": "^8.1.0",
     "pathe": "^2.0.3",
     "pinia": "^3.0.3",
+    "pinia-plugin-persistedstate": "^4.5.0",
     "prettier": "^3.6.2",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.7",

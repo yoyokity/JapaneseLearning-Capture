@@ -122,7 +122,7 @@ export class PathHelper {
 	/**
 	 * 返回arsr所在的路径
 	 */
-	static arsrPath: ArsrPath
+	static arsrPath: IArsrPath
 	/**
 	 * 返回userData路径，用于存储用户数据
 	 */
@@ -383,7 +383,7 @@ export class PathHelper {
 		}
 	}
 }
-export interface ArsrPath {
+export interface IArsrPath {
 	/**
 	 * arsr根目录
 	 */
