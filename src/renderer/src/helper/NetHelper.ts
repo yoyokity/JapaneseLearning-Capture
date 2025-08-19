@@ -56,14 +56,14 @@ export class NetHelper {
 		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
 		const settings = settingsStore()
-		let timeout: number = settings.net.timeout
+		let timeout: number = settings.net.timeout * 1000
 		let delay: number = settings.net.delay
 		let retry: number = settings.net.retry
 
 		if (options) {
-			timeout = options.timeout || timeout
-			delay = options.delay || delay
-			retry = options.retry || retry
+			timeout = options.timeout || options.timeout === 0 ? options.timeout : timeout
+			delay = options.delay || options.delay === 0 ? options.delay : delay
+			retry = options.retry || options.retry === 0 ? options.retry : retry
 		}
 
 		const config: IFetchOptions = {
@@ -135,14 +135,14 @@ export class NetHelper {
 		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
 		const settings = settingsStore()
-		let timeout: number = settings.net.timeout
+		let timeout: number = settings.net.timeout * 1000
 		let delay: number = settings.net.delay
 		let retry: number = settings.net.retry
 
 		if (options) {
-			timeout = options.timeout || timeout
-			delay = options.delay || delay
-			retry = options.retry || retry
+			timeout = options.timeout || options.timeout === 0 ? options.timeout : timeout
+			delay = options.delay || options.delay === 0 ? options.delay : delay
+			retry = options.retry || options.retry === 0 ? options.retry : retry
 		}
 
 		const config: IFetchOptions = {

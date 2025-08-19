@@ -135,8 +135,10 @@ ipcMain.handle(
  * 取消defaultSession的代理设置
  */
 ipcMain.handle('net:clearProxy', async () => {
-	return await tryExecute(session.defaultSession.setProxy, {
-		mode: 'direct'
+	return await tryExecute(async () => {
+		await session.defaultSession.setProxy({
+			mode: 'direct'
+		})
 	})
 })
 

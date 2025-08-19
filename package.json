@@ -8,9 +8,11 @@
   "scripts": {
     "start": "electron-vite preview --outDir=dist",
     "dev": "electron-vite dev --outDir=dist",
+    "build": "npm run build:icons && npm run build:vite",
+    "build:vite": "electron-vite build --outDir=dist",
     "build:icons": "electron-icon-builder --input=./resources/icon.png --output=./build -f",
-    "package": "npm run build:icons && electron-vite build --outDir=dist && electron-forge package",
-    "make ": "npm run build:icons && electron-vite build --outDir=dist && electron-forge make"
+    "package": "npm run build && electron-forge package",
+    "make ": "npm run build && electron-forge make"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

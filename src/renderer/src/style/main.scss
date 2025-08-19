@@ -1,31 +1,33 @@
 //全局变量
 :root {
+  --header-height: 4rem; // 头部高度
   --animation-type: cubic-bezier(0.32, 0.72, 0, 1); //动画
   --border-radius: 0.5rem; //圆角
-  --separator: 1px solid var(--p-surface-200); //分割线
+  --separator: 1px solid var(--p-content-border-color); //分割线
 }
 
-
 @font-face {
-  font-family: "PingFang SC";
-  src: url("../assets/pingfang.ttf") format("truetype");
+  font-family: 'PingFang SC';
+  src: url('../assets/pingfang.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
 
-:root {
-  font-family: "PingFang SC", system-ui, Avenir, Helvetica, Arial, sans-serif;
+:root,
+button {
+  font-family: 'PingFang SC', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
 }
-
 
 html,
 body {
+  font-size: 15px;
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
   overflow: hidden;
   user-select: none;
+  color: var(--p-text-color);
 }
 
 #app {

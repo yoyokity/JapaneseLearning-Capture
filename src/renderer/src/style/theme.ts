@@ -37,6 +37,29 @@ export const theme = definePreset(Theme, {
 					inverseColor: '#ffffff',
 					hoverColor: '{primary.300}',
 					activeColor: '{primary.500}'
+				},
+				formField: {
+					shadow: 'initial', //去除控件阴影
+					borderRadius: 'var(--border-radius)' //控件圆角
+				},
+				text: {
+					// 次要文字颜色
+					muted: {
+						color: '{surface.400}',
+						hoverColor: '{surface.500}'
+					}
+				}
+			}
+		}
+	},
+	components: {
+		// 滚动页面
+		scrollpanel: {
+			colorScheme: {
+				light: {
+					bar: {
+						background: '{surface.200}'
+					}
 				}
 			}
 		}

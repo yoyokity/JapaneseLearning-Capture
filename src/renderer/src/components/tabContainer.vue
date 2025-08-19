@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
+import SettingsView from '@renderer/components/settingsView/settingsView.vue'
 
 const tabs = [
 	{ id: 'main', name: '刮削', icon: 'pi pi-search' },
@@ -42,7 +43,9 @@ function switchTab(tabId: string) {
 					<h2>234</h2>
 					<div class="mcp-container">、</div>
 				</div>
-				<div v-else-if="activeTab === 'settings'" key="settings" class="tab-content"></div>
+				<div v-else-if="activeTab === 'settings'" key="settings" class="tab-content">
+					<SettingsView />
+				</div>
 			</transition>
 		</div>
 	</div>

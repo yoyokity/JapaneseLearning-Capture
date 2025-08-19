@@ -32,7 +32,7 @@ export const settingsStore = defineStore(
 			/**
 			 * 请求超时时间
 			 */
-			timeout: 7000,
+			timeout: 7,
 			/**
 			 * 重试次数
 			 */
@@ -46,6 +46,7 @@ export const settingsStore = defineStore(
 		//翻译
 		const translate = reactive<ITranslateSettings>({
 			enable: false,
+			retryWithGoogle: true,
 			targetLanguage: 'zh-CN',
 			translateEngine: 'google',
 			gemini: {
