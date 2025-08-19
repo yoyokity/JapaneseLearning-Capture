@@ -68,7 +68,7 @@ importers:
         version: 24.2.1
       '@vitejs/plugin-vue':
         specifier: ^6.0.0
-        version: 6.0.1(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0))(vue@3.5.18(typescript@5.9.2))
+        version: 6.0.1(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))
       chinese-simple2traditional:
         specifier: ^2.2.2
         version: 2.2.2
@@ -80,7 +80,7 @@ importers:
         version: 2.0.1
       electron-vite:
         specifier: ^4.0.0
-        version: 4.0.0(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0))
+        version: 4.0.0(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1))
       es-toolkit:
         specifier: ^1.39.9
         version: 1.39.9
@@ -108,12 +108,15 @@ importers:
       sass:
         specifier: ^1.90.0
         version: 1.90.0
+      terser:
+        specifier: ^5.43.1
+        version: 5.43.1
       typescript:
         specifier: ^5.8.3
         version: 5.9.2
       vite:
         specifier: ^7.0.5
-        version: 7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)
+        version: 7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1)
       vite-svg-loader:
         specifier: ^5.1.0
         version: 5.1.0(vue@3.5.18(typescript@5.9.2))
@@ -745,6 +748,9 @@ packages:
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
     engines: {node: '>=6.0.0'}
+
+  '@jridgewell/source-map@0.3.11':
+    resolution: {integrity: sha512-ZMp1V8ZFcPG5dIWnQLr3NSI1MiCU7UETdS/A0G8V/XWHvJv3ZsFqutJn1Y5RPmAPX6F3BiE397OqveU/9NCuIA==}
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
@@ -1482,6 +1488,9 @@ packages:
   commander@11.1.0:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
     engines: {node: '>=16'}
+
+  commander@2.20.3:
+    resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
   commander@5.1.0:
     resolution: {integrity: sha512-P0CysNDQ7rtVw4QIQtm+MRxV66vKFSvlsQvGYXZWR3qFU0jlMKHZZZgw8e+8DSah4UDKMqnknRDQz+xuQXQ/Zg==}
@@ -3359,6 +3368,11 @@ packages:
     resolution: {integrity: sha512-yYrrsWnrXMcdsnu/7YMYAofM1ktpL5By7vZhf15CrXijWWrEYZks5AXBudalfSWJLlnen/QUJUB5aoB0kqZUGA==}
     engines: {node: '>=6.0.0'}
 
+  terser@5.43.1:
+    resolution: {integrity: sha512-+6erLbBm0+LROX2sPXlUYx/ux5PyE9K/a92Wrt6oA+WDAoFTdpHE5tCYCI5PNzq2y8df4rA+QgHLJuR4jNymsg==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   throttleit@1.0.1:
     resolution: {integrity: sha512-vDZpf9Chs9mAdfY046mcPt8fg5QSZr37hEH4TXYBnDF+izxgrbRGUAAaBvIk/fJm9aOFCGFd1EsNg5AZCbnQCQ==}
 
@@ -4555,6 +4569,11 @@ snapshots:
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
+  '@jridgewell/source-map@0.3.11':
+    dependencies:
+      '@jridgewell/gen-mapping': 0.3.13
+      '@jridgewell/trace-mapping': 0.3.30
+
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
   '@jridgewell/trace-mapping@0.3.30':
@@ -4900,10 +4919,10 @@ snapshots:
       '@typescript-eslint/types': 8.39.1
       eslint-visitor-keys: 4.2.1
 
-  '@vitejs/plugin-vue@6.0.1(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0))(vue@3.5.18(typescript@5.9.2))':
+  '@vitejs/plugin-vue@6.0.1(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-beta.29
-      vite: 7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)
+      vite: 7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1)
       vue: 3.5.18(typescript@5.9.2)
 
   '@volar/language-core@2.4.22':
@@ -5317,6 +5336,8 @@ snapshots:
 
   commander@11.1.0: {}
 
+  commander@2.20.3: {}
+
   commander@5.1.0: {}
 
   commander@6.2.1: {}
@@ -5594,7 +5615,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron-vite@4.0.0(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)):
+  electron-vite@4.0.0(vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1)):
     dependencies:
       '@babel/core': 7.28.3
       '@babel/plugin-transform-arrow-functions': 7.27.1(@babel/core@7.28.3)
@@ -5602,7 +5623,7 @@ snapshots:
       esbuild: 0.25.9
       magic-string: 0.30.17
       picocolors: 1.1.1
-      vite: 7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)
+      vite: 7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -7302,6 +7323,13 @@ snapshots:
       rimraf: 2.6.3
     optional: true
 
+  terser@5.43.1:
+    dependencies:
+      '@jridgewell/source-map': 0.3.11
+      acorn: 8.15.0
+      commander: 2.20.3
+      source-map-support: 0.5.21
+
   throttleit@1.0.1: {}
 
   timm@1.7.1: {}
@@ -7441,7 +7469,7 @@ snapshots:
       svgo: 3.3.2
       vue: 3.5.18(typescript@5.9.2)
 
-  vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0):
+  vite@7.1.2(@types/node@24.2.1)(jiti@2.5.1)(sass@1.90.0)(terser@5.43.1):
     dependencies:
       esbuild: 0.25.9
       fdir: 6.4.6(picomatch@4.0.3)
@@ -7454,6 +7482,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.5.1
       sass: 1.90.0
+      terser: 5.43.1
 
   vscode-uri@3.1.0: {}
 

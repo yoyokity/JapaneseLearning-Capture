@@ -4,7 +4,7 @@ module.exports = {
 		appCopyright: 'Copyright © 2080 yoyokity',
 		icon: 'build/icons/icon.ico',
 		overwrite: true,
-		asar: true,
+		asar: false, // 不使用asar
 		win32metadata: {
 			ProductName: 'Japanese Learning Capture'
 		},
