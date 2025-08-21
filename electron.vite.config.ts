@@ -13,6 +13,7 @@ export default defineConfig({
 	renderer: {
 		plugins: [vue(), svgLoader()],
 		build: {
+			chunkSizeWarningLimit: 999999,
 			minify: 'terser', // 使用 terser 进行代码压缩和混淆
 			terserOptions: {
 				compress: {
@@ -26,21 +27,14 @@ export default defineConfig({
 			rollupOptions: {
 				output: {
 					manualChunks: (id) => {
-						// 将组件文件打包到独立的chunk
-						if (id.includes('src/renderer/src/components')) {
-							return 'components'
+						if (id.includes('node_modules')) {
+							if (id.includes('primeuix')) return 'primevue'
+							if (id.includes('primevue')) return 'primevue'
+							if (id.includes('primeicons')) return 'primevue'
+							if (id.includes('chinese-simple2traditional'))
+								return 'chinese-simple2traditional'
 						}
-						// 将样式文件打包到独立的chunk
-						if (id.includes('src/renderer/src/style')) {
-							return 'styles'
-						}
-						// 将繁简转换增强模块打包到独立的chunk
-						if (
-							id.includes('node_modules') &&
-							id.includes('chinese-simple2traditional')
-						) {
-							return 'chinese-simple2traditional'
-						}
+						return null
 					},
 					entryFileNames: '[name].js',
 					chunkFileNames: '[name].js',

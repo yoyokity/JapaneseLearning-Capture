@@ -8,13 +8,13 @@ import ScrollPanel from 'primevue/scrollpanel'
 import { ref } from 'vue'
 import SettingsLine from './settingsLine.vue'
 import SettingsLineItem from './settingsLineItem.vue'
-import { TransHelper } from '@renderer/helper/TransHelper'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import { useToast } from 'primevue/usetoast'
 import Toast from 'primevue/toast'
+import { TransHelper } from '@renderer/helper'
 
 const settings = settingsStore()
 const translateEngineConfigRef = ref()
@@ -338,8 +338,7 @@ async function testTranslate() {
 	height: calc(100% - var(--header-height));
 
 	.tab-content {
-		padding: 1.25rem;
-		padding-bottom: 5rem;
+		padding: 1.25rem 1.25rem 5rem;
 	}
 
 	/* Tab内容滑动动画 */
