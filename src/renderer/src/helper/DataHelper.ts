@@ -34,7 +34,7 @@ export class DataHelper {
 	 * @description 每次刮削启动时调用此方法建立数据库连接
 	 * @remarks 编写刮削器的时候不需要调用此方法
 	 */
-	static async init(): Promise<void> {
+	protected static async init(): Promise<void> {
 		try {
 			this._db = await this.openDB()
 			DebugHelper.info('数据库连接已初始化')
@@ -120,7 +120,7 @@ export class DataHelper {
 	 * @description 每次刮削结束时调用此方法
 	 * @remarks 编写刮削器的时候不需要调用此方法
 	 */
-	static close(): void {
+	protected static close(): void {
 		if (this._db) {
 			this._db.close()
 			this._db = null
@@ -201,5 +201,18 @@ export class DataHelper {
 				db.createObjectStore(this.STORE_NAME, { keyPath: 'key' })
 			}
 		})
+	}
+}
+
+/**
+ * 不对外暴露的数据操作类
+ */
+export class _Data extends DataHelper {
+	static init(): Promise<void> {
+		return super.init()
+	}
+
+	static close(): void {
+		return super.close()
 	}
 }
