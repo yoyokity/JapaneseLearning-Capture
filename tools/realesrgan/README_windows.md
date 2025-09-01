@@ -13,7 +13,6 @@ Command:
 3. ./realesrgan-ncnn-vulkan.exe -i input_folder -o outputfolder -n realesr-animevideov3 -s 2 -f jpg
 4. ./realesrgan-ncnn-vulkan.exe -i input_folder -o outputfolder -n realesr-animevideov3 -s 4 -f jpg
 
-
 Commands for enhancing anime videos:
 
 1. Use ffmpeg to extract frames from a video (Remember to create the folder `tmp_frames` ahead)
@@ -28,12 +27,12 @@ Commands for enhancing anime videos:
 
     ffmpeg -i out_frames/frame%08d.jpg -i onepiece_demo.mp4 -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -r 23.98 -pix_fmt yuv420p output_w_audio.mp4
 
-------------------------
+---
 
 GitHub: https://github.com/xinntao/Real-ESRGAN/
 Paper: https://arxiv.org/abs/2107.10833
 
-------------------------
+---
 
 This executable file is **portable** and includes all the binaries and models required. No CUDA or PyTorch environment is needed.
 

@@ -11,6 +11,9 @@ export default defineConfig({
 		plugins: [externalizeDepsPlugin()]
 	},
 	renderer: {
+		server: {
+			port: 5174
+		},
 		plugins: [vue(), svgLoader()],
 		build: {
 			chunkSizeWarningLimit: 999999,
