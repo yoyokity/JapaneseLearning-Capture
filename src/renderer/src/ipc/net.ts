@@ -41,7 +41,16 @@ export const net = {
 	/**
 	 * 清除默认会话的缓存
 	 */
-	clearCache: (): Promise<void> => invoke('net:clearCache')
+	clearCache: (): Promise<void> => invoke('net:clearCache'),
+
+	/**
+	 * Ping检测网络连通性
+	 * @param host 主机地址
+	 * @param timeout 超时时间（毫秒），默认为3000ms
+	 * @returns 返回ping结果，包含是否成功、响应时间和状态码
+	 */
+	ping: (host: string, timeout?: number): Promise<IPingResult> =>
+		invoke('net:ping', host, timeout)
 }
 
 /**
@@ -93,3 +102,28 @@ export type ParseResultType<P extends IFetchParse | undefined> = P extends 'arra
 						: P extends undefined
 							? string
 							: string
+
+/**
+ * Ping结果接口
+ */
+export interface IPingResult {
+	/**
+	 * 是否成功
+	 */
+	success: boolean
+
+	/**
+	 * 响应时间（毫秒），失败时为-1
+	 */
+	time: number
+
+	/**
+	 * HTTP状态码，失败时为-1
+	 */
+	status: number
+
+	/**
+	 * 错误信息，成功时不存在
+	 */
+	error?: string
+}

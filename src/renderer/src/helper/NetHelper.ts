@@ -1,12 +1,42 @@
 import { settingsStore } from '@renderer/stores/settings.ts'
 import { Ipc } from '@renderer/ipc'
 import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
-import { IFetchOptions, IFetchParse, IResult, ParseResultType } from '@renderer/ipc/net.ts'
+import {
+	IFetchOptions,
+	IFetchParse,
+	IPingResult,
+	IResult,
+	ParseResultType
+} from '@renderer/ipc/net.ts'
 
 /**
  * 网络相关
  */
 export class NetHelper {
+	/**
+	 * 安全地拼接多个路径片段到基础URL上。
+	 * @param baseUrl 基础 URL，例如 'https://api.example.com'。
+	 * @param pathSegments 任意数量的路径片段，例如 '/users', '123', 'profile/'。
+	 * @returns 拼接好的 URL 字符串。
+	 */
+	static joinUrl(baseUrl: string, ...pathSegments: string[]): string {
+		// 如果基础 URL 没有以斜杠结尾，先加上一个，方便后续拼接
+		const base = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
+
+		const url = new URL(base)
+
+		for (const segment of pathSegments) {
+			// 移除路径片段开头和结尾的斜杠，避免重复
+			const cleanedSegment = segment.replace(/^\/|\/$/g, '')
+			if (cleanedSegment) {
+				url.pathname = `${url.pathname}/${cleanedSegment}`
+			}
+		}
+
+		// 返回最终的 URL 字符串
+		return url.toString()
+	}
+
 	/**
 	 * 设置代理
 	 */
@@ -49,9 +79,9 @@ export class NetHelper {
 	 * }
 	 * ```
 	 */
-	static async get<P extends IFetchParse>(
+	static async get<P extends IFetchParse = 'text'>(
 		url: string,
-		parse: P = 'text' as P,
+		parse?: P,
 		headers?: Record<string, string>,
 		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
@@ -69,7 +99,7 @@ export class NetHelper {
 		const config: IFetchOptions = {
 			headers,
 			timeout,
-			parse
+			parse: parse || ('text' as P)
 		}
 
 		let re
@@ -127,10 +157,10 @@ export class NetHelper {
 	 * }
 	 * ```
 	 */
-	static async post<P extends IFetchParse>(
+	static async post<P extends IFetchParse = 'text'>(
 		url: string,
 		data: any,
-		parse: P = 'text' as P,
+		parse?: P,
 		headers?: Record<string, string>,
 		options?: IRequestOptions
 	): Promise<IResult<ParseResultType<P>>> {
@@ -148,7 +178,7 @@ export class NetHelper {
 		const config: IFetchOptions = {
 			headers,
 			timeout,
-			parse
+			parse: parse || ('text' as P)
 		}
 
 		let re
@@ -189,6 +219,40 @@ export class NetHelper {
 			statusText: '',
 			headers: {},
 			body: undefined as any
+		}
+	}
+
+	/**
+	 * Ping检测网络连通性
+	 * @param host 主机地址（不包含协议前缀）
+	 * @param [timeout] 超时时间（毫秒），默认使用设置中的超时时间
+	 * @returns 返回ping结果，包含是否成功、响应时间和状态码
+	 * @example
+	 * ```ts
+	 * const re = await NetHelper.ping('www.google.com')
+	 * if (re.success) {
+	 *     console.log(`响应时间: ${re.time}ms`)
+	 * } else {
+	 *     console.log(`连接失败: ${re.error}`)
+	 * }
+	 * ```
+	 */
+	static async ping(host: string, timeout?: number): Promise<IPingResult> {
+		const settings = settingsStore()
+		const pingTimeout = timeout || settings.net.timeout * 1000
+
+		const re = await DebugHelper.tryExecute(async () => await Ipc.net.ping(host, pingTimeout))
+
+		if (!re.hasError) {
+			return re.result as IPingResult
+		} else {
+			DebugHelper.error(`Ping请求失败：${host}`, re.error)
+			return {
+				success: false,
+				time: -1,
+				status: -1,
+				error: `执行错误: ${re.error}`
+			}
 		}
 	}
 }

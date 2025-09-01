@@ -148,3 +148,41 @@ ipcMain.handle('net:clearProxy', async () => {
 ipcMain.handle('net:clearCache', async () => {
 	return await tryExecute(session.defaultSession.clearCache)
 })
+
+/**
+ * Ping检测网络连通性
+ * @param host 主机地址
+ * @param timeout 超时时间（毫秒）
+ */
+ipcMain.handle('net:ping', async (_, host: string, timeout: number = 3000) => {
+	return await tryExecute(async () => {
+		const controller = new AbortController()
+		const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+		try {
+			const startTime = Date.now()
+			const response = await fetch(`http://${host}`, {
+				method: 'HEAD',
+				signal: controller.signal,
+				cache: 'no-store'
+			})
+			const endTime = Date.now()
+
+			clearTimeout(timeoutId)
+
+			return {
+				success: response.ok,
+				time: endTime - startTime,
+				status: response.status
+			}
+		} catch (error) {
+			clearTimeout(timeoutId)
+			return {
+				success: false,
+				time: -1,
+				status: -1,
+				error: (error as Error).message
+			}
+		}
+	})
+})
