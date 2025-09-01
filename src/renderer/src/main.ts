@@ -10,6 +10,7 @@ import ToastService from 'primevue/toastservice'
 import App from '@renderer/App.vue'
 import { theme } from '@renderer/style/theme'
 import { DebugHelper, PathHelper } from '@renderer/helper'
+import { Scraper } from './scraper'
 
 DebugHelper.log('============================')
 DebugHelper.log('应用初始化中...')
@@ -31,4 +32,7 @@ import('@renderer/style/main.scss')
 import('@renderer/style/primeVue.scss')
 
 app.mount('#app')
+Scraper.instances.forEach((scraper) => {
+	DebugHelper.info(`刮削器已加载：${scraper.scraperName}`)
+})
 DebugHelper.info('应用初始化完成')
