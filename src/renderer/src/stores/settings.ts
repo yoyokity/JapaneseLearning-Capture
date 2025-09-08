@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { NetHelper } from '@renderer/helper'
 import { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
@@ -60,10 +60,22 @@ export const settingsStore = defineStore(
 			}
 		})
 
+		/**
+		 * 刮削器路径设置
+		 */
+		const scraperPath = reactive<Record<string, string>>({})
+
+		/**
+		 * 当前刮削器
+		 */
+		const currentScraper = ref('')
+
 		return {
 			proxy,
 			net,
-			translate
+			translate,
+			scraperPath,
+			currentScraper
 		}
 	},
 	{

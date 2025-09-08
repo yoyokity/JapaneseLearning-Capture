@@ -3,7 +3,7 @@ import { settingsStore } from '@renderer/stores/settings'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import ScrollPanel from 'primevue/scrollpanel'
 import { ref } from 'vue'
 import SettingsLine from './settingsLine.vue'
@@ -15,6 +15,7 @@ import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import { useToast } from 'primevue/usetoast'
 import Toast from 'primevue/toast'
 import { TransHelper } from '@renderer/helper'
+import { Scraper } from '@renderer/scraper'
 
 const settings = settingsStore()
 const translateEngineConfigRef = ref()
@@ -90,7 +91,22 @@ async function testTranslate() {
 		<ScrollPanel class="content">
 			<transition name="slide-up">
 				<div v-if="activeTab === 'settings'" key="settings" class="tab-content">
-					<h1 style="margin-top: 0">网络</h1>
+					<h1 style="margin-top: 0">输出目录</h1>
+
+					<SettingsLine v-for="scraper in Scraper.instances" :title="scraper.scraperName">
+						<template #right>
+							<InputText
+								v-model="settings.scraperPath[scraper.scraperName]"
+								type="text"
+							/>
+						</template>
+					</SettingsLine>
+
+					<p class="settings-view-description">
+						为每个刮削器设置的单独的输出路径。如果使用相对路径，则在app根目录下创建对应文件夹
+					</p>
+
+					<h1>网络</h1>
 
 					<SettingsLine icon="pi pi-hourglass" title="连接超时（秒）">
 						<template #right>
@@ -172,7 +188,7 @@ async function testTranslate() {
 
 					<SettingsLine icon="pi pi-microchip" title="翻译引擎">
 						<template #right>
-							<Dropdown
+							<Select
 								v-model="settings.translate.translateEngine"
 								:options="TransHelper.translateEngines"
 								@change="
@@ -249,7 +265,7 @@ async function testTranslate() {
 									severity="error"
 									>请先启动本地LLM服务！</Message
 								>
-								<Dropdown
+								<Select
 									v-model="settings.translate.localLLM.model"
 									:options="llmModels"
 								/>
@@ -339,6 +355,13 @@ async function testTranslate() {
 
 	.tab-content {
 		padding: 1.25rem 1.25rem 5rem;
+
+		.settings-view-description {
+			margin: 0.5rem 0 0 0.5rem;
+			font-size: 0.75rem;
+			height: 1rem;
+			color: var(--p-text-muted-color);
+		}
 	}
 
 	/* Tab内容滑动动画 */

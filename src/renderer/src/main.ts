@@ -10,7 +10,8 @@ import ToastService from 'primevue/toastservice'
 import App from '@renderer/App.vue'
 import { theme } from '@renderer/style/theme'
 import { DebugHelper, PathHelper } from '@renderer/helper'
-import { Scraper } from './scraper'
+import { Scraper } from '@renderer/scraper'
+import { settingsStore } from '@renderer/stores/settings'
 
 DebugHelper.log('============================')
 DebugHelper.log('应用初始化中...')
@@ -32,7 +33,17 @@ import('@renderer/style/main.scss')
 import('@renderer/style/primeVue.scss')
 
 app.mount('#app')
+
+//刮削器初始化
+const settings = settingsStore()
 Scraper.instances.forEach((scraper) => {
 	DebugHelper.info(`刮削器已加载：${scraper.scraperName}`)
+	// 初始化刮削器路径缺省值为output
+	settings.scraperPath[scraper.scraperName] =
+		settings.scraperPath[scraper.scraperName] || '/output'
 })
+
+// 初始化当前刮削器缺省值为第一个刮削器
+settings.currentScraper = settings.currentScraper || Scraper.instances[0].scraperName
+
 DebugHelper.info('应用初始化完成')
