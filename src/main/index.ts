@@ -1,9 +1,10 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, protocol } from 'electron'
 import { electronApp } from '@electron-toolkit/utils'
 import { createWindow } from './window'
 import { join } from 'path'
 import './ipc'
 import { appPath } from './ipc'
+import { net } from 'electron'
 
 // 设置app路径
 appPath.root = process.cwd()
@@ -24,6 +25,12 @@ app.whenReady().then(() => {
 	app.on('activate', function () {
 		// 在 macOS 上，当点击 dock 图标并且没有其他窗口打开时，通常会在应用程序中重新创建一个窗口。
 		if (BrowserWindow.getAllWindows().length === 0) createWindow()
+	})
+
+	// 注册一个名为 'local-file' 的协议
+	protocol.handle('local-file', (request) => {
+		const url = decodeURI(request.url.replace(/^local-file:\/\//, ''))
+		return net.fetch(`file://${url}`)
 	})
 
 	createWindow()

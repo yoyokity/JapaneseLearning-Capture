@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron'
 import * as fs from 'node:fs'
-import { appendFileSync, readFileSync } from 'node:fs'
 import * as path from 'node:path'
 import { tryExecute, tryExecuteSync } from './func'
 import fg from 'fast-glob'
@@ -57,11 +56,6 @@ ipcMain.handle('filesystem:dirname', (_, filePath: string) => {
 // 从对象中格式化路径
 ipcMain.handle('filesystem:format', (_, pathObject: path.FormatInputPathObject) => {
 	return tryExecuteSync(path.format, pathObject)
-})
-
-// 判断路径是否为绝对路径
-ipcMain.handle('filesystem:isAbsolute', (_, filePath: string) => {
-	return tryExecuteSync(path.isAbsolute, filePath)
 })
 
 // 获取从一个路径到另一个路径的相对路径
@@ -173,7 +167,7 @@ ipcMain.handle(
 // 追加内容到文件（如果文件不存在则创建）
 ipcMain.handle('filesystem:appendFile', (_, filePath: string, data: string | Uint8Array) => {
 	return tryExecuteSync(() => {
-		appendFileSync(filePath, data)
+		fs.appendFileSync(filePath, data)
 		return true
 	})
 })
@@ -185,10 +179,10 @@ ipcMain.handle(
 		return tryExecuteSync(() => {
 			if (encoding === 'buffer') {
 				// 如果 encoding 为 null，返回 Buffer
-				return readFileSync(filePath)
+				return fs.readFileSync(filePath)
 			} else {
 				// 否则使用指定的编码（默认为 'utf-8'）
-				return readFileSync(filePath, encoding)
+				return fs.readFileSync(filePath, encoding)
 			}
 		})
 	}

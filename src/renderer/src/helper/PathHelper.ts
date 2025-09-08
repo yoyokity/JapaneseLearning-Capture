@@ -41,6 +41,15 @@ export class Path {
 	 * 是否为绝对路径
 	 */
 	get isAbsolute() {
+		// 在Windows系统中，以/开头的路径会被path.isAbsolute错误地判定为绝对路径
+		// 这里进行特殊处理，确保在Windows系统下，只有包含盘符的路径才被判定为绝对路径
+		if (
+			navigator.userAgent.indexOf('Windows') !== -1 &&
+			(this._path.startsWith('/') || this._path.startsWith('\\'))
+		) {
+			return false
+		}
+
 		return pathe.isAbsolute(this._path)
 	}
 
@@ -247,6 +256,12 @@ export class PathHelper {
 		ignore?: string[],
 		deep?: number
 	): Promise<string[]> {
+		// 如果path为相对路径，则转换为appPath的绝对路径
+		if (typeof path === 'string') path = new Path(path)
+		if (!(await path.isAbsolute)) {
+			path = PathHelper.appPath.join(path.toString())
+		}
+
 		const re = await DebugHelper.tryExecute(Ipc.filesystem.readDirectory, filter, {
 			cwd: path.toString(),
 			deep,

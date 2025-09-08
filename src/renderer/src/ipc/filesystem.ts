@@ -75,12 +75,6 @@ export const filesystem = {
 		invoke('filesystem:format', pathObject),
 
 	/**
-	 * 判断路径是否为绝对路径
-	 * @remarks 用时 <10ms
-	 */
-	isAbsolute: (path: string): Promise<boolean> => invoke('filesystem:isAbsolute', path),
-
-	/**
 	 * 获取to基于from的相对路径
 	 * @remarks 用时 <10ms
 	 * @param from 源路径

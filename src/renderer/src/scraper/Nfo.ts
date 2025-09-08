@@ -2,6 +2,7 @@ import { create, convert } from 'xmlbuilder2'
 import { type XMLBuilder } from 'xmlbuilder2/lib/interfaces'
 import { IVideo } from './type'
 import { PathHelper } from '@renderer/helper'
+import { IVideoFile } from '@renderer/components/manageView/type'
 
 /**
  * NFO 文件生成器
@@ -73,54 +74,121 @@ export class Nfo {
 	/**
 	 * 读取NFO文件为video
 	 */
-	static async read(path: string): Promise<IVideo | null> {
-		const data = await PathHelper.readFile(path, 'utf-8')
-		if (!data) return null
-		const obj: any = convert({ encoding: 'UTF-8' }, data, { format: 'object' })
-		if (!obj || !obj.movie) return null
+	static async read(path: string, files: string[]): Promise<IVideoFile> {
+		const _path = PathHelper.newPath(path)
+		const nfoPath = _path.parent.join(_path.basename + '.nfo')
 
-		const movie = obj.movie
-		const video: IVideo = {
-			scraperName: movie.scraperName?._text || '',
-			title: movie.title?._text || '',
-			originaltitle: movie.originaltitle?._text || '',
-			sorttitle: movie.sorttitle?._text || '',
-			tagline: movie.tagline?._text || '',
-			plot: movie.plot?._text || '',
-			num: movie.num?._text || '',
-			mpaa: movie.mpaa?._text || '',
-			rating: movie.rating?._text || '',
-			director: movie.director?._text || '',
+		const video: IVideoFile = {
+			path: _path,
+			dir: _path.parent,
+			fileName: _path.basename,
+			extname: _path.extname,
+			nfoPath: nfoPath,
+			poster: '',
+			thumb: '',
+			fanart: '',
+			//
+			scraperName: '',
+			title: '',
+			originaltitle: '',
+			sorttitle: '',
+			tagline: '',
+			plot: '',
+			num: '',
+			mpaa: '',
+			rating: '',
+			director: '',
 			actor: [],
-			studio: movie.studio?._text || '',
-			maker: movie.maker?._text || '',
-			set: movie.set?._text || '',
+			studio: '',
+			maker: '',
+			set: '',
 			tag: [],
 			genre: [],
-			year: movie.year?._text || '',
-			premiered: movie.premiered?._text || '',
-			releasedate: movie.releasedate?._text || ''
+			year: '',
+			premiered: '',
+			releasedate: ''
 		}
+
+		const data = await PathHelper.readFile(nfoPath, 'utf-8')
+		if (!data) return video
+		const obj: any = convert({ encoding: 'UTF-8' }, data, { format: 'object' })
+		if (!obj || !obj.movie) return video
+
+		const movie = obj.movie
+		video.poster = movie.poster || ''
+		video.thumb = movie.thumb || ''
+		video.fanart = movie.fanart || ''
+		//
+		video.scraperName = movie.scraperName || ''
+		video.title = movie.title || ''
+		video.originaltitle = movie.originaltitle || ''
+		video.sorttitle = movie.sorttitle || ''
+		video.tagline = movie.tagline || ''
+		video.plot = movie.plot || ''
+		video.num = movie.num || ''
+		video.mpaa = movie.mpaa || ''
+		video.rating = movie.rating || ''
+		video.director = movie.director || ''
+		video.studio = movie.studio || ''
+		video.maker = movie.maker || ''
+		video.set = movie.set || ''
+		video.year = movie.year || ''
+		video.premiered = movie.premiered || ''
+		video.releasedate = movie.releasedate || ''
 
 		// 处理演员信息
 		if (movie.actor) {
 			const actors = Array.isArray(movie.actor) ? movie.actor : [movie.actor]
 			video.actor = actors.map((actor) => ({
-				name: actor.name?._text || '',
-				imgUrl: actor.thumb?._text || ''
+				name: actor.name || '',
+				imgUrl: actor.thumb || ''
 			}))
 		}
 
 		// 处理标签
 		if (movie.tag) {
 			const tags = Array.isArray(movie.tag) ? movie.tag : [movie.tag]
-			video.tag = tags.map((tag) => tag._text || '')
+			video.tag = tags.map((tag) => tag || '')
 		}
 
 		// 处理类型
 		if (movie.genre) {
 			const genres = Array.isArray(movie.genre) ? movie.genre : [movie.genre]
-			video.genre = genres.map((genre) => genre._text || '')
+			video.genre = genres.map((genre) => genre || '')
+		}
+
+		//处理图片
+		if (!movie.poster) {
+			const poster = files.filter(
+				(file) => file.includes(video.dir.toString()) && file.includes('poster')
+			)
+			if (poster.length > 0) {
+				video.poster = poster[0]
+			}
+		} else if (!PathHelper.newPath(movie.poster).isAbsolute) {
+			video.poster = video.dir.join(movie.poster).toString()
+		}
+
+		if (!movie.thumb) {
+			const thumb = files.filter(
+				(file) => file.includes(video.dir.toString()) && file.includes('thumb')
+			)
+			if (thumb.length > 0) {
+				video.thumb = thumb[0]
+			}
+		} else if (!PathHelper.newPath(movie.thumb).isAbsolute) {
+			video.thumb = video.dir.join(movie.thumb).toString()
+		}
+
+		if (!movie.fanart) {
+			const fanart = files.filter(
+				(file) => file.includes(video.dir.toString()) && file.includes('fanart')
+			)
+			if (fanart.length > 0) {
+				video.fanart = fanart[0]
+			}
+		} else if (!PathHelper.newPath(movie.fanart).isAbsolute) {
+			video.fanart = video.dir.join(movie.fanart).toString()
 		}
 
 		return video

@@ -1,10 +1,29 @@
 <script setup lang="ts">
-import Select from 'primevue/select'
+import Select, { type SelectChangeEvent } from 'primevue/select'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores/settings'
 import Button from 'primevue/button'
+import { scanFiles } from './func'
+import ScrollPanel from 'primevue/scrollpanel'
+import { globalStatesStore } from '@renderer/stores/globalStates'
+import VideoCard from './videoCard.vue'
+import { IVideoFile } from './type'
 
 const settings = settingsStore()
+const globalStates = globalStatesStore()
+
+//开始搜索文件
+async function startScan() {
+	globalStates.manageViewFiles = await scanFiles(settings.scraperPath[settings.currentScraper])
+	console.log(globalStates.manageViewFiles)
+}
+
+//重新选择目录后，清除文件列表
+function clearFiles(e: SelectChangeEvent) {
+	if (e.value !== settings.currentScraper) {
+		globalStates.manageViewFiles = []
+	}
+}
 </script>
 
 <template>
@@ -16,10 +35,29 @@ const settings = settingsStore()
 				:options="Scraper.instances.map((scraper) => scraper.scraperName)"
 				size="small"
 				style="width: 8rem"
-				v-tooltip="'选择目录'"
+				v-tooltip.left="{
+					value: '选择目录',
+					showDelay: 700
+				}"
+				@change="clearFiles"
 			/>
-			<Button icon="pi pi-inbox" label="开始扫描" size="small" />
+			<Button
+				icon="pi pi-refresh"
+				label="开始扫描"
+				size="small"
+				style="width: 7rem"
+				@click="startScan"
+				:loading="globalStates.manageViewLoading"
+			/>
 		</div>
+		<ScrollPanel style="height: calc(100% - var(--header-height))">
+			<div class="manage-view-content">
+				<VideoCard
+					v-for="file in globalStates.manageViewFiles"
+					:video="file as IVideoFile"
+				/>
+			</div>
+		</ScrollPanel>
 	</div>
 </template>
 
@@ -42,5 +80,16 @@ const settings = settingsStore()
 		font-weight: normal;
 		margin-right: auto;
 	}
+}
+
+.manage-view-content {
+	padding: 1.25rem;
+	display: grid;
+	/* 根据容器宽度自动调整列数，最小宽度为150px，最大为1fr */
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	/* 设置行间距和列间距 */
+	gap: 1rem;
+	/* 确保网格项目保持一致的宽高比 */
+	grid-auto-flow: dense; /* 使用dense填充算法，减少空白 */
 }
 </style>
