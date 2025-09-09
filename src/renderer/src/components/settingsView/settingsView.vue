@@ -90,7 +90,7 @@ async function testTranslate() {
 		</div>
 		<ScrollPanel class="content">
 			<transition name="slide-up">
-				<div v-if="activeTab === 'settings'" key="settings" class="tab-content">
+				<div v-if="activeTab === 'settings'" key="settings" class="settings-tab-content">
 					<h1 style="margin-top: 0">输出目录</h1>
 
 					<SettingsLine v-for="scraper in Scraper.instances" :title="scraper.scraperName">
@@ -306,7 +306,9 @@ async function testTranslate() {
 				</div>
 
 				<!--info-->
-				<div v-else-if="activeTab === 'info'" key="info" class="tab-content">123</div>
+				<div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
+					123
+				</div>
 			</transition>
 		</ScrollPanel>
 	</div>
@@ -353,7 +355,7 @@ async function testTranslate() {
 .content {
 	height: calc(100% - var(--header-height));
 
-	.tab-content {
+	.settings-tab-content {
 		padding: 1.25rem 1.25rem 5rem;
 
 		.settings-view-description {

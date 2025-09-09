@@ -31,6 +31,9 @@ export async function scanFiles(path: string): Promise<IVideoFile[]> {
 	return videoFiles
 }
 
+/**
+ * 视频排序
+ */
 export function videoSortFunc(a: IVideoFile, b: IVideoFile) {
 	const settings = settingsStore()
 

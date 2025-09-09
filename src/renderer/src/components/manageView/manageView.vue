@@ -8,15 +8,20 @@ import ScrollPanel from 'primevue/scrollpanel'
 import VideoCard from './videoCard.vue'
 import { IVideoFile } from './type'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ContextMenu from 'primevue/contextmenu'
 import { PathHelper } from '@renderer/helper'
+import InputText from 'primevue/inputtext'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
-const isFloatActive = ref(false)
 const cm = ref()
+const searchInputRef = ref()
 const currentVideo = ref<IVideoFile | null>(null)
+
+const isSortActive = ref(false)
+const isSearchActive = ref(false)
+const isFloatActive = computed(() => isSortActive.value || isSearchActive.value)
 
 // 右键菜单项
 const menuItems = ref([
@@ -42,7 +47,7 @@ const menuItems = ref([
 
 //开始搜索文件
 async function startScan() {
-	globalStates.manageViewFiles = await scanFiles(settings.scraperPath[settings.currentScraper])
+	globalStates.setManageViewFiles(await scanFiles(settings.scraperPath[settings.currentScraper]))
 }
 
 //重新选择目录后，清除文件列表
@@ -56,8 +61,8 @@ function clearFiles(e: SelectChangeEvent) {
 function handleSortChange(e: SelectChangeEvent) {
 	settings.manageViewSort = e.value
 
-	if (globalStates.manageViewFiles.length > 0) {
-		;(globalStates.manageViewFiles as IVideoFile[]).sort(videoSortFunc)
+	if (globalStates.manageViewFilesFilter.length > 0) {
+		;(globalStates.manageViewFilesFilter as IVideoFile[]).sort(videoSortFunc)
 	}
 }
 
@@ -96,8 +101,9 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 		</div>
 		<ScrollPanel style="height: calc(100% - var(--header-height))">
 			<div class="manage-view-content">
+				<!-- 卡片视图 -->
 				<VideoCard
-					v-for="file in globalStates.manageViewFiles"
+					v-for="file in globalStates.manageViewFilesFilter"
 					:video="file as IVideoFile"
 					@show-menu="showMenu"
 				/>
@@ -113,13 +119,42 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 		<!--灵动岛-->
 		<div v-if="globalStates.manageViewFiles.length > 0" class="manage-view-float">
 			<div :class="{ active: isFloatActive }" class="manage-view-float-content">
+				<!-- 搜索 -->
 				<i
 					v-tooltip.top="{
 						value: '搜索',
 						showDelay: 500
 					}"
+					:class="{ active: isSearchActive }"
 					class="search-button pi pi-search"
+					@click="
+						() => {
+							isSearchActive = !isSearchActive
+							globalStates.manageViewFilesFilterValue = ''
+							searchInputRef.value?.focus()
+						}
+					"
 				/>
+				<transition name="search-animation">
+					<div v-show="isSearchActive" class="search-input-container">
+						<InputText
+							ref="searchInputRef"
+							v-model="globalStates.manageViewFilesFilterValue"
+							class="search-input"
+							placeholder="搜索"
+							size="small"
+							@blur="
+								() => {
+									if (globalStates.manageViewFilesFilterValue.trim() === '') {
+										isSearchActive = false
+									}
+								}
+							"
+						/>
+					</div>
+				</transition>
+
+				<!-- 排序 -->
 				<Select
 					v-model="settings.manageViewSort"
 					v-tooltip.top="{
@@ -132,8 +167,8 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 					dropdown-icon="pi pi-sort-amount-down"
 					size="small"
 					@change="handleSortChange"
-					@hide="isFloatActive = false"
-					@show="isFloatActive = true"
+					@hide="isSortActive = false"
+					@show="isSortActive = true"
 				/>
 			</div>
 		</div>
@@ -192,11 +227,11 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 		background-color: var(--p-surface-200);
 		margin-bottom: 1rem;
 		border-radius: 10rem;
-		padding: 0.5rem;
+		padding: 0 0.5rem;
+		height: 2rem;
 		transition: all 0.2s ease-in-out;
 		opacity: 0.8;
 		cursor: pointer;
-		gap: 0.5rem;
 
 		&:hover,
 		&.active {
@@ -208,9 +243,24 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 		.search-button {
 			color: var(--p-text-muted-color);
 			transition: color 0.3s var(--animation-type);
+			margin-right: 0.25rem;
 
-			&:hover {
+			&:hover,
+			&.active {
 				color: var(--p-primary-color);
+			}
+		}
+
+		.search-input-container {
+			width: 10rem;
+			height: 1.5rem;
+			overflow: hidden;
+
+			.search-input {
+				width: 100%;
+				height: 100%;
+				border-radius: 10rem;
+				padding: 0 0.5rem;
 			}
 		}
 
@@ -222,6 +272,7 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 			border: none !important;
 			background: transparent !important;
 			transition: color 0.3s var(--animation-type);
+			margin-left: 0.25rem;
 
 			:deep(.p-select-label) {
 				display: none;
@@ -232,5 +283,23 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 			}
 		}
 	}
+}
+
+.search-animation-enter-active,
+.search-animation-leave-active {
+	transition: all 0.3s var(--animation-type);
+	max-width: 10rem;
+}
+
+.search-animation-enter-from,
+.search-animation-leave-to {
+	max-width: 0;
+	opacity: 0;
+}
+
+.search-animation-enter-to,
+.search-animation-leave-from {
+	max-width: 10rem;
+	opacity: 1;
 }
 </style>

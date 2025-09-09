@@ -2,17 +2,24 @@
 import { ref } from 'vue'
 import SettingsView from '@renderer/components/settingsView/settingsView.vue'
 import ManageView from '@renderer/components/manageView/manageView.vue'
+import ScraperView from '@renderer/components/scraperView/scraperView.vue'
 
 const tabs = [
-	{ id: 'main', name: '刮削', icon: 'pi pi-search' },
-	{ id: 'manage', name: '管理', icon: 'pi pi-folder' },
-	{ id: 'settings', name: '设置', icon: 'pi pi-cog' }
+	{ id: 'scraper', name: '刮削', icon: 'pi pi-search', component: ScraperView },
+	{ id: 'manage', name: '管理', icon: 'pi pi-folder', component: ManageView },
+	{ id: 'settings', name: '设置', icon: 'pi pi-cog', component: SettingsView }
 ]
-const activeTab = ref('main')
+const activeTab = ref('scraper')
 
 function switchTab(tabId: string) {
 	if (tabId === activeTab.value) return
 	activeTab.value = tabId
+}
+
+// 获取当前活动组件
+const currentComponent = () => {
+	const tab = tabs.find((tab) => tab.id === activeTab.value)
+	return tab ? tab.component : null
 }
 </script>
 
@@ -39,13 +46,9 @@ function switchTab(tabId: string) {
 		</div>
 		<div class="content">
 			<transition name="slide-up">
-				<div v-if="activeTab === 'main'" key="main" class="tab-content"></div>
-				<div v-else-if="activeTab === 'manage'" key="manage" class="tab-content">
-					<ManageView />
-				</div>
-				<div v-else-if="activeTab === 'settings'" key="settings" class="tab-content">
-					<SettingsView />
-				</div>
+				<keep-alive>
+					<component :is="currentComponent()" :key="activeTab" class="tab-content" />
+				</keep-alive>
 			</transition>
 		</div>
 	</div>
