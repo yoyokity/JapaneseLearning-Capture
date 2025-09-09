@@ -3,7 +3,13 @@ import { reactive, ref, watch } from 'vue'
 import { NetHelper } from '@renderer/helper'
 import { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
-export type VideoSortType = 'title' | 'releasedate'
+export type VideoSortType = keyof typeof VideoSortTypeList
+export const VideoSortTypeList = {
+	title: '标题名称',
+	title_reverse: '标题名称 (倒序)',
+	releasedate: '发布日期',
+	releasedate_reverse: '发布日期 (倒序)'
+} as const
 
 export const settingsStore = defineStore(
 	'settings',

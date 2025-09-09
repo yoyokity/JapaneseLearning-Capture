@@ -10,7 +10,6 @@ import { Ipc } from '@renderer/ipc'
  */
 export async function scanFiles(path: string): Promise<IVideoFile[]> {
 	const globalStates = globalStatesStore()
-	const settings = settingsStore()
 
 	globalStates.manageViewLoading = true
 
@@ -26,17 +25,25 @@ export async function scanFiles(path: string): Promise<IVideoFile[]> {
 	}
 
 	//排序
-	videoFiles.sort((a, b) => {
-		if (settings.manageViewSort === 'title') {
-			return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
-		} else if (settings.manageViewSort === 'releasedate') {
-			return a.releasedate.localeCompare(b.releasedate, undefined, { sensitivity: 'base' })
-		}
-		return 0
-	})
+	videoFiles.sort(videoSortFunc)
 
 	globalStates.manageViewLoading = false
 	return videoFiles
+}
+
+export function videoSortFunc(a: IVideoFile, b: IVideoFile) {
+	const settings = settingsStore()
+
+	if (settings.manageViewSort === 'title') {
+		return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
+	} else if (settings.manageViewSort === 'releasedate') {
+		return a.releasedate.localeCompare(b.releasedate, undefined, { sensitivity: 'base' })
+	} else if (settings.manageViewSort === 'title_reverse') {
+		return b.sorttitle.localeCompare(a.sorttitle, undefined, { sensitivity: 'base' })
+	} else if (settings.manageViewSort === 'releasedate_reverse') {
+		return b.releasedate.localeCompare(a.releasedate, undefined, { sensitivity: 'base' })
+	}
+	return 0
 }
 
 /**

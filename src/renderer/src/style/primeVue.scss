@@ -7,3 +7,19 @@ input {
 .p-button-link {
 	font-size: calc(1rem - 2px) !important;
 }
+
+.p-scrolltop.p-button {
+	inset-block-end: 1rem !important;
+	inset-inline-end: 1rem !important;
+	box-shadow: none !important;
+	border: none !important;
+	background: var(--p-surface-200) !important;
+	opacity: 0.8;
+
+	&:hover {
+		opacity: 1 !important;
+		box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2) !important;
+		background: var(--p-surface-0) !important;
+		color: var(--p-primary-color) !important;
+	}
+}

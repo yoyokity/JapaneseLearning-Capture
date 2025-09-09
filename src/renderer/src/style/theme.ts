@@ -58,7 +58,7 @@ export const theme = definePreset(Theme, {
 			colorScheme: {
 				light: {
 					bar: {
-						background: '{surface.200}'
+						background: '{surface.300}'
 					}
 				}
 			}

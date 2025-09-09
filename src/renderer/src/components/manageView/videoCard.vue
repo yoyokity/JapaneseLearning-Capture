@@ -1,19 +1,18 @@
 <script lang="ts" setup>
 import { IVideoFile } from './type'
 import imgFall from '@renderer/assets/img-fall.svg?url'
-import { computed, onMounted, ref } from 'vue'
-import ContextMenu from 'primevue/contextmenu'
+import { computed, onMounted, ref, watch } from 'vue'
 import { PathHelper } from '@renderer/helper'
 
 const props = defineProps<{
 	video: IVideoFile
 }>()
 
-/**
- * 右键菜单引用
- */
-const cm = ref()
-const isImgError = ref(false)
+const emit = defineEmits<{
+	showMenu: [event: MouseEvent, video: IVideoFile]
+}>()
+
+const isImgError = ref(true)
 
 const name = computed(() => {
 	return props.video.title || props.video.fileName
@@ -23,34 +22,28 @@ const image = computed(() => {
 })
 const imageData = ref<string>('')
 
+/**
+ * 加载图片
+ */
+async function loadImage() {
+	imageData.value = ''
+
+	// 如果没有图片路径或读取失败，设置错误状态
+	if (image.value) {
+		imageData.value = (await PathHelper.readImage(image.value)) || ''
+	}
+
+	isImgError.value = !imageData.value
+}
+
 //加载图片
-onMounted(async () => {
-	if (image.value == '') {
-		isImgError.value = true
-		return
-	}
+onMounted(loadImage)
 
-	imageData.value = (await PathHelper.readImage(image.value)) || ''
-
-	if (imageData.value == '') isImgError.value = true
-})
-
-// 右键菜单项
-const menuItems = [
-	{
-		label: '播放',
-		icon: 'pi pi-play-circle',
-		command: () => PathHelper.openInExplorer(props.video.path)
-	},
-	{
-		label: '打开文件夹',
-		icon: 'pi pi-folder-open',
-		command: () => PathHelper.openInExplorer(props.video.dir)
-	}
-]
+// 监听video变化，重新加载图片
+watch(() => props.video, loadImage, { deep: true })
 
 function onContextmenu(event: MouseEvent) {
-	cm.value.show(event)
+	emit('showMenu', event, props.video)
 }
 </script>
 
@@ -65,9 +58,6 @@ function onContextmenu(event: MouseEvent) {
 			<img v-else :src="imgFall" class="video-card-img error" />
 		</div>
 		<div class="video-card-title">{{ name }}</div>
-
-		<!-- 右键菜单 -->
-		<ContextMenu ref="cm" :model="menuItems" />
 	</div>
 </template>
 
