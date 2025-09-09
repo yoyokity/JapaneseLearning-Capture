@@ -183,7 +183,22 @@ const to = '/home/user/app/dist';
 	 * @remarks 用时 <10ms
 	 */
 	writeLog: (type: 'log' | 'error' | 'warn' | 'info', ...params: any[]): void =>
-		send('filesystem:writeLog', type, ...params)
+		send('filesystem:writeLog', type, ...params),
+
+	/**
+	 * 在资源管理器中打开路径
+	 * @remarks 用时 <10ms
+	 * @param path 要打开的路径
+	 */
+	openInExplorer: (path: string): Promise<boolean> => invoke('filesystem:openInExplorer', path),
+
+	/**
+	 * 读取图片
+	 * @remarks 用时 <10ms
+	 * @param path 图片路径
+	 * @returns 图片数据
+	 */
+	readImage: (path: string): Promise<string> => invoke('filesystem:readImage', path)
 }
 
 function readFile(filePath: string, encoding: BufferEncoding): Promise<string>

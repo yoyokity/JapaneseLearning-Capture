@@ -1,39 +1,73 @@
 <script setup lang="ts">
 import { IVideoFile } from './type'
 import imgFall from '@renderer/assets/img-fall.svg?url'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import ContextMenu from 'primevue/contextmenu'
+import { PathHelper } from '@renderer/helper'
 
 const props = defineProps<{
 	video: IVideoFile
 }>()
 
+/**
+ * 右键菜单引用
+ */
+const cm = ref()
 const isImgError = ref(false)
-
-function handleImgError() {
-	isImgError.value = true
-}
 
 const name = computed(() => {
 	return props.video.title || props.video.fileName
 })
+const image = computed(() => {
+	return props.video.poster || props.video.fanart || props.video.thumb
+})
+const imageData = ref<string>('')
+
+//加载图片
+onMounted(async () => {
+	if (image.value == '') {
+		isImgError.value = true
+		return
+	}
+
+	imageData.value = (await PathHelper.readImage(image.value)) || ''
+
+	if (imageData.value == '') isImgError.value = true
+})
+
+// 右键菜单项
+const menuItems = [
+	{
+		label: '播放',
+		icon: 'pi pi-play-circle',
+		command: () => PathHelper.openInExplorer(props.video.path)
+	},
+	{
+		label: '打开文件夹',
+		icon: 'pi pi-folder-open',
+		command: () => PathHelper.openInExplorer(props.video.dir)
+	}
+]
+
+function onContextmenu(event: MouseEvent) {
+	cm.value.show(event)
+}
 </script>
 
 <template>
-	<div class="video-card" v-tooltip.top="{ value: name, showDelay: 500 }">
-		<div
-			class="video-card-img-container"
-			:path="props.video.poster"
-			:class="{ error: isImgError }"
-		>
-			<img
-				v-if="!isImgError"
-				class="video-card-img"
-				:src="`local-file:///${encodeURI(props.video.poster)}`"
-				@error="handleImgError"
-			/>
+	<div
+		class="video-card"
+		v-tooltip.top="{ value: name, showDelay: 500 }"
+		@contextmenu="onContextmenu"
+	>
+		<div class="video-card-img-container" :path="image" :class="{ error: isImgError }">
+			<img v-if="!isImgError" class="video-card-img" :src="imageData" />
 			<img v-else class="video-card-img error" :src="imgFall" />
 		</div>
 		<div class="video-card-title">{{ name }}</div>
+
+		<!-- 右键菜单 -->
+		<ContextMenu ref="cm" :model="menuItems" />
 	</div>
 </template>
 
@@ -77,6 +111,7 @@ const name = computed(() => {
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		text-overflow: ellipsis;
 		margin-top: 0.5rem;

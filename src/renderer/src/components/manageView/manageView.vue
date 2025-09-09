@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import Select, { type SelectChangeEvent } from 'primevue/select'
 import { Scraper } from '@renderer/scraper'
-import { settingsStore } from '@renderer/stores/settings'
 import Button from 'primevue/button'
 import { scanFiles } from './func'
 import ScrollPanel from 'primevue/scrollpanel'
-import { globalStatesStore } from '@renderer/stores/globalStates'
 import VideoCard from './videoCard.vue'
 import { IVideoFile } from './type'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()

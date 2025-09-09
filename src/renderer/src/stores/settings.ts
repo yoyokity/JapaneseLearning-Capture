@@ -3,6 +3,8 @@ import { reactive, ref, watch } from 'vue'
 import { NetHelper } from '@renderer/helper'
 import { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
+export type VideoSortType = 'title' | 'releasedate'
+
 export const settingsStore = defineStore(
 	'settings',
 	() => {
@@ -70,12 +72,18 @@ export const settingsStore = defineStore(
 		 */
 		const currentScraper = ref('')
 
+		/**
+		 * 管理视图排序
+		 */
+		const manageViewSort = ref<VideoSortType>('title')
+
 		return {
 			proxy,
 			net,
 			translate,
 			scraperPath,
-			currentScraper
+			currentScraper,
+			manageViewSort
 		}
 	},
 	{

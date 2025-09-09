@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { settingsStore } from '@renderer/stores/settings'
+import { settingsStore } from '@renderer/stores'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'

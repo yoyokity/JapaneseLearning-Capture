@@ -397,6 +397,37 @@ export class PathHelper {
 			return false
 		}
 	}
+
+	/**
+	 * 在资源管理器中打开路径
+	 * @remarks 用时 <10ms
+	 * @param path 要打开的路径
+	 */
+	static async openInExplorer(path: Path | string) {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.openInExplorer, path.toString())
+		if (!re.hasError) {
+			return true
+		} else {
+			DebugHelper.error(`在资源管理器中打开路径失败：`, re.error)
+			return false
+		}
+	}
+
+	/**
+	 * 读取图片
+	 * @remarks 用时 <10ms
+	 * @param path 图片路径
+	 * @returns 图片数据
+	 */
+	static async readImage(path: Path | string) {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.readImage, path.toString())
+		if (!re.hasError) {
+			return re.result
+		} else {
+			DebugHelper.error(`读取图片失败：`, re.error)
+			return null
+		}
+	}
 }
 export interface IArsrPath {
 	/**

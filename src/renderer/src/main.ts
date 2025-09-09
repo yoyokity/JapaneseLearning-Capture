@@ -11,7 +11,7 @@ import App from '@renderer/App.vue'
 import { theme } from '@renderer/style/theme'
 import { DebugHelper, PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
-import { settingsStore } from '@renderer/stores/settings'
+import { settingsStore } from '@renderer/stores'
 
 DebugHelper.log('============================')
 DebugHelper.log('应用初始化中...')

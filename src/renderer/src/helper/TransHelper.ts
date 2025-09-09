@@ -2,7 +2,7 @@ import { toSimplified, toTraditional } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
-import { settingsStore } from '@renderer/stores/settings.ts'
+import { settingsStore } from '@renderer/stores'
 
 // 注入短语库，提高准确性
 setupEnhance()

@@ -1,4 +1,4 @@
-import { settingsStore } from '@renderer/stores/settings.ts'
+import { settingsStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
 import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
 import {

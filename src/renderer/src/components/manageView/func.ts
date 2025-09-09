@@ -1,7 +1,7 @@
 import { PathHelper, videoExtensions } from '@renderer/helper'
 import { IVideoFile } from './type'
 import { Nfo } from '@renderer/scraper'
-import { globalStatesStore } from '@renderer/stores/globalStates'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
 
 /**
  * 扫描目录下的文件
@@ -9,6 +9,8 @@ import { globalStatesStore } from '@renderer/stores/globalStates'
  */
 export async function scanFiles(path: string): Promise<IVideoFile[]> {
 	const globalStates = globalStatesStore()
+	const settings = settingsStore()
+
 	globalStates.manageViewLoading = true
 
 	const videoFiles: IVideoFile[] = []
@@ -21,6 +23,16 @@ export async function scanFiles(path: string): Promise<IVideoFile[]> {
 	})) {
 		videoFiles.push(await Nfo.read(file, files))
 	}
+
+	//排序
+	videoFiles.sort((a, b) => {
+		if (settings.manageViewSort === 'title') {
+			return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
+		} else if (settings.manageViewSort === 'releasedate') {
+			return a.releasedate.localeCompare(b.releasedate, undefined, { sensitivity: 'base' })
+		}
+		return 0
+	})
 
 	globalStates.manageViewLoading = false
 	return videoFiles
