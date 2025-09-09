@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import Select, { type SelectChangeEvent } from 'primevue/select'
 import { Scraper } from '@renderer/scraper'
 import Button from 'primevue/button'
@@ -14,7 +14,6 @@ const globalStates = globalStatesStore()
 //开始搜索文件
 async function startScan() {
 	globalStates.manageViewFiles = await scanFiles(settings.scraperPath[settings.currentScraper])
-	console.log(globalStates.manageViewFiles)
 }
 
 //重新选择目录后，清除文件列表
@@ -31,22 +30,22 @@ function clearFiles(e: SelectChangeEvent) {
 			<h3>管理</h3>
 			<Select
 				v-model="settings.currentScraper"
-				:options="Scraper.instances.map((scraper) => scraper.scraperName)"
-				size="small"
-				style="width: 8rem"
 				v-tooltip.left="{
 					value: '选择目录',
 					showDelay: 700
 				}"
+				:options="Scraper.instances.map((scraper) => scraper.scraperName)"
+				size="small"
+				style="width: 8rem"
 				@change="clearFiles"
 			/>
 			<Button
+				:loading="globalStates.manageViewLoading"
 				icon="pi pi-refresh"
 				label="开始扫描"
 				size="small"
 				style="width: 7rem"
 				@click="startScan"
-				:loading="globalStates.manageViewLoading"
 			/>
 		</div>
 		<ScrollPanel style="height: calc(100% - var(--header-height))">
@@ -57,10 +56,13 @@ function clearFiles(e: SelectChangeEvent) {
 				/>
 			</div>
 		</ScrollPanel>
+
+		<!--浮动块-->
+		<div></div>
 	</div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .manage-view {
 	width: 100%;
 	height: 100%;

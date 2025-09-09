@@ -1,10 +1,9 @@
-import { app, BrowserWindow, protocol } from 'electron'
+import { app, BrowserWindow, net, protocol } from 'electron'
 import { electronApp } from '@electron-toolkit/utils'
 import { createWindow } from './window'
 import { join } from 'path'
 import './ipc'
 import { appPath } from './ipc'
-import { net } from 'electron'
 
 // 设置app路径
 appPath.root = process.cwd()

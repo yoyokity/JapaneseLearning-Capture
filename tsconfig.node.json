@@ -5,14 +5,12 @@
 		"lib": ["ES2023"],
 		"module": "ESNext",
 		"skipLibCheck": true,
-
 		/* Bundler mode */
 		"moduleResolution": "bundler",
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"moduleDetection": "force",
 		"noEmit": true,
-
 		/* Linting */
 		"strict": true,
 		"noUnusedLocals": true,
@@ -20,7 +18,6 @@
 		"erasableSyntaxOnly": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true,
-
 		"types": ["electron-vite/node"]
 	},
 	"include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*"]

@@ -30,20 +30,6 @@ export class DataHelper {
 	private static _connecting: Promise<IDBDatabase> | null = null
 
 	/**
-	 * 初始化数据库连接
-	 * @description 每次刮削启动时调用此方法建立数据库连接
-	 * @remarks 编写刮削器的时候不需要调用此方法
-	 */
-	protected static async init(): Promise<void> {
-		try {
-			this._db = await this.openDB()
-			DebugHelper.info('数据库连接已初始化')
-		} catch (error) {
-			DebugHelper.error('初始化数据库连接失败:', error)
-		}
-	}
-
-	/**
 	 * 存储数据到IndexedDB
 	 * @param name 刮削器名称
 	 * @param key 数据的键
@@ -112,6 +98,20 @@ export class DataHelper {
 		} catch (error) {
 			DebugHelper.error('获取数据时发生错误:', error)
 			return null
+		}
+	}
+
+	/**
+	 * 初始化数据库连接
+	 * @description 每次刮削启动时调用此方法建立数据库连接
+	 * @remarks 编写刮削器的时候不需要调用此方法
+	 */
+	protected static async init(): Promise<void> {
+		try {
+			this._db = await this.openDB()
+			DebugHelper.info('数据库连接已初始化')
+		} catch (error) {
+			DebugHelper.error('初始化数据库连接失败:', error)
 		}
 	}
 

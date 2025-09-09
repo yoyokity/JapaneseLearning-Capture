@@ -26,6 +26,16 @@ export class Actor implements IActor {
 	}
 
 	/**
+	 * 检测网络连通性
+	 * @return  连通返回true，否则返回连接失败的站点
+	 */
+	static async checkConnect(): Promise<boolean | string> {
+		const re = await NetHelper.ping('https://ja.wikipedia.org')
+		if (re.success) return true
+		return 'wiki'
+	}
+
+	/**
 	 * 返回信息文本
 	 */
 	infoText() {
@@ -37,29 +47,6 @@ export class Actor implements IActor {
 		if (this.cup) text += ' ' + this.cup
 
 		return text
-	}
-
-	/**
-	 * 从数据库中获取演员信息
-	 */
-	private async get(): Promise<boolean> {
-		const data = (await DataHelper.get('#actor', this.name)) as IActor
-		if (data) {
-			this.imgUrl = data.imgUrl || ''
-			this.gender = data.gender || 'female'
-			this.birthdate = data.birthdate || ''
-			this.measurements = data.measurements || ''
-			this.cup = data.cup || ''
-			return true
-		}
-		return false
-	}
-
-	/**
-	 * 将演员信息存入数据库中
-	 */
-	private async set() {
-		await DataHelper.set('#actor', this.name, this)
 	}
 
 	/**
@@ -138,13 +125,26 @@ export class Actor implements IActor {
 	}
 
 	/**
-	 * 检测网络连通性
-	 * @return  连通返回true，否则返回连接失败的站点
+	 * 从数据库中获取演员信息
 	 */
-	static async checkConnect(): Promise<boolean | string> {
-		const re = await NetHelper.ping('https://ja.wikipedia.org')
-		if (re.success) return true
-		return 'wiki'
+	private async get(): Promise<boolean> {
+		const data = (await DataHelper.get('#actor', this.name)) as IActor
+		if (data) {
+			this.imgUrl = data.imgUrl || ''
+			this.gender = data.gender || 'female'
+			this.birthdate = data.birthdate || ''
+			this.measurements = data.measurements || ''
+			this.cup = data.cup || ''
+			return true
+		}
+		return false
+	}
+
+	/**
+	 * 将演员信息存入数据库中
+	 */
+	private async set() {
+		await DataHelper.set('#actor', this.name, this)
 	}
 }
 

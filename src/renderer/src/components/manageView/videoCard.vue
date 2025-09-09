@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { IVideoFile } from './type'
 import imgFall from '@renderer/assets/img-fall.svg?url'
 import { computed, onMounted, ref } from 'vue'
@@ -56,13 +56,13 @@ function onContextmenu(event: MouseEvent) {
 
 <template>
 	<div
-		class="video-card"
 		v-tooltip.top="{ value: name, showDelay: 500 }"
+		class="video-card"
 		@contextmenu="onContextmenu"
 	>
-		<div class="video-card-img-container" :path="image" :class="{ error: isImgError }">
-			<img v-if="!isImgError" class="video-card-img" :src="imageData" />
-			<img v-else class="video-card-img error" :src="imgFall" />
+		<div :class="{ error: isImgError }" :path="image" class="video-card-img-container">
+			<img v-if="!isImgError" :src="imageData" class="video-card-img" />
+			<img v-else :src="imgFall" class="video-card-img error" />
 		</div>
 		<div class="video-card-title">{{ name }}</div>
 
@@ -71,7 +71,7 @@ function onContextmenu(event: MouseEvent) {
 	</div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .video-card {
 	user-select: none;
 	-webkit-user-drag: none;
