@@ -29,12 +29,16 @@ export const globalStatesStore = defineStore('globalStates', () => {
 	function videoSortFunc(a: IVideoFile, b: IVideoFile) {
 		if (settings.manageViewSort === 'title') {
 			return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
-		} else if (settings.manageViewSort === 'releasedate') {
-			return a.releasedate.localeCompare(b.releasedate, undefined, { sensitivity: 'base' })
 		} else if (settings.manageViewSort === 'title_reverse') {
 			return b.sorttitle.localeCompare(a.sorttitle, undefined, { sensitivity: 'base' })
+		} else if (settings.manageViewSort === 'releasedate') {
+			const dateA = parseDateString(a.releasedate)
+			const dateB = parseDateString(b.releasedate)
+			return dateA.getTime() - dateB.getTime()
 		} else if (settings.manageViewSort === 'releasedate_reverse') {
-			return b.releasedate.localeCompare(a.releasedate, undefined, { sensitivity: 'base' })
+			const dateA = parseDateString(a.releasedate)
+			const dateB = parseDateString(b.releasedate)
+			return dateB.getTime() - dateA.getTime()
 		}
 		return 0
 	}
@@ -66,3 +70,24 @@ export const globalStatesStore = defineStore('globalStates', () => {
 		manageViewFilesFilterValue
 	}
 })
+
+/**
+ * 解析日期字符串为Date对象
+ * 支持格式：2025-06-27, 2025.06.27, 2025/06/27, 2025\06\27
+ */
+function parseDateString(dateStr: string): Date {
+	if (!dateStr || dateStr.trim() === '') {
+		return new Date(0) // 返回最早的日期作为默认值
+	}
+
+	// 将所有分隔符统一为 '-'
+	const normalizedDate = dateStr.replace(/[.\\/\\]/g, '-')
+	const date = new Date(normalizedDate)
+
+	// 如果解析失败，返回最早的日期
+	if (isNaN(date.getTime())) {
+		return new Date(0)
+	}
+
+	return date
+}

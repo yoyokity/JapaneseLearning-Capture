@@ -3,7 +3,7 @@ import Select, { type SelectChangeEvent } from 'primevue/select'
 import { Scraper } from '@renderer/scraper'
 import Button from 'primevue/button'
 import ScrollTop from 'primevue/scrolltop'
-import { scanFiles } from './func'
+import { startScan } from './func'
 import ScrollPanel from 'primevue/scrollpanel'
 import VideoCard from './videoCard.vue'
 import { IVideoFile } from './type'
@@ -43,11 +43,6 @@ const menuItems = ref([
 		}
 	}
 ])
-
-//开始搜索文件
-async function startScan() {
-	globalStates.setManageViewFiles(await scanFiles(settings.scraperPath[settings.currentScraper]))
-}
 
 //重新选择目录后，清除文件列表
 function clearFiles(e: SelectChangeEvent) {

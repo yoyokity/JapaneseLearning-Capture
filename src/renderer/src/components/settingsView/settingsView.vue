@@ -96,7 +96,7 @@ async function testTranslate() {
 					<SettingsLine v-for="scraper in Scraper.instances" :title="scraper.scraperName">
 						<template #right>
 							<InputText
-								v-model="settings.scraperPath[scraper.scraperName]"
+								v-model.trim="settings.scraperPath[scraper.scraperName]"
 								type="text"
 							/>
 						</template>
@@ -111,7 +111,7 @@ async function testTranslate() {
 					<SettingsLine icon="pi pi-hourglass" title="连接超时（秒）">
 						<template #right>
 							<InputNumber
-								v-model="settings.net.timeout"
+								v-model.trim="settings.net.timeout"
 								:max="30"
 								:min="0"
 								showButtons
@@ -126,7 +126,7 @@ async function testTranslate() {
 					>
 						<template #right>
 							<InputNumber
-								v-model="settings.net.retry"
+								v-model.trim="settings.net.retry"
 								:max="10"
 								:min="0"
 								showButtons
@@ -141,7 +141,7 @@ async function testTranslate() {
 					>
 						<template #right>
 							<InputNumber
-								v-model="settings.net.delay"
+								v-model.trim="settings.net.delay"
 								:max="10000"
 								:min="0"
 								:step="1000"
@@ -156,11 +156,11 @@ async function testTranslate() {
 							<ToggleSwitch v-model="settings.proxy.enable" />
 						</SettingsLineItem>
 						<SettingsLineItem title="主机">
-							<InputText v-model="settings.proxy.host" type="text" />
+							<InputText v-model.trim="settings.proxy.host" type="text" />
 						</SettingsLineItem>
 						<SettingsLineItem title="端口">
 							<InputNumber
-								v-model="settings.proxy.port"
+								v-model.trim="settings.proxy.port"
 								:max="65535"
 								:min="1"
 								:useGrouping="false"
@@ -222,7 +222,10 @@ async function testTranslate() {
 								>
 									获取API Key
 								</Button>
-								<InputText v-model="settings.translate.gemini.apiKey" type="text" />
+								<InputText
+									v-model.trim="settings.translate.gemini.apiKey"
+									type="text"
+								/>
 							</SettingsLineItem>
 							<SettingsLineItem title="模型">
 								<Button
@@ -236,20 +239,23 @@ async function testTranslate() {
 								>
 									查看全部模型
 								</Button>
-								<InputText v-model="settings.translate.gemini.model" type="text" />
+								<InputText
+									v-model.trim="settings.translate.gemini.model"
+									type="text"
+								/>
 							</SettingsLineItem>
 						</div>
 						<div v-if="settings.translate.translateEngine === 'localLLM'">
 							<SettingsLineItem title="主机">
 								<InputText
-									v-model="settings.translate.localLLM.host"
+									v-model.trim="settings.translate.localLLM.host"
 									type="text"
 									@change="fetchLLMModels"
 								/>
 							</SettingsLineItem>
 							<SettingsLineItem title="端口">
 								<InputNumber
-									v-model="settings.translate.localLLM.port"
+									v-model.trim="settings.translate.localLLM.port"
 									:max="65535"
 									:min="1"
 									:useGrouping="false"
@@ -296,7 +302,7 @@ async function testTranslate() {
 						<template #right>
 							<Button @click="testTranslate"> 测试翻译 </Button>
 							<InputText
-								v-model="testText"
+								v-model.trim="testText"
 								:placeholder="testDefaultText"
 								type="text"
 								@blur="testText || (testText = testDefaultText)"

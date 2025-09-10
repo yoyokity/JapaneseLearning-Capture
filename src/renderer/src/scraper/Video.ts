@@ -1,8 +1,3 @@
-/**
- * 性别
- */
-export type Gender = 'male' | 'female'
-
 export interface IActor {
 	/**
 	 * 姓名

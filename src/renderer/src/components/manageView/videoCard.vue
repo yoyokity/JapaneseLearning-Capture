@@ -28,9 +28,12 @@ const imageData = ref<string>('')
 function showEditor() {
 	dialog.open(Editor, {
 		props: {
-			header: '编辑信息',
 			modal: true,
-			draggable: false
+			draggable: false,
+			showHeader: false,
+			contentStyle: {
+				marginBottom: '4.5rem'
+			}
 		},
 		data: {
 			video: props.video
@@ -66,7 +69,7 @@ async function loadImage() {
 onMounted(loadImage)
 
 // 监听video的poster/fanart/thumb变化，重新加载图片
-watch(() => [props.video.poster, props.video.fanart, props.video.thumb], loadImage)
+watch(image, loadImage)
 
 function onContextmenu(event: MouseEvent) {
 	emit('showMenu', event, props.video)

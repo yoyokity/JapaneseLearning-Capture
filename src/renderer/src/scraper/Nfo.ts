@@ -1,7 +1,8 @@
 import { create } from 'xmlbuilder2'
 import { type XMLBuilder } from 'xmlbuilder2/lib/interfaces'
-import { IVideo } from './type'
-import { PathHelper } from '@renderer/helper'
+import { IVideo } from './Video'
+import { Path, PathHelper } from '@renderer/helper'
+import { isString } from 'es-toolkit'
 
 /**
  * NFO 文件生成器
@@ -21,7 +22,7 @@ export class Nfo {
 	 */
 	static create(video: IVideo) {
 		function addElement(root: XMLBuilder, node: string) {
-			if (video[node] !== '') {
+			if (isString(video[node]) && video[node] !== '') {
 				root.ele(node).txt(video[node])
 			}
 		}
@@ -62,6 +63,7 @@ export class Nfo {
 		addElement(root, 'year')
 		addElement(root, 'premiered')
 		addElement(root, 'releasedate')
+
 		root.ele('poster').txt('poster.jpg')
 		root.ele('thumb').txt('thumb.jpg')
 		root.ele('fanart').txt('fanart.jpg')
@@ -77,7 +79,7 @@ export class Nfo {
 	 * 保存 NFO 文件
 	 * @param path 文件路径
 	 */
-	async save(path: string) {
+	async save(path: string | Path) {
 		await PathHelper.writeFile(path, this.toString())
 	}
 }

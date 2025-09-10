@@ -1,5 +1,5 @@
 import { DebugHelper } from '@renderer/helper'
-import { IVideo } from './type'
+import { IVideo } from './Video'
 
 /**
  * 模块导入类型接口

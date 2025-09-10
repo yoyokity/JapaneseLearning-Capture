@@ -1,4 +1,4 @@
-export * from './type'
+export * from './Video'
 export * from './Actor'
 export * from './Nfo'
 export * from './Scraper'

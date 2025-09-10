@@ -1,5 +1,5 @@
 import { IScraper } from '../scraper/Scraper'
-import { IVideo } from '../scraper/type'
+import { IVideo } from '../scraper/Video'
 
 const hanimeScraper: IScraper = {
 	scraperName: '里番',

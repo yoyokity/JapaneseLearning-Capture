@@ -1,8 +1,18 @@
 import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
 import { IVideoFile } from './type'
 import { convert } from 'xmlbuilder2'
-import { globalStatesStore } from '@renderer/stores'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
+
+/**
+ * 开始搜索文件
+ */
+export async function startScan() {
+	const globalStates = globalStatesStore()
+	const settings = settingsStore()
+
+	globalStates.setManageViewFiles(await scanFiles(settings.scraperPath[settings.currentScraper]))
+}
 
 /**
  * 扫描目录下的文件
@@ -41,9 +51,9 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
 		fileName: _path.basename,
 		extname: _path.extname,
 		nfoPath: nfoPath,
-		poster: '',
-		thumb: '',
-		fanart: '',
+		poster: null,
+		thumb: null,
+		fanart: null,
 		//
 		scraperName: '',
 		title: '',
@@ -125,14 +135,15 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
 
 	//处理图片
 	if (!movie.poster) {
+		//从文件列表中获取poster
 		const poster = files.filter(
 			(file) => file.includes(video.dir.toString()) && file.includes('poster')
 		)
 		if (poster.length > 0) {
-			video.poster = poster[0]
+			video.poster = PathHelper.newPath(poster[0])
 		}
 	} else if (!PathHelper.newPath(movie.poster).isAbsolute) {
-		video.poster = video.dir.join(movie.poster).toString()
+		video.poster = video.dir.join(movie.poster)
 	}
 
 	if (!movie.thumb) {
@@ -140,10 +151,10 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
 			(file) => file.includes(video.dir.toString()) && file.includes('thumb')
 		)
 		if (thumb.length > 0) {
-			video.thumb = thumb[0]
+			video.thumb = PathHelper.newPath(thumb[0])
 		}
 	} else if (!PathHelper.newPath(movie.thumb).isAbsolute) {
-		video.thumb = video.dir.join(movie.thumb).toString()
+		video.thumb = video.dir.join(movie.thumb)
 	}
 
 	if (!movie.fanart) {
@@ -151,10 +162,10 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
 			(file) => file.includes(video.dir.toString()) && file.includes('fanart')
 		)
 		if (fanart.length > 0) {
-			video.fanart = fanart[0]
+			video.fanart = PathHelper.newPath(fanart[0])
 		}
 	} else if (!PathHelper.newPath(movie.fanart).isAbsolute) {
-		video.fanart = video.dir.join(movie.fanart).toString()
+		video.fanart = video.dir.join(movie.fanart)
 	}
 
 	return video

@@ -1,6 +1,6 @@
 import { load as cheerioLoad } from 'cheerio'
 import { DataHelper, NetHelper } from '@renderer/helper'
-import { Gender, IActor } from './type'
+import { Gender, IActor } from './Video'
 
 const headers = {
 	'User-Agent':
