@@ -46,7 +46,7 @@ const currentComponent = () => {
 		</div>
 		<div class="content">
 			<transition name="slide-up">
-				<keep-alive>
+				<keep-alive exclude="settingsView">
 					<component :is="currentComponent()" :key="activeTab" class="tab-content" />
 				</keep-alive>
 			</transition>

@@ -2,6 +2,7 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import svgLoader from 'vite-svg-loader'
+import vueDevTools from 'vite-plugin-vue-devtools'
 
 export default defineConfig({
 	main: {
@@ -14,7 +15,7 @@ export default defineConfig({
 		server: {
 			port: 5174
 		},
-		plugins: [vue(), svgLoader()],
+		plugins: [vue(), svgLoader(), vueDevTools()],
 		build: {
 			chunkSizeWarningLimit: 999999,
 			minify: 'terser', // 使用 terser 进行代码压缩和混淆

@@ -127,7 +127,8 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
 		const actors = Array.isArray(movie.actor) ? movie.actor : [movie.actor]
 		video.actor = actors.map((actor) => ({
 			name: actor.name || '',
-			imgUrl: actor.thumb || ''
+			imgUrl: actor.thumb || '',
+			role: actor.role || ''
 		}))
 	}
 

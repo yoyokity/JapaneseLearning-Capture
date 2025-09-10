@@ -2,7 +2,9 @@
 import { IVideoFile } from './type'
 import imgFall from '@renderer/assets/img-fall.svg?url'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useDialog } from 'primevue/usedialog'
 import { PathHelper } from '@renderer/helper'
+import Editor from './editor.vue'
 
 const props = defineProps<{
 	video: IVideoFile
@@ -12,6 +14,7 @@ const emit = defineEmits<{
 	showMenu: [event: MouseEvent, video: IVideoFile]
 }>()
 
+const dialog = useDialog()
 const isImgError = ref(true)
 
 const name = computed(() => {
@@ -21,6 +24,19 @@ const image = computed(() => {
 	return props.video.poster || props.video.fanart || props.video.thumb
 })
 const imageData = ref<string>('')
+
+function showEditor() {
+	dialog.open(Editor, {
+		props: {
+			header: '编辑信息',
+			modal: true,
+			draggable: false
+		},
+		data: {
+			video: props.video
+		}
+	})
+}
 
 /**
  * 加载图片
@@ -39,8 +55,8 @@ async function loadImage() {
 //加载图片
 onMounted(loadImage)
 
-// 监听video变化，重新加载图片
-watch(() => props.video, loadImage, { deep: true })
+// 监听video的poster/fanart/thumb变化，重新加载图片
+watch(() => [props.video.poster, props.video.fanart, props.video.thumb], loadImage)
 
 function onContextmenu(event: MouseEvent) {
 	emit('showMenu', event, props.video)
@@ -48,16 +64,14 @@ function onContextmenu(event: MouseEvent) {
 </script>
 
 <template>
-	<div
-		v-tooltip.top="{ value: name, showDelay: 500 }"
-		class="video-card"
-		@contextmenu="onContextmenu"
-	>
+	<div class="video-card" @click="showEditor" @contextmenu="onContextmenu">
 		<div :class="{ error: isImgError }" :path="image" class="video-card-img-container">
 			<img v-if="!isImgError" :src="imageData" class="video-card-img" />
 			<img v-else :src="imgFall" class="video-card-img error" />
 		</div>
-		<div class="video-card-title">{{ name }}</div>
+		<div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
+			{{ name }}
+		</div>
 	</div>
 </template>
 

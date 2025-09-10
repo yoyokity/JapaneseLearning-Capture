@@ -16,7 +16,6 @@ import InputText from 'primevue/inputtext'
 const settings = settingsStore()
 const globalStates = globalStatesStore()
 const cm = ref()
-const searchInputRef = ref()
 const currentVideo = ref<IVideoFile | null>(null)
 
 const isSortActive = ref(false)
@@ -131,14 +130,12 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 						() => {
 							isSearchActive = !isSearchActive
 							globalStates.manageViewFilesFilterValue = ''
-							searchInputRef.value?.focus()
 						}
 					"
 				/>
 				<transition name="search-animation">
 					<div v-show="isSearchActive" class="search-input-container">
 						<InputText
-							ref="searchInputRef"
 							v-model="globalStates.manageViewFilesFilterValue"
 							class="search-input"
 							placeholder="搜索"

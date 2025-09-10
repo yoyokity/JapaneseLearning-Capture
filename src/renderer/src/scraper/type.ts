@@ -9,25 +9,13 @@ export interface IActor {
 	 */
 	name: string
 	/**
-	 * 性别
+	 * 角色
 	 */
-	gender: Gender
+	role: string
 	/**
 	 * 照片URL
 	 */
 	imgUrl: string
-	/**
-	 * 出生年月
-	 */
-	birthdate: string
-	/**
-	 * 三围
-	 */
-	measurements: string
-	/**
-	 * 罩杯
-	 */
-	cup: string
 }
 
 export interface IVideo {

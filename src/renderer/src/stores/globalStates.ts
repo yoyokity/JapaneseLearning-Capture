@@ -14,6 +14,12 @@ export const globalStatesStore = defineStore('globalStates', () => {
 	function setManageViewFiles(files: IVideoFile[]) {
 		manageViewFiles.splice(0, manageViewFiles.length, ...files)
 	}
+	function changeManageViewFile(filePath: string, videoFile: IVideoFile) {
+		const index = manageViewFiles.findIndex((f) => f.path.toString() === filePath)
+		if (index !== -1) {
+			manageViewFiles[index] = videoFile
+		}
+	}
 	/**
 	 * 管理视图文件列表过滤值
 	 */
@@ -63,6 +69,7 @@ export const globalStatesStore = defineStore('globalStates', () => {
 	return {
 		manageViewFiles,
 		setManageViewFiles,
+		changeManageViewFile,
 		manageViewLoading,
 		manageViewFilesFilter,
 		manageViewFilesFilterValue,

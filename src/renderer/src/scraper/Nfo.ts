@@ -43,9 +43,8 @@ export class Nfo {
 		for (const value of video.actor) {
 			const actor = root.ele('actor')
 			actor.ele('name').txt(value.name)
-			if (value.imgUrl) {
-				actor.ele('thumb').txt(value.imgUrl)
-			}
+			if (value.imgUrl) actor.ele('thumb').txt(value.imgUrl)
+			if (value.role) actor.ele('role').txt(value.role)
 		}
 
 		addElement(root, 'studio')
