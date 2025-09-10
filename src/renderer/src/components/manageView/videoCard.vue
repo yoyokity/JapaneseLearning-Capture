@@ -1,10 +1,9 @@
 <script lang="ts" setup>
 import { IVideoFile } from './type'
-import imgFall from '@renderer/assets/img-fall.svg?url'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useDialog } from 'primevue/usedialog'
-import { PathHelper } from '@renderer/helper'
 import Editor from './editor.vue'
+import Image from '@renderer/components/control/videoImage.vue'
 
 const props = defineProps<{
 	video: IVideoFile
@@ -15,7 +14,6 @@ const emit = defineEmits<{
 }>()
 
 const dialog = useDialog()
-const isImgError = ref(true)
 
 const name = computed(() => {
 	return props.video.title || props.video.fileName
@@ -23,7 +21,6 @@ const name = computed(() => {
 const image = computed(() => {
 	return props.video.poster || props.video.fanart || props.video.thumb
 })
-const imageData = ref<string>('')
 
 function showEditor() {
 	dialog.open(Editor, {
@@ -32,7 +29,8 @@ function showEditor() {
 			draggable: false,
 			showHeader: false,
 			contentStyle: {
-				marginBottom: '4.5rem'
+				marginBottom: '4.5rem',
+				marginTop: 'var(--header-height)'
 			}
 		},
 		data: {
@@ -41,36 +39,6 @@ function showEditor() {
 	})
 }
 
-/**
- * 加载图片
- */
-async function loadImage() {
-	// 先缓存要加载的图片路径
-	const targetImage = image.value
-
-	// 如果没有图片路径，直接设置错误状态
-	if (!targetImage) {
-		imageData.value = ''
-		isImgError.value = true
-		return
-	}
-
-	// 尝试加载新图片
-	const newImageData = (await PathHelper.readImage(targetImage)) || ''
-
-	// 只有在图片路径没有变化的情况下才更新状态（避免竞态条件）
-	if (image.value === targetImage) {
-		imageData.value = newImageData
-		isImgError.value = !newImageData
-	}
-}
-
-//加载图片
-onMounted(loadImage)
-
-// 监听video的poster/fanart/thumb变化，重新加载图片
-watch(image, loadImage)
-
 function onContextmenu(event: MouseEvent) {
 	emit('showMenu', event, props.video)
 }
@@ -78,10 +46,7 @@ function onContextmenu(event: MouseEvent) {
 
 <template>
 	<div class="video-card" @click="showEditor" @contextmenu="onContextmenu">
-		<div :class="{ error: isImgError }" :path="image" class="video-card-img-container">
-			<img v-if="!isImgError" :src="imageData" class="video-card-img" />
-			<img v-else :src="imgFall" class="video-card-img error" />
-		</div>
+		<Image :filePath="image" />
 		<div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
 			{{ name }}
 		</div>
@@ -94,32 +59,6 @@ function onContextmenu(event: MouseEvent) {
 	-webkit-user-drag: none;
 	cursor: pointer;
 	position: relative;
-
-	.video-card-img-container {
-		aspect-ratio: 379 / 538; //保持长宽比
-		border-radius: calc(var(--border-radius) * 2);
-		overflow: hidden;
-
-		&.error {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.video-card-img {
-			width: 100%;
-			height: 100%;
-			object-fit: cover; // 使用 object-fit: cover 确保图片等比例填充容器
-			object-position: center; // 居中显示图片
-			transition: transform 0.3s var(--animation-type);
-			-webkit-user-drag: none;
-
-			&.error {
-				width: initial;
-				height: initial;
-			}
-		}
-	}
 
 	.video-card-title {
 		text-align: center;

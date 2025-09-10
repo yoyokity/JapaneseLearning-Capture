@@ -13,7 +13,6 @@ import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import { useToast } from 'primevue/usetoast'
-import Toast from 'primevue/toast'
 import { TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 
@@ -64,7 +63,6 @@ async function testTranslate() {
 
 <template>
 	<div class="settings-view">
-		<Toast position="top-right" />
 		<div class="tab">
 			<div
 				v-for="tab in tabs"

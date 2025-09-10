@@ -23,15 +23,15 @@ export interface IVideoFile extends IVideo {
 	 */
 	nfoPath: Path
 	/**
-	 * 视频文件的封面
+	 * 视频文件的封面路径
 	 */
 	poster: Path | null
 	/**
-	 * 视频文件的缩略图
+	 * 视频文件的缩略图路径
 	 */
 	thumb: Path | null
 	/**
-	 * 视频文件的背景图
+	 * 视频文件的背景图路径
 	 */
 	fanart: Path | null
 }

@@ -15,8 +15,17 @@ import { isEqual } from 'es-toolkit'
 
 const dialogRef = inject('dialogRef') as Ref<any>
 const toast = useToast()
-
 const video = ref<IVideoFile>({} as IVideoFile)
+
+const tabs = [
+	{ id: 'info', name: '信息', icon: 'pi pi-info-circle' },
+	{ id: 'image', name: '图片', icon: 'pi pi-image' }
+]
+const activeTab = ref('info')
+function switchTab(tabId: string) {
+	if (tabId === activeTab.value) return
+	activeTab.value = tabId
+}
 
 const addActorValue = ref<IActor>({
 	name: '',
@@ -87,7 +96,31 @@ onMounted(() => {
 
 <template>
 	<div class="manage-view-editor">
-		<div class="form-container">
+		<!-- 顶部标签部分 -->
+		<div class="manage-view-editor-header">
+			<div
+				v-for="tab in tabs"
+				:key="tab.id"
+				:class="{ active: activeTab === tab.id }"
+				:title="tab.name"
+				class="tab-item"
+				@click="switchTab(tab.id)"
+			>
+				<div class="tab-content-wrapper">
+					<i :class="tab.icon" style="font-size: 0.9rem"></i>
+					<span class="tab-name">{{ tab.name }}</span>
+				</div>
+			</div>
+			<div
+				:style="{
+					transform: `translateX(${tabs.findIndex((tab) => tab.id === activeTab) * 5 + 0.5}rem)`
+				}"
+				class="active-indicator"
+			></div>
+		</div>
+
+		<!-- 信息编辑部分 -->
+		<div v-show="activeTab === 'info'" class="form-container">
 			<h2 style="margin-top: 0">标题</h2>
 			<FloatLabel variant="on">
 				<InputText id="title_label" v-model.trim="video.title" />
@@ -325,6 +358,13 @@ onMounted(() => {
 				</FloatLabel>
 			</div>
 		</div>
+
+		<!-- 图片编辑部分 -->
+		<div v-show="activeTab === 'image'" class="form-container">
+			<h2 style="margin-top: 0">封面</h2>
+		</div>
+
+		<!-- 底部 -->
 		<div class="manage-view-editor-footer">
 			<Button icon="pi pi-times" label="取消" severity="secondary" @click="dialogRef.close" />
 			<Button icon="pi pi-save" label="保存" @click="save" />
@@ -345,6 +385,8 @@ onMounted(() => {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		padding-top: 2rem;
+		padding-bottom: 1rem;
 
 		.flex-title {
 			display: flex;
@@ -407,8 +449,48 @@ onMounted(() => {
 		}
 	}
 
+	.manage-view-editor-header {
+		padding-left: 0.5rem;
+		position: fixed;
+		top: 0;
+		width: 100%;
+		height: var(--header-height);
+		transform: translateX(-1.25rem);
+	}
+
+	//顶部标签部分
+	.manage-view-editor-header {
+		display: flex;
+		border-bottom: var(--separator);
+
+		.tab-item {
+			width: 5rem;
+			height: var(--header-height);
+			cursor: pointer;
+			display: flex;
+			justify-content: center;
+
+			.tab-content-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 0.25rem;
+			}
+		}
+
+		.active-indicator {
+			position: absolute;
+			top: calc(var(--header-height) - 0.25rem);
+			left: 1.5rem;
+			transform: translateX(-50%);
+			width: 2rem;
+			height: 0.25rem;
+			background-color: var(--p-primary-color);
+			border-radius: 0.125rem;
+			transition: all 0.3s var(--animation-type);
+		}
+	}
+
 	.manage-view-editor-footer {
-		width: inherit;
 		position: fixed;
 		display: flex;
 		flex-direction: row;
@@ -417,6 +499,10 @@ onMounted(() => {
 		bottom: 0;
 		padding: 1rem 0;
 		margin-left: auto;
+		width: 100%;
+		padding-right: 1rem;
+		transform: translateX(-1.25rem);
+		border-top: var(--separator);
 	}
 }
 

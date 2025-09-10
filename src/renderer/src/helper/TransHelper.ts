@@ -54,7 +54,7 @@ export class TransHelper {
 	 */
 	static async translate(text: string): Promise<ITranslateResult> {
 		const settings = settingsStore()
-		if (!settings.translate.enable) return { ok: true, text }
+		if (!settings.translate.enable) return { ok: false, text }
 
 		const re = await translators[settings.translate.translateEngine].func(
 			text,
