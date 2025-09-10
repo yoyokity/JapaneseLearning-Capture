@@ -42,14 +42,24 @@ function showEditor() {
  * 加载图片
  */
 async function loadImage() {
-	imageData.value = ''
+	// 先缓存要加载的图片路径
+	const targetImage = image.value
 
-	// 如果没有图片路径或读取失败，设置错误状态
-	if (image.value) {
-		imageData.value = (await PathHelper.readImage(image.value)) || ''
+	// 如果没有图片路径，直接设置错误状态
+	if (!targetImage) {
+		imageData.value = ''
+		isImgError.value = true
+		return
 	}
 
-	isImgError.value = !imageData.value
+	// 尝试加载新图片
+	const newImageData = (await PathHelper.readImage(targetImage)) || ''
+
+	// 只有在图片路径没有变化的情况下才更新状态（避免竞态条件）
+	if (image.value === targetImage) {
+		imageData.value = newImageData
+		isImgError.value = !newImageData
+	}
 }
 
 //加载图片

@@ -1,6 +1,7 @@
 import { IVideoFile } from '@renderer/components/manageView/type'
 import { defineStore } from 'pinia'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { settingsStore } from './settings'
 
 export const globalStatesStore = defineStore('globalStates', () => {
 	/**
@@ -14,65 +15,54 @@ export const globalStatesStore = defineStore('globalStates', () => {
 	function setManageViewFiles(files: IVideoFile[]) {
 		manageViewFiles.splice(0, manageViewFiles.length, ...files)
 	}
-	function changeManageViewFile(filePath: string, videoFile: IVideoFile) {
-		const index = manageViewFiles.findIndex((f) => f.path.toString() === filePath)
-		if (index !== -1) {
-			manageViewFiles[index] = videoFile
-		}
-	}
+
 	/**
 	 * 管理视图文件列表过滤值
 	 */
 	const manageViewFilesFilterValue = ref<string>('')
+
+	const settings = settingsStore()
+
 	/**
-	 * 管理视图文件列表过滤后的
+	 * 视频排序
 	 */
-	const manageViewFilesFilter = reactive<IVideoFile[]>([])
-	function setManageViewFilesFilter(files: IVideoFile[]) {
-		manageViewFilesFilter.splice(0, manageViewFilesFilter.length, ...files)
-	}
-
-	//文件列表发生变化时，过滤后的文件列表也发生变化
-	watch(manageViewFiles, () => {
-		if (manageViewFilesFilterValue.value.trim() !== '') {
-			const filter = manageViewFiles.filter((file) => {
-				return (
-					file.title.includes(manageViewFilesFilterValue.value) ||
-					file.originaltitle.includes(manageViewFilesFilterValue.value) ||
-					file.sorttitle.includes(manageViewFilesFilterValue.value) ||
-					file.set.toString().includes(manageViewFilesFilterValue.value)
-				)
-			})
-			setManageViewFilesFilter(filter as IVideoFile[])
-		} else {
-			setManageViewFilesFilter(manageViewFiles as IVideoFile[])
+	function videoSortFunc(a: IVideoFile, b: IVideoFile) {
+		if (settings.manageViewSort === 'title') {
+			return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
+		} else if (settings.manageViewSort === 'releasedate') {
+			return a.releasedate.localeCompare(b.releasedate, undefined, { sensitivity: 'base' })
+		} else if (settings.manageViewSort === 'title_reverse') {
+			return b.sorttitle.localeCompare(a.sorttitle, undefined, { sensitivity: 'base' })
+		} else if (settings.manageViewSort === 'releasedate_reverse') {
+			return b.releasedate.localeCompare(a.releasedate, undefined, { sensitivity: 'base' })
 		}
-	})
-
-	//过滤值发生变化时，过滤后的文件列表也发生变化
-	watch(manageViewFilesFilterValue, () => {
+		return 0
+	}
+	/**
+	 * 管理视图文件列表过滤后的，筛选+排序 后的文件列表
+	 */
+	const manageViewFilesFilter = computed(() => {
 		if (manageViewFilesFilterValue.value.trim() !== '') {
-			const filter = manageViewFiles.filter((file) => {
-				return (
-					file.title.includes(manageViewFilesFilterValue.value) ||
-					file.originaltitle.includes(manageViewFilesFilterValue.value) ||
-					file.sorttitle.includes(manageViewFilesFilterValue.value) ||
-					file.set.toString().includes(manageViewFilesFilterValue.value)
-				)
-			})
-			setManageViewFilesFilter(filter as IVideoFile[])
+			return (
+				manageViewFiles.filter((file) => {
+					return (
+						file.title.includes(manageViewFilesFilterValue.value) ||
+						file.originaltitle.includes(manageViewFilesFilterValue.value) ||
+						file.sorttitle.includes(manageViewFilesFilterValue.value) ||
+						file.set.toString().includes(manageViewFilesFilterValue.value)
+					)
+				}) as IVideoFile[]
+			).sort(videoSortFunc)
 		} else {
-			setManageViewFilesFilter(manageViewFiles as IVideoFile[])
+			return [...(manageViewFiles as IVideoFile[])].sort(videoSortFunc)
 		}
 	})
 
 	return {
 		manageViewFiles,
 		setManageViewFiles,
-		changeManageViewFile,
 		manageViewLoading,
 		manageViewFilesFilter,
-		manageViewFilesFilterValue,
-		setManageViewFilesFilter
+		manageViewFilesFilterValue
 	}
 })

@@ -3,7 +3,7 @@ import Select, { type SelectChangeEvent } from 'primevue/select'
 import { Scraper } from '@renderer/scraper'
 import Button from 'primevue/button'
 import ScrollTop from 'primevue/scrolltop'
-import { scanFiles, videoSortFunc } from './func'
+import { scanFiles } from './func'
 import ScrollPanel from 'primevue/scrollpanel'
 import VideoCard from './videoCard.vue'
 import { IVideoFile } from './type'
@@ -59,10 +59,6 @@ function clearFiles(e: SelectChangeEvent) {
 //重新排序
 function handleSortChange(e: SelectChangeEvent) {
 	settings.manageViewSort = e.value
-
-	if (globalStates.manageViewFilesFilter.length > 0) {
-		;(globalStates.manageViewFilesFilter as IVideoFile[]).sort(videoSortFunc)
-	}
 }
 
 /**

@@ -160,8 +160,6 @@ onMounted(() => {
 							addActorValue.name = ''
 							addActorValue.role = ''
 							addActorValue.imgUrl = ''
-
-							console.log(video.actor)
 						}
 					"
 				/>

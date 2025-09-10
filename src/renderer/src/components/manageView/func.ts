@@ -1,7 +1,7 @@
 import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
 import { IVideoFile } from './type'
 import { convert } from 'xmlbuilder2'
-import { globalStatesStore, settingsStore } from '@renderer/stores'
+import { globalStatesStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
 
 /**
@@ -24,29 +24,8 @@ export async function scanFiles(path: string): Promise<IVideoFile[]> {
 		videoFiles.push(await read(file, files))
 	}
 
-	//排序
-	videoFiles.sort(videoSortFunc)
-
 	globalStates.manageViewLoading = false
 	return videoFiles
-}
-
-/**
- * 视频排序
- */
-export function videoSortFunc(a: IVideoFile, b: IVideoFile) {
-	const settings = settingsStore()
-
-	if (settings.manageViewSort === 'title') {
-		return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
-	} else if (settings.manageViewSort === 'releasedate') {
-		return a.releasedate.localeCompare(b.releasedate, undefined, { sensitivity: 'base' })
-	} else if (settings.manageViewSort === 'title_reverse') {
-		return b.sorttitle.localeCompare(a.sorttitle, undefined, { sensitivity: 'base' })
-	} else if (settings.manageViewSort === 'releasedate_reverse') {
-		return b.releasedate.localeCompare(a.releasedate, undefined, { sensitivity: 'base' })
-	}
-	return 0
 }
 
 /**
