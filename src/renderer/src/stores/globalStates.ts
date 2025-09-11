@@ -5,10 +5,6 @@ import { settingsStore } from './settings'
 
 export const globalStatesStore = defineStore('globalStates', () => {
 	/**
-	 * 管理视图加载状态
-	 */
-	const manageViewLoading = ref(false)
-	/**
 	 * 管理视图文件列表
 	 */
 	const manageViewFiles = reactive<IVideoFile[]>([])
@@ -65,9 +61,15 @@ export const globalStatesStore = defineStore('globalStates', () => {
 	return {
 		manageViewFiles,
 		setManageViewFiles,
-		manageViewLoading,
 		manageViewFilesFilter,
-		manageViewFilesFilterValue
+		manageViewFilesFilterValue,
+
+		//loading状态
+
+		/**
+		 * 是否正在进行文件扫描
+		 */
+		scanFilesLoading: ref(false)
 	}
 })
 

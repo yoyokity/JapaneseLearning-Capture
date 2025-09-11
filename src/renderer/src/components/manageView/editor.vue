@@ -7,14 +7,11 @@ import Textarea from 'primevue/textarea'
 import Chip from 'primevue/chip'
 import Button from 'primevue/button'
 import SplitButton from 'primevue/splitbutton'
-import { useToast } from 'primevue/usetoast'
 import { IVideoFile } from './type'
-import { IActor, Nfo } from '@renderer/scraper'
-import { startScan } from './func'
-import { isEqual } from 'es-toolkit'
+import { IActor } from '@renderer/scraper'
+import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 const dialogRef = inject('dialogRef') as Ref<any>
-const toast = useToast()
 const video = ref<IVideoFile>({} as IVideoFile)
 
 const tabs = [
@@ -34,6 +31,19 @@ const addActorValue = ref<IActor>({
 })
 const addTagValue = ref('')
 const addGenreValue = ref('')
+
+function close(data: any = null) {
+	if (data) {
+		dialogRef.value.close(data)
+	} else {
+		dialogRef.value.close()
+	}
+}
+
+//快捷键退出
+useKeyPress(['esc', 'backspace'], () => {
+	close()
+})
 
 /**
  * 创建菜单项数组
@@ -58,39 +68,9 @@ function createMenuItems(inputRef: Ref<string>) {
 const tagMenuItems = createMenuItems(addTagValue)
 const genreMenuItems = createMenuItems(addGenreValue)
 
-let temp: any = {}
-
-// 保存到nfo文件
-async function save() {
-	//如果视频没有修改，则不保存
-	if (isEqual(video.value, temp)) {
-		toast.add({
-			severity: 'success',
-			summary: '未修改，无需保存',
-			life: 3000
-		})
-
-		dialogRef.value.close()
-		return
-	}
-
-	const nfo = Nfo.create(video.value)
-	await nfo.save(video.value.nfoPath.toString())
-
-	toast.add({
-		severity: 'success',
-		summary: '保存成功！',
-		life: 3000
-	})
-
-	dialogRef.value.close()
-	startScan()
-}
-
 onMounted(() => {
 	const params = dialogRef.value.data // {video: IVideoFile}
-	temp = params.video
-	video.value = cloneDeep(params.video)
+	video.value = cloneDeep(params.video) // 深拷贝，避免响应式对象引用问题
 })
 </script>
 
@@ -366,8 +346,8 @@ onMounted(() => {
 
 		<!-- 底部 -->
 		<div class="manage-view-editor-footer">
-			<Button icon="pi pi-times" label="取消" severity="secondary" @click="dialogRef.close" />
-			<Button icon="pi pi-save" label="保存" @click="save" />
+			<Button icon="pi pi-times" label="取消" severity="secondary" @click="close()" />
+			<Button icon="pi pi-save" label="保存" @click="close(video)" />
 		</div>
 	</div>
 </template>

@@ -1,19 +1,21 @@
 <script lang="ts" setup>
 import { IVideoFile } from './type'
 import { computed } from 'vue'
-import { useDialog } from 'primevue/usedialog'
-import Editor from './editor.vue'
+import { openEditorDialog } from './func'
 import Image from '@renderer/components/control/videoImage.vue'
-
-const props = defineProps<{
-	video: IVideoFile
-}>()
+import { useDialog } from 'primevue/usedialog'
+import { useToast } from 'primevue/usetoast'
 
 const emit = defineEmits<{
 	showMenu: [event: MouseEvent, video: IVideoFile]
 }>()
 
+const props = defineProps<{
+	video: IVideoFile
+}>()
+
 const dialog = useDialog()
+const toast = useToast()
 
 const name = computed(() => {
 	return props.video.title || props.video.fileName
@@ -23,20 +25,7 @@ const image = computed(() => {
 })
 
 function showEditor() {
-	dialog.open(Editor, {
-		props: {
-			modal: true,
-			draggable: false,
-			showHeader: false,
-			contentStyle: {
-				marginBottom: '4.5rem',
-				marginTop: 'var(--header-height)'
-			}
-		},
-		data: {
-			video: props.video
-		}
-	})
+	openEditorDialog(props.video, dialog, toast)
 }
 
 function onContextmenu(event: MouseEvent) {

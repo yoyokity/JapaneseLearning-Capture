@@ -3,7 +3,7 @@ import Select, { type SelectChangeEvent } from 'primevue/select'
 import { Scraper } from '@renderer/scraper'
 import Button from 'primevue/button'
 import ScrollTop from 'primevue/scrolltop'
-import { startScan } from './func'
+import { openEditorDialog, scanFiles } from './func'
 import ScrollPanel from 'primevue/scrollpanel'
 import VideoCard from './videoCard.vue'
 import { IVideoFile } from './type'
@@ -12,9 +12,14 @@ import { computed, ref } from 'vue'
 import ContextMenu from 'primevue/contextmenu'
 import { PathHelper } from '@renderer/helper'
 import InputText from 'primevue/inputtext'
+import { useDialog } from 'primevue/usedialog'
+import { useToast } from 'primevue/usetoast'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
+const dialog = useDialog()
+const toast = useToast()
+
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
 
@@ -24,6 +29,14 @@ const isFloatActive = computed(() => isSortActive.value || isSearchActive.value)
 
 // 右键菜单项
 const menuItems = ref([
+	{
+		label: '编辑',
+		icon: 'pi pi-pen-to-square',
+		command: () => {
+			if (currentVideo.value)
+				openEditorDialog(currentVideo.value as IVideoFile, dialog, toast)
+		}
+	},
 	{
 		label: '播放',
 		icon: 'pi pi-play-circle',
@@ -81,12 +94,12 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 				@change="clearFiles"
 			/>
 			<Button
-				:loading="globalStates.manageViewLoading"
+				:loading="globalStates.scanFilesLoading"
 				icon="pi pi-refresh"
 				label="开始扫描"
 				size="small"
 				style="width: 7rem"
-				@click="startScan"
+				@click="scanFiles"
 			/>
 		</div>
 		<ScrollPanel style="height: calc(100% - var(--header-height))">
@@ -161,7 +174,7 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 			</div>
 		</div>
 
-		<!-- 全局右键菜单 -->
+		<!-- 右键菜单 -->
 		<ContextMenu ref="cm" :model="menuItems" />
 	</div>
 </template>

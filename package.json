@@ -61,6 +61,7 @@
 		"vite-plugin-vue-devtools": "^8.0.1",
 		"vite-svg-loader": "^5.1.0",
 		"vue": "^3.5.17",
+		"vue-hooks-plus": "^2.4.1",
 		"vue-tsc": "^3.0.3",
 		"xmlbuilder2": "^3.1.1"
 	}

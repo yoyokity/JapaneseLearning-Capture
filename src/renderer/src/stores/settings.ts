@@ -68,27 +68,25 @@ export const settingsStore = defineStore(
 			}
 		})
 
-		/**
-		 * 刮削器路径设置
-		 */
 		const scraperPath = reactive<Record<string, string>>({})
-
-		/**
-		 * 当前刮削器
-		 */
 		const currentScraper = ref('')
-
-		/**
-		 * 管理视图排序
-		 */
 		const manageViewSort = ref<VideoSortType>('title')
 
 		return {
 			proxy,
 			net,
 			translate,
+			/**
+			 * 刮削器路径设置
+			 */
 			scraperPath,
+			/**
+			 * 当前刮削器
+			 */
 			currentScraper,
+			/**
+			 * 管理视图排序
+			 */
 			manageViewSort
 		}
 	},
