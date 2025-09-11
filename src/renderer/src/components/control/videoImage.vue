@@ -1,14 +1,19 @@
 <script lang="ts" setup>
 import { Path, PathHelper } from '@renderer/helper'
-import { onMounted, ref, watch } from 'vue'
+import { CSSProperties, onMounted, ref, watch } from 'vue'
 import imgFall from '@renderer/assets/img-fall.svg?url'
 
 interface ImageProps {
-	filePath?: Path | null
+	filePath: Path | null
+	/**
+	 * 图片的style
+	 */
+	imageStyle?: CSSProperties
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
-	filePath: null
+	filePath: null,
+	imageStyle: () => ({})
 })
 
 const isImgError = ref(true)
@@ -44,7 +49,7 @@ onMounted(loadImage)
 </script>
 
 <template>
-	<div :class="{ error: isImgError }" class="image">
+	<div :class="{ error: isImgError }" :style="{ ...imageStyle }" class="image">
 		<img v-if="!isImgError" :src="imageData" class="video-card-img" />
 		<img v-else :src="imgFall" class="video-card-img error" />
 	</div>
@@ -52,9 +57,9 @@ onMounted(loadImage)
 
 <style lang="scss" scoped>
 .image {
-	aspect-ratio: 379 / 538; //保持长宽比
-	border-radius: calc(var(--border-radius) * 2);
 	overflow: hidden;
+	border-radius: calc(var(--border-radius) * 2);
+	transition: transform 0.3s var(--animation-type);
 
 	&.error {
 		display: flex;

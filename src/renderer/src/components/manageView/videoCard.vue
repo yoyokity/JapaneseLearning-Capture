@@ -2,7 +2,7 @@
 import { IVideoFile } from './type'
 import { computed } from 'vue'
 import { openEditorDialog } from './func'
-import Image from '@renderer/components/control/videoImage.vue'
+import VideoImage from '@renderer/components/control/videoImage.vue'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 
@@ -35,7 +35,7 @@ function onContextmenu(event: MouseEvent) {
 
 <template>
 	<div class="video-card" @click="showEditor" @contextmenu="onContextmenu">
-		<Image :filePath="image" />
+		<VideoImage :filePath="image" style="aspect-ratio: 379 / 538" />
 		<div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
 			{{ name }}
 		</div>
@@ -65,7 +65,7 @@ function onContextmenu(event: MouseEvent) {
 	}
 
 	&:hover {
-		.video-card-img {
+		:deep(.video-card-img) {
 			transform: scale(1.2);
 		}
 

@@ -198,7 +198,15 @@ const to = '/home/user/app/dist';
 	 * @param path 图片路径
 	 * @returns 图片数据
 	 */
-	readImage: (path: string): Promise<string> => invoke('filesystem:readImage', path)
+	readImage: (path: string): Promise<string> => invoke('filesystem:readImage', path),
+
+	/**
+	 * 获取前端文件的实际绝对路径
+	 * @remarks 用时 <10ms
+	 * @param file 文件
+	 * @returns 文件路径
+	 */
+	getPathForFile: (file: File) => (window.api as any).getPathForFile(file)
 }
 
 function readFile(filePath: string, encoding: BufferEncoding): Promise<string>

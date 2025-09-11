@@ -10,10 +10,17 @@ import SplitButton from 'primevue/splitbutton'
 import { IVideoFile } from './type'
 import { IActor } from '@renderer/scraper'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
+import VideoImage from '@renderer/components/control/videoImage.vue'
+import { Path, PathHelper } from '@renderer/helper'
 
 const dialogRef = inject('dialogRef') as Ref<any>
 const video = ref<IVideoFile>({} as IVideoFile)
 
+const imageLabels = {
+	poster: '封面',
+	fanart: '背景',
+	thumb: '缩略图'
+}
 const tabs = [
 	{ id: 'info', name: '信息', icon: 'pi pi-info-circle' },
 	{ id: 'image', name: '图片', icon: 'pi pi-image' }
@@ -67,6 +74,50 @@ function createMenuItems(inputRef: Ref<string>) {
 // 菜单选项
 const tagMenuItems = createMenuItems(addTagValue)
 const genreMenuItems = createMenuItems(addGenreValue)
+
+/**
+ * 处理文件拖放事件
+ * @param e 拖放事件
+ * @param imageType 图片类型（poster、fanart、thumb）
+ */
+async function handleDrop(e: DragEvent, imageType: 'poster' | 'fanart' | 'thumb') {
+	e.preventDefault()
+
+	// 确保拖放结束后移除dragover样式
+	if (e.currentTarget instanceof HTMLElement) {
+		e.currentTarget.classList.remove('dragover')
+	}
+
+	if (!e.dataTransfer?.files?.length) return
+
+	const file = e.dataTransfer.files[0]
+	const filePath = await PathHelper.getPathForFile(file)
+
+	// 更新对应类型的图片路径
+	if (filePath) {
+		video.value[imageType] = new Path(filePath)
+	}
+}
+
+/**
+ * 处理拖动事件
+ * @param e 拖动事件
+ * @param action 动作类型：'enter'、'leave'或'over'
+ */
+function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
+	e.preventDefault()
+
+	if (e.currentTarget instanceof HTMLElement) {
+		if (action === 'enter') {
+			e.currentTarget.classList.add('dragover')
+		} else if (action === 'leave') {
+			// 确保只有当鼠标真正离开元素时才移除dragover样式
+			if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+				e.currentTarget.classList.remove('dragover')
+			}
+		}
+	}
+}
 
 onMounted(() => {
 	const params = dialogRef.value.data // {video: IVideoFile}
@@ -340,8 +391,41 @@ onMounted(() => {
 		</div>
 
 		<!-- 图片编辑部分 -->
-		<div v-show="activeTab === 'image'" class="form-container">
-			<h2 style="margin-top: 0">封面</h2>
+		<div
+			v-show="activeTab === 'image'"
+			class="form-container"
+			style="
+				padding-top: 0.75rem;
+				gap: 2rem;
+				flex-direction: row;
+				flex-wrap: wrap;
+				justify-content: center;
+			"
+		>
+			<div v-for="label in Object.keys(imageLabels)" :key="label">
+				<h2 style="margin-bottom: 1rem; text-align: center">{{ imageLabels[label] }}</h2>
+				<div
+					class="image-container"
+					@dragover.prevent="(e) => handleDrag(e, 'over')"
+					@drop.prevent="(e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')"
+					@dragenter.prevent="(e) => handleDrag(e, 'enter')"
+					@dragleave.prevent="(e) => handleDrag(e, 'leave')"
+				>
+					<VideoImage
+						:filePath="video[label] as Path | null"
+						:imageStyle="{
+							width: 'fit-content',
+							minHeight: '15rem',
+							maxHeight: '30rem',
+							height: '50vh'
+						}"
+					/>
+					<div class="image-overlay">
+						<p>拖入图片以更改</p>
+						<i class="pi pi-eye"></i>
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<!-- 底部 -->
@@ -483,6 +567,48 @@ onMounted(() => {
 		padding-right: 1rem;
 		transform: translateX(-1.25rem);
 		border-top: var(--separator);
+	}
+
+	//图片覆盖层
+	.image-container {
+		cursor: pointer;
+		position: relative;
+		transition: all 0.3s var(--animation-type);
+		border-radius: calc(var(--border-radius) * 2 + 5px);
+		overflow: hidden;
+
+		border: 4px dashed var(--p-surface-400);
+		padding: 4px;
+		.image-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			opacity: 0;
+			transition: all 0.3s var(--animation-type);
+			background-color: rgba(0, 0, 0, 0.5);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			color: var(--p-primary-inverse-color);
+
+			p {
+				position: absolute;
+				top: 0;
+			}
+
+			i {
+				font-size: 3rem;
+			}
+		}
+
+		&:hover,
+		&.dragover {
+			.image-overlay {
+				opacity: 1;
+			}
+		}
 	}
 }
 

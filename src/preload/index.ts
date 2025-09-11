@@ -1,8 +1,10 @@
-import { contextBridge } from 'electron'
+import { contextBridge, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // 为渲染进程提供的自定义API
-const api = {}
+const api = {
+	getPathForFile: (path: File) => webUtils.getPathForFile(path)
+}
 
 // 使用`contextBridge` API将Electron API暴露给
 // 渲染进程，仅在上下文隔离启用时有效，否则

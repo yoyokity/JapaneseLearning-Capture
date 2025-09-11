@@ -428,6 +428,22 @@ export class PathHelper {
 			return null
 		}
 	}
+
+	/**
+	 * 获取前端文件的实际绝对路径
+	 * @remarks 用时 <10ms
+	 * @param file 文件
+	 * @returns 文件路径
+	 */
+	static async getPathForFile(file: File): Promise<string | null> {
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.getPathForFile, file)
+		if (!re.hasError) {
+			return re.result
+		} else {
+			DebugHelper.error(`获取前端文件的实际绝对路径失败：`, re.error)
+			return null
+		}
+	}
 }
 export interface IArsrPath {
 	/**
