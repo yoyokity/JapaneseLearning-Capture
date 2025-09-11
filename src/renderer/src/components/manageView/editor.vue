@@ -21,6 +21,8 @@ const imageLabels = {
 	fanart: '背景',
 	thumb: '缩略图'
 }
+const previewImage = ref<Path | null>(null)
+
 const tabs = [
 	{ id: 'info', name: '信息', icon: 'pi pi-info-circle' },
 	{ id: 'image', name: '图片', icon: 'pi pi-image' }
@@ -410,10 +412,11 @@ onMounted(() => {
 					@drop.prevent="(e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')"
 					@dragenter.prevent="(e) => handleDrag(e, 'enter')"
 					@dragleave.prevent="(e) => handleDrag(e, 'leave')"
+					@click="previewImage = video[label] as Path"
 				>
 					<VideoImage
 						:filePath="video[label] as Path | null"
-						:imageStyle="{
+						:style="{
 							width: 'fit-content',
 							minHeight: '15rem',
 							maxHeight: '30rem',
@@ -426,6 +429,34 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
+
+			<!-- 放大显示 -->
+			<Teleport to="body">
+				<Transition name="fade" mode="out-in">
+					<div
+						v-if="previewImage"
+						class="preview-image-modal"
+						@click="previewImage = null"
+					>
+						<VideoImage
+							:filePath="previewImage as Path"
+							borderRadius="none"
+							:style="{
+								display: 'flex',
+								justifyContent: 'center',
+								alignItems: 'center',
+								width: '90vw',
+								height: '90vh'
+							}"
+							:imageStyle="{
+								width: '100%',
+								height: '100%',
+								objectFit: 'contain'
+							}"
+						/>
+					</div>
+				</Transition>
+			</Teleport>
 		</div>
 
 		<!-- 底部 -->
@@ -571,14 +602,17 @@ onMounted(() => {
 
 	//图片覆盖层
 	.image-container {
+		--border-color: var(--p-surface-400);
+
 		cursor: pointer;
 		position: relative;
 		transition: all 0.3s var(--animation-type);
 		border-radius: calc(var(--border-radius) * 2 + 5px);
 		overflow: hidden;
 
-		border: 4px dashed var(--p-surface-400);
+		border: 4px dashed var(--border-color);
 		padding: 4px;
+
 		.image-overlay {
 			position: absolute;
 			top: 0;
@@ -609,7 +643,43 @@ onMounted(() => {
 				opacity: 1;
 			}
 		}
+
+		&.dragover {
+			--border-color: var(--p-primary-color);
+		}
 	}
+}
+
+//放大预览图片
+.preview-image-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: color-mix(in srgb, var(--p-surface-900) 80%, transparent);
+	color: var(--p-mask-color);
+	z-index: 9999;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	backdrop-filter: blur(16px);
+}
+
+// 淡入淡出动画
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
+}
+
+.fade-enter-to,
+.fade-leave-from {
+	opacity: 1;
 }
 
 input {

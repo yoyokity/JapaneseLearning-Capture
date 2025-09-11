@@ -6,14 +6,16 @@ import imgFall from '@renderer/assets/img-fall.svg?url'
 interface ImageProps {
 	filePath: Path | null
 	/**
-	 * 图片的style
+	 * 内部图片样式
 	 */
 	imageStyle?: CSSProperties
+	borderRadius?: CSSProperties['borderRadius']
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
 	filePath: null,
-	imageStyle: () => ({})
+	imageStyle: () => ({}),
+	borderRadius: 'calc(var(--border-radius) * 2)'
 })
 
 const isImgError = ref(true)
@@ -49,16 +51,16 @@ onMounted(loadImage)
 </script>
 
 <template>
-	<div :class="{ error: isImgError }" :style="{ ...imageStyle }" class="image">
-		<img v-if="!isImgError" :src="imageData" class="video-card-img" />
-		<img v-else :src="imgFall" class="video-card-img error" />
+	<div :class="{ error: isImgError }" class="image">
+		<img v-if="!isImgError" :src="imageData" class="video-card-img" :style="imageStyle" />
+		<img v-else :src="imgFall" class="video-card-img error" :style="imageStyle" />
 	</div>
 </template>
 
 <style lang="scss" scoped>
 .image {
 	overflow: hidden;
-	border-radius: calc(var(--border-radius) * 2);
+	border-radius: v-bind(borderRadius);
 	transition: transform 0.3s var(--animation-type);
 
 	&.error {
