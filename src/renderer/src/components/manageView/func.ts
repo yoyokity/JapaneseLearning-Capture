@@ -23,7 +23,8 @@ export function openEditorDialog(video: IVideoFile, dialog: any, toast: any) {
 				marginBottom: '4.5rem',
 				marginTop: 'var(--header-height)',
 				overflowX: 'hidden'
-			}
+			},
+			closeOnEscape: false
 		},
 		data: {
 			video: video

@@ -51,7 +51,11 @@ function close(data: any = null) {
 
 //快捷键退出
 useKeyPress(['esc', 'backspace'], () => {
-	close()
+	if (previewImage.value) {
+		previewImage.value = null
+	} else {
+		close()
+	}
 })
 
 /**
