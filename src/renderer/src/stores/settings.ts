@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { reactive, ref, watch } from 'vue'
 import { NetHelper } from '@renderer/helper'
 import { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
+import { Scraper } from '@renderer/scraper'
 
 export type VideoSortType = keyof typeof VideoSortTypeList
 export const VideoSortTypeList = {
@@ -81,9 +82,17 @@ export const settingsStore = defineStore(
 			 */
 			scraperPath,
 			/**
-			 * 当前刮削器
+			 * 当前刮削器名称
 			 */
 			currentScraper,
+			/**
+			 * 当前刮削器实例
+			 */
+			get currentScraperInstance() {
+				return Scraper.instances.find(
+					(scraper) => scraper.scraperName === currentScraper.value
+				)
+			},
 			/**
 			 * 管理视图排序
 			 */

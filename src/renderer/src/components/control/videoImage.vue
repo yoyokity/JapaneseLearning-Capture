@@ -52,8 +52,8 @@ onMounted(loadImage)
 
 <template>
 	<div :class="{ error: isImgError }" class="image">
-		<img v-if="!isImgError" :src="imageData" class="video-card-img" :style="imageStyle" />
-		<img v-else :src="imgFall" class="video-card-img error" :style="imageStyle" />
+		<img v-if="!isImgError" :src="imageData" :style="imageStyle" class="video-card-img" />
+		<img v-else :src="imgFall" :style="imageStyle" class="video-card-img error" />
 	</div>
 </template>
 

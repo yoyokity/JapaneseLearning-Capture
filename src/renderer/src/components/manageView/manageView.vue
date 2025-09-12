@@ -1,12 +1,11 @@
 <script lang="ts" setup>
 import Select, { type SelectChangeEvent } from 'primevue/select'
-import { Scraper } from '@renderer/scraper'
+import { IVideoFile, Scraper } from '@renderer/scraper'
 import Button from 'primevue/button'
 import ScrollTop from 'primevue/scrolltop'
 import { openEditorDialog, scanFiles } from './func'
 import ScrollPanel from 'primevue/scrollpanel'
 import VideoCard from './videoCard.vue'
-import { IVideoFile } from './type'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
 import { computed, ref } from 'vue'
 import ContextMenu from 'primevue/contextmenu'

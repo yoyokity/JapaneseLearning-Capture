@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { IVideoFile } from './type'
+import { IVideoFile } from '@renderer/scraper'
 import { computed } from 'vue'
 import { openEditorDialog } from './func'
 import VideoImage from '@renderer/components/control/videoImage.vue'

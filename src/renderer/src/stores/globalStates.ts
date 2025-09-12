@@ -1,4 +1,4 @@
-import { IVideoFile } from '@renderer/components/manageView/type'
+import { IVideoFile } from '@renderer/scraper'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import { settingsStore } from './settings'

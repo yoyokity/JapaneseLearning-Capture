@@ -7,8 +7,7 @@ import Textarea from 'primevue/textarea'
 import Chip from 'primevue/chip'
 import Button from 'primevue/button'
 import SplitButton from 'primevue/splitbutton'
-import { IVideoFile } from './type'
-import { IActor } from '@renderer/scraper'
+import { IActor, IVideoFile } from '@renderer/scraper'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 import VideoImage from '@renderer/components/control/videoImage.vue'
 import { Path, PathHelper } from '@renderer/helper'
@@ -412,11 +411,11 @@ onMounted(() => {
 				<h2 style="margin-bottom: 1rem; text-align: center">{{ imageLabels[label] }}</h2>
 				<div
 					class="image-container"
+					@click="previewImage = video[label] as Path"
 					@dragover.prevent="(e) => handleDrag(e, 'over')"
 					@drop.prevent="(e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')"
 					@dragenter.prevent="(e) => handleDrag(e, 'enter')"
 					@dragleave.prevent="(e) => handleDrag(e, 'leave')"
-					@click="previewImage = video[label] as Path"
 				>
 					<VideoImage
 						:filePath="video[label] as Path | null"
@@ -436,7 +435,7 @@ onMounted(() => {
 
 			<!-- 放大显示 -->
 			<Teleport to="body">
-				<Transition name="fade" mode="out-in">
+				<Transition mode="out-in" name="fade">
 					<div
 						v-if="previewImage"
 						class="preview-image-modal"
@@ -444,7 +443,11 @@ onMounted(() => {
 					>
 						<VideoImage
 							:filePath="previewImage as Path"
-							borderRadius="none"
+							:imageStyle="{
+								width: '100%',
+								height: '100%',
+								objectFit: 'contain'
+							}"
 							:style="{
 								display: 'flex',
 								justifyContent: 'center',
@@ -452,11 +455,7 @@ onMounted(() => {
 								width: '90vw',
 								height: '90vh'
 							}"
-							:imageStyle="{
-								width: '100%',
-								height: '100%',
-								objectFit: 'contain'
-							}"
+							borderRadius="none"
 						/>
 					</div>
 				</Transition>

@@ -1,5 +1,5 @@
 import { DebugHelper } from '@renderer/helper'
-import { IVideo } from './Video'
+import { IVideo, IVideoFile } from './Video'
 
 /**
  * 模块导入类型接口
@@ -22,15 +22,15 @@ export interface IScraper {
 	/**
 	 * 刮削视频信息
 	 */
-	scraperVideo(): Promise<IVideo>
+	scraperVideo(video: IVideo): Promise<IVideo>
 	/**
 	 * 创建目录，创建nfo文件，移动视频
 	 */
-	createDirectory(): Promise<boolean>
+	createDirectory(videoFile: IVideoFile): Promise<boolean>
 	/**
 	 * 下载图片
 	 */
-	downloadImage(): Promise<boolean>
+	downloadImage(videoFile: IVideoFile): Promise<boolean>
 }
 
 export class Scraper {
