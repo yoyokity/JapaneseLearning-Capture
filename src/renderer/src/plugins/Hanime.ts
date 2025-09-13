@@ -21,8 +21,8 @@ const hanimeScraper: IScraper = {
 			}
 		)
 	},
-	downloadImage: async (videoFile: IVideoFile) => {
-		return true
+	downloadImage: async (videoDir: Path, video: IVideo) => {
+		await Scraper.defaultDownloadImage(videoDir, video, undefined, true)
 	}
 }
 

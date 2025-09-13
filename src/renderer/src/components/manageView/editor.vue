@@ -10,7 +10,8 @@ import SplitButton from 'primevue/splitbutton'
 import { IActor, IVideoFile } from '@renderer/scraper'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 import VideoImage from '@renderer/components/control/videoImage.vue'
-import { Path, PathHelper, isUrl, isNumeric, isValidDate } from '@renderer/helper'
+import { Path, PathHelper, isUrl, isNumeric, isValidDate, DebugHelper } from '@renderer/helper'
+import { readExtrafanart } from './func'
 
 const dialogRef = inject('dialogRef') as Ref<any>
 const video = ref<IVideoFile>({} as IVideoFile)
@@ -127,6 +128,11 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
 onMounted(() => {
 	const params = dialogRef.value.data // {video: IVideoFile}
 	video.value = cloneDeep(params.video) // 深拷贝，避免响应式对象引用问题
+
+	//读取extrafanart
+	readExtrafanart(video.value.dir as Path, video.value as IVideoFile).then((count) => {
+		console.info(`读取${count}个extrafanart`)
+	})
 })
 </script>
 

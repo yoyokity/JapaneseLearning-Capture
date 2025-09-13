@@ -1,5 +1,5 @@
-import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
-import { createVideoFile, IVideoFile } from '@renderer/scraper'
+import { DebugHelper, Path, PathHelper, videoExtensions } from '@renderer/helper'
+import { createVideoFile, IVideo, IVideoFile, Scraper } from '@renderer/scraper'
 import { convert } from 'xmlbuilder2'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
@@ -57,7 +57,7 @@ export function openEditorDialog(video: IVideoFile, dialog: any, toast: any) {
 			})
 
 			//重新扫描文件
-			scanFiles()
+			scanFiles(toast)
 		}
 	} as DynamicDialogOptions)
 }
@@ -66,26 +66,36 @@ export function openEditorDialog(video: IVideoFile, dialog: any, toast: any) {
  * 扫描目录下的文件
  * @remarks 忽略extrafanart目录下的文件
  */
-export async function scanFiles() {
+export async function scanFiles(toast: any) {
 	const globalStates = globalStatesStore()
-	const settings = settingsStore()
 	globalStates.scanFilesLoading = true
 
-	const path = settings.currentScraperPath
+	try {
+		const path = Scraper.getCurrentScraperPath()
 
-	const videoFiles: IVideoFile[] = []
-	const files = await PathHelper.readDirectory(path, 'file', undefined, ['**/extrafanart/**'])
+		const videoFiles: IVideoFile[] = []
+		const files = await PathHelper.readDirectory(path, 'file', undefined, ['**/extrafanart/**'])
 
-	// 过滤出视频文件
-	for (const file of files.filter((file) => {
-		const ext = PathHelper.newPath(file).extname.toLowerCase()
-		return videoExtensions.includes(ext)
-	})) {
-		videoFiles.push(await read(file, files))
+		// 过滤出视频文件
+		for (const file of files.filter((file) => {
+			const ext = PathHelper.newPath(file).extname.toLowerCase()
+			return videoExtensions.includes(ext)
+		})) {
+			videoFiles.push(await read(file, files))
+		}
+
+		//更新文件列表状态
+		globalStates.setManageViewFiles(videoFiles)
+	} catch (error) {
+		DebugHelper.error('扫描目录下的文件发生错误', error)
+		toast.add({
+			severity: 'error',
+			summary: '扫描目录下的文件发生错误',
+			life: 3000
+		})
+		globalStates.scanFilesLoading = false
 	}
 
-	//更新文件列表状态
-	globalStates.setManageViewFiles(videoFiles)
 	globalStates.scanFilesLoading = false
 }
 
@@ -192,4 +202,27 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
 	}
 
 	return video
+}
+
+/**
+ * 读取extrafanart目录下的文件
+ */
+export async function readExtrafanart(videoDir: Path, video: IVideoFile): Promise<number> {
+	const extrafanart = await PathHelper.readDirectory(
+		videoDir.join('extrafanart'),
+		'file',
+		undefined,
+		undefined,
+		1
+	)
+
+	for (const file of extrafanart) {
+		const filePath = PathHelper.newPath(file)
+		const ext = filePath.extname.toLowerCase()
+		if (ext === '.jpg' || ext === '.png' || ext === '.jpeg' || ext === '.webp') {
+			video.extrafanart.push(filePath)
+		}
+	}
+
+	return video.extrafanart.length
 }

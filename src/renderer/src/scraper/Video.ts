@@ -107,6 +107,10 @@ export interface IVideo {
 	 * 视频文件的背景图路径
 	 */
 	fanart: URL | Path | null
+	/**
+	 * 视频文件的额外背景图路径
+	 */
+	extrafanart: Array<URL | Path>
 }
 
 /**
@@ -152,6 +156,7 @@ export function createVideoFile(path: string): IVideoFile {
 		poster: null,
 		thumb: null,
 		fanart: null,
+		extrafanart: [],
 		//
 		scraperName: '',
 		title: '',

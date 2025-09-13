@@ -98,7 +98,7 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 				label="开始扫描"
 				size="small"
 				style="width: 7rem"
-				@click="scanFiles"
+				@click="scanFiles(toast)"
 			/>
 		</div>
 		<ScrollPanel style="height: calc(100% - var(--header-height))">

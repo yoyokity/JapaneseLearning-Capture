@@ -31,7 +31,6 @@ export class ImageHelper {
 			return re.result
 		} else {
 			DebugHelper.error(`保存图片失败：`, re.error)
-			return null
 		}
 	}
 
@@ -57,7 +56,6 @@ export class ImageHelper {
 			return re.result
 		} else {
 			DebugHelper.error(`超分辨率处理图片失败：`, re.error)
-			return null
 		}
 	}
 }

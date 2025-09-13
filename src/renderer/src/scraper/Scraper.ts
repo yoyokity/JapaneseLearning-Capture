@@ -1,6 +1,7 @@
-import { DebugHelper, NetHelper, Path, PathHelper } from '@renderer/helper'
+import { DebugHelper, ImageHelper, NetHelper, Path, PathHelper } from '@renderer/helper'
 import { IVideo, IVideoFile } from './Video'
 import { Nfo } from './Nfo'
+import { settingsStore } from '@renderer/stores'
 
 /**
  * 模块导入类型接口
@@ -34,8 +35,10 @@ export interface IScraper {
 	createDirectory(scraperPath: Path, video: IVideo, sourceVideoFile: IVideoFile): Promise<boolean>
 	/**
 	 * 下载图片
+	 * @param videoDir 视频目录
+	 * @param video 视频信息
 	 */
-	downloadImage(videoFile: IVideoFile): Promise<boolean>
+	downloadImage(videoDir: Path, video: IVideo): Promise<void>
 }
 
 export class Scraper {
@@ -85,6 +88,22 @@ export class Scraper {
 		}
 		return instances
 	})()
+
+	/**
+	 * 获取当前刮削器路径
+	 */
+	static getCurrentScraperPath() {
+		const settings = settingsStore()
+		return settings.scraperPath[settings.currentScraper]
+	}
+
+	/**
+	 * 获取当前刮削器实例
+	 */
+	static getCurrentScraperInstance() {
+		const settings = settingsStore()
+		return Scraper.instances.find((scraper) => scraper.scraperName === settings.currentScraper)
+	}
 
 	/**
 	 * 默认创建目录的方法
@@ -137,11 +156,19 @@ export class Scraper {
 		return true
 	}
 
+	/**
+	 * 默认下载图片的方法
+	 * @param videoDir 视频目录
+	 * @param video 视频信息
+	 * @param httpHeaders 请求头，默认不使用
+	 * @param anime 是否为动漫图片，默认为false
+	 */
 	static async defaultDownloadImage(
 		videoDir: Path,
 		video: IVideo,
-		httpHeaders: Record<string, string>
-	): Promise<boolean> {
+		httpHeaders?: Record<string, string>,
+		anime: boolean = false
+	): Promise<void> {
 		const posterPath = videoDir.join('poster.jpg')
 		const thumbPath = videoDir.join('thumb.jpg')
 		const fanartPath = videoDir.join('fanart.jpg')
@@ -151,28 +178,61 @@ export class Scraper {
 				//如果是url
 				const re = await NetHelper.get(video.poster.toString(), 'buffer', httpHeaders)
 				if (re.ok) {
+					await ImageHelper.saveImage(re.body, posterPath)
 				}
 			} else {
 				//如果是path，则直接复制
 				await PathHelper.copy(video.poster, posterPath)
 			}
 		}
+
 		if (video.thumb) {
 			if (video.thumb instanceof URL) {
 				//如果是url
+				const re = await NetHelper.get(video.thumb.toString(), 'buffer', httpHeaders)
+				if (re.ok) {
+					await ImageHelper.saveImage(re.body, thumbPath)
+				}
 			} else {
 				//如果是path，则直接复制
 				await PathHelper.copy(video.thumb, thumbPath)
 			}
 		}
+
 		if (video.fanart) {
 			if (video.fanart instanceof URL) {
 				//如果是url
+				const re = await NetHelper.get(video.fanart.toString(), 'buffer', httpHeaders)
+				if (re.ok) {
+					await ImageHelper.superResolutionImage(re.body, fanartPath, anime)
+				}
 			} else {
 				//如果是path，则直接复制
 				await PathHelper.copy(video.fanart, fanartPath)
 			}
 		}
-		return true
+
+		//Extrafanart
+		const extrafanartDir = videoDir.join('extrafanart')
+		let re = await PathHelper.createDirectory(extrafanartDir)
+		if (re) {
+			for (let index = 1; index <= video.extrafanart.length; index++) {
+				const extrafanart = video.extrafanart[index - 1]
+				if (extrafanart instanceof URL) {
+					const re = await NetHelper.get(extrafanart.toString(), 'buffer', httpHeaders)
+					if (re.ok) {
+						await ImageHelper.saveImage(
+							re.body,
+							extrafanartDir.join(`extrafanart-${index}.jpg`)
+						)
+					}
+				} else {
+					await PathHelper.copy(
+						extrafanart,
+						extrafanartDir.join(`extrafanart-${index}.jpg`)
+					)
+				}
+			}
+		}
 	}
 }

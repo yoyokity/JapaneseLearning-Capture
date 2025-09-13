@@ -86,20 +86,6 @@ export const settingsStore = defineStore(
 			 */
 			currentScraper,
 			/**
-			 * 当前刮削器实例
-			 */
-			get currentScraperInstance() {
-				return Scraper.instances.find(
-					(scraper) => scraper.scraperName === currentScraper.value
-				)
-			},
-			/**
-			 * 当前刮削器路径
-			 */
-			get currentScraperPath() {
-				return scraperPath[currentScraper.value]
-			},
-			/**
 			 * 管理视图排序
 			 */
 			manageViewSort
