@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { Path, PathHelper } from '@renderer/helper'
+import { Path } from '@renderer/helper'
 import { CSSProperties, onMounted, ref, watch } from 'vue'
 import imgFall from '@renderer/assets/img-fall.svg?url'
+import { ImageHelper } from '@renderer/helper'
+import { NetHelper } from '@renderer/helper'
 
 interface ImageProps {
-	filePath: Path | null
+	filePath: Path | URL | null
 	/**
 	 * 内部图片样式
 	 */
@@ -36,7 +38,22 @@ async function loadImage() {
 	}
 
 	// 尝试加载新图片
-	const newImageData = (await PathHelper.readImage(targetImage)) || ''
+	let newImageData = ''
+	if (targetImage instanceof URL) {
+		// 通过URL获取图片并转换为base64
+		const response = await NetHelper.get(targetImage.toString(), 'buffer')
+		if (response.ok && response.body) {
+			// 从响应头获取MIME类型，如果没有则默认为image/jpeg
+			const contentType = response.headers['content-type'] || 'image/jpeg'
+			// 将buffer转换为base64字符串
+			const base64String = Buffer.from(response.body).toString('base64')
+			// 拼接成data URL格式
+			newImageData = `data:${contentType};base64,${base64String}`
+		}
+	} else {
+		// 通过路径读取图片
+		newImageData = (await ImageHelper.readImage(targetImage)) || ''
+	}
 
 	// 只有在图片路径没有变化的情况下才更新状态（避免竞态条件）
 	if (props.filePath === targetImage) {

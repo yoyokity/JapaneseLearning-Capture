@@ -1,5 +1,5 @@
 import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
-import { IVideoFile } from './type'
+import { createVideoFile, IVideoFile } from '@renderer/scraper'
 import { convert } from 'xmlbuilder2'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
@@ -71,7 +71,7 @@ export async function scanFiles() {
 	const settings = settingsStore()
 	globalStates.scanFilesLoading = true
 
-	const path = settings.scraperPath[settings.currentScraper]
+	const path = settings.currentScraperPath
 
 	const videoFiles: IVideoFile[] = []
 	const files = await PathHelper.readDirectory(path, 'file', undefined, ['**/extrafanart/**'])
@@ -93,50 +93,22 @@ export async function scanFiles() {
  * 读取NFO文件为video
  */
 async function read(path: string, files: string[]): Promise<IVideoFile> {
-	const _path = PathHelper.newPath(path)
-	const nfoPath = _path.parent.join(_path.basename + '.nfo')
-
-	const video: IVideoFile = {
-		path: _path,
-		dir: _path.parent,
-		fileName: _path.basename,
-		extname: _path.extname,
-		nfoPath: nfoPath,
-		poster: null,
-		thumb: null,
-		fanart: null,
-		//
-		scraperName: '',
-		title: '',
-		originaltitle: '',
-		sorttitle: '',
-		tagline: '',
-		plot: '',
-		num: '',
-		mpaa: '',
-		rating: '',
-		director: '',
-		actor: [],
-		studio: '',
-		maker: '',
-		set: '',
-		tag: [],
-		genre: [],
-		year: '',
-		premiered: '',
-		releasedate: ''
-	}
+	const video = createVideoFile(path)
 
 	//打开文件
-	const re = await DebugHelper.tryExecute(Ipc.filesystem.readFile, nfoPath.toString(), 'utf-8')
+	const re = await DebugHelper.tryExecute(
+		Ipc.filesystem.readFile,
+		video.nfoPath.toString(),
+		'utf-8'
+	)
 	if (re.hasError) {
-		DebugHelper.warn(`读取NFO文件失败：${nfoPath.toString()} \n`, re.error)
+		DebugHelper.warn(`读取NFO文件失败：${video.nfoPath.toString()} \n`, re.error)
 		return video
 	}
 
 	const obj: any = convert({ encoding: 'UTF-8' }, re.result, { format: 'object' })
 	if (!obj || !obj.movie) {
-		DebugHelper.warn(`读取NFO文件失败（数据格式错误）：${nfoPath.toString()}`)
+		DebugHelper.warn(`读取NFO文件失败（数据格式错误）：${video.nfoPath.toString()}`)
 		return video
 	}
 

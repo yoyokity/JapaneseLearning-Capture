@@ -200,39 +200,6 @@ ipcMain.on(
 	}
 )
 
-// 读取图片
-ipcMain.handle('filesystem:readImage', (_, path: string) => {
-	return tryExecuteSync(() => {
-		const data = fs.readFileSync(path)
-		// 将图片数据转换成 Base64 字符串
-		const base64String = data.toString('base64')
-
-		// 根据文件扩展名判断 MIME 类型
-		const ext = path.toLowerCase().split('.').pop() || ''
-		let mimeType = 'image/jpeg' // 默认类型
-
-		// 常见图片格式的 MIME 类型映射
-		const mimeTypes: Record<string, string> = {
-			jpg: 'image/jpeg',
-			jpeg: 'image/jpeg',
-			png: 'image/png',
-			gif: 'image/gif',
-			webp: 'image/webp',
-			svg: 'image/svg+xml',
-			bmp: 'image/bmp',
-			ico: 'image/x-icon',
-			tif: 'image/tiff',
-			tiff: 'image/tiff'
-		}
-
-		if (ext in mimeTypes) {
-			mimeType = mimeTypes[ext]
-		}
-
-		return `data:${mimeType};base64,${base64String}`
-	})
-})
-
 // 在资源管理器中打开路径
 ipcMain.handle('filesystem:openInExplorer', (_, path: string) => {
 	return tryExecute(async () => {

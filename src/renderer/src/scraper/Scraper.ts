@@ -1,5 +1,6 @@
-import { DebugHelper } from '@renderer/helper'
+import { DebugHelper, NetHelper, Path, PathHelper } from '@renderer/helper'
 import { IVideo, IVideoFile } from './Video'
+import { Nfo } from './Nfo'
 
 /**
  * 模块导入类型接口
@@ -25,8 +26,12 @@ export interface IScraper {
 	scraperVideo(video: IVideo): Promise<IVideo>
 	/**
 	 * 创建目录，创建nfo文件，移动视频
+	 * @param scraperPath 刮削器输出路径
+	 * @param videoFile 新视频文件信息
+	 * @param sourceVideoFile 源视频文件信息
+	 * @returns 是否创建成功
 	 */
-	createDirectory(videoFile: IVideoFile): Promise<boolean>
+	createDirectory(scraperPath: Path, video: IVideo, sourceVideoFile: IVideoFile): Promise<boolean>
 	/**
 	 * 下载图片
 	 */
@@ -80,4 +85,94 @@ export class Scraper {
 		}
 		return instances
 	})()
+
+	/**
+	 * 默认创建目录的方法
+	 * @param scraperPath 刮削器输出路径
+	 * @param video 视频文件信息
+	 * @param sourceVideoFile 源视频文件信息
+	 * @param fileName 文件名，最终目录名也是这个。默认使用视频文件的title
+	 * @param subDirectory 是否在scraperPath和videoFile.dir之间添加一层或多层目录，如果为true，则目录结构为 scraperOutDir/subDirectory/videoDir
+	 * @returns 是否创建成功
+	 */
+	static async defaultCreateDirectory(
+		scraperPath: Path,
+		video: IVideo,
+		sourceVideoFile: IVideoFile,
+		fileName: ((video: IVideo) => string) | null = null,
+		subDirectory: ((video: IVideo) => string) | null = null
+	): Promise<boolean> {
+		//文件名
+		const _fileName = fileName ? fileName(video) : video.title
+		//中间目录
+		const _subDirectory = subDirectory ? subDirectory(video) : ''
+		//最终目录
+		const videoDir = scraperPath.join(_subDirectory).join(_fileName)
+
+		//视频path
+		const _videoPath = videoDir.join(_fileName + sourceVideoFile.extname)
+		//nfo path
+		const _nfoPath = videoDir.join(_fileName + '.nfo')
+
+		//创建最终目录
+		let re = await PathHelper.createDirectory(videoDir)
+		if (!re) return false
+
+		//将视频文件移动到新目录
+		re = await PathHelper.move(sourceVideoFile.path, _videoPath)
+		if (!re) return false
+
+		//创建nfo文件
+		const nfo = Nfo.create(video)
+		await nfo.save(_nfoPath)
+
+		//如果源文件本身就在scraperPath中，则需要删除源目录
+		if (
+			sourceVideoFile.dir.toString() !== videoDir.toString() &&
+			sourceVideoFile.dir.toString().includes(scraperPath.toString())
+		) {
+			PathHelper.remove(sourceVideoFile.dir)
+		}
+
+		return true
+	}
+
+	static async defaultDownloadImage(
+		videoDir: Path,
+		video: IVideo,
+		httpHeaders: Record<string, string>
+	): Promise<boolean> {
+		const posterPath = videoDir.join('poster.jpg')
+		const thumbPath = videoDir.join('thumb.jpg')
+		const fanartPath = videoDir.join('fanart.jpg')
+
+		if (video.poster) {
+			if (video.poster instanceof URL) {
+				//如果是url
+				const re = await NetHelper.get(video.poster.toString(), 'buffer', httpHeaders)
+				if (re.ok) {
+				}
+			} else {
+				//如果是path，则直接复制
+				await PathHelper.copy(video.poster, posterPath)
+			}
+		}
+		if (video.thumb) {
+			if (video.thumb instanceof URL) {
+				//如果是url
+			} else {
+				//如果是path，则直接复制
+				await PathHelper.copy(video.thumb, thumbPath)
+			}
+		}
+		if (video.fanart) {
+			if (video.fanart instanceof URL) {
+				//如果是url
+			} else {
+				//如果是path，则直接复制
+				await PathHelper.copy(video.fanart, fanartPath)
+			}
+		}
+		return true
+	}
 }

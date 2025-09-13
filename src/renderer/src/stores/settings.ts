@@ -94,6 +94,12 @@ export const settingsStore = defineStore(
 				)
 			},
 			/**
+			 * 当前刮削器路径
+			 */
+			get currentScraperPath() {
+				return scraperPath[currentScraper.value]
+			},
+			/**
 			 * 管理视图排序
 			 */
 			manageViewSort

@@ -1,4 +1,4 @@
-import { Path } from '@renderer/helper'
+import { Path, PathHelper } from '@renderer/helper'
 
 export interface IActor {
 	/**
@@ -95,6 +95,18 @@ export interface IVideo {
 	 * 上映日期
 	 */
 	releasedate: string
+	/**
+	 * 视频文件的封面路径
+	 */
+	poster: URL | Path | null
+	/**
+	 * 视频文件的缩略图路径
+	 */
+	thumb: URL | Path | null
+	/**
+	 * 视频文件的背景图路径
+	 */
+	fanart: URL | Path | null
 }
 
 /**
@@ -110,7 +122,7 @@ export interface IVideoFile extends IVideo {
 	 */
 	dir: Path
 	/**
-	 * 视频文件的文件名
+	 * 视频文件的文件名,不包含扩展名
 	 */
 	fileName: string
 	/**
@@ -121,16 +133,46 @@ export interface IVideoFile extends IVideo {
 	 * 视频文件的NFO文件路径
 	 */
 	nfoPath: Path
-	/**
-	 * 视频文件的封面路径
-	 */
-	poster: Path | null
-	/**
-	 * 视频文件的缩略图路径
-	 */
-	thumb: Path | null
-	/**
-	 * 视频文件的背景图路径
-	 */
-	fanart: Path | null
+}
+
+/**
+ * 创建视频文件信息
+ * @param path 视频文件路径
+ */
+export function createVideoFile(path: string): IVideoFile {
+	const _path = PathHelper.newPath(path)
+	const nfoPath = _path.parent.join(_path.basename + '.nfo')
+
+	const video: IVideoFile = {
+		path: _path,
+		dir: _path.parent,
+		fileName: _path.basename,
+		extname: _path.extname,
+		nfoPath: nfoPath,
+		poster: null,
+		thumb: null,
+		fanart: null,
+		//
+		scraperName: '',
+		title: '',
+		originaltitle: '',
+		sorttitle: '',
+		tagline: '',
+		plot: '',
+		num: '',
+		mpaa: '',
+		rating: '',
+		director: '',
+		actor: [],
+		studio: '',
+		maker: '',
+		set: '',
+		tag: [],
+		genre: [],
+		year: '',
+		premiered: '',
+		releasedate: ''
+	}
+
+	return video
 }

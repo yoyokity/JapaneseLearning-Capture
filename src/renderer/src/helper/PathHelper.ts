@@ -414,22 +414,6 @@ export class PathHelper {
 	}
 
 	/**
-	 * 读取图片
-	 * @remarks 用时 <10ms
-	 * @param path 图片路径
-	 * @returns 图片数据
-	 */
-	static async readImage(path: Path | string) {
-		const re = await DebugHelper.tryExecute(Ipc.filesystem.readImage, path.toString())
-		if (!re.hasError) {
-			return re.result
-		} else {
-			DebugHelper.error(`读取图片失败：`, re.error)
-			return null
-		}
-	}
-
-	/**
 	 * 获取前端文件的实际绝对路径
 	 * @remarks 用时 <10ms
 	 * @param file 文件

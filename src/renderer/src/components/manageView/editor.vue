@@ -10,7 +10,7 @@ import SplitButton from 'primevue/splitbutton'
 import { IActor, IVideoFile } from '@renderer/scraper'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 import VideoImage from '@renderer/components/control/videoImage.vue'
-import { Path, PathHelper } from '@renderer/helper'
+import { Path, PathHelper, isUrl, isNumeric, isValidDate } from '@renderer/helper'
 
 const dialogRef = inject('dialogRef') as Ref<any>
 const video = ref<IVideoFile>({} as IVideoFile)
@@ -214,7 +214,11 @@ onMounted(() => {
 				</FloatLabel>
 
 				<FloatLabel style="flex: 2" variant="on">
-					<InputText id="rating_label" v-model.trim="actor.imgUrl" />
+					<InputText
+						id="rating_label"
+						v-model.trim="actor.imgUrl"
+						:invalid="actor.imgUrl ? !isUrl(actor.imgUrl) : false"
+					/>
 					<label for="rating_label">图像链接</label>
 				</FloatLabel>
 
@@ -243,7 +247,11 @@ onMounted(() => {
 				</FloatLabel>
 
 				<FloatLabel style="flex: 2" variant="on">
-					<InputText id="rating_label" v-model.trim="addActorValue.imgUrl" />
+					<InputText
+						id="rating_label"
+						v-model.trim="addActorValue.imgUrl"
+						:invalid="addActorValue.imgUrl ? !isUrl(addActorValue.imgUrl) : false"
+					/>
 					<label for="rating_label">图像链接</label>
 				</FloatLabel>
 
@@ -356,7 +364,11 @@ onMounted(() => {
 				</FloatLabel>
 
 				<FloatLabel v-tooltip="'以10分为满分'" variant="on">
-					<InputText id="rating_label" v-model.trim="video.rating" />
+					<InputText
+						id="rating_label"
+						v-model.trim="video.rating"
+						:invalid="video.rating ? !isNumeric(video.rating) : false"
+					/>
 					<label for="rating_label">评分</label>
 				</FloatLabel>
 			</div>
@@ -376,11 +388,15 @@ onMounted(() => {
 
 			<div class="flex-input">
 				<FloatLabel variant="on">
-					<InputText id="year_label" v-model.trim="video.year" />
+					<InputText
+						id="year_label"
+						v-model.trim="video.year"
+						:invalid="video.year ? !isNumeric(video.year, false) : false"
+					/>
 					<label for="year_label">发行年份</label>
 				</FloatLabel>
 
-				<FloatLabel variant="on">
+				<FloatLabel variant="on" v-tooltip="'时间格式为 2025-01-01'">
 					<InputText
 						id="mpaa_label"
 						v-model.trim="video.releasedate"
@@ -389,6 +405,7 @@ onMounted(() => {
 								video.premiered = video.releasedate
 							}
 						"
+						:invalid="video.releasedate ? !isValidDate(video.releasedate) : false"
 					/>
 					<label for="mpaa_label">上映日期</label>
 				</FloatLabel>

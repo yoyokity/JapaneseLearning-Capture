@@ -193,14 +193,6 @@ const to = '/home/user/app/dist';
 	openInExplorer: (path: string): Promise<boolean> => invoke('filesystem:openInExplorer', path),
 
 	/**
-	 * 读取图片
-	 * @remarks 用时 <10ms
-	 * @param path 图片路径
-	 * @returns 图片数据
-	 */
-	readImage: (path: string): Promise<string> => invoke('filesystem:readImage', path),
-
-	/**
 	 * 获取前端文件的实际绝对路径
 	 * @remarks 用时 <10ms
 	 * @param file 文件
