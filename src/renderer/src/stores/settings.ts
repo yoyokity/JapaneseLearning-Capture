@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { reactive, ref, watch } from 'vue'
 import { NetHelper } from '@renderer/helper'
 import { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
-import { Scraper } from '@renderer/scraper'
 
 export type VideoSortType = keyof typeof VideoSortTypeList
 export const VideoSortTypeList = {

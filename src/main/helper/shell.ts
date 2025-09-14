@@ -1,4 +1,4 @@
-import { spawn, execSync, ChildProcess } from 'child_process'
+import { ChildProcess, execSync, spawn } from 'child_process'
 
 interface ExitCallback {
 	(code: number, stdout: string, stderr: string): void

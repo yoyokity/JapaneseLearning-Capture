@@ -10,7 +10,7 @@ import SettingsLine from './settingsLine.vue'
 import SettingsLineItem from './settingsLineItem.vue'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import Dialog from 'primevue/dialog'
+import Dialog from '@renderer/components/control/dialog/Dialog.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import { useToast } from 'primevue/usetoast'
 import { TransHelper } from '@renderer/helper'
@@ -278,13 +278,7 @@ async function testTranslate() {
 								<Button @click="showLocalLLMInfoDialog = true"> 使用说明 </Button>
 								<Dialog
 									v-model:visible="showLocalLLMInfoDialog"
-									:closable="true"
-									:closeOnEscape="true"
-									:contentStyle="{ userSelect: 'text' }"
-									:dismissableMask="true"
-									:modal="true"
-									header="本地LLM大模型使用说明"
-									@after-hide="fetchLLMModels"
+									@close="fetchLLMModels"
 								>
 									<LlmInfo />
 								</Dialog>

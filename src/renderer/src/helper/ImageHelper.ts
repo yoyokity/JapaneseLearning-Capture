@@ -1,6 +1,6 @@
 import { Path } from '@renderer/helper/PathHelper'
 import { DebugHelper } from '@renderer/helper/DebugHelper'
-import { Ipc, ImageData } from '@renderer/ipc'
+import { ImageData, Ipc } from '@renderer/ipc'
 
 export class ImageHelper {
 	/**

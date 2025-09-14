@@ -145,14 +145,6 @@ export class Scraper {
 		const nfo = Nfo.create(video)
 		await nfo.save(_nfoPath)
 
-		//如果源文件本身就在scraperPath中，则需要删除源目录
-		if (
-			sourceVideoFile.dir.toString() !== videoDir.toString() &&
-			sourceVideoFile.dir.toString().includes(scraperPath.toString())
-		) {
-			PathHelper.remove(sourceVideoFile.dir)
-		}
-
 		return true
 	}
 

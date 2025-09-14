@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { IVideoFile } from '@renderer/scraper'
-import { computed } from 'vue'
-import { openEditorDialog } from './func'
-import VideoImage from '@renderer/components/control/videoImage.vue'
-import { useDialog } from 'primevue/usedialog'
+import { IVideoFile, Scraper } from '@renderer/scraper'
+import { computed, ref } from 'vue'
+import VideoImage from '@renderer/components/control/VideoImage.vue'
+import Editor from './editor.vue'
+import Dialog from '@renderer/components/control/dialog/Dialog.vue'
+import { isEqual } from 'es-toolkit'
 import { useToast } from 'primevue/usetoast'
+import { scanFiles } from './func'
+import { PathHelper } from '@renderer/helper'
 
 const emit = defineEmits<{
 	showMenu: [event: MouseEvent, video: IVideoFile]
@@ -14,7 +17,7 @@ const props = defineProps<{
 	video: IVideoFile
 }>()
 
-const dialog = useDialog()
+const showEditorDialog = ref(false)
 const toast = useToast()
 
 const name = computed(() => {
@@ -24,28 +27,76 @@ const image = computed(() => {
 	return props.video.poster || props.video.fanart || props.video.thumb
 })
 
-function showEditor() {
-	openEditorDialog(props.video, dialog, toast)
-}
-
 function onContextmenu(event: MouseEvent) {
 	emit('showMenu', event, props.video)
+}
+
+//编辑窗口关闭传回
+async function onClose(data: any = null) {
+	if (!data) return
+
+	//对话框点击保存
+	const newVideo = data as IVideoFile
+	const sourceVideoFile = props.video
+
+	console.log('scraperPath', Scraper.getCurrentScraperPath())
+	console.log('sourceVideoFile', sourceVideoFile)
+	console.log('newVideo', newVideo)
+
+	//如果视频没有修改，则不保存
+	if (isEqual(newVideo, sourceVideoFile)) {
+		toast.add({
+			severity: 'success',
+			summary: '未修改，无需保存',
+			life: 3000
+		})
+		return
+	}
+
+	const re = await Scraper.getCurrentScraperInstance()?.createDirectory(
+		PathHelper.newPath(Scraper.getCurrentScraperPath()),
+		newVideo,
+		sourceVideoFile
+	)
+	if (!re) {
+		toast.add({
+			severity: 'error',
+			summary: '保存失败！',
+			life: 3000
+		})
+		return
+	}
+
+	//保存到nfo
+	// const nfo = Nfo.create(newVideo)
+	// await nfo.save(newVideo.nfoPath.toString())
+
+	toast.add({
+		severity: 'success',
+		summary: '保存成功！',
+		life: 3000
+	})
+
+	//重新扫描文件
+	scanFiles(toast)
 }
 </script>
 
 <template>
-	<div class="video-card" @click="showEditor" @contextmenu="onContextmenu">
+	<div class="video-card" @click="showEditorDialog = true" @contextmenu="onContextmenu">
 		<VideoImage :filePath="image" style="aspect-ratio: 379 / 538" />
 		<div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
 			{{ name }}
 		</div>
 	</div>
+	<Dialog v-model:visible="showEditorDialog" @close="onClose">
+		<Editor :video="props.video" />
+	</Dialog>
 </template>
 
 <style lang="scss" scoped>
 .video-card {
 	user-select: none;
-	-webkit-user-drag: none;
 	cursor: pointer;
 	position: relative;
 

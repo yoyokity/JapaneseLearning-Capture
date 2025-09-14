@@ -1,9 +1,7 @@
 <script lang="ts" setup>
-import { Path } from '@renderer/helper'
+import { ImageHelper, NetHelper, Path } from '@renderer/helper'
 import { CSSProperties, onMounted, ref, watch } from 'vue'
 import imgFall from '@renderer/assets/img-fall.svg?url'
-import { ImageHelper } from '@renderer/helper'
-import { NetHelper } from '@renderer/helper'
 
 interface ImageProps {
 	filePath: Path | URL | null

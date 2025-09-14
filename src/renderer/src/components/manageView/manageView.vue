@@ -3,7 +3,7 @@ import Select, { type SelectChangeEvent } from 'primevue/select'
 import { IVideoFile, Scraper } from '@renderer/scraper'
 import Button from 'primevue/button'
 import ScrollTop from 'primevue/scrolltop'
-import { openEditorDialog, scanFiles } from './func'
+import { scanFiles } from './func'
 import ScrollPanel from 'primevue/scrollpanel'
 import VideoCard from './videoCard.vue'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
@@ -11,12 +11,10 @@ import { computed, ref } from 'vue'
 import ContextMenu from 'primevue/contextmenu'
 import { PathHelper } from '@renderer/helper'
 import InputText from 'primevue/inputtext'
-import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
-const dialog = useDialog()
 const toast = useToast()
 
 const cm = ref()
@@ -28,14 +26,6 @@ const isFloatActive = computed(() => isSortActive.value || isSearchActive.value)
 
 // 右键菜单项
 const menuItems = ref([
-	{
-		label: '编辑',
-		icon: 'pi pi-pen-to-square',
-		command: () => {
-			if (currentVideo.value)
-				openEditorDialog(currentVideo.value as IVideoFile, dialog, toast)
-		}
-	},
 	{
 		label: '播放',
 		icon: 'pi pi-play-circle',

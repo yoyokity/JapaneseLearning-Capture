@@ -1,66 +1,8 @@
 import { DebugHelper, Path, PathHelper, videoExtensions } from '@renderer/helper'
-import { createVideoFile, IVideo, IVideoFile, Scraper } from '@renderer/scraper'
+import { createVideoFile, IVideoFile, Scraper } from '@renderer/scraper'
 import { convert } from 'xmlbuilder2'
-import { globalStatesStore, settingsStore } from '@renderer/stores'
+import { globalStatesStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
-import Editor from './editor.vue'
-import { type DynamicDialogOptions } from 'primevue/dynamicdialogoptions'
-import { isEqual } from 'es-toolkit'
-import { Nfo } from '@renderer/scraper'
-
-/**
- * 打开视频信息编辑器对话框
- * @param video 视频文件
- * @param dialog 对话框服务实例
- */
-export function openEditorDialog(video: IVideoFile, dialog: any, toast: any) {
-	dialog.open(Editor, {
-		props: {
-			modal: true,
-			draggable: false,
-			showHeader: false,
-			contentStyle: {
-				marginBottom: '4.5rem',
-				marginTop: 'var(--header-height)',
-				overflowX: 'hidden'
-			},
-			closeOnEscape: false
-		},
-		data: {
-			video: video
-		},
-		onClose: async (opt) => {
-			//单纯关闭对话框
-			if (!opt?.data) return
-
-			//对话框点击保存
-			const newVideo = opt.data as IVideoFile
-
-			//如果视频没有修改，则不保存
-			if (isEqual(newVideo, video)) {
-				toast.add({
-					severity: 'success',
-					summary: '未修改，无需保存',
-					life: 3000
-				})
-				return
-			}
-
-			//保存到nfo
-			const nfo = Nfo.create(newVideo)
-			await nfo.save(newVideo.nfoPath.toString())
-
-			toast.add({
-				severity: 'success',
-				summary: '保存成功！',
-				life: 3000
-			})
-
-			//重新扫描文件
-			scanFiles(toast)
-		}
-	} as DynamicDialogOptions)
-}
 
 /**
  * 扫描目录下的文件

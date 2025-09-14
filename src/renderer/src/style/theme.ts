@@ -48,6 +48,18 @@ export const theme = definePreset(Theme, {
 						color: '{surface.400}',
 						hoverColor: '{surface.500}'
 					}
+				},
+				mask: {
+					background: 'rgba(0, 0, 0, 0.3)',
+					transitionDuration: '0.3s'
+				},
+				dialog: {
+					borderRadius: 'calc(var(--border-radius) * 2)',
+					shadow: 'var(--p-overlay-modal-shadow)',
+					background: 'var(--p-overlay-modal-background)',
+					borderColor: 'var(--p-overlay-modal-border-color)',
+					color: 'var(--p-overlay-modal-color)',
+					contentPadding: 'var(--dialog-padding-y) var(--dialog-padding-x)'
 				}
 			}
 		}

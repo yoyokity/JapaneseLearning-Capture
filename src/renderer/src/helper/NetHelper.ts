@@ -1,13 +1,7 @@
 import { settingsStore } from '@renderer/stores'
 import { Ipc } from '@renderer/ipc'
 import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
-import {
-	IFetchOptions,
-	IFetchParse,
-	IPingResult,
-	IResult,
-	ParseResultType
-} from '@renderer/ipc/net.ts'
+import { IFetchOptions, IFetchParse, IPingResult, IResult, ParseResultType } from '@renderer/ipc/net.ts'
 
 /**
  * 网络相关

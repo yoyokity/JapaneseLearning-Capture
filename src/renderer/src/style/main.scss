@@ -1,6 +1,8 @@
 //全局变量
 :root {
 	--header-height: 4rem; // 头部高度
+	--dialog-padding-x: 4rem;
+	--dialog-padding-y: 2rem;
 	--animation-type: cubic-bezier(0.32, 0.72, 0, 1); //动画
 	--border-radius: 0.5rem; //圆角
 	--separator: 1px solid var(--p-content-border-color); //分割线
@@ -33,4 +35,8 @@ body {
 #app {
 	height: 100vh;
 	width: 100vw;
+}
+
+img {
+	-webkit-user-drag: none; /* 针对 WebKit 内核的浏览器（Chrome, Safari） 禁止图片拖动*/
 }

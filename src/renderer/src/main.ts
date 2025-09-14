@@ -6,7 +6,6 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import PrimeVue from 'primevue/config'
 import Tooltip from 'primevue/tooltip'
 import ToastService from 'primevue/toastservice'
-import DialogService from 'primevue/dialogservice'
 
 import App from '@renderer/App.vue'
 import { theme } from '@renderer/style/theme'
@@ -27,7 +26,6 @@ app.use(pinia)
 		}
 	})
 	.use(ToastService)
-	.use(DialogService)
 	.directive('tooltip', Tooltip)
 
 // 动态导入，确保它是最后加载的样式
