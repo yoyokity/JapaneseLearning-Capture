@@ -1,6 +1,6 @@
 import { load as cheerioLoad } from 'cheerio'
 import { DataHelper, NetHelper } from '@renderer/helper'
-import { Gender, IActor } from './Video'
+import { IActor } from './Video'
 
 const headers = {
 	'User-Agent':
@@ -15,11 +15,8 @@ const headers = {
  */
 export class Actor implements IActor {
 	name: string
-	gender: Gender = 'female'
 	imgUrl: string = ''
-	birthdate: string = ''
-	measurements: string = ''
-	cup: string = ''
+	role: string = ''
 
 	constructor(name: string) {
 		this.name = name
@@ -36,61 +33,13 @@ export class Actor implements IActor {
 	}
 
 	/**
-	 * 返回信息文本
-	 */
-	infoText() {
-		if (!(this.birthdate || this.birthdate || this.cup)) return ''
-
-		let text = `${this.name}:\n`
-		if (this.birthdate) text += this.birthdate + '\n'
-		if (this.measurements) text += this.measurements
-		if (this.cup) text += ' ' + this.cup
-
-		return text
-	}
-
-	/**
 	 * 搜索演员信息，数据库中存在则直接拿取 (注意是异步函数)
 	 * @param {string|null} javDB_url 演员的javdb链接，忽略则根据名字搜索
-	 * @param {boolean} female 是否为女人
 	 */
-	async search(javDB_url: string | null = null, female = true): Promise<void> {
+	async search(javDB_url: string | null = null): Promise<void> {
 		//检查数据库中是否已有演员信息
 		if (await this.get()) {
 			return
-		}
-
-		if (female) {
-			//如果是女的从wiki获取基本信息
-
-			this.gender = 'female'
-			const response = await NetHelper.get(
-				NetHelper.joinUrl('https://ja.wikipedia.org/wiki/', encodeURIComponent(this.name))
-			)
-			if (response.ok) {
-				const $ = cheerioLoad(response.body)
-				const infobox = $('.infobox')
-				if (infobox) {
-					const text = infobox.text()
-
-					const birthdate = text.match(/\d{4}年\d+月\d+日/)?.[0]
-					if (birthdate) {
-						this.birthdate = birthdate.trim()
-					}
-
-					const measurements = text.match(/[\d ]+-[\d ]+-[\d ]+cm/)?.[0]
-					if (measurements) {
-						this.measurements = measurements.trim().replace(' ', '')
-					}
-
-					const cup = text.match(/[A-Z][0-9]*?\n/)?.[0]
-					if (cup) {
-						this.cup = cup.trim()
-					}
-				}
-			}
-		} else {
-			this.gender = 'male'
 		}
 
 		//在javdb中获取头像
@@ -131,10 +80,7 @@ export class Actor implements IActor {
 		const data = (await DataHelper.get('#actor', this.name)) as IActor
 		if (data) {
 			this.imgUrl = data.imgUrl || ''
-			this.gender = data.gender || 'female'
-			this.birthdate = data.birthdate || ''
-			this.measurements = data.measurements || ''
-			this.cup = data.cup || ''
+			this.role = data.role || ''
 			return true
 		}
 		return false
