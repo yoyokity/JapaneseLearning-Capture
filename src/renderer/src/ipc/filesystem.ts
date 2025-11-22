@@ -198,7 +198,15 @@ const to = '/home/user/app/dist';
 	 * @param file 文件
 	 * @returns 文件路径
 	 */
-	getPathForFile: (file: File) => (window.api as any).getPathForFile(file)
+	getPathForFile: (file: File) => (window.api as any).getPathForFile(file),
+
+	/**
+	 * 删除空文件夹
+	 * @remarks 用时 <10ms
+	 * @param rootPath 根路径
+	 */
+	removeEmptyFolders: (rootPath: string): Promise<void> =>
+		invoke('filesystem:removeEmptyFolders', rootPath)
 }
 
 function readFile(filePath: string, encoding: BufferEncoding): Promise<string>

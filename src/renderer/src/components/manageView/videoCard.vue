@@ -18,6 +18,7 @@ const props = defineProps<{
 }>()
 
 const showEditorDialog = ref(false)
+const isSaving = ref(false)
 const toast = useToast()
 
 const name = computed(() => {
@@ -38,6 +39,9 @@ async function onClose(data: any = null) {
 	//对话框点击保存
 	const newVideo = data as IVideoFile
 	const sourceVideoFile = props.video
+	const scraper = Scraper.getCurrentScraperInstance()
+
+	if (!scraper) return
 
 	console.log('scraperPath', Scraper.getCurrentScraperPath())
 	console.log('sourceVideoFile', sourceVideoFile)
@@ -53,12 +57,16 @@ async function onClose(data: any = null) {
 		return
 	}
 
-	const re = await Scraper.getCurrentScraperInstance()?.createDirectory(
+	if (isSaving.value) return
+	isSaving.value = true
+
+	//创建目录
+	const videoDir = await scraper.createDirectory(
 		PathHelper.newPath(Scraper.getCurrentScraperPath()),
 		newVideo,
 		sourceVideoFile
 	)
-	if (!re) {
+	if (!videoDir) {
 		toast.add({
 			severity: 'error',
 			summary: '保存失败！',
@@ -67,9 +75,14 @@ async function onClose(data: any = null) {
 		return
 	}
 
-	//保存到nfo
-	// const nfo = Nfo.create(newVideo)
-	// await nfo.save(newVideo.nfoPath.toString())
+	//处理图片
+	await scraper.downloadImage(videoDir, newVideo)
+
+	//删除空文件夹
+	await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
+
+	//重新扫描文件
+	await scanFiles(toast)
 
 	toast.add({
 		severity: 'success',
@@ -77,8 +90,7 @@ async function onClose(data: any = null) {
 		life: 3000
 	})
 
-	//重新扫描文件
-	scanFiles(toast)
+	isSaving.value = false
 }
 </script>
 
@@ -90,7 +102,7 @@ async function onClose(data: any = null) {
 		</div>
 	</div>
 	<Dialog v-model:visible="showEditorDialog" @close="onClose">
-		<Editor :video="props.video" />
+		<Editor :video="props.video" :isSaving="isSaving" />
 	</Dialog>
 </template>
 

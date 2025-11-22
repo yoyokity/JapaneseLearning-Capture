@@ -207,3 +207,73 @@ ipcMain.handle('filesystem:openInExplorer', (_, path: string) => {
 		return true
 	})
 })
+
+//通过fast-glob，从最深的文件夹遍历到最浅的文件夹，如果文件夹内没有视频文件，则删除该文件夹
+ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
+	return await tryExecute(async () => {
+		rootPath = path.normalize(rootPath)
+
+		if (!fs.existsSync(rootPath) || !fs.statSync(rootPath).isDirectory()) return
+
+		// 定义视频文件扩展名
+		const videoExtensions = ['.mp4', '.mkv', '.avi', '.wmv', '.mov', '.flv', '.webm']
+		const videoExtPattern = videoExtensions.map((ext) => ext.slice(1)).join(',')
+
+		// 一次性获取所有文件夹和视频文件
+		const entries = await fg.glob(['**/', `**/*.{${videoExtPattern}}`], {
+			cwd: rootPath,
+			dot: true,
+			deep: Infinity,
+			absolute: true,
+			onlyFiles: false,
+			stats: true,
+			ignore: ['**/extrafanart']
+		})
+
+		// 分离文件夹和视频文件
+		const dirs = []
+		const videoFiles: string[] = []
+
+		for (const entry of entries) {
+			if (entry.stats && entry.stats.isDirectory()) {
+				//文件夹
+				dirs.push(path.normalize(entry.path).replace(rootPath, ''))
+			} else if (entry.stats && entry.stats.isFile()) {
+				//视频文件
+				videoFiles.push(path.normalize(entry.path).replace(rootPath, ''))
+			}
+		}
+
+		//筛选没有视频的路径，按路径长度排序，确保从最深的文件夹开始处理
+		const emptyDirs = dirs
+			.filter((dir) => !videoFiles.some((videoFile) => videoFile.startsWith(dir)))
+			.sort((a, b) => a.length - b.length)
+
+		const topLevelDirs = new Set<string>()
+		for (const dir of emptyDirs) {
+			// 检查当前路径是否是已找到的顶级目录的子路径
+			let isSubPath = false
+			for (const topDir of topLevelDirs) {
+				if (dir.startsWith(topDir + path.sep)) {
+					isSubPath = true
+					break
+				}
+			}
+
+			// 如果不是子路径，就把它作为顶级目录添加
+			if (!isSubPath) {
+				topLevelDirs.add(dir)
+			}
+		}
+
+		// 将 Set 转换为数组
+		const result = Array.from(topLevelDirs).map((dir) => path.join(rootPath, dir))
+
+		for (const dir of result) {
+			removeSync(dir)
+			log.info('删除无视频文件夹：' + dir)
+		}
+
+		return
+	})
+})

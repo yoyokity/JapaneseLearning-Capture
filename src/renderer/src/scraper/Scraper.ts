@@ -30,9 +30,9 @@ export interface IScraper {
 	 * @param scraperPath 刮削器输出路径
 	 * @param videoFile 新视频文件信息
 	 * @param sourceVideoFile 源视频文件信息
-	 * @returns 是否创建成功
+	 * @returns 创建的最终目录路径，如果创建失败，则返回null
 	 */
-	createDirectory(scraperPath: Path, video: IVideo, sourceVideoFile: IVideoFile): Promise<boolean>
+	createDirectory(scraperPath: Path, video: IVideo, sourceVideoFile: IVideoFile): Promise<Path | null>
 	/**
 	 * 下载图片
 	 * @param videoDir 视频目录
@@ -112,7 +112,7 @@ export class Scraper {
 	 * @param sourceVideoFile 源视频文件信息
 	 * @param fileName 文件名，最终目录名也是这个。默认使用视频文件的title
 	 * @param subDirectory 是否在scraperPath和videoFile.dir之间添加一层或多层目录，如果为true，则目录结构为 scraperOutDir/subDirectory/videoDir
-	 * @returns 是否创建成功
+	 * @returns 创建的最终目录路径，如果创建失败，则返回null
 	 */
 	static async defaultCreateDirectory(
 		scraperPath: Path,
@@ -120,7 +120,7 @@ export class Scraper {
 		sourceVideoFile: IVideoFile,
 		fileName: ((video: IVideo) => string) | null = null,
 		subDirectory: ((video: IVideo) => string) | null = null
-	): Promise<boolean> {
+	): Promise<Path | null> {
 		//文件名
 		const _fileName = fileName ? fileName(video) : video.title
 		//中间目录
@@ -135,17 +135,17 @@ export class Scraper {
 
 		//创建最终目录
 		let re = await PathHelper.createDirectory(videoDir)
-		if (!re) return false
+		if (!re) return null
 
 		//将视频文件移动到新目录
 		re = await PathHelper.move(sourceVideoFile.path, _videoPath)
-		if (!re) return false
+		if (!re) return null
 
 		//创建nfo文件
 		const nfo = Nfo.create(video)
 		await nfo.save(_nfoPath)
 
-		return true
+		return videoDir
 	}
 
 	/**

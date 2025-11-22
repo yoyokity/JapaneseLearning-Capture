@@ -428,6 +428,22 @@ export class PathHelper {
 			return null
 		}
 	}
+
+	/**
+	 * 删除空文件夹
+	 * @remarks 用时 <10ms
+	 * @param rootPath 根路径
+	 */
+	static async removeEmptyFolders(rootPath: Path | string) {
+		DebugHelper.info(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
+		const re = await DebugHelper.tryExecute(Ipc.filesystem.removeEmptyFolders, rootPath.toString())
+		if (!re.hasError) {
+			return true
+		} else {
+			DebugHelper.error(`删除空文件夹失败：`, re.error)
+			return false
+		}
+	}
 }
 export interface IArsrPath {
 	/**

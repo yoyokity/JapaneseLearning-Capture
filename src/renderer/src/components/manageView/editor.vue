@@ -17,6 +17,7 @@ import { IDialog } from '@renderer/components/control/dialog/type'
 
 const props = defineProps<{
 	video: IVideoFile
+	isSaving: boolean
 }>()
 
 const dialog = inject('dialog') as IDialog
@@ -510,7 +511,7 @@ onMounted(async () => {
 				size="small"
 				@click="dialog.close()"
 			/>
-			<Button icon="pi pi-save" label="保存" size="small" @click="dialog.close(newVideo)" />
+			<Button :loading="isSaving" icon="pi pi-save" label="保存" size="small" @click="dialog.close(newVideo)" />
 		</div>
 	</div>
 </template>

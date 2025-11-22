@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { provide } from 'vue'
+import { CSSProperties, provide } from 'vue'
 import { IDialog } from './type'
+
+const props = defineProps<{
+	dialogStyle?: CSSProperties
+	contentStyle?: CSSProperties
+}>()
 
 const visible = defineModel('visible', {
 	type: Boolean
@@ -27,8 +32,8 @@ provide('dialog', dialog)
 <template>
 	<Teleport to="body">
 		<Transition mode="out-in" name="dialog">
-			<div class="dialog" v-if="visible">
-				<div class="dialog-content">
+			<div class="dialog" :style="{ ...dialogStyle }" v-if="visible">
+				<div class="dialog-content" :style="{ ...contentStyle }">
 					<slot></slot>
 				</div>
 			</div>
