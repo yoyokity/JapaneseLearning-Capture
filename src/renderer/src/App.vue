@@ -5,9 +5,9 @@ import Toast from 'primevue/toast'
 </script>
 
 <template>
-	<tab-container />
-	<DynamicDialog />
-	<Toast />
+    <TabContainer />
+    <DynamicDialog />
+    <Toast />
 </template>
 
 <style scoped></style>

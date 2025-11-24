@@ -5,12 +5,12 @@
  * @description 如果后端运行时报错，则会抛出后端异常到前端
  */
 export async function invoke(channel: string, ...args: any[]) {
-	const re = await window.electron.ipcRenderer.invoke(channel, ...args)
-	if (!re.hasError) {
-		return re.result
-	} else {
-		throw re.error
-	}
+    const re = await window.electron.ipcRenderer.invoke(channel, ...args)
+    if (!re.hasError) {
+        return re.result
+    } else {
+        throw re.error
+    }
 }
 
 /**
@@ -20,5 +20,5 @@ export async function invoke(channel: string, ...args: any[]) {
  * @description 该函数不会等待主进程响应，适用于不需要返回值的场景
  */
 export function send(channel: string, ...args: any[]) {
-	window.electron.ipcRenderer.send(channel, ...args)
+    window.electron.ipcRenderer.send(channel, ...args)
 }

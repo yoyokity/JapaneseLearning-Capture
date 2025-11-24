@@ -9,25 +9,25 @@
  * ```
  */
 export async function tryExecute<T>(
-	fn: (...args: any[]) => T | Promise<T>,
-	...args: any[]
+    fn: (...args: any[]) => T | Promise<T>,
+    ...args: any[]
 ): Promise<
-	{ hasError: false; result: T; error: null } | { hasError: true; result: null; error: unknown }
+    { hasError: false; result: T; error: null } | { hasError: true; result: null; error: unknown }
 > {
-	try {
-		const result = await fn(...args)
-		return {
-			result,
-			hasError: false,
-			error: null
-		}
-	} catch (error) {
-		return {
-			result: null,
-			hasError: true,
-			error
-		}
-	}
+    try {
+        const result = await fn(...args)
+        return {
+            result,
+            hasError: false,
+            error: null
+        }
+    } catch (error) {
+        return {
+            result: null,
+            hasError: true,
+            error
+        }
+    }
 }
 
 /**
@@ -45,21 +45,21 @@ export async function tryExecute<T>(
  * 对于异步函数，请使用tryExecute方法代替。
  */
 export function tryExecuteSync<T>(
-	fn: (...args: any[]) => T,
-	...args: any[]
+    fn: (...args: any[]) => T,
+    ...args: any[]
 ): { hasError: false; result: T; error: null } | { hasError: true; result: null; error: unknown } {
-	try {
-		const result = fn(...args)
-		return {
-			result,
-			hasError: false,
-			error: null
-		}
-	} catch (error) {
-		return {
-			result: null,
-			hasError: true,
-			error
-		}
-	}
+    try {
+        const result = fn(...args)
+        return {
+            result,
+            hasError: false,
+            error: null
+        }
+    } catch (error) {
+        return {
+            result: null,
+            hasError: true,
+            error
+        }
+    }
 }
