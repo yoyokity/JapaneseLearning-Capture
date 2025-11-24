@@ -175,7 +175,7 @@ export class Scraper {
         if (video.poster) {
             if (video.poster instanceof URL) {
                 //如果是url
-                const re = await NetHelper.get(video.poster.toString(), 'buffer', httpHeaders)
+                const re = await NetHelper.get(video.poster.toString(), 'arrayBuffer', httpHeaders)
                 if (re.ok) {
                     await ImageHelper.saveImage(re.body, posterPath)
                 }
@@ -188,7 +188,7 @@ export class Scraper {
         if (video.thumb) {
             if (video.thumb instanceof URL) {
                 //如果是url
-                const re = await NetHelper.get(video.thumb.toString(), 'buffer', httpHeaders)
+                const re = await NetHelper.get(video.thumb.toString(), 'arrayBuffer', httpHeaders)
                 if (re.ok) {
                     await ImageHelper.saveImage(re.body, thumbPath)
                 }
@@ -201,7 +201,7 @@ export class Scraper {
         if (video.fanart) {
             if (video.fanart instanceof URL) {
                 //如果是url
-                const re = await NetHelper.get(video.fanart.toString(), 'buffer', httpHeaders)
+                const re = await NetHelper.get(video.fanart.toString(), 'arrayBuffer', httpHeaders)
                 if (re.ok) {
                     await ImageHelper.superResolutionImage(re.body, fanartPath, anime)
                 }
@@ -218,7 +218,11 @@ export class Scraper {
             for (let index = 1; index <= video.extrafanart.length; index++) {
                 const extrafanart = video.extrafanart[index - 1]
                 if (extrafanart instanceof URL) {
-                    const re = await NetHelper.get(extrafanart.toString(), 'buffer', httpHeaders)
+                    const re = await NetHelper.get(
+                        extrafanart.toString(),
+                        'arrayBuffer',
+                        httpHeaders
+                    )
                     if (re.ok) {
                         await ImageHelper.saveImage(
                             re.body,

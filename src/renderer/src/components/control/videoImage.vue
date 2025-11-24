@@ -9,15 +9,20 @@ import { onMounted, ref, watch } from 'vue'
 interface ImageProps {
     filePath?: Path | URL | null
     /**
-     * 内部图片样式
+     * 普通状态下的图片样式
      */
     imageStyle?: CSSProperties
+    /**
+     * 错误状态下的图片样式
+     */
+    errorImageStyle?: CSSProperties
     borderRadius?: CSSProperties['borderRadius']
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
     filePath: null,
     imageStyle: () => ({}),
+    errorImageStyle: () => ({}),
     borderRadius: 'calc(var(--border-radius) * 2)'
 })
 
@@ -68,7 +73,7 @@ onMounted(loadImage)
             class="video-card-img"
             @error="isImgError = true"
         />
-        <img v-else :src="imgFall" :style="imageStyle" class="video-card-img error" />
+        <img v-else :src="imgFall" :style="errorImageStyle" class="video-card-img error" />
     </div>
 </template>
 

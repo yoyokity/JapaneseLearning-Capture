@@ -12,6 +12,9 @@ export default antfu(
             'import-x': importX
         },
         rules: {
+            'vue/html-self-closing': 'off',
+            'vue/multiline-html-element-content-newline': 'off', // 禁用多行标签内容必须换行的规则
+            'vue/singleline-html-element-content-newline': 'off', // 禁用单行标签内容必须换行的规则
             'ts/ban-ts-comment': 'off', // 允许使用 @ts-ignore
             'node/prefer-global/process': 'off', // 允许使用全局 process
             'no-console': 'off', // 允许使用 console

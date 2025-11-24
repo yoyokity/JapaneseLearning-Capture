@@ -24,8 +24,6 @@ const props = defineProps<{
     isSaving: boolean
 }>()
 
-const URLConstructor = URL
-
 const dialog = inject('dialog') as IDialog
 const newVideo = ref<IVideoFile>(createVideoFile(''))
 
@@ -465,13 +463,12 @@ onMounted(async () => {
                             @dragleave.prevent="(e) => handleDrag(e, 'leave')"
                         >
                             <VideoImage
-                                :file-path="
-                                    new URLConstructor(
-                                        'https://i.pinimg.com/736x/84/07/f4/8407f47ca8188ffe15ce8f8e8d049436.jpg'
-                                    )
-                                "
+                                :file-path="newVideo[label]"
                                 :style="{
                                     height: '15rem'
+                                }"
+                                :error-image-style="{
+                                    padding: '2rem'
                                 }"
                             />
                             <div class="image-overlay">
