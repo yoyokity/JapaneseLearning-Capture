@@ -25,5 +25,31 @@ input {
 }
 
 .p-dialog {
-    overflow: hidden;
+    // overflow: hidden;
+
+    .p-dialog-content {
+        //自定义的header
+        .header {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            border-bottom: var(--separator);
+
+            h1 {
+                font-size: 1.25rem;
+            }
+        }
+
+        //自定义的footer
+        .footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            gap: 8px;
+
+            button {
+                width: 6rem;
+            }
+        }
+    }
 }

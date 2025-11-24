@@ -1,16 +1,11 @@
 <script lang="ts" setup>
 import type { IVideoFile } from '@renderer/scraper'
 
-import Dialog from '@renderer/components/control/dialog/Dialog.vue'
 import VideoImage from '@renderer/components/control/VideoImage.vue'
-import { PathHelper } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
-import { isEqual } from 'es-toolkit'
-import { useToast } from 'primevue/usetoast'
-import { computed, ref } from 'vue'
+import { useDialog } from 'primevue/usedialog'
+import { computed } from 'vue'
 
 import Editor from './editor.vue'
-import { scanFiles } from './func'
 
 const props = defineProps<{
     video: IVideoFile
@@ -20,9 +15,7 @@ const emit = defineEmits<{
     showMenu: [event: MouseEvent, video: IVideoFile]
 }>()
 
-const showEditorDialog = ref(false)
-const isSaving = ref(false)
-const toast = useToast()
+const dialog = useDialog()
 
 const name = computed(() => {
     return props.video.title || props.video.fileName
@@ -35,78 +28,34 @@ function onContextmenu(event: MouseEvent) {
     emit('showMenu', event, props.video)
 }
 
-//编辑窗口关闭传回
-async function onClose(data: any = null) {
-    if (!data) return
-
-    //对话框点击保存
-    const newVideo = data as IVideoFile
-    const sourceVideoFile = props.video
-    const scraper = Scraper.getCurrentScraperInstance()
-
-    if (!scraper) return
-
-    console.log('scraperPath', Scraper.getCurrentScraperPath())
-    console.log('sourceVideoFile', sourceVideoFile)
-    console.log('newVideo', newVideo)
-
-    //如果视频没有修改，则不保存
-    if (isEqual(newVideo, sourceVideoFile)) {
-        toast.add({
-            severity: 'success',
-            summary: '未修改，无需保存',
-            life: 3000
-        })
-        return
-    }
-
-    if (isSaving.value) return
-    isSaving.value = true
-
-    //创建目录
-    const videoDir = await scraper.createDirectory(
-        PathHelper.newPath(Scraper.getCurrentScraperPath()),
-        newVideo,
-        sourceVideoFile
-    )
-    if (!videoDir) {
-        toast.add({
-            severity: 'error',
-            summary: '保存失败！',
-            life: 3000
-        })
-        return
-    }
-
-    //处理图片
-    await scraper.downloadImage(videoDir, newVideo)
-
-    //删除空文件夹
-    await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
-
-    //重新扫描文件
-    await scanFiles(toast)
-
-    toast.add({
-        severity: 'success',
-        summary: '保存成功！',
-        life: 3000
+function openEditor() {
+    dialog.open(Editor, {
+        props: {
+            modal: true,
+            draggable: false,
+            showHeader: false,
+            style: {
+                width: 'fit-content',
+                maxWidth: '90vw'
+            },
+            contentStyle: {
+                overflow: 'initial'
+            }
+        },
+        data: {
+            video: props.video
+        }
     })
-
-    isSaving.value = false
 }
 </script>
 
 <template>
-    <div class="video-card" @click="showEditorDialog = true" @contextmenu="onContextmenu">
+    <div class="video-card" @click="openEditor" @contextmenu="onContextmenu">
         <VideoImage :file-path="image" style="aspect-ratio: 379 / 538" />
         <div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
             {{ name }}
         </div>
     </div>
-    <Dialog v-model:visible="showEditorDialog" @close="onClose">
-        <Editor :video="props.video" :is-saving="isSaving" />
-    </Dialog>
 </template>
 
 <style lang="scss" scoped>

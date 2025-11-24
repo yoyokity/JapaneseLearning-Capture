@@ -17,6 +17,9 @@
       },
       "devDependencies": {
         "@antfu/eslint-config": "^6.2.0",
+        "@better-scroll/core": "^2.5.1",
+        "@better-scroll/mouse-wheel": "^2.5.1",
+        "@better-scroll/scroll-bar": "^2.5.1",
         "@electron-forge/cli": "^7.8.3",
         "@electron-forge/maker-deb": "^7.8.3",
         "@electron-forge/maker-rpm": "^7.8.3",
@@ -130,6 +133,14 @@
     "@babel/traverse": ["@babel/traverse@7.28.5", "", { "dependencies": { "@babel/code-frame": "^7.27.1", "@babel/generator": "^7.28.5", "@babel/helper-globals": "^7.28.0", "@babel/parser": "^7.28.5", "@babel/template": "^7.27.2", "@babel/types": "^7.28.5", "debug": "^4.3.1" } }, "sha512-TCCj4t55U90khlYkVV/0TfkJkAkUg3jZFA3Neb7unZT8CPok7iiRfaX0F+WnqWqt7OxhOn0uBKXCw4lbL8W0aQ=="],
 
     "@babel/types": ["@babel/types@7.28.5", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA=="],
+
+    "@better-scroll/core": ["@better-scroll/core@2.5.1", "https://registry.npmmirror.com/@better-scroll/core/-/core-2.5.1.tgz", { "dependencies": { "@better-scroll/shared-utils": "^2.5.1" } }, "sha512-koKOuYA55dQ04FJRIVUpMGDr1hbCfWmfX0MGp1hKagkQSWSRpwblqACiwtggVauoj9aaJRJZ9hDsTM4weaavlg=="],
+
+    "@better-scroll/mouse-wheel": ["@better-scroll/mouse-wheel@2.5.1", "https://registry.npmmirror.com/@better-scroll/mouse-wheel/-/mouse-wheel-2.5.1.tgz", { "dependencies": { "@better-scroll/core": "^2.5.1" } }, "sha512-DGnrirRMY6zMM7xwgx09D/cA9A//3J1/uDkq8iBVEyE5p0sEr/keQpjEfFHGkBRa505BnbBwdbN6f5lugEDSPw=="],
+
+    "@better-scroll/scroll-bar": ["@better-scroll/scroll-bar@2.5.1", "https://registry.npmmirror.com/@better-scroll/scroll-bar/-/scroll-bar-2.5.1.tgz", { "dependencies": { "@better-scroll/core": "^2.5.1" } }, "sha512-i6r60pWG/ztkFK2j5Gj54I0LJb2jGh5TWJNQBoW0gUkp28B+0JvBFTwZn9tF7beZCBorKR7Hvvu4O9A1TJy94Q=="],
+
+    "@better-scroll/shared-utils": ["@better-scroll/shared-utils@2.5.1", "https://registry.npmmirror.com/@better-scroll/shared-utils/-/shared-utils-2.5.1.tgz", {}, "sha512-AplkfSjXVYP9LZiD6JsKgmgQJ/mG4uuLmBuwLz8W5OsYc7AYTfN8kw6GqZ5OwCGoXkVhBGyd8NeC4xwYItp0aw=="],
 
     "@clack/core": ["@clack/core@0.5.0", "https://registry.npmmirror.com/@clack/core/-/core-0.5.0.tgz", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow=="],
 

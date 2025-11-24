@@ -74,6 +74,14 @@ export const theme = definePreset(Theme, {
                     }
                 }
             }
+        },
+        dialog: {
+            header: {
+                padding: '2rem'
+            },
+            content: {
+                padding: '0 2rem 2rem 2rem'
+            }
         }
     }
 })

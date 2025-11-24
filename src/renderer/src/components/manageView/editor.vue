@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import type { IDialog } from '@renderer/components/control/dialog/type'
 import type { IActor, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
+import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import VideoImage from '@renderer/components/control/VideoImage.vue'
 import { isNumeric, isUrl, isValidDate, Path, PathHelper } from '@renderer/helper'
-import { createVideoFile } from '@renderer/scraper'
+import { createVideoFile, Scraper } from '@renderer/scraper'
+import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
 import Button from 'primevue/button'
 import Chip from 'primevue/chip'
@@ -14,18 +15,20 @@ import InputText from 'primevue/inputtext'
 import ScrollPanel from 'primevue/scrollpanel'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
+import { useToast } from 'primevue/usetoast'
 import { inject, onMounted, ref } from 'vue'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
-import { readExtrafanart } from './func'
+import { readExtrafanart, scanFiles } from './func'
 
-const props = defineProps<{
-    video: IVideoFile
-    isSaving: boolean
-}>()
+const dialogRef = inject('dialogRef') as any
+const toast = useToast()
 
-const dialog = inject('dialog') as IDialog
+const video = dialogRef.value.data.video as IVideoFile
+
 const newVideo = ref<IVideoFile>(createVideoFile(''))
+const scraper = Scraper.getCurrentScraperInstance()
+const isSaving = ref(false)
 
 //tab部分
 const tabs = [
@@ -61,9 +64,67 @@ useKeyPress(['esc'], () => {
     if (previewImage.value) {
         previewImage.value = null
     } else {
-        dialog.close()
+        dialogRef.value.close()
     }
 })
+
+/**
+ * 保存逻辑
+ */
+async function onSave() {
+    const sourceVideoFile = video
+    const scraper = Scraper.getCurrentScraperInstance()
+
+    if (!scraper) return
+
+    //如果视频没有修改，则不保存
+    if (isEqual(newVideo.value, sourceVideoFile)) {
+        toast.add({
+            severity: 'success',
+            summary: '未修改，无需保存',
+            life: 3000
+        })
+        dialogRef.value.close()
+        return
+    }
+
+    if (isSaving.value) return
+    isSaving.value = true
+
+    //创建目录
+    const videoDir = await scraper.createDirectory(
+        PathHelper.newPath(Scraper.getCurrentScraperPath()),
+        newVideo.value,
+        sourceVideoFile
+    )
+    if (!videoDir) {
+        toast.add({
+            severity: 'error',
+            summary: '保存失败！',
+            life: 3000
+        })
+        isSaving.value = false
+        return
+    }
+
+    //处理图片
+    await scraper.downloadImage(videoDir, newVideo.value)
+
+    //删除空文件夹
+    await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
+
+    //重新扫描文件
+    await scanFiles(toast)
+
+    toast.add({
+        severity: 'success',
+        summary: '保存成功！',
+        life: 3000
+    })
+
+    isSaving.value = false
+    dialogRef.value.close(newVideo.value)
+}
 
 /**
  * 创建菜单项数组
@@ -134,11 +195,11 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
 
 onMounted(async () => {
     //读取extrafanart
-    await readExtrafanart(props.video.dir as Path, props.video as IVideoFile).then((count) => {
+    await readExtrafanart(video.dir as Path, video).then((count) => {
         console.info(`读取${count}个extrafanart`)
     })
 
-    newVideo.value = cloneDeep(props.video) // 深拷贝，避免响应式对象引用问题
+    newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
 })
 </script>
 
@@ -167,14 +228,21 @@ onMounted(async () => {
             />
         </div>
 
-        <ScrollPanel style="height: calc(90vh - var(--header-height) - var(--header-height))">
+        <Scroll style="height: calc(90vh - var(--header-height) - var(--header-height))">
             <div class="content">
                 <!-- 信息编辑部分 -->
                 <div v-show="activeTab === 'info'" class="form-container">
                     <h2 style="margin-top: 0">标题</h2>
-                    <FloatLabel variant="on">
+                    <FloatLabel variant="on" style="display: flex">
                         <InputText id="title_label" v-model.trim="newVideo.title" />
                         <label for="title_label">标题</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem"
+                            @click="scraper?.scraperVideoFuncs.parseTitle(newVideo, '')"
+                        />
                     </FloatLabel>
 
                     <FloatLabel
@@ -507,7 +575,7 @@ onMounted(async () => {
                     </Teleport>
                 </div>
             </div>
-        </ScrollPanel>
+        </Scroll>
 
         <!-- 底部 -->
         <div class="manage-view-editor-footer">
@@ -516,14 +584,14 @@ onMounted(async () => {
                 label="取消"
                 severity="secondary"
                 size="small"
-                @click="dialog.close()"
+                @click="dialogRef.close()"
             />
             <Button
                 :loading="isSaving"
                 icon="pi pi-save"
                 label="保存"
                 size="small"
-                @click="dialog.close(newVideo)"
+                @click="onSave"
             />
         </div>
     </div>
@@ -534,6 +602,8 @@ onMounted(async () => {
     width: 70vw;
     min-width: 30rem;
     max-width: 70rem;
+    display: flex;
+    flex-direction: column;
 
     .form-container {
         --spacing: 1.25rem;
@@ -608,7 +678,6 @@ onMounted(async () => {
     .header {
         justify-content: flex-start;
         position: relative;
-        padding: 0 calc(var(--dialog-padding-x) / 4);
 
         .tab-item {
             width: 5rem;
@@ -635,6 +704,10 @@ onMounted(async () => {
             border-radius: 0.125rem;
             transition: all 0.3s var(--animation-type);
         }
+    }
+
+    .content {
+        padding: 1rem;
     }
 
     .manage-view-editor-footer {

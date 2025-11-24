@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import type { IDialog } from '@renderer/components/control/dialog/type'
-
 import llmInfo1 from '@renderer/assets/llm-info-1.jpg'
 import llmInfo2 from '@renderer/assets/llm-info-2.jpg'
 import llmInfo3 from '@renderer/assets/llm-info-3.jpg'
@@ -9,24 +7,11 @@ import Button from 'primevue/button'
 import Image from 'primevue/image'
 import Message from 'primevue/message'
 import ScrollPanel from 'primevue/scrollpanel'
-import { inject } from 'vue'
-
-const dialog = inject('dialog') as IDialog
 </script>
 
 <template>
     <div class="llm-info" style="user-select: text">
-        <div class="header">
-            <h1>本地LLM大模型使用说明</h1>
-            <Button
-                icon="pi pi-times"
-                rounded
-                severity="secondary"
-                variant="text"
-                @click="dialog.close()"
-            />
-        </div>
-        <ScrollPanel style="height: calc(90vh - var(--header-height))">
+        <ScrollPanel style="height: calc(90vh - 7rem)">
             <div class="content">
                 <h1>本地LLM API服务器推荐对新手最友好的：</h1>
                 <Message severity="info"> LM Studio </Message>

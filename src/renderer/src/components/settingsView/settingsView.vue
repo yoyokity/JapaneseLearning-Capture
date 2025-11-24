@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import Dialog from '@renderer/components/control/dialog/Dialog.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import { TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
@@ -11,6 +10,7 @@ import Message from 'primevue/message'
 import ScrollPanel from 'primevue/scrollpanel'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
+import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 import { ref } from 'vue'
 
@@ -20,10 +20,10 @@ import SettingsLineItem from './settingsLineItem.vue'
 const settings = settingsStore()
 const translateEngineConfigRef = ref()
 const llmModels = ref<string[]>([])
-const showLocalLLMInfoDialog = ref(false)
 const testDefaultText = 'こんにちは世界'
 const testText = ref(testDefaultText)
 const toast = useToast()
+const dialog = useDialog()
 
 const tabs = [
     { id: 'settings', name: '设置', icon: 'pi pi-cog' },
@@ -59,6 +59,26 @@ async function testTranslate() {
             life: 3000
         })
     }
+}
+
+function openLlmInfo() {
+    dialog.open(LlmInfo, {
+        props: {
+            modal: true,
+            draggable: false,
+            header: '本地LLM大模型使用说明',
+            style: {
+                width: 'fit-content',
+                maxWidth: '90vw'
+            },
+            contentStyle: {
+                overflow: 'initial'
+            }
+        },
+        onClose: () => {
+            fetchLLMModels()
+        }
+    })
 }
 </script>
 
@@ -279,13 +299,7 @@ async function testTranslate() {
                                 />
                             </SettingsLineItem>
                             <SettingsLineItem title="">
-                                <Button @click="showLocalLLMInfoDialog = true"> 使用说明 </Button>
-                                <Dialog
-                                    v-model:visible="showLocalLLMInfoDialog"
-                                    @close="fetchLLMModels"
-                                >
-                                    <LlmInfo />
-                                </Dialog>
+                                <Button @click="openLlmInfo"> 使用说明 </Button>
                             </SettingsLineItem>
                         </div>
                     </SettingsLine>
