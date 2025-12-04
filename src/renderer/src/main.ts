@@ -6,6 +6,7 @@ import { theme } from '@renderer/style/theme'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import PrimeVue from 'primevue/config'
+import ConfirmationService from 'primevue/confirmationservice'
 import DialogService from 'primevue/dialogservice'
 import ToastService from 'primevue/toastservice'
 import Tooltip from 'primevue/tooltip'
@@ -28,6 +29,7 @@ async function initApp() {
         })
         .use(ToastService)
         .use(DialogService)
+        .use(ConfirmationService)
         .directive('tooltip', Tooltip)
 
     // 动态导入，确保它是最后加载的样式

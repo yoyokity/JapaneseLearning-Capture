@@ -12,23 +12,27 @@ import Button from 'primevue/button'
 import Chip from 'primevue/chip'
 import FloatLabel from 'primevue/floatlabel'
 import InputText from 'primevue/inputtext'
-import ScrollPanel from 'primevue/scrollpanel'
+import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
-import { useToast } from 'primevue/usetoast'
 import { inject, onMounted, ref } from 'vue'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
+import { useMessage } from '../control/message'
 import { readExtrafanart, scanFiles } from './func'
+import { scraperTitle } from './func.scraper'
 
 const dialogRef = inject('dialogRef') as any
-const toast = useToast()
+const { toast } = useMessage()
 
 const video = dialogRef.value.data.video as IVideoFile
 
 const newVideo = ref<IVideoFile>(createVideoFile(''))
-const scraper = Scraper.getCurrentScraperInstance()
 const isSaving = ref(false)
+
+const a = {
+    webContent: ref('')
+}
 
 //tab部分
 const tabs = [
@@ -79,11 +83,7 @@ async function onSave() {
 
     //如果视频没有修改，则不保存
     if (isEqual(newVideo.value, sourceVideoFile)) {
-        toast.add({
-            severity: 'success',
-            summary: '未修改，无需保存',
-            life: 3000
-        })
+        toast.success('未修改，无需保存')
         dialogRef.value.close()
         return
     }
@@ -98,11 +98,7 @@ async function onSave() {
         sourceVideoFile
     )
     if (!videoDir) {
-        toast.add({
-            severity: 'error',
-            summary: '保存失败！',
-            life: 3000
-        })
+        toast.error('保存失败！')
         isSaving.value = false
         return
     }
@@ -116,11 +112,7 @@ async function onSave() {
     //重新扫描文件
     await scanFiles(toast)
 
-    toast.add({
-        severity: 'success',
-        summary: '保存成功！',
-        life: 3000
-    })
+    toast.success('保存成功！')
 
     isSaving.value = false
     dialogRef.value.close(newVideo.value)
@@ -227,12 +219,29 @@ onMounted(async () => {
                 class="active-indicator"
             />
         </div>
-
         <Scroll style="height: calc(90vh - var(--header-height) - var(--header-height))">
             <div class="content">
                 <!-- 信息编辑部分 -->
                 <div v-show="activeTab === 'info'" class="form-container">
-                    <h2 style="margin-top: 0">标题</h2>
+                    <h2 style="margin-top: 0">刮削</h2>
+                    <Select
+                        v-model="newVideo.scraperName"
+                        v-tooltip="'选择刮削器'"
+                        :options="Scraper.instances.map((scraper) => scraper.scraperName)"
+                        style="width: 8rem"
+                    />
+                    <FloatLabel
+                        v-tooltip="
+                            '作品在刮削网站的编号。刮削搜索时，如果有编号则直接使用编号，否则使用原标题。'
+                        "
+                        variant="on"
+                        style="display: flex"
+                    >
+                        <InputText id="title_num" v-model.trim="newVideo.num" />
+                        <label for="title_num">编号</label>
+                    </FloatLabel>
+
+                    <h2>标题</h2>
                     <FloatLabel variant="on" style="display: flex">
                         <InputText id="title_label" v-model.trim="newVideo.title" />
                         <label for="title_label">标题</label>
@@ -241,7 +250,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraper?.scraperVideoFuncs.parseTitle(newVideo, '')"
+                            @click="scraperTitle(newVideo, a.webContent, toast)"
                         />
                     </FloatLabel>
 

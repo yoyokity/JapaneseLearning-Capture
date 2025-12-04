@@ -15,6 +15,123 @@ interface IModuleType {
     }
 }
 
+export interface IScraperVideoFuncs {
+    /**
+     * 获取网页内容
+     */
+    getWebContent: (video: IVideo) => Promise<string | null>
+    /**
+     * 解析大标题
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseTitle: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析原始标题
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseOriginaltitle: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析排序标题
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseSorttitle: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析宣传词
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseTagline: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析编号
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseNum: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析分级
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseMpaa: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析评分
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseRating: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析导演
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseDirector: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析演员
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseActor: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析发行商
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseStudio: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析制片商
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseMaker: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析影片系列
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseSet: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析影片标签
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseTag: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析影片类型
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseGenre: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析简介
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parsePlot: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析发行年份
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseYear: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析首映日期
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parsePremiered: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析上映日期
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseReleasedate: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析视频封面
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parsePoster: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析视频缩略图
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseThumb: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析视频背景图
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseFanart: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析视频额外背景图
+     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     */
+    parseExtrafanart: (video: IVideo, webContent: string) => Promise<IVideo | null>
+}
+
 export interface IScraper {
     /**
      * 刮削器名称
@@ -25,9 +142,9 @@ export interface IScraper {
      */
     checkConnect: () => Promise<boolean>
     /**
-     * 刮削视频信息
+     * 刮削视频信息的方法
      */
-    scraperVideo: (video: IVideo) => Promise<IVideo>
+    scraperVideoFuncs: IScraperVideoFuncs
     /**
      * 创建目录，创建nfo文件，移动视频
      * @param scraperPath 刮削器输出路径
@@ -76,8 +193,8 @@ export class Scraper {
                 continue
             }
 
-            if (!scraper.scraperVideo || typeof scraper.scraperVideo !== 'function') {
-                DebugHelper.error(`${path} 缺少有效的scraperVideo方法，此刮削器加载失败`)
+            if (!scraper.scraperVideoFuncs || typeof scraper.scraperVideoFuncs !== 'object') {
+                DebugHelper.error(`${path} 缺少有效的scraperVideoFuncs方法，此刮削器加载失败`)
                 continue
             }
 
@@ -95,6 +212,13 @@ export class Scraper {
         }
         return instances
     })()
+
+    /**
+     * 获取刮削器实例
+     */
+    static getScraperInstance(scraperName: string) {
+        return Scraper.instances.find((scraper) => scraper.scraperName === scraperName)
+    }
 
     /**
      * 获取当前刮削器路径

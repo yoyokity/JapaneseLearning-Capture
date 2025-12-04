@@ -52,7 +52,16 @@ export const net = {
      * @returns 返回ping结果，包含是否成功、响应时间和状态码
      */
     ping: (host: string, timeout?: number): Promise<IPingResult> =>
-        invoke('net:ping', host, timeout)
+        invoke('net:ping', host, timeout),
+
+    /**
+     * 打开 Cloudflare 验证窗口
+     * @param url 需要验证的网站 URL
+     * @param targetCookies 目标 Cookie 名称数组，检测到所有 Cookie 后自动关闭窗口，默认为 ['XSRF-TOKEN']
+     * @returns 返回验证结果，包含 Cookie 信息
+     */
+    cloudflareVerify: (url: string, targetCookies?: string[]): Promise<IVerifyCookies> =>
+        invoke('cloudflare:verify', url, targetCookies)
 }
 
 /**
@@ -124,6 +133,31 @@ export interface IPingResult {
 
     /**
      * 错误信息，成功时不存在
+     */
+    error?: string
+}
+
+/**
+ * Cloudflare 验证结果接口
+ */
+export interface IVerifyCookies {
+    /**
+     * 是否验证成功
+     */
+    success: boolean
+
+    /**
+     * Cookie 字符串
+     */
+    cookies: string
+
+    /**
+     * 获取到的目标 Cookie 键值对
+     */
+    targetCookies: Record<string, string>
+
+    /**
+     * 错误信息
      */
     error?: string
 }

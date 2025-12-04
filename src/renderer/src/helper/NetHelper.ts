@@ -3,6 +3,7 @@ import type {
     IFetchParse,
     IPingResult,
     IResult,
+    IVerifyCookies,
     ParseResultType
 } from '@renderer/ipc/net.ts'
 
@@ -97,8 +98,13 @@ export class NetHelper {
             retry = options.retry || options.retry === 0 ? options.retry : retry
         }
 
+        const defaultHeaders = {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+
         const config: IFetchOptions = {
-            headers,
+            headers: { ...defaultHeaders, ...headers },
             timeout,
             parse: parse || ('text' as P)
         }
@@ -123,7 +129,7 @@ export class NetHelper {
 
             if (!re.hasError) {
                 const result = re.result as IResult<ParseResultType<P>>
-                if (result.ok) {
+                if (result.ok || result.status === 403) {
                     return result
                 }
             } else {
@@ -176,8 +182,13 @@ export class NetHelper {
             retry = options.retry || options.retry === 0 ? options.retry : retry
         }
 
+        const defaultHeaders = {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+
         const config: IFetchOptions = {
-            headers,
+            headers: { ...defaultHeaders, ...headers },
             timeout,
             parse: parse || ('text' as P)
         }
@@ -202,7 +213,7 @@ export class NetHelper {
 
             if (!re.hasError) {
                 const result = re.result as IResult<ParseResultType<P>>
-                if (result.ok) {
+                if (result.ok || result.status === 403) {
                     return result
                 } else {
                     DebugHelper.warn(`POST请求失败：${url}`, re.result)
@@ -252,6 +263,30 @@ export class NetHelper {
                 success: false,
                 time: -1,
                 status: -1,
+                error: `执行错误: ${re.error}`
+            }
+        }
+    }
+
+    /**
+     * 打开一个新窗口来获取一些验证相关的cookie
+     * @param url 需要验证的网站 URL
+     * @param targetCookies 目标 Cookie 名称数组，检测到所有 Cookie 后自动关闭窗口，默认为 ['XSRF-TOKEN']
+     * @returns 返回验证结果，包含 Cookie 信息
+     */
+    static async verify(url: string, targetCookies?: string[]): Promise<IVerifyCookies> {
+        const re = await DebugHelper.tryExecute(
+            async () => await Ipc.net.cloudflareVerify(url, targetCookies)
+        )
+
+        if (!re.hasError) {
+            return re.result as IVerifyCookies
+        } else {
+            DebugHelper.error(`验证失败：${url}`, re.error)
+            return {
+                success: false,
+                cookies: '',
+                targetCookies: {},
                 error: `执行错误: ${re.error}`
             }
         }

@@ -4,7 +4,7 @@ import * as pathe from 'pathe'
 import { DebugHelper } from './DebugHelper.ts'
 
 export class Path {
-    private readonly _path: string
+    readonly _path: string
 
     constructor(...paths: string[]) {
         this._path = pathe.resolve(...paths)
