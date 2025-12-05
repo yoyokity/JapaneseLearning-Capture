@@ -62,6 +62,8 @@ export async function scraperField(
     if (!re2) {
         DebugHelper.warn(`更新编号出错！`, toast)
     }
+
+    console.log('video: ', toRaw(video))
 }
 
 /** 需要执行的解析函数列表 */
@@ -134,6 +136,8 @@ export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: 
         DebugHelper.info('[刮削] 全部解析成功！')
         toast.success('全部信息获取成功！')
     }
+
+    console.log('video: ', toRaw(video))
 }
 
 export async function scraperSave(

@@ -220,7 +220,7 @@ onMounted(async () => {
                     <div style="display: flex">
                         <Select
                             v-model="newVideo.scraperName"
-                            v-tooltip="'选择刮削器'"
+                            v-tooltip.top="'选择刮削器'"
                             :options="Scraper.instances.map((scraper) => scraper.scraperName)"
                             style="flex: 1"
                         />

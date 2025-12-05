@@ -532,8 +532,8 @@ const hanimeScraper: IScraper = {
         parsePremiered: async (video: IVideo, webContent: string) => {
             const $ = cheerioLoad(webContent)
             const text = $('.video-description-panel').children().eq(0).text()
-            const match = text.match(/(\d{4})-\d{2}-\d{2}/)
-            const premiered = match ? match[1] : ''
+            const match = text.match(/\d{4}-\d{2}-\d{2}/)
+            const premiered = match ? match[0] : ''
 
             if (!premiered) return null
 
@@ -543,8 +543,8 @@ const hanimeScraper: IScraper = {
         parseReleasedate: async (video: IVideo, webContent: string) => {
             const $ = cheerioLoad(webContent)
             const text = $('.video-description-panel').children().eq(0).text()
-            const match = text.match(/(\d{4})-\d{2}-\d{2}/)
-            const releasedate = match ? match[1] : ''
+            const match = text.match(/\d{4}-\d{2}-\d{2}/)
+            const releasedate = match ? match[0] : ''
 
             if (!releasedate) return null
 
@@ -562,8 +562,8 @@ const hanimeScraper: IScraper = {
                     ?.replace(/^\.\/ */, '')
 
                 if (url) {
-                    DebugHelper.log(`- [Getchu] 获取封面成功！`)
-                    temp.封面 = url
+                    temp.封面 = new URL(url, 'https://www.getchu.com/').toString()
+                    DebugHelper.log(`- [Getchu] 获取封面成功！:${temp.封面}`)
                 }
             }
 
@@ -620,7 +620,9 @@ const hanimeScraper: IScraper = {
                     )
 
                 for (const href of hrefs) {
-                    video.extrafanart.push(new URL(href))
+                    const url = new URL(href, 'https://www.getchu.com/')
+                    video.extrafanart.push(url)
+                    DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
                 }
             } else {
                 DebugHelper.log(`- 没有getchu，无法获取剧照`)
