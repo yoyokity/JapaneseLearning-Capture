@@ -158,6 +158,9 @@ export class PathHelper {
         const arsrPath = await DebugHelper.tryExecute(Ipc.app.arsrPath)
         if (!arsrPath.hasError) {
             DebugHelper.info(`获取arsrPath成功：`, arsrPath.result.root)
+            DebugHelper.info(`获取resources成功：`, arsrPath.result.resources)
+            DebugHelper.info(`获取extraResource成功：`, arsrPath.result.extraResource)
+            DebugHelper.info(`获取renderer成功：`, arsrPath.result.renderer)
             PathHelper.arsrPath = {
                 root: new Path(arsrPath.result.root),
                 resources: new Path(arsrPath.result.resources),

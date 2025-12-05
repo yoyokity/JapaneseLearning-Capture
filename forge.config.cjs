@@ -15,6 +15,7 @@ module.exports = {
             '.cursor',
             '.git',
             '.vscode',
+            '.windsurf',
             '.idea',
             'data',
             'tools',

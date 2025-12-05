@@ -1,6 +1,3 @@
-# plugins: 使用的 Prettier 插件
-plugins:
-    - '@prettier/plugin-oxc'
 # printWidth: 单行代码字符数限制，超过会换行
 printWidth: 100
 # tabWidth: 缩进的空格数

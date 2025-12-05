@@ -67,14 +67,17 @@ ipcMain.handle('filesystem:relative', (_, from: string, to: string) => {
 // 递归创建目录，如果目录已存在则跳过
 ipcMain.handle('filesystem:createDirectory', (_, dirPath: string) => {
     return tryExecuteSync(() => {
-        if (fs.existsSync(dirPath)) {
-            return true
-        }
-
-        ensureDirSync(dirPath)
-        return fs.existsSync(dirPath)
+        createDirectory(dirPath)
     })
 })
+
+export function createDirectory(dirPath: string) {
+    if (fs.existsSync(dirPath)) {
+        return true
+    }
+    ensureDirSync(dirPath)
+    return fs.existsSync(dirPath)
+}
 
 // 使用fast-glob搜索文件和目录
 ipcMain.handle(

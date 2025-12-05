@@ -10,7 +10,7 @@ import { createWindow } from './window'
 appPath.root = process.cwd()
 appPath.arsr = app.getAppPath()
 appPath.resources = join(appPath.arsr, 'resources')
-appPath.extraResource = join(appPath.arsr, '../')
+appPath.extraResource = app.isPackaged ? join(appPath.arsr, '../') : appPath.arsr
 appPath.renderer = join(appPath.arsr, 'dist', 'renderer')
 
 // 设置electron缓存文件夹在根目录下，不要建立在C盘

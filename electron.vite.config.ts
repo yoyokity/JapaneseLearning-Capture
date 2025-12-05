@@ -1,15 +1,28 @@
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import svgLoader from 'vite-svg-loader'
 
 export default defineConfig({
     main: {
-        plugins: [externalizeDepsPlugin()]
+        build: {
+            rollupOptions: {
+                external: ['sharp', /^@img\/.*/],
+                output: {
+                    format: 'es'
+                }
+            }
+        }
     },
     preload: {
-        plugins: [externalizeDepsPlugin()]
+        build: {
+            rollupOptions: {
+                output: {
+                    format: 'es'
+                }
+            }
+        }
     },
     renderer: {
         server: {
@@ -21,7 +34,7 @@ export default defineConfig({
             minify: 'terser', // 使用 terser 进行代码压缩和混淆
             terserOptions: {
                 compress: {
-                    drop_console: true, // 移除 console
+                    drop_console: false, // 移除 console
                     drop_debugger: true // 移除 debugger
                 },
                 format: {
