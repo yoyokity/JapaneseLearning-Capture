@@ -283,7 +283,7 @@ export class Scraper {
         if (video.fanart && !isEqual(sourceVideoFile.fanart, video.fanart)) {
             const fanartPath = videoDir.join('fanart.jpg')
             imagePromises.push(
-                ImageHelper.superResolutionImage(video.fanart, fanartPath, true).then(() => {
+                ImageHelper.saveImage(video.fanart, fanartPath).then(() => {
                     DebugHelper.info(`- 保存背景图fanart成功！:${fanartPath}`)
                 })
             )

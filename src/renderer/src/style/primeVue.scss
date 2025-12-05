@@ -24,6 +24,10 @@ input {
     }
 }
 
+.p-toast {
+    z-index: 9999 !important;
+}
+
 .p-dialog {
     // overflow: hidden;
 

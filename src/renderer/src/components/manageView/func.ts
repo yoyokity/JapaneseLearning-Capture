@@ -113,21 +113,21 @@ async function read(path: string): Promise<IVideoFile> {
         if (!PathHelper.newPath(movie.poster).isAbsolute) {
             movie.poster = video.dir.join(movie.poster)
         }
-        video.poster = await ImageHelper.readImage(movie.poster, 'arraybuffer')
+        video.poster = await ImageHelper.readImage(movie.poster)
     }
 
     if (movie.thumb) {
         if (!PathHelper.newPath(movie.thumb).isAbsolute) {
             movie.thumb = video.dir.join(movie.thumb)
         }
-        video.thumb = await ImageHelper.readImage(movie.thumb, 'arraybuffer')
+        video.thumb = await ImageHelper.readImage(movie.thumb)
     }
 
     if (movie.fanart) {
         if (!PathHelper.newPath(movie.fanart).isAbsolute) {
             movie.fanart = video.dir.join(movie.fanart)
         }
-        video.fanart = await ImageHelper.readImage(movie.fanart, 'arraybuffer')
+        video.fanart = await ImageHelper.readImage(movie.fanart)
     }
 
     return video
@@ -150,7 +150,7 @@ export async function readExtrafanart(videoDir: Path, video: IVideoFile): Promis
         const filePath = PathHelper.newPath(file)
         const ext = filePath.extname.toLowerCase()
         if (ext === '.jpg' || ext === '.png' || ext === '.jpeg' || ext === '.webp') {
-            const re = await ImageHelper.readImage(filePath, 'arraybuffer')
+            const re = await ImageHelper.readImage(filePath)
             if (re) {
                 video.extrafanart.push(re)
             }

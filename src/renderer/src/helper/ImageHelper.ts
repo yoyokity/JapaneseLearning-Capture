@@ -38,26 +38,20 @@ export class ImageHelper {
 
     /**
      * 超分辨率处理图片
-     * @remarks 用时 <10ms
      * @param imageData 图片数据
-     * @param path 保存路径
      * @param anime 是否为动漫图片，默认为false
+     * @returns 超分后的图片ArrayBuffer
      */
     static async superResolutionImage(
         imageData: ImageData,
-        path: Path | string,
         anime: boolean = false
-    ) {
-        const re = await DebugHelper.tryExecute(
-            Ipc.image.superResolutionImage,
-            imageData,
-            path.toString(),
-            anime
-        )
+    ): Promise<ArrayBuffer | null> {
+        const re = await DebugHelper.tryExecute(Ipc.image.superResolutionImage, imageData, anime)
         if (!re.hasError) {
             return re.result
         } else {
             DebugHelper.error(`超分辨率处理图片失败：`, re.error)
+            return null
         }
     }
 }

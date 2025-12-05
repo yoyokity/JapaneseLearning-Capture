@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { IActor, IVideoFile } from '@renderer/scraper'
+import type { IActor, IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
@@ -154,7 +154,7 @@ async function handleDrop(e: DragEvent, imageType: 'poster' | 'fanart' | 'thumb'
     // 更新对应类型的图片路径
     const filePath = await PathHelper.getPathForFile(file)
     if (!filePath) return
-    newVideo.value[imageType] = await ImageHelper.readImage(filePath, 'arraybuffer')
+    newVideo.value[imageType] = await ImageHelper.readImage(filePath)
 }
 
 /**
@@ -748,9 +748,28 @@ onMounted(async () => {
                     style="gap: 2rem; flex-direction: row; flex-wrap: wrap"
                 >
                     <div v-for="label in Object.keys(imageLabels)" :key="label">
-                        <h2 style="margin-bottom: 1rem; text-align: center">
-                            {{ imageLabels[label] }}
-                        </h2>
+                        <div style="display: flex; align-items: center">
+                            <h2 style="margin-bottom: 1rem; text-align: center">
+                                {{ imageLabels[label] }}
+                            </h2>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="height: fit-content"
+                                size="small"
+                                @click="
+                                    scraperField(
+                                        newVideo,
+                                        a.webContent,
+                                        toast,
+                                        `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs,
+                                        imageLabels[label]
+                                    )
+                                "
+                            />
+                        </div>
+
                         <div
                             class="image-container"
                             @click="previewImage = newVideo[label]"

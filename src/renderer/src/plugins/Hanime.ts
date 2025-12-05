@@ -1,7 +1,7 @@
 import type { IScraper } from '../scraper/Scraper'
 import type { IVideo } from '../scraper/Video'
 
-import { DebugHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { DebugHelper, ImageHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 /**
@@ -599,21 +599,23 @@ const hanimeScraper: IScraper = {
             return video
         },
         parseThumb: async (video: IVideo, webContent: string) => {
-            if (!temp.封面) {
+            if (!video.poster) {
                 if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, webContent)))
                     return null
             }
 
-            video.thumb = video.poster
+            const re = await ImageHelper.superResolutionImage(video.poster!, true)
+            video.thumb = re ?? video.poster
+
             return video
         },
         parseFanart: async (video: IVideo, webContent: string) => {
-            if (!temp.封面) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, webContent)))
+            if (!video.thumb) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parseThumb(video, webContent)))
                     return null
             }
 
-            video.fanart = video.poster
+            video.fanart = video.thumb
             return video
         },
         parseExtrafanart: async (video: IVideo) => {
