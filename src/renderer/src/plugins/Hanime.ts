@@ -1,6 +1,6 @@
 import type { Path } from '@renderer/helper'
 import type { IScraper } from '../scraper/Scraper'
-import type { IVideo, IVideoFile } from '../scraper/Video'
+import type { IVideo } from '../scraper/Video'
 
 import { DebugHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
@@ -476,7 +476,7 @@ const hanimeScraper: IScraper = {
         },
         parseTag: async (video: IVideo, webContent: string) => {
             const $ = cheerioLoad(webContent)
-            const tags: string[] = []
+            const tags: string[] = ['成人动漫']
             $('.single-video-tag a').each((_, el) => {
                 const text = $(el)
                     .contents()
@@ -626,21 +626,14 @@ const hanimeScraper: IScraper = {
                 DebugHelper.log(`- 没有getchu，无法获取剧照`)
             }
             return video
+        },
+        parseOutput: async (video: IVideo) => {
+            const dir = `${video.set}/${video.originaltitle}`
+            return { dir, fileName: video.originaltitle }
         }
     },
-    createDirectory: async (scraperPath: Path, video: IVideo, sourceVideoFile: IVideoFile) => {
-        return await Scraper.defaultCreateDirectory(
-            scraperPath,
-            video,
-            sourceVideoFile,
-            null,
-            (video) => {
-                return video.set //以set作为中间目录
-            }
-        )
-    },
     downloadImage: async (videoDir: Path, video: IVideo) => {
-        await Scraper.defaultDownloadImage(videoDir, video, undefined, true)
+        await Scraper.defaultDownloadImage({ videoDir, video, anime: true })
     }
 }
 

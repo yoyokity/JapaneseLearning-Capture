@@ -137,6 +137,7 @@ ipcMain.handle(
                 overwrite,
                 filter
             }
+            if (sourcePath === destPath) return true
             copySync(sourcePath, destPath, options)
             return true
         })

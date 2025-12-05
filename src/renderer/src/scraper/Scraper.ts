@@ -131,6 +131,12 @@ export interface IScraperVideoFuncs {
      * @remarks 不管解不解析都返回video，如果解析出错，请返回null
      */
     parseExtrafanart: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    /**
+     * 解析视频输出信息
+     * @remarks 是相对路径，最终目录的绝对路径=刮削器输出路径+这个相对路径
+     * @returns dir是输出目录的相对路径，fileName是视频文件名
+     */
+    parseOutput: (video: IVideo, webContent: string) => Promise<{ dir: string; fileName: string }>
 }
 
 export interface IScraper {
@@ -146,18 +152,6 @@ export interface IScraper {
      * 刮削视频信息的方法
      */
     scraperVideoFuncs: IScraperVideoFuncs
-    /**
-     * 创建目录，创建nfo文件，移动视频
-     * @param scraperPath 刮削器输出路径
-     * @param videoFile 新视频文件信息
-     * @param sourceVideoFile 源视频文件信息
-     * @returns 创建的最终目录路径，如果创建失败，则返回null
-     */
-    createDirectory: (
-        scraperPath: Path,
-        video: IVideo,
-        sourceVideoFile: IVideoFile
-    ) => Promise<Path | null>
     /**
      * 下载图片
      * @param videoDir 视频目录
@@ -199,11 +193,6 @@ export class Scraper {
                 continue
             }
 
-            if (!scraper.createDirectory || typeof scraper.createDirectory !== 'function') {
-                DebugHelper.error(`${path} 缺少有效的createDirectory方法，此刮削器加载失败`)
-                continue
-            }
-
             if (!scraper.downloadImage || typeof scraper.downloadImage !== 'function') {
                 DebugHelper.error(`${path} 缺少有效的downloadImage方法，此刮削器加载失败`)
                 continue
@@ -237,62 +226,66 @@ export class Scraper {
         return Scraper.instances.find((scraper) => scraper.scraperName === settings.currentScraper)
     }
 
-    /**
-     * 默认创建目录的方法
-     * @param scraperPath 刮削器输出路径
-     * @param video 视频文件信息
-     * @param sourceVideoFile 源视频文件信息
-     * @param fileName 文件名，最终目录名也是这个。默认使用视频文件的title
-     * @param subDirectory 是否在scraperPath和videoFile.dir之间添加一层或多层目录，如果为true，则目录结构为 scraperOutDir/subDirectory/videoDir
-     * @returns 创建的最终目录路径，如果创建失败，则返回null
-     */
-    static async defaultCreateDirectory(
+    static async createDirectory(
         scraperPath: Path,
         video: IVideo,
         sourceVideoFile: IVideoFile,
-        fileName: ((video: IVideo) => string) | null = null,
-        subDirectory: ((video: IVideo) => string) | null = null
+        dir: string,
+        fileName: string
     ): Promise<Path | null> {
-        //文件名
-        const _fileName = fileName ? fileName(video) : video.title
-        //中间目录
-        const _subDirectory = subDirectory ? subDirectory(video) : ''
         //最终目录
-        const videoDir = scraperPath.join(_subDirectory).join(_fileName)
+        const videoDir = scraperPath.join(dir)
 
+        //原视频path
+        const _sourceVideoPath = sourceVideoFile.path
         //视频path
-        const _videoPath = videoDir.join(_fileName + sourceVideoFile.extname)
+        const _videoPath = videoDir.join(fileName + sourceVideoFile.extname)
         //nfo path
-        const _nfoPath = videoDir.join(`${_fileName}.nfo`)
+        const _nfoPath = videoDir.join(`${fileName}.nfo`)
 
-        //创建最终目录
-        let re = await PathHelper.createDirectory(videoDir)
-        if (!re) return null
+        //如果最终目录和原视频目录不同，则创建最终目录
+        if (sourceVideoFile.dir.toString() !== videoDir.toString()) {
+            if (!(await PathHelper.createDirectory(videoDir))) {
+                return null
+            }
+        }
 
-        //将视频文件移动到新目录
-        re = await PathHelper.move(sourceVideoFile.path, _videoPath)
-        if (!re) return null
+        //将视频文件移动到新目录或改名
+        if (_sourceVideoPath.toString() !== _videoPath.toString()) {
+            if (!(await PathHelper.move(_sourceVideoPath, _videoPath))) {
+                return null
+            }
+        }
 
         //创建nfo文件
         const nfo = Nfo.create(video)
         await nfo.save(_nfoPath)
+
+        //如果有两个nfo，则删除原来的
+        if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {
+            if (!(await PathHelper.remove(sourceVideoFile.nfoPath))) {
+                return null
+            }
+        }
 
         return videoDir
     }
 
     /**
      * 默认下载图片的方法
-     * @param videoDir 视频目录
-     * @param video 视频信息
-     * @param httpHeaders 请求头，默认不使用
-     * @param anime 是否为动漫图片，默认为false
+     * @param options 配置选项
+     * @param options.videoDir 视频目录
+     * @param options.video 视频信息
+     * @param options.httpHeaders 请求头，默认不使用
+     * @param options.anime 是否为动漫图片，默认为false
      */
-    static async defaultDownloadImage(
-        videoDir: Path,
-        video: IVideo,
-        httpHeaders?: Record<string, string>,
-        anime: boolean = false
-    ): Promise<void> {
+    static async defaultDownloadImage(options: {
+        videoDir: Path
+        video: IVideo
+        httpHeaders?: Record<string, string>
+        anime?: boolean
+    }): Promise<void> {
+        const { videoDir, video, httpHeaders, anime = false } = options
         const posterPath = videoDir.join('poster.jpg')
         const thumbPath = videoDir.join('thumb.jpg')
         const fanartPath = videoDir.join('fanart.jpg')

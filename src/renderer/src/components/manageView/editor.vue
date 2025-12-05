@@ -20,7 +20,7 @@ import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 import { useMessage } from '../control/message'
 import { readExtrafanart, scanFiles } from './func'
-import { scraperField } from './func.scraper'
+import { scraperAll, scraperField, scraperSave } from './func.scraper'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
@@ -91,20 +91,13 @@ async function onSave() {
     if (isSaving.value) return
     isSaving.value = true
 
-    //创建目录
-    const videoDir = await scraper.createDirectory(
-        PathHelper.newPath(Scraper.getCurrentScraperPath()),
-        newVideo.value,
-        sourceVideoFile
-    )
-    if (!videoDir) {
+    //保存
+    const re = await scraperSave(newVideo.value, sourceVideoFile, a.webContent, toast)
+    if (!re) {
         toast.error('保存失败！')
         isSaving.value = false
         return
     }
-
-    //处理图片
-    await scraper.downloadImage(videoDir, newVideo.value)
 
     //删除空文件夹
     await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
@@ -224,12 +217,22 @@ onMounted(async () => {
                 <!-- 信息编辑部分 -->
                 <div v-show="activeTab === 'info'" class="form-container">
                     <h2 style="margin-top: 0">刮削</h2>
-                    <Select
-                        v-model="newVideo.scraperName"
-                        v-tooltip="'选择刮削器'"
-                        :options="Scraper.instances.map((scraper) => scraper.scraperName)"
-                        style="width: 8rem"
-                    />
+                    <div style="display: flex">
+                        <Select
+                            v-model="newVideo.scraperName"
+                            v-tooltip="'选择刮削器'"
+                            :options="Scraper.instances.map((scraper) => scraper.scraperName)"
+                            style="flex: 1"
+                        />
+                        <Button
+                            v-tooltip="'刮削全部信息'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem; height: fit-content"
+                            @click="scraperAll(newVideo, a.webContent, toast)"
+                        />
+                    </div>
+
                     <FloatLabel
                         v-tooltip.top="
                             '作品在刮削网站的编号。刮削搜索时，如果有编号则直接使用编号，否则使用原标题。'

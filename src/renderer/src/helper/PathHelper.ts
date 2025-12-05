@@ -374,7 +374,7 @@ export class PathHelper {
     }
 
     /**
-     * 移动文件或目录
+     * 移动文件或目录（也可以重命名）
      * @remarks 用时与文件大小和数量相关
      * @param sourcePath 源文件或目录路径
      * @param destPath 目标路径
