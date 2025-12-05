@@ -52,6 +52,7 @@ export interface IScraperVideoFuncs {
     parseMpaa: (video: IVideo, webContent: string) => Promise<IVideo | null>
     /**
      * 解析评分
+     * @description 尽量以10分为满分
      * @remarks 不管解不解析都返回video，如果解析出错，请返回null
      */
     parseRating: (video: IVideo, webContent: string) => Promise<IVideo | null>

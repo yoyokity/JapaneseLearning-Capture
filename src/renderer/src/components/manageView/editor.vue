@@ -20,7 +20,7 @@ import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 import { useMessage } from '../control/message'
 import { readExtrafanart, scanFiles } from './func'
-import { scraperTitle } from './func.scraper'
+import { scraperField } from './func.scraper'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
@@ -231,7 +231,7 @@ onMounted(async () => {
                         style="width: 8rem"
                     />
                     <FloatLabel
-                        v-tooltip="
+                        v-tooltip.top="
                             '作品在刮削网站的编号。刮削搜索时，如果有编号则直接使用编号，否则使用原标题。'
                         "
                         variant="on"
@@ -250,33 +250,79 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraperTitle(newVideo, a.webContent, toast)"
+                            @click="
+                                scraperField(newVideo, a.webContent, toast, 'parseTitle', '标题')
+                            "
                         />
                     </FloatLabel>
 
                     <FloatLabel
-                        v-tooltip="'原始标题，jellyfin中会显示在大标题下方作为小标题'"
+                        v-tooltip.top="'原始标题，jellyfin中会显示在大标题下方作为小标题'"
                         variant="on"
+                        style="display: flex"
                     >
                         <InputText
                             id="original_title_label"
                             v-model.trim="newVideo.originaltitle"
                         />
                         <label for="original_title_label">原标题</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem"
+                            @click="
+                                scraperField(
+                                    newVideo,
+                                    a.webContent,
+                                    toast,
+                                    'parseOriginaltitle',
+                                    '原标题'
+                                )
+                            "
+                        />
                     </FloatLabel>
 
-                    <FloatLabel v-tooltip="'名称排序时会以此为标准'" variant="on">
+                    <FloatLabel
+                        v-tooltip.top="'名称排序时会以此为标准'"
+                        variant="on"
+                        style="display: flex"
+                    >
                         <InputText id="sort_title_label" v-model.trim="newVideo.sorttitle" />
                         <label for="sort_title_label">排序标题</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem"
+                            @click="
+                                scraperField(
+                                    newVideo,
+                                    a.webContent,
+                                    toast,
+                                    'parseSorttitle',
+                                    '排序标题'
+                                )
+                            "
+                        />
                     </FloatLabel>
 
-                    <FloatLabel variant="on">
+                    <FloatLabel variant="on" style="display: flex">
                         <InputText id="sort_title_label" v-model.trim="newVideo.set" />
                         <label for="sort_title_label">影片系列</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem"
+                            @click="
+                                scraperField(newVideo, a.webContent, toast, 'parseSet', '影片系列')
+                            "
+                        />
                     </FloatLabel>
 
                     <h2>介绍</h2>
-                    <FloatLabel variant="on">
+                    <FloatLabel variant="on" style="display: flex">
                         <Textarea
                             id="plot_label"
                             v-model.trim="newVideo.plot"
@@ -285,93 +331,145 @@ onMounted(async () => {
                             style="width: 100%"
                         />
                         <label for="plot_label">内容简介</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem; height: fit-content"
+                            @click="
+                                scraperField(newVideo, a.webContent, toast, 'parsePlot', '内容简介')
+                            "
+                        />
                     </FloatLabel>
 
-                    <FloatLabel variant="on">
+                    <FloatLabel variant="on" style="display: flex">
                         <InputText id="tagline_label" v-model.trim="newVideo.tagline" />
                         <label for="tagline_label">宣传词</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem; height: fit-content"
+                            @click="
+                                scraperField(
+                                    newVideo,
+                                    a.webContent,
+                                    toast,
+                                    'parseTagline',
+                                    '宣传词'
+                                )
+                            "
+                        />
                     </FloatLabel>
 
                     <h2>人员</h2>
-                    <FloatLabel variant="on">
+                    <FloatLabel variant="on" style="display: flex">
                         <InputText id="director_label" v-model.trim="newVideo.director" />
                         <label for="director_label">导演</label>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem"
+                            @click="
+                                scraperField(newVideo, a.webContent, toast, 'parseDirector', '导演')
+                            "
+                        />
                     </FloatLabel>
 
                     <!-- 演员 -->
-                    <div v-for="actor in newVideo.actor" :key="actor.imgUrl" class="flex-input">
-                        <FloatLabel variant="on">
-                            <InputText id="mpaa_label" v-model.trim="actor.name" />
-                            <label for="mpaa_label">演员</label>
-                        </FloatLabel>
+                    <div style="display: flex">
+                        <div style="flex: 1; gap: 1rem; display: flex; flex-direction: column">
+                            <div
+                                v-for="actor in newVideo.actor"
+                                :key="actor.imgUrl"
+                                class="flex-input"
+                            >
+                                <Button
+                                    v-tooltip="'删除演员'"
+                                    icon="pi pi-trash"
+                                    severity="secondary"
+                                    style="flex: none"
+                                    @click="
+                                        () => {
+                                            newVideo.actor = newVideo.actor.filter(
+                                                (a) => a !== actor
+                                            )
+                                        }
+                                    "
+                                />
+                                <FloatLabel variant="on">
+                                    <InputText id="mpaa_label" v-model.trim="actor.name" />
+                                    <label for="mpaa_label">演员</label>
+                                </FloatLabel>
 
-                        <FloatLabel variant="on">
-                            <InputText id="mpaa_label" v-model.trim="actor.role" />
-                            <label for="mpaa_label">扮演角色</label>
-                        </FloatLabel>
+                                <FloatLabel variant="on">
+                                    <InputText id="mpaa_label" v-model.trim="actor.role" />
+                                    <label for="mpaa_label">扮演角色</label>
+                                </FloatLabel>
 
-                        <FloatLabel style="flex: 2" variant="on">
-                            <InputText
-                                id="rating_label"
-                                v-model.trim="actor.imgUrl"
-                                :invalid="actor.imgUrl ? !isUrl(actor.imgUrl) : false"
-                            />
-                            <label for="rating_label">图像链接</label>
-                        </FloatLabel>
+                                <FloatLabel style="flex: 2" variant="on">
+                                    <InputText
+                                        id="rating_label"
+                                        v-model.trim="actor.imgUrl"
+                                        :invalid="actor.imgUrl ? !isUrl(actor.imgUrl) : false"
+                                    />
+                                    <label for="rating_label">图像链接</label>
+                                </FloatLabel>
+                            </div>
+                            <!-- 添加演员 -->
+                            <div class="flex-input">
+                                <Button
+                                    v-tooltip="'添加演员'"
+                                    icon="pi pi-plus"
+                                    severity="secondary"
+                                    style="flex: none"
+                                    @click="
+                                        () => {
+                                            if (!addActorValue.name) return
+                                            // 创建新对象副本，避免响应式对象引用问题
+                                            newVideo.actor.push({
+                                                name: addActorValue.name,
+                                                role: addActorValue.role,
+                                                imgUrl: addActorValue.imgUrl
+                                            })
+                                            addActorValue.name = ''
+                                            addActorValue.role = ''
+                                            addActorValue.imgUrl = ''
+                                        }
+                                    "
+                                />
+                                <FloatLabel variant="on">
+                                    <InputText id="mpaa_label" v-model.trim="addActorValue.name" />
+                                    <label for="mpaa_label">演员</label>
+                                </FloatLabel>
 
+                                <FloatLabel variant="on">
+                                    <InputText id="mpaa_label" v-model.trim="addActorValue.role" />
+                                    <label for="mpaa_label">扮演角色</label>
+                                </FloatLabel>
+
+                                <FloatLabel style="flex: 2" variant="on">
+                                    <InputText
+                                        id="rating_label"
+                                        v-model.trim="addActorValue.imgUrl"
+                                        :invalid="
+                                            addActorValue.imgUrl
+                                                ? !isUrl(addActorValue.imgUrl)
+                                                : false
+                                        "
+                                    />
+                                    <label for="rating_label">图像链接</label>
+                                </FloatLabel>
+                            </div>
+                        </div>
                         <Button
-                            v-tooltip="'删除演员'"
-                            icon="pi pi-trash"
-                            severity="secondary"
-                            style="flex: none"
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem; height: fit-content"
                             @click="
-                                () => {
-                                    newVideo.actor = newVideo.actor.filter((a) => a !== actor)
-                                }
-                            "
-                        />
-                    </div>
-                    <!-- 添加演员 -->
-                    <div class="flex-input">
-                        <FloatLabel variant="on">
-                            <InputText id="mpaa_label" v-model.trim="addActorValue.name" />
-                            <label for="mpaa_label">演员</label>
-                        </FloatLabel>
-
-                        <FloatLabel variant="on">
-                            <InputText id="mpaa_label" v-model.trim="addActorValue.role" />
-                            <label for="mpaa_label">扮演角色</label>
-                        </FloatLabel>
-
-                        <FloatLabel style="flex: 2" variant="on">
-                            <InputText
-                                id="rating_label"
-                                v-model.trim="addActorValue.imgUrl"
-                                :invalid="
-                                    addActorValue.imgUrl ? !isUrl(addActorValue.imgUrl) : false
-                                "
-                            />
-                            <label for="rating_label">图像链接</label>
-                        </FloatLabel>
-
-                        <Button
-                            v-tooltip="'添加演员'"
-                            icon="pi pi-plus"
-                            severity="secondary"
-                            style="flex: none"
-                            @click="
-                                () => {
-                                    if (!addActorValue.name) return
-                                    // 创建新对象副本，避免响应式对象引用问题
-                                    newVideo.actor.push({
-                                        name: addActorValue.name,
-                                        role: addActorValue.role,
-                                        imgUrl: addActorValue.imgUrl
-                                    })
-                                    addActorValue.name = ''
-                                    addActorValue.role = ''
-                                    addActorValue.imgUrl = ''
-                                }
+                                scraperField(newVideo, a.webContent, toast, 'parseActor', '演员')
                             "
                         />
                     </div>
@@ -399,17 +497,26 @@ onMounted(async () => {
                             "
                         />
                     </div>
-                    <div class="flex-content">
-                        <Chip
-                            v-for="tag in newVideo.tag"
-                            :key="tag"
-                            :label="tag"
-                            removable
-                            @remove="
-                                () => {
-                                    newVideo.tag = newVideo.tag.filter((t) => t !== tag)
-                                }
-                            "
+                    <div style="display: flex">
+                        <div class="flex-content" style="flex: 1">
+                            <Chip
+                                v-for="tag in newVideo.tag"
+                                :key="tag"
+                                :label="tag"
+                                removable
+                                @remove="
+                                    () => {
+                                        newVideo.tag = newVideo.tag.filter((t) => t !== tag)
+                                    }
+                                "
+                            />
+                        </div>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem; height: fit-content"
+                            @click="scraperField(newVideo, a.webContent, toast, 'parseTag', '标签')"
                         />
                     </div>
 
@@ -440,69 +547,167 @@ onMounted(async () => {
                             "
                         />
                     </div>
-                    <div class="flex-content">
-                        <Chip
-                            v-for="genre in newVideo.genre"
-                            :key="genre"
-                            :label="genre"
-                            removable
-                            @remove="
-                                () => {
-                                    newVideo.genre = newVideo.genre.filter((g) => g !== genre)
-                                }
+                    <div style="display: flex">
+                        <div class="flex-content" style="flex: 1">
+                            <Chip
+                                v-for="genre in newVideo.genre"
+                                :key="genre"
+                                :label="genre"
+                                removable
+                                @remove="
+                                    () => {
+                                        newVideo.genre = newVideo.genre.filter((g) => g !== genre)
+                                    }
+                                "
+                            />
+                        </div>
+                        <Button
+                            v-tooltip="'搜索'"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: 0.5rem; height: fit-content"
+                            @click="
+                                scraperField(newVideo, a.webContent, toast, 'parseGenre', '类型')
                             "
                         />
                     </div>
 
                     <h2>数据</h2>
-                    <FloatLabel v-tooltip="'如番号、网站-编号'" variant="on">
-                        <InputText id="num_label" v-model.trim="newVideo.num" />
-                        <label for="num_label">编号</label>
-                    </FloatLabel>
-
                     <div class="flex-input">
-                        <FloatLabel v-tooltip="'如JP-18+'" variant="on">
-                            <InputText id="mpaa_label" v-model.trim="newVideo.mpaa" />
+                        <FloatLabel v-tooltip.top="'如JP-18+'" variant="on" style="display: flex">
+                            <InputText
+                                id="mpaa_label"
+                                v-model.trim="newVideo.mpaa"
+                                style="flex: 1"
+                            />
                             <label for="mpaa_label">分级</label>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="
+                                    scraperField(newVideo, a.webContent, toast, 'parseMpaa', '分级')
+                                "
+                            />
                         </FloatLabel>
 
-                        <FloatLabel v-tooltip="'以10分为满分'" variant="on">
+                        <FloatLabel
+                            v-tooltip.top="'以10分为满分'"
+                            variant="on"
+                            style="display: flex"
+                        >
                             <InputText
                                 id="rating_label"
                                 v-model.trim="newVideo.rating"
                                 :invalid="newVideo.rating ? !isNumeric(newVideo.rating) : false"
+                                style="flex: 1"
                             />
                             <label for="rating_label">评分</label>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="
+                                    scraperField(
+                                        newVideo,
+                                        a.webContent,
+                                        toast,
+                                        'parseRating',
+                                        '评分'
+                                    )
+                                "
+                            />
                         </FloatLabel>
                     </div>
 
                     <h2>发行</h2>
                     <div class="flex-input">
-                        <FloatLabel variant="on">
-                            <InputText id="mpaa_label" v-model.trim="newVideo.studio" />
+                        <FloatLabel variant="on" style="display: flex">
+                            <InputText
+                                id="mpaa_label"
+                                v-model.trim="newVideo.studio"
+                                style="flex: 1"
+                            />
                             <label for="mpaa_label">发行商</label>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="
+                                    scraperField(
+                                        newVideo,
+                                        a.webContent,
+                                        toast,
+                                        'parseStudio',
+                                        '发行商'
+                                    )
+                                "
+                            />
                         </FloatLabel>
 
-                        <FloatLabel variant="on">
-                            <InputText id="rating_label" v-model.trim="newVideo.maker" />
+                        <FloatLabel variant="on" style="display: flex">
+                            <InputText
+                                id="rating_label"
+                                v-model.trim="newVideo.maker"
+                                style="flex: 1"
+                            />
                             <label for="rating_label">制片商</label>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="
+                                    scraperField(
+                                        newVideo,
+                                        a.webContent,
+                                        toast,
+                                        'parseMaker',
+                                        '制片商'
+                                    )
+                                "
+                            />
                         </FloatLabel>
                     </div>
 
                     <div class="flex-input">
-                        <FloatLabel variant="on">
+                        <FloatLabel variant="on" style="display: flex">
                             <InputText
                                 id="year_label"
                                 v-model.trim="newVideo.year"
+                                style="flex: 1"
                                 :invalid="newVideo.year ? !isNumeric(newVideo.year, false) : false"
                             />
                             <label for="year_label">发行年份</label>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="
+                                    scraperField(
+                                        newVideo,
+                                        a.webContent,
+                                        toast,
+                                        'parseYear',
+                                        '发行年份'
+                                    )
+                                "
+                            />
                         </FloatLabel>
 
-                        <FloatLabel v-tooltip="'时间格式为 2025-01-01'" variant="on">
+                        <FloatLabel
+                            v-tooltip.top="'时间格式为 2025-01-01'"
+                            variant="on"
+                            style="display: flex"
+                        >
                             <InputText
                                 id="mpaa_label"
                                 v-model.trim="newVideo.releasedate"
+                                style="flex: 1"
                                 :invalid="
                                     newVideo.releasedate
                                         ? !isValidDate(newVideo.releasedate)
@@ -515,6 +720,21 @@ onMounted(async () => {
                                 "
                             />
                             <label for="mpaa_label">上映日期</label>
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="
+                                    scraperField(
+                                        newVideo,
+                                        a.webContent,
+                                        toast,
+                                        'parseReleasedate',
+                                        '上映日期'
+                                    )
+                                "
+                            />
                         </FloatLabel>
                     </div>
                 </div>
