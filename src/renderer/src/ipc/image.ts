@@ -29,7 +29,7 @@ export const image = {
      * 读取图片为 Data URL
      * @param path 图片路径
      */
-    readImage: (path: string): Promise<string> => invoke('image:read', path),
+    readImage: (path: string): Promise<ArrayBuffer> => invoke('image:read', path),
 
     /**
      * 超分辨率处理图片

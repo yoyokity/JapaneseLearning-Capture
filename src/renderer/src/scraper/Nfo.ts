@@ -66,9 +66,9 @@ export class Nfo {
         addElement(root, 'premiered')
         addElement(root, 'releasedate')
 
-        root.ele('poster').txt('poster.jpg')
-        root.ele('thumb').txt('thumb.jpg')
-        root.ele('fanart').txt('fanart.jpg')
+        if (video.poster) root.ele('poster').txt('poster.jpg')
+        if (video.thumb) root.ele('thumb').txt('thumb.jpg')
+        if (video.fanart) root.ele('fanart').txt('fanart.jpg')
 
         return nfo
     }

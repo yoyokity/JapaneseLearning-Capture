@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper'
 import type { IVideoFile } from '@renderer/scraper'
 
-import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
+import { DebugHelper, ImageHelper, PathHelper, videoExtensions } from '@renderer/helper'
 import { Ipc } from '@renderer/ipc'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { globalStatesStore } from '@renderer/stores'
@@ -26,7 +26,7 @@ export async function scanFiles(toast: any) {
             const ext = PathHelper.newPath(file).extname.toLowerCase()
             return videoExtensions.includes(ext)
         })) {
-            videoFiles.push(await read(file, files))
+            videoFiles.push(await read(file))
         }
 
         //更新文件列表状态
@@ -47,7 +47,7 @@ export async function scanFiles(toast: any) {
 /**
  * 读取NFO文件为video
  */
-async function read(path: string, files: string[]): Promise<IVideoFile> {
+async function read(path: string): Promise<IVideoFile> {
     const video = createVideoFile(path)
 
     //打开文件
@@ -68,9 +68,6 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
     }
 
     const movie = obj.movie
-    video.poster = movie.poster || ''
-    video.thumb = movie.thumb || ''
-    video.fanart = movie.fanart || ''
     //
     video.scraperName = movie.scraperName || ''
     video.title = movie.title || ''
@@ -112,38 +109,25 @@ async function read(path: string, files: string[]): Promise<IVideoFile> {
     }
 
     //处理图片
-    if (!movie.poster) {
-        //从文件列表中获取poster
-        const poster = files.filter(
-            (file) => file.includes(video.dir.toString()) && file.includes('poster')
-        )
-        if (poster.length > 0) {
-            video.poster = PathHelper.newPath(poster[0])
+    if (movie.poster) {
+        if (!PathHelper.newPath(movie.poster).isAbsolute) {
+            movie.poster = video.dir.join(movie.poster)
         }
-    } else if (!PathHelper.newPath(movie.poster).isAbsolute) {
-        video.poster = video.dir.join(movie.poster)
+        video.poster = await ImageHelper.readImage(movie.poster, 'arraybuffer')
     }
 
-    if (!movie.thumb) {
-        const thumb = files.filter(
-            (file) => file.includes(video.dir.toString()) && file.includes('thumb')
-        )
-        if (thumb.length > 0) {
-            video.thumb = PathHelper.newPath(thumb[0])
+    if (movie.thumb) {
+        if (!PathHelper.newPath(movie.thumb).isAbsolute) {
+            movie.thumb = video.dir.join(movie.thumb)
         }
-    } else if (!PathHelper.newPath(movie.thumb).isAbsolute) {
-        video.thumb = video.dir.join(movie.thumb)
+        video.thumb = await ImageHelper.readImage(movie.thumb, 'arraybuffer')
     }
 
-    if (!movie.fanart) {
-        const fanart = files.filter(
-            (file) => file.includes(video.dir.toString()) && file.includes('fanart')
-        )
-        if (fanart.length > 0) {
-            video.fanart = PathHelper.newPath(fanart[0])
+    if (movie.fanart) {
+        if (!PathHelper.newPath(movie.fanart).isAbsolute) {
+            movie.fanart = video.dir.join(movie.fanart)
         }
-    } else if (!PathHelper.newPath(movie.fanart).isAbsolute) {
-        video.fanart = video.dir.join(movie.fanart)
+        video.fanart = await ImageHelper.readImage(movie.fanart, 'arraybuffer')
     }
 
     return video
@@ -161,11 +145,15 @@ export async function readExtrafanart(videoDir: Path, video: IVideoFile): Promis
         1
     )
 
+    video.extrafanart = []
     for (const file of extrafanart) {
         const filePath = PathHelper.newPath(file)
         const ext = filePath.extname.toLowerCase()
         if (ext === '.jpg' || ext === '.png' || ext === '.jpeg' || ext === '.webp') {
-            video.extrafanart.push(filePath)
+            const re = await ImageHelper.readImage(filePath, 'arraybuffer')
+            if (re) {
+                video.extrafanart.push(re)
+            }
         }
     }
 

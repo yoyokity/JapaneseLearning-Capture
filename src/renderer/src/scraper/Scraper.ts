@@ -1,8 +1,9 @@
 import type { Path } from '@renderer/helper'
 import type { IVideo, IVideoFile } from './Video'
 
-import { DebugHelper, ImageHelper, NetHelper, PathHelper } from '@renderer/helper'
+import { DebugHelper, ImageHelper, PathHelper } from '@renderer/helper'
 import { settingsStore } from '@renderer/stores'
+import { isEqual } from 'es-toolkit'
 
 import { Nfo } from './Nfo'
 
@@ -152,12 +153,6 @@ export interface IScraper {
      * 刮削视频信息的方法
      */
     scraperVideoFuncs: IScraperVideoFuncs
-    /**
-     * 下载图片
-     * @param videoDir 视频目录
-     * @param video 视频信息
-     */
-    downloadImage: (videoDir: Path, video: IVideo) => Promise<void>
 }
 
 export class Scraper {
@@ -190,11 +185,6 @@ export class Scraper {
 
             if (!scraper.scraperVideoFuncs || typeof scraper.scraperVideoFuncs !== 'object') {
                 DebugHelper.error(`${path} 缺少有效的scraperVideoFuncs方法，此刮削器加载失败`)
-                continue
-            }
-
-            if (!scraper.downloadImage || typeof scraper.downloadImage !== 'function') {
-                DebugHelper.error(`${path} 缺少有效的downloadImage方法，此刮削器加载失败`)
                 continue
             }
 
@@ -260,6 +250,7 @@ export class Scraper {
         //创建nfo文件
         const nfo = Nfo.create(video)
         await nfo.save(_nfoPath)
+        DebugHelper.info(`- 保存nfo成功！:${_nfoPath}`)
 
         //如果有两个nfo，则删除原来的
         if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {
@@ -268,92 +259,51 @@ export class Scraper {
             }
         }
 
-        return videoDir
-    }
+        //保存图片
+        const imagePromises: Promise<void>[] = []
 
-    /**
-     * 默认下载图片的方法
-     * @param options 配置选项
-     * @param options.videoDir 视频目录
-     * @param options.video 视频信息
-     * @param options.httpHeaders 请求头，默认不使用
-     * @param options.anime 是否为动漫图片，默认为false
-     */
-    static async defaultDownloadImage(options: {
-        videoDir: Path
-        video: IVideo
-        httpHeaders?: Record<string, string>
-        anime?: boolean
-    }): Promise<void> {
-        const { videoDir, video, httpHeaders, anime = false } = options
-        const posterPath = videoDir.join('poster.jpg')
-        const thumbPath = videoDir.join('thumb.jpg')
-        const fanartPath = videoDir.join('fanart.jpg')
-
-        if (video.poster) {
-            if (video.poster instanceof URL) {
-                //如果是url
-                const re = await NetHelper.get(video.poster.toString(), 'arrayBuffer', httpHeaders)
-                if (re.ok) {
-                    await ImageHelper.saveImage(re.body, posterPath)
-                }
-            } else {
-                //如果是path，则直接复制
-                await PathHelper.copy(video.poster, posterPath)
-            }
+        if (video.poster && !isEqual(sourceVideoFile.poster, video.poster)) {
+            const posterPath = videoDir.join('poster.jpg')
+            imagePromises.push(
+                ImageHelper.saveImage(video.poster, posterPath).then(() => {
+                    DebugHelper.info(`- 保存封面poster成功！:${posterPath}`)
+                })
+            )
         }
 
-        if (video.thumb) {
-            if (video.thumb instanceof URL) {
-                //如果是url
-                const re = await NetHelper.get(video.thumb.toString(), 'arrayBuffer', httpHeaders)
-                if (re.ok) {
-                    await ImageHelper.saveImage(re.body, thumbPath)
-                }
-            } else {
-                //如果是path，则直接复制
-                await PathHelper.copy(video.thumb, thumbPath)
-            }
+        if (video.thumb && !isEqual(sourceVideoFile.thumb, video.thumb)) {
+            const thumbPath = videoDir.join('thumb.jpg')
+            imagePromises.push(
+                ImageHelper.saveImage(video.thumb, thumbPath).then(() => {
+                    DebugHelper.info(`- 保存缩略图thumb成功！:${thumbPath}`)
+                })
+            )
         }
 
-        if (video.fanart) {
-            if (video.fanart instanceof URL) {
-                //如果是url
-                const re = await NetHelper.get(video.fanart.toString(), 'arrayBuffer', httpHeaders)
-                if (re.ok) {
-                    await ImageHelper.superResolutionImage(re.body, fanartPath, anime)
-                }
-            } else {
-                //如果是path，则直接复制
-                await PathHelper.copy(video.fanart, fanartPath)
-            }
+        if (video.fanart && !isEqual(sourceVideoFile.fanart, video.fanart)) {
+            const fanartPath = videoDir.join('fanart.jpg')
+            imagePromises.push(
+                ImageHelper.superResolutionImage(video.fanart, fanartPath, true).then(() => {
+                    DebugHelper.info(`- 保存背景图fanart成功！:${fanartPath}`)
+                })
+            )
         }
 
-        //Extrafanart
-        const extrafanartDir = videoDir.join('extrafanart')
-        const re = await PathHelper.createDirectory(extrafanartDir)
-        if (re) {
+        //保存extrafanart
+        if (video.extrafanart && !isEqual(sourceVideoFile.extrafanart, video.extrafanart)) {
             for (let index = 1; index <= video.extrafanart.length; index++) {
                 const extrafanart = video.extrafanart[index - 1]
-                if (extrafanart instanceof URL) {
-                    const re = await NetHelper.get(
-                        extrafanart.toString(),
-                        'arrayBuffer',
-                        httpHeaders
-                    )
-                    if (re.ok) {
-                        await ImageHelper.saveImage(
-                            re.body,
-                            extrafanartDir.join(`extrafanart-${index}.jpg`)
-                        )
-                    }
-                } else {
-                    await PathHelper.copy(
-                        extrafanart,
-                        extrafanartDir.join(`extrafanart-${index}.jpg`)
-                    )
-                }
+                const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
+                imagePromises.push(
+                    ImageHelper.saveImage(extrafanart, path).then(() => {
+                        DebugHelper.info(`- 保存剧照extrafanart-${index}成功！:${path}`)
+                    })
+                )
             }
         }
+
+        await Promise.all(imagePromises)
+
+        return videoDir
     }
 }

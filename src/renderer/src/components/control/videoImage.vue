@@ -1,13 +1,11 @@
 <script lang="ts" setup>
-import type { Path } from '@renderer/helper'
 import type { CSSProperties } from 'vue'
 
 import imgFall from '@renderer/assets/img-fall.svg?url'
-import { ImageHelper } from '@renderer/helper'
 import { onMounted, ref, watch } from 'vue'
 
 interface ImageProps {
-    filePath?: Path | URL | null
+    imgData?: ArrayBuffer | null
     /**
      * 普通状态下的图片样式
      */
@@ -20,7 +18,7 @@ interface ImageProps {
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
-    filePath: null,
+    imgData: null,
     imageStyle: () => ({}),
     errorImageStyle: () => ({}),
     borderRadius: 'calc(var(--border-radius) * 2)'
@@ -30,36 +28,43 @@ const isImgError = ref(true)
 const imageData = ref<string>()
 
 /**
+ * 将 ArrayBuffer 转换为 Data URL
+ */
+function arrayBufferToDataUrl(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i])
+    }
+    const base64 = btoa(binary)
+    // 根据文件头判断图片类型
+    const header = bytes.slice(0, 4)
+    let mimeType = 'image/jpeg'
+    if (header[0] === 0x89 && header[1] === 0x50) {
+        mimeType = 'image/png'
+    } else if (header[0] === 0x47 && header[1] === 0x49) {
+        mimeType = 'image/gif'
+    } else if (header[0] === 0x52 && header[1] === 0x49) {
+        mimeType = 'image/webp'
+    }
+    return `data:${mimeType};base64,${base64}`
+}
+
+/**
  * 加载图片
  */
-async function loadImage() {
-    // 先缓存要加载的图片路径
-    const targetImage = props.filePath
-
-    // 如果没有图片路径，直接设置错误状态
-    if (!targetImage) {
+function loadImage() {
+    if (!props.imgData) {
         imageData.value = ''
         isImgError.value = true
         return
     }
 
-    // 尝试加载新图片
-    let newImageData = ''
-    if (targetImage instanceof URL) {
-        newImageData = targetImage.toString()
-    } else {
-        // 通过路径读取图片
-        newImageData = (await ImageHelper.readImage(targetImage)) || ''
-    }
-
-    // 只有在图片路径没有变化的情况下才更新状态（避免竞态条件）
-    if (props.filePath === targetImage) {
-        imageData.value = newImageData
-        isImgError.value = !newImageData
-    }
+    imageData.value = arrayBufferToDataUrl(props.imgData)
+    isImgError.value = false
 }
 
-watch(() => props.filePath, loadImage)
+watch(() => props.imgData, loadImage)
 
 onMounted(loadImage)
 </script>

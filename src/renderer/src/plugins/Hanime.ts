@@ -1,11 +1,8 @@
-import type { Path } from '@renderer/helper'
 import type { IScraper } from '../scraper/Scraper'
 import type { IVideo } from '../scraper/Video'
 
 import { DebugHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
-
-import { Scraper } from '../scraper/Scraper'
 
 /**
  * 用于对厂商进行翻译
@@ -21,8 +18,13 @@ const maker_trans = {
     'ZIZ [ジズ]': 'ZIZ'
 }
 
+const getchuHeaders = {
+    referer: 'https://www.getchu.com',
+    cookie: 'getchu_adalt_flag=https://www.getchu.com'
+}
+
 let temp = {
-    封面: '',
+    封面: null as ArrayBuffer | null,
     num: {
         hanime1: '',
         getchu: '',
@@ -113,7 +115,10 @@ async function getWebContentHanime1(video: IVideo): Promise<string | null> {
     }
 
     if (searchResult.poster) {
-        temp.封面 = searchResult.poster
+        const re = await NetHelper.get(searchResult.poster, 'arrayBuffer')
+        if (re.ok) {
+            temp.封面 = re.body
+        }
     }
 
     //获取目标视频的webContent
@@ -286,7 +291,7 @@ const hanimeScraper: IScraper = {
     scraperVideoFuncs: {
         getWebContent: async (video: IVideo) => {
             temp = {
-                封面: '',
+                封面: null,
                 num: {
                     hanime1: '',
                     getchu: '',
@@ -562,8 +567,13 @@ const hanimeScraper: IScraper = {
                     ?.replace(/^\.\/ */, '')
 
                 if (url) {
-                    temp.封面 = new URL(url, 'https://www.getchu.com/').toString()
-                    DebugHelper.log(`- [Getchu] 获取封面成功！:${temp.封面}`)
+                    const posterUrl = new URL(url, 'https://www.getchu.com/').toString()
+                    const re = await NetHelper.get(posterUrl, 'arrayBuffer', getchuHeaders)
+
+                    if (re.ok) {
+                        temp.封面 = re.body
+                        DebugHelper.log(`- [Getchu] 获取封面成功！:${posterUrl}`)
+                    }
                 }
             }
 
@@ -575,14 +585,17 @@ const hanimeScraper: IScraper = {
                     return null
                 }
 
-                temp.封面 = searchResult.poster
+                const re = await NetHelper.get(searchResult.poster, 'arrayBuffer')
+                if (re.ok) {
+                    temp.封面 = re.body
+                }
             }
 
             if (!temp.封面) {
                 return null
             }
 
-            video.poster = new URL(temp.封面)
+            video.poster = temp.封面
             return video
         },
         parseThumb: async (video: IVideo, webContent: string) => {
@@ -619,10 +632,24 @@ const hanimeScraper: IScraper = {
                             ?.replace(/^\.\/ */, '')
                     )
 
-                for (const href of hrefs) {
-                    const url = new URL(href, 'https://www.getchu.com/')
-                    video.extrafanart.push(url)
-                    DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
+                const urls = hrefs
+                    .toArray()
+                    .map((href) => new URL(href!, 'https://www.getchu.com/').toString())
+                const results = await Promise.all(
+                    urls.map(async (url) => {
+                        const re = await NetHelper.get(url, 'arrayBuffer', getchuHeaders)
+                        if (re.ok) {
+                            DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
+                        }
+                        return re
+                    })
+                )
+
+                video.extrafanart = []
+                for (const re of results) {
+                    if (re.ok) {
+                        video.extrafanart.push(re.body)
+                    }
                 }
             } else {
                 DebugHelper.log(`- 没有getchu，无法获取剧照`)
@@ -633,9 +660,6 @@ const hanimeScraper: IScraper = {
             const dir = `${video.set}/${video.originaltitle}`
             return { dir, fileName: video.originaltitle }
         }
-    },
-    downloadImage: async (videoDir: Path, video: IVideo) => {
-        await Scraper.defaultDownloadImage({ videoDir, video, anime: true })
     }
 }
 

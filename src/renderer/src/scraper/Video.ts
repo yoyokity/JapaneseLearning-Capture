@@ -100,19 +100,19 @@ export interface IVideo {
     /**
      * 视频文件的封面路径
      */
-    poster: URL | Path | null
+    poster: ArrayBuffer | null
     /**
      * 视频文件的缩略图路径
      */
-    thumb: URL | Path | null
+    thumb: ArrayBuffer | null
     /**
      * 视频文件的背景图路径
      */
-    fanart: URL | Path | null
+    fanart: ArrayBuffer | null
     /**
      * 视频文件的额外背景图路径
      */
-    extrafanart: Array<URL | Path>
+    extrafanart: Array<ArrayBuffer>
 }
 
 /**

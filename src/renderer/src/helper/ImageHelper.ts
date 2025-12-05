@@ -11,7 +11,7 @@ export class ImageHelper {
      * @param path 图片路径
      * @returns 图片数据
      */
-    static async readImage(path: Path | string) {
+    static async readImage(path: Path | string): Promise<ArrayBuffer | null> {
         const re = await DebugHelper.tryExecute(Ipc.image.readImage, path.toString())
         if (!re.hasError) {
             return re.result

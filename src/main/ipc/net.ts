@@ -1,10 +1,7 @@
 import { ipcMain, session } from 'electron'
-import fetchExport from 'electron-fetch'
+import fetch from 'electron-fetch'
 
 import { tryExecute } from './func'
-
-//@ts-ignore
-const fetch = fetchExport.default
 
 // 定义兼容的请求选项类型
 interface IFetchOptions {
@@ -162,8 +159,7 @@ ipcMain.handle('net:ping', async (_, host: string, timeout: number = 3000) => {
             const startTime = Date.now()
             const response = await fetch(`http://${host}`, {
                 method: 'HEAD',
-                signal: controller.signal,
-                cache: 'no-store'
+                signal: controller.signal
             })
             const endTime = Date.now()
 

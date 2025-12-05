@@ -4,7 +4,7 @@ import type { Ref } from 'vue'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import VideoImage from '@renderer/components/control/VideoImage.vue'
-import { isNumeric, isUrl, isValidDate, Path, PathHelper } from '@renderer/helper'
+import { ImageHelper, isNumeric, isUrl, isValidDate, PathHelper } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -61,7 +61,7 @@ const imageLabels = {
 }
 
 //预览图片
-const previewImage = ref<Path | null>(null)
+const previewImage = ref<ArrayBuffer | null>(null)
 
 //快捷键退出
 useKeyPress(['esc'], () => {
@@ -150,12 +150,11 @@ async function handleDrop(e: DragEvent, imageType: 'poster' | 'fanart' | 'thumb'
     if (!e.dataTransfer?.files?.length) return
 
     const file = e.dataTransfer.files[0]
-    const filePath = await PathHelper.getPathForFile(file)
 
     // 更新对应类型的图片路径
-    if (filePath) {
-        newVideo.value[imageType] = new Path(filePath)
-    }
+    const filePath = await PathHelper.getPathForFile(file)
+    if (!filePath) return
+    newVideo.value[imageType] = await ImageHelper.readImage(filePath, 'arraybuffer')
 }
 
 /**
@@ -180,7 +179,7 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
 
 onMounted(async () => {
     //读取extrafanart
-    await readExtrafanart(video.dir as Path, video).then((count) => {
+    await readExtrafanart(video.dir, video).then((count) => {
         console.info(`读取${count}个extrafanart`)
     })
 
@@ -754,7 +753,7 @@ onMounted(async () => {
                         </h2>
                         <div
                             class="image-container"
-                            @click="previewImage = newVideo[label] as Path"
+                            @click="previewImage = newVideo[label]"
                             @dragover.prevent="(e) => handleDrag(e, 'over')"
                             @drop.prevent="
                                 (e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')
@@ -763,7 +762,7 @@ onMounted(async () => {
                             @dragleave.prevent="(e) => handleDrag(e, 'leave')"
                         >
                             <VideoImage
-                                :file-path="newVideo[label]"
+                                :img-data="newVideo[label]"
                                 :style="{
                                     height: '15rem'
                                 }"
@@ -787,7 +786,7 @@ onMounted(async () => {
                                 @click="previewImage = null"
                             >
                                 <VideoImage
-                                    :file-path="previewImage as Path"
+                                    :img-data="previewImage"
                                     :image-style="{
                                         width: '100%',
                                         height: '100%',

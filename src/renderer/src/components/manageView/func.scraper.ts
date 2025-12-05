@@ -173,7 +173,5 @@ export async function scraperSave(
         return false
     }
 
-    //处理图片
-    await scraper.downloadImage(videoDir, video)
     return true
 }

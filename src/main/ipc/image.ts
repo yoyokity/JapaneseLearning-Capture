@@ -7,6 +7,7 @@ import sharp from 'sharp'
 
 import { Cmd } from '../helper/shell'
 import { appPath } from './app'
+import { createDirectory } from './filesystem'
 import { tryExecute, tryExecuteSync } from './func'
 
 type ImageData =
@@ -26,7 +27,7 @@ type ImageData =
 // 保存图片
 ipcMain.handle('image:save', (_, imageData: ImageData, path: string) => {
     return tryExecute(async () => {
-        await sharp(imageData).toFile(path)
+        await sharp(imageData).jpeg({ quality: 92 }).png({ quality: 100 }).toFile(path)
     })
 })
 
@@ -34,32 +35,7 @@ ipcMain.handle('image:save', (_, imageData: ImageData, path: string) => {
 ipcMain.handle('image:read', (_, path: string) => {
     return tryExecuteSync(() => {
         const data = fs.readFileSync(path)
-        // 将图片数据转换成 Base64 字符串
-        const base64String = data.toString('base64')
-
-        // 根据文件扩展名判断 MIME 类型
-        const ext = path.toLowerCase().split('.').pop() || ''
-        let mimeType = 'image/jpeg' // 默认类型
-
-        // 常见图片格式的 MIME 类型映射
-        const mimeTypes: Record<string, string> = {
-            jpg: 'image/jpeg',
-            jpeg: 'image/jpeg',
-            png: 'image/png',
-            gif: 'image/gif',
-            webp: 'image/webp',
-            svg: 'image/svg+xml',
-            bmp: 'image/bmp',
-            ico: 'image/x-icon',
-            tif: 'image/tiff',
-            tiff: 'image/tiff'
-        }
-
-        if (ext in mimeTypes) {
-            mimeType = mimeTypes[ext]!
-        }
-
-        return `data:${mimeType};base64,${base64String}`
+        return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
     })
 })
 
@@ -70,7 +46,12 @@ ipcMain.handle(
         return tryExecute(async () => {
             //保存图片到temp
             const tempPath = app.getPath('temp')
+
+            //如果没有temp则创建
+            createDirectory(tempPath)
+
             const tempImageBefore = join(tempPath, 'realesrgan_before.png')
+            const tempImageAfter = join(tempPath, 'realesrgan_after.png')
             await sharp(imageData).toFile(tempImageBefore)
 
             //超分
@@ -78,7 +59,7 @@ ipcMain.handle(
                 '-i',
                 tempImageBefore,
                 '-o',
-                path,
+                tempImageAfter,
                 '-n',
                 anime ? 'realesrgan-x4plus-anime' : 'realesrgan-x4plus'
             ]
@@ -91,8 +72,14 @@ ipcMain.handle(
             return new Promise<void>((resolve, reject) => {
                 const realesrgan = new Cmd(realesrganPath)
                 const cmd = realesrgan.run(ars)
-                cmd.onExit((code, text) => {
-                    code === 0 ? resolve() : reject(new Error(text))
+                cmd.onExit(async (code, text) => {
+                    if (code === 0) {
+                        //使用sharp保存为jpg，质量92
+                        await sharp(tempImageAfter).jpeg({ quality: 92 }).toFile(path)
+                        resolve()
+                    } else {
+                        reject(new Error(text))
+                    }
                 })
             })
         })
