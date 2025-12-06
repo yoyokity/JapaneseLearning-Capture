@@ -568,7 +568,7 @@ const hanimeScraper: IScraper = {
 
                 if (url) {
                     const posterUrl = new URL(url, 'https://www.getchu.com/').toString()
-                    const re = await NetHelper.get(posterUrl, 'arrayBuffer', getchuHeaders)
+                    const re = await NetHelper.getImage(posterUrl, getchuHeaders)
 
                     if (re.ok) {
                         temp.封面 = re.body
@@ -585,7 +585,7 @@ const hanimeScraper: IScraper = {
                     return null
                 }
 
-                const re = await NetHelper.get(searchResult.poster, 'arrayBuffer')
+                const re = await NetHelper.getImage(searchResult.poster)
                 if (re.ok) {
                     temp.封面 = re.body
                 }
@@ -637,20 +637,16 @@ const hanimeScraper: IScraper = {
                 const urls = hrefs
                     .toArray()
                     .map((href) => new URL(href!, 'https://www.getchu.com/').toString())
-                const results = await Promise.all(
-                    urls.map(async (url) => {
-                        const re = await NetHelper.get(url, 'arrayBuffer', getchuHeaders)
-                        if (re.ok) {
-                            DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
-                        }
-                        return re
-                    })
-                )
 
+                // 按顺序获取每个图片，保持顺序一致
                 video.extrafanart = []
-                for (const re of results) {
+                for (const url of urls) {
+                    const re = await NetHelper.getImage(url, getchuHeaders)
                     if (re.ok) {
+                        DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
                         video.extrafanart.push(re.body)
+                    } else {
+                        DebugHelper.warn(`- [Getchu] 获取剧照失败！:${url}`)
                     }
                 }
             } else {

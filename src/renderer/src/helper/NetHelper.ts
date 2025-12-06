@@ -235,6 +235,69 @@ export class NetHelper {
     }
 
     /**
+     * 图片请求，忽略请求之间的间隔
+     * @param url
+     * @param headers
+     * @param options
+     */
+    static async getImage(
+        url: string,
+        headers?: Record<string, string>,
+        options?: IRequestOptions
+    ) {
+        const settings = settingsStore()
+        let timeout: number = settings.net.timeout * 1000
+        let retry: number = settings.net.retry
+
+        if (options) {
+            timeout = options.timeout || options.timeout === 0 ? options.timeout : timeout
+            retry = options.retry || options.retry === 0 ? options.retry : retry
+        }
+
+        const defaultHeaders = {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+
+        const config: IFetchOptions = {
+            headers: { ...defaultHeaders, ...headers },
+            timeout,
+            parse: 'arrayBuffer'
+        }
+
+        let re
+        let retryCount = 0
+
+        // 失败则重试
+        do {
+            if (retryCount > 0) {
+                DebugHelper.warn(`GET请求重试第${retryCount}次：${url}`)
+            }
+
+            re = await DebugHelper.tryExecute(async () => await Ipc.net.get(url, config))
+
+            if (!re.hasError) {
+                const result = re.result as IResult<ArrayBuffer>
+                if (result.ok || result.status === 403) {
+                    return result
+                }
+            } else {
+                DebugHelper.error(`GET请求失败：${url}`, re.error)
+            }
+
+            retryCount++
+        } while (retryCount <= retry)
+
+        return {
+            ok: false,
+            status: -1,
+            statusText: '',
+            headers: {},
+            body: undefined as any
+        }
+    }
+
+    /**
      * Ping检测网络连通性
      * @param host 主机地址（不包含协议前缀）
      * @param [timeout] 超时时间（毫秒），默认使用设置中的超时时间

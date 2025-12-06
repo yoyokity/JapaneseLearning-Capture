@@ -206,7 +206,16 @@ const to = '/home/user/app/dist';
      * @param rootPath 根路径
      */
     removeEmptyFolders: (rootPath: string): Promise<void> =>
-        invoke('filesystem:removeEmptyFolders', rootPath)
+        invoke('filesystem:removeEmptyFolders', rootPath),
+
+    /**
+     * 清空文件夹（删除文件夹内所有内容，保留文件夹本身）
+     * @remarks 用时与文件数量相关
+     * @param folderPath 要清空的文件夹路径
+     * @returns 是否成功清空
+     */
+    clearFolder: (folderPath: string): Promise<boolean> =>
+        invoke('filesystem:clearFolder', folderPath)
 }
 
 function readFile(filePath: string, encoding: BufferEncoding): Promise<string>

@@ -141,13 +141,19 @@ export async function readExtrafanart(
     video: IVideoFile,
     sourceVideo: IVideoFile
 ): Promise<number> {
-    const extrafanart = await PathHelper.readDirectory(
+    let extrafanart = await PathHelper.readDirectory(
         videoDir.join('extrafanart'),
         'file',
         undefined,
         undefined,
         1
     )
+
+    // 按Windows文件名顺序排序（自然排序）
+    extrafanart = extrafanart.sort((a, b) => {
+        // Windows文件名排序规则：先按数字部分排序，再按字母排序
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    })
 
     video.extrafanart = []
     sourceVideo.extrafanart = []

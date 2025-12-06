@@ -291,14 +291,18 @@ export class Scraper {
 
         //保存extrafanart
         if (video.extrafanart && !isEqual(sourceVideoFile.extrafanart, video.extrafanart)) {
-            for (let index = 1; index <= video.extrafanart.length; index++) {
-                const extrafanart = video.extrafanart[index - 1]
-                const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
-                imagePromises.push(
-                    ImageHelper.saveImage(extrafanart, path).then(() => {
-                        DebugHelper.info(`- 保存剧照extrafanart-${index}成功！:${path}`)
-                    })
-                )
+            //清空剧照文件夹
+            const result = await PathHelper.clearFolder(videoDir.join('extrafanart'))
+            if (result) {
+                for (let index = 1; index <= video.extrafanart.length; index++) {
+                    const extrafanart = video.extrafanart[index - 1]
+                    const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
+                    imagePromises.push(
+                        ImageHelper.saveImage(extrafanart, path).then(() => {
+                            DebugHelper.info(`- 保存剧照extrafanart-${index}成功！:${path}`)
+                        })
+                    )
+                }
             }
         }
 

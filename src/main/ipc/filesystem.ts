@@ -214,6 +214,23 @@ ipcMain.handle('filesystem:openInExplorer', (_, path: string) => {
     })
 })
 
+// 清空文件夹（删除文件夹内所有内容，保留文件夹本身）
+ipcMain.handle('filesystem:clearFolder', async (_, folderPath: string) => {
+    return await tryExecute(async () => {
+        folderPath = path.normalize(folderPath)
+
+        if (fs.existsSync(folderPath) && fs.statSync(folderPath).isDirectory()) {
+            // 1. 递归删除整个文件夹
+            await fs.promises.rm(folderPath, { recursive: true, force: true })
+        }
+
+        // 2. 重新创建该文件夹
+        await fs.promises.mkdir(folderPath, { recursive: true })
+
+        return true
+    })
+})
+
 //通过fast-glob，从最深的文件夹遍历到最浅的文件夹，如果文件夹内没有视频文件，则删除该文件夹
 ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
     return await tryExecute(async () => {

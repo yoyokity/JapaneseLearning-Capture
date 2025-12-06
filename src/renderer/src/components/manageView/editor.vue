@@ -755,15 +755,67 @@ onMounted(async () => {
                 </div>
 
                 <!-- 图片编辑部分 -->
-                <div
-                    v-show="activeTab === 'image'"
-                    class="form-container"
-                    style="gap: 2rem; flex-direction: row; flex-wrap: wrap"
-                >
-                    <div v-for="label in Object.keys(imageLabels)" :key="label">
-                        <div style="display: flex; align-items: center">
-                            <h2 style="margin-bottom: 1rem; text-align: center">
-                                {{ imageLabels[label] }}
+                <div v-show="activeTab === 'image'">
+                    <!-- 海报 -->
+                    <div
+                        class="form-container"
+                        style="gap: 2rem; flex-direction: row; flex-wrap: wrap"
+                    >
+                        <div v-for="label in Object.keys(imageLabels)" :key="label">
+                            <div style="display: flex; align-items: center">
+                                <h2 style="margin-bottom: 1rem; text-align: center">
+                                    {{ imageLabels[label] }}
+                                </h2>
+                                <Button
+                                    v-tooltip="'搜索'"
+                                    icon="pi pi-search"
+                                    variant="outlined"
+                                    style="height: fit-content"
+                                    size="small"
+                                    @click="
+                                        scraperField(
+                                            newVideo,
+                                            a.webContent,
+                                            toast,
+                                            `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs,
+                                            imageLabels[label]
+                                        )
+                                    "
+                                />
+                            </div>
+
+                            <div
+                                class="image-container"
+                                @click="previewImage = newVideo[label]"
+                                @dragover.prevent="(e) => handleDrag(e, 'over')"
+                                @drop.prevent="
+                                    (e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')
+                                "
+                                @dragenter.prevent="(e) => handleDrag(e, 'enter')"
+                                @dragleave.prevent="(e) => handleDrag(e, 'leave')"
+                            >
+                                <VideoImage
+                                    :img-data="newVideo[label]"
+                                    :style="{
+                                        height: '15rem'
+                                    }"
+                                    :error-image-style="{
+                                        padding: '2rem'
+                                    }"
+                                />
+                                <div class="image-overlay">
+                                    <p>拖入图片以更改</p>
+                                    <i class="pi pi-eye" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 剧照 -->
+                    <div class="form-container" style="gap: 0">
+                        <div style="display: flex; align-items: center; margin-top: var(--spacing)">
+                            <h2 style="margin-right: 5rem; margin-bottom: 1rem; text-align: center">
+                                剧照
                             </h2>
                             <Button
                                 v-tooltip="'搜索'"
@@ -776,36 +828,30 @@ onMounted(async () => {
                                         newVideo,
                                         a.webContent,
                                         toast,
-                                        `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs,
-                                        imageLabels[label]
+                                        'parseExtrafanart',
+                                        '剧照'
                                     )
                                 "
                             />
                         </div>
 
                         <div
-                            class="image-container"
-                            @click="previewImage = newVideo[label]"
-                            @dragover.prevent="(e) => handleDrag(e, 'over')"
-                            @drop.prevent="
-                                (e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')
-                            "
-                            @dragenter.prevent="(e) => handleDrag(e, 'enter')"
-                            @dragleave.prevent="(e) => handleDrag(e, 'leave')"
+                            class="form-container"
+                            style="gap: 0.5rem; flex-direction: row; flex-wrap: wrap"
                         >
                             <VideoImage
-                                :img-data="newVideo[label]"
+                                v-for="(value, index) in newVideo.extrafanart"
+                                :key="index"
+                                :img-data="value"
                                 :style="{
-                                    height: '15rem'
+                                    height: '15rem',
+                                    cursor: 'pointer'
                                 }"
                                 :error-image-style="{
                                     padding: '2rem'
                                 }"
+                                @click="previewImage = value"
                             />
-                            <div class="image-overlay">
-                                <p>拖入图片以更改</p>
-                                <i class="pi pi-eye" />
-                            </div>
                         </div>
                     </div>
 

@@ -451,6 +451,23 @@ export class PathHelper {
             return false
         }
     }
+
+    /**
+     * 清空文件夹（删除文件夹内所有内容，保留文件夹本身）
+     * @remarks 用时与文件数量相关
+     * @param folderPath 要清空的文件夹路径
+     * @returns 是否成功清空
+     */
+    static async clearFolder(folderPath: Path | string): Promise<boolean> {
+        DebugHelper.info(`清空文件夹：`, folderPath.toString())
+        const re = await DebugHelper.tryExecute(Ipc.filesystem.clearFolder, folderPath.toString())
+        if (!re.hasError) {
+            return re.result
+        } else {
+            DebugHelper.error(`清空文件夹失败：`, re.error)
+            return false
+        }
+    }
 }
 export interface IArsrPath {
     /**
