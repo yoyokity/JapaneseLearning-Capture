@@ -401,7 +401,7 @@ onMounted(async () => {
                                 class="flex-input"
                             >
                                 <Button
-                                    v-tooltip="'删除演员'"
+                                    v-tooltip.top="'删除演员'"
                                     icon="pi pi-trash"
                                     severity="secondary"
                                     style="flex: none"
@@ -435,7 +435,7 @@ onMounted(async () => {
                             <!-- 添加演员 -->
                             <div class="flex-input">
                                 <Button
-                                    v-tooltip="'添加演员'"
+                                    v-tooltip.top="'添加演员'"
                                     icon="pi pi-plus"
                                     severity="secondary"
                                     style="flex: none"

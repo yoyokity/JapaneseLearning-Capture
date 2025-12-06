@@ -233,8 +233,11 @@ export class Scraper {
         //nfo path
         const _nfoPath = videoDir.join(`${fileName}.nfo`)
 
+        //不同目录
+        const dirDiff = sourceVideoFile.dir.toString() !== videoDir.toString()
+
         //如果最终目录和原视频目录不同，则创建最终目录
-        if (sourceVideoFile.dir.toString() !== videoDir.toString()) {
+        if (dirDiff) {
             if (!(await PathHelper.createDirectory(videoDir))) {
                 return null
             }
@@ -262,7 +265,7 @@ export class Scraper {
         //保存图片
         const imagePromises: Promise<void>[] = []
 
-        if (video.poster && !isEqual(sourceVideoFile.poster, video.poster)) {
+        if (video.poster && (!isEqual(sourceVideoFile.poster, video.poster) || dirDiff)) {
             const posterPath = videoDir.join('poster.jpg')
             imagePromises.push(
                 ImageHelper.saveImage(video.poster, posterPath).then(() => {
@@ -271,7 +274,7 @@ export class Scraper {
             )
         }
 
-        if (video.thumb && !isEqual(sourceVideoFile.thumb, video.thumb)) {
+        if (video.thumb && (!isEqual(sourceVideoFile.thumb, video.thumb) || dirDiff)) {
             const thumbPath = videoDir.join('thumb.jpg')
             imagePromises.push(
                 ImageHelper.saveImage(video.thumb, thumbPath).then(() => {
@@ -280,7 +283,7 @@ export class Scraper {
             )
         }
 
-        if (video.fanart && !isEqual(sourceVideoFile.fanart, video.fanart)) {
+        if (video.fanart && (!isEqual(sourceVideoFile.fanart, video.fanart) || dirDiff)) {
             const fanartPath = videoDir.join('fanart.jpg')
             imagePromises.push(
                 ImageHelper.saveImage(video.fanart, fanartPath).then(() => {
@@ -290,7 +293,10 @@ export class Scraper {
         }
 
         //保存extrafanart
-        if (video.extrafanart && !isEqual(sourceVideoFile.extrafanart, video.extrafanart)) {
+        if (
+            video.extrafanart &&
+            (!isEqual(sourceVideoFile.extrafanart, video.extrafanart) || dirDiff)
+        ) {
             //清空剧照文件夹
             const result = await PathHelper.clearFolder(videoDir.join('extrafanart'))
             if (result) {

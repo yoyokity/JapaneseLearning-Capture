@@ -7,26 +7,26 @@ import pkg from 'fs-extra'
 
 import { tryExecute, tryExecuteSync } from './func'
 
-const { ensureDirSync, removeSync, copySync, moveSync, outputFileSync } = pkg
+const { ensureDirSync, copySync, moveSync, outputFileSync } = pkg
 
 // 判断path是否存在于磁盘上
-ipcMain.handle('filesystem:isExist', (_, path: string) => {
-    return tryExecuteSync(fs.existsSync, path)
+ipcMain.handle('filesystem:isExist', (_, filePath: string) => {
+    return tryExecuteSync(fs.existsSync, path.normalize(filePath))
 })
 
 // 判断path是否为文件
-ipcMain.handle('filesystem:isFile', (_, path: string) => {
-    return tryExecuteSync(() => fs.statSync(path).isFile())
+ipcMain.handle('filesystem:isFile', (_, filePath: string) => {
+    return tryExecuteSync(() => fs.statSync(path.normalize(filePath)).isFile())
 })
 
 // 判断path是否为目录
-ipcMain.handle('filesystem:isDirectory', (_, path: string) => {
-    return tryExecuteSync(() => fs.statSync(path).isDirectory())
+ipcMain.handle('filesystem:isDirectory', (_, filePath: string) => {
+    return tryExecuteSync(() => fs.statSync(path.normalize(filePath)).isDirectory())
 })
 
 // 获取path状态信息
-ipcMain.handle('filesystem:getStatus', (_, path: string) => {
-    return tryExecuteSync(fs.statSync, path)
+ipcMain.handle('filesystem:getStatus', (_, filePath: string) => {
+    return tryExecuteSync(fs.statSync, path.normalize(filePath))
 })
 
 // 路径拼接
@@ -66,12 +66,11 @@ ipcMain.handle('filesystem:relative', (_, from: string, to: string) => {
 
 // 递归创建目录，如果目录已存在则跳过
 ipcMain.handle('filesystem:createDirectory', (_, dirPath: string) => {
-    return tryExecuteSync(() => {
-        createDirectory(dirPath)
-    })
+    return tryExecuteSync(createDirectory, dirPath)
 })
 
 export function createDirectory(dirPath: string) {
+    dirPath = path.normalize(dirPath)
     if (fs.existsSync(dirPath)) {
         return true
     }
@@ -113,13 +112,13 @@ ipcMain.handle(
 
 // 删除文件或目录
 ipcMain.handle('filesystem:remove', (_, targetPath: string) => {
-    return tryExecuteSync(() => {
+    return tryExecute(async () => {
+        targetPath = path.normalize(targetPath)
+
         if (!fs.existsSync(targetPath)) {
             return true // 目标已经不存在，视为删除成功
         }
-
-        removeSync(targetPath)
-
+        await shell.trashItem(targetPath)
         // 返回目标是否已不存在（删除成功）
         return !fs.existsSync(targetPath)
     })
@@ -136,6 +135,8 @@ ipcMain.handle(
         filter?: (src: string, dest: string) => boolean
     ) => {
         return tryExecuteSync(() => {
+            sourcePath = path.normalize(sourcePath)
+            destPath = path.normalize(destPath)
             const options = {
                 overwrite,
                 filter
@@ -152,6 +153,8 @@ ipcMain.handle(
     'filesystem:move',
     (_, sourcePath: string, destPath: string, overwrite: boolean = true) => {
         return tryExecuteSync(() => {
+            sourcePath = path.normalize(sourcePath)
+            destPath = path.normalize(destPath)
             moveSync(sourcePath, destPath, { overwrite })
             return true
         })
@@ -163,7 +166,7 @@ ipcMain.handle(
     'filesystem:writeFile',
     (_, filePath: string, data: string | NodeJS.ArrayBufferView) => {
         return tryExecuteSync(() => {
-            outputFileSync(filePath, data)
+            outputFileSync(path.normalize(filePath), data)
             return true
         })
     }
@@ -172,7 +175,7 @@ ipcMain.handle(
 // 追加内容到文件（如果文件不存在则创建）
 ipcMain.handle('filesystem:appendFile', (_, filePath: string, data: string | Uint8Array) => {
     return tryExecuteSync(() => {
-        fs.appendFileSync(filePath, data)
+        fs.appendFileSync(path.normalize(filePath), data)
         return true
     })
 })
@@ -182,6 +185,7 @@ ipcMain.handle(
     'filesystem:readFile',
     (_, filePath: string, encoding: BufferEncoding | 'arrayBuffer') => {
         return tryExecuteSync(() => {
+            filePath = path.normalize(filePath)
             if (encoding === 'arrayBuffer') {
                 // 如果 encoding 为 'buffer'，返回 ArrayBuffer
                 const buffer = fs.readFileSync(filePath)
@@ -207,9 +211,9 @@ ipcMain.on(
 )
 
 // 在资源管理器中打开路径
-ipcMain.handle('filesystem:openInExplorer', (_, path: string) => {
+ipcMain.handle('filesystem:openInExplorer', (_, filePath: string) => {
     return tryExecute(async () => {
-        await shell.openPath(path)
+        await shell.openPath(path.normalize(filePath))
         return true
     })
 })
@@ -221,7 +225,7 @@ ipcMain.handle('filesystem:clearFolder', async (_, folderPath: string) => {
 
         if (fs.existsSync(folderPath) && fs.statSync(folderPath).isDirectory()) {
             // 1. 递归删除整个文件夹
-            await fs.promises.rm(folderPath, { recursive: true, force: true })
+            await shell.trashItem(folderPath)
         }
 
         // 2. 重新创建该文件夹
@@ -254,22 +258,33 @@ ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
         })
 
         // 分离文件夹和视频文件
-        const dirs = []
+        const dirs: string[] = []
         const videoFiles: string[] = []
 
         for (const entry of entries) {
             if (entry.stats && entry.stats.isDirectory()) {
-                //文件夹
+                // 文件夹
                 dirs.push(path.normalize(entry.path).replace(rootPath, ''))
             } else if (entry.stats && entry.stats.isFile()) {
-                //视频文件
+                // 视频文件
                 videoFiles.push(path.normalize(entry.path).replace(rootPath, ''))
             }
         }
 
-        //筛选没有视频的路径，按路径长度排序，确保从最深的文件夹开始处理
+        // 构建包含视频的目录集合（包括所有父目录）
+        const videoDirs = new Set<string>()
+        for (const videoFile of videoFiles) {
+            let currentDir = path.dirname(videoFile)
+            while (currentDir && currentDir !== path.sep && currentDir !== '.') {
+                if (videoDirs.has(currentDir)) break // 已处理过，上级也都处理过了
+                videoDirs.add(currentDir)
+                currentDir = path.dirname(currentDir)
+            }
+        }
+
+        // 筛选没有视频的路径，按路径长度排序，确保从最浅的文件夹开始处理
         const emptyDirs = dirs
-            .filter((dir) => !videoFiles.some((videoFile) => videoFile.startsWith(dir)))
+            .filter((dir) => !videoDirs.has(dir))
             .sort((a, b) => a.length - b.length)
 
         const topLevelDirs = new Set<string>()
@@ -294,7 +309,7 @@ ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
         const result = Array.from(topLevelDirs).map((dir) => path.join(rootPath, dir))
 
         for (const dir of result) {
-            removeSync(dir)
+            await shell.trashItem(dir)
             log.info(`删除无视频文件夹：${dir}`)
         }
     })
