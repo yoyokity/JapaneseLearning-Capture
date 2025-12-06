@@ -3,12 +3,12 @@ import type { IActor } from './Video'
 import { DataHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-const headers = {
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Upgrade-Insecure-Requests': '1',
-    Referer: 'https://javdb.com/',
-    Cookie: `over18=1; locale=zh`
+const requestOptions = {
+    headers: {
+        'Upgrade-Insecure-Requests': '1',
+        Referer: 'https://javdb.com/'
+    },
+    cookie: { over18: '1', locale: 'zh' }
 }
 
 /**
@@ -53,8 +53,7 @@ export class Actor implements IActor {
                     'https://javdb.com/',
                     `search?f=actor&q=${encodeURIComponent(this.name)}`
                 ),
-                'text',
-                headers
+                requestOptions
             )
 
             if (response.ok) {
@@ -98,8 +97,7 @@ export class Actor implements IActor {
 async function getImgFromJavDB(url: string) {
     const response = await NetHelper.get(
         NetHelper.joinUrl('https://javdb.com/', url),
-        'text',
-        headers
+        requestOptions
     )
 
     if (response.ok) {

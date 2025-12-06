@@ -18,9 +18,9 @@ const maker_trans = {
     'ZIZ [ジズ]': 'ZIZ'
 }
 
-const getchuHeaders = {
-    referer: 'https://www.getchu.com',
-    cookie: 'getchu_adalt_flag=https://www.getchu.com'
+const getchuOptions = {
+    headers: { referer: 'https://www.getchu.com' },
+    cookie: { getchu_adalt_flag: 'https://www.getchu.com' }
 }
 
 let temp = {
@@ -115,7 +115,7 @@ async function getWebContentHanime1(video: IVideo): Promise<string | null> {
     }
 
     if (searchResult.poster) {
-        const re = await NetHelper.get(searchResult.poster, 'arrayBuffer')
+        const re = await NetHelper.getImage(searchResult.poster)
         if (re.ok) {
             temp.封面 = re.body
         }
@@ -141,12 +141,6 @@ async function getWebContentHanime1(video: IVideo): Promise<string | null> {
 async function getWebContentGetchu(video: IVideo): Promise<string | null> {
     DebugHelper.log(`- [Getchu] 开始获取网页内容`)
 
-    const headers = {
-        'Upgrade-Insecure-Requests': '1',
-        referer: 'https://www.getchu.com',
-        cookie: 'getchu_adalt_flag=getchu.com'
-    }
-
     /**
      * 解码 EUC-JP 编码的 ArrayBuffer
      */
@@ -158,7 +152,7 @@ async function getWebContentGetchu(video: IVideo): Promise<string | null> {
      * 获取 Getchu 页面内容
      */
     async function fetchPage(url: string): Promise<string | null> {
-        const res = await NetHelper.get(url, 'arrayBuffer', headers)
+        const res = await NetHelper.get(url, { ...getchuOptions, parse: 'arrayBuffer' })
         if (!res.ok) {
             return null
         }
@@ -204,7 +198,7 @@ async function getWebContentGetchu(video: IVideo): Promise<string | null> {
     DebugHelper.log(`- [Getchu] 找到匹配的番剧：【${target.text().trim()}】 ${href}`)
 
     //根据href获取webContent
-    const fullUrl = new URL(href, 'https://www.getchu.com/').href
+    const fullUrl = NetHelper.joinUrl('https://www.getchu.com/', href)
     const body = await fetchPage(fullUrl)
     if (!body) {
         DebugHelper.warn(`- [Getchu] 获取网页内容失败`)
@@ -218,10 +212,12 @@ async function getWebContentGetchu(video: IVideo): Promise<string | null> {
     return body
 }
 
-const dlsiteHeaders = {
-    'Upgrade-Insecure-Requests': '1',
-    referer: 'https://www.dlsite.com',
-    cookie: 'adultchecked=1'
+const dlsiteOptions = {
+    headers: {
+        'Upgrade-Insecure-Requests': '1',
+        referer: 'https://www.dlsite.com'
+    },
+    cookie: { adultchecked: '1' }
 }
 
 /**
@@ -235,7 +231,7 @@ async function getWebContentDlsite(video: IVideo): Promise<string | null> {
         const url = `https://www.dlsite.com/pro/work/=/product_id/${temp.num.dlsite}.html?locale=ja_JP`
 
         DebugHelper.log(`- [Dlsite] 使用编号搜索：${url}`)
-        const webContent = await NetHelper.get(url, 'text', dlsiteHeaders)
+        const webContent = await NetHelper.get(url, dlsiteOptions)
         if (webContent.ok) {
             DebugHelper.info(`- [Dlsite] 获取到网页内容`)
             return webContent.body
@@ -246,7 +242,7 @@ async function getWebContentDlsite(video: IVideo): Promise<string | null> {
 
     //如果编号搜索失败，则使用原标题搜索
     const searchUrl = `https://www.dlsite.com/maniax/fsr/=/keyword/${encodeURIComponent(video.originaltitle)}/order/trend/work_type_category[0]/movie`
-    const webContent = await NetHelper.get(searchUrl, 'text', dlsiteHeaders)
+    const webContent = await NetHelper.get(searchUrl, dlsiteOptions)
     if (!webContent.ok) {
         DebugHelper.warn(`- [Dlsite] 获取搜索结果失败`)
         return null
@@ -270,7 +266,7 @@ async function getWebContentDlsite(video: IVideo): Promise<string | null> {
     DebugHelper.log(`- [Dlsite] 找到匹配的番剧：【${target.text().trim()}】 ${href}`)
 
     //根据href获取webContent
-    const body = await NetHelper.get(href, 'text', dlsiteHeaders)
+    const body = await NetHelper.get(href, dlsiteOptions)
     if (!body.ok) {
         DebugHelper.warn(`- [Dlsite] 获取网页内容失败`)
         return null
@@ -375,7 +371,7 @@ const hanimeScraper: IScraper = {
             if (temp.num.dlsite) {
                 const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${temp.num.dlsite}&cdn_cache_min=1`
                 DebugHelper.log(`- [Dlsite] 搜索评分...`)
-                const webContent = await NetHelper.get(url, 'text', dlsiteHeaders)
+                const webContent = await NetHelper.get(url, dlsiteOptions)
                 if (webContent.ok) {
                     const a = JSON.parse(webContent.body)[temp.num.dlsite]
                     if (a) {
@@ -567,8 +563,8 @@ const hanimeScraper: IScraper = {
                     ?.replace(/^\.\/ */, '')
 
                 if (url) {
-                    const posterUrl = new URL(url, 'https://www.getchu.com/').toString()
-                    const re = await NetHelper.getImage(posterUrl, getchuHeaders)
+                    const posterUrl = NetHelper.joinUrl('https://www.getchu.com/', url)
+                    const re = await NetHelper.getImage(posterUrl, getchuOptions)
 
                     if (re.ok) {
                         temp.封面 = re.body
@@ -636,12 +632,12 @@ const hanimeScraper: IScraper = {
 
                 const urls = hrefs
                     .toArray()
-                    .map((href) => new URL(href!, 'https://www.getchu.com/').toString())
+                    .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href!))
 
                 // 按顺序获取每个图片，保持顺序一致
                 video.extrafanart = []
                 for (const url of urls) {
-                    const re = await NetHelper.getImage(url, getchuHeaders)
+                    const re = await NetHelper.getImage(url, getchuOptions)
                     if (re.ok) {
                         DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
                         video.extrafanart.push(re.body)

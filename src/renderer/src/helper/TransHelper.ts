@@ -66,7 +66,8 @@ const translators = {
                 'Content-Length': String(body.length)
             }
 
-            const re = await NetHelper.post(url, body, 'text', headers, {
+            const re = await NetHelper.post(url, body, {
+                headers,
                 delay: 500
             })
 
@@ -157,7 +158,9 @@ const translators = {
                 ]
             }
 
-            const re = await NetHelper.post(url, body, 'json', headers, {
+            const re = await NetHelper.post(url, body, {
+                parse: 'json',
+                headers,
                 delay: 500
             })
 
@@ -220,7 +223,9 @@ const translators = {
                 stream: false
             }
 
-            const re = await NetHelper.post(url, body, 'json', headers, {
+            const re = await NetHelper.post(url, body, {
+                parse: 'json',
+                headers,
                 delay: 0,
                 retry: 0,
                 timeout: 30 * 1000
@@ -290,9 +295,8 @@ export class TransHelper {
         const settings = settingsStore()
         const re = await NetHelper.get(
             `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1/models`,
-            'json',
-            undefined,
             {
+                parse: 'json',
                 delay: 0,
                 retry: 0
             }

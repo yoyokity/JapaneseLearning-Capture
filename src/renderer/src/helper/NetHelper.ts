@@ -22,21 +22,20 @@ export class NetHelper {
      * @returns 拼接好的 URL 字符串。
      */
     static joinUrl(baseUrl: string, ...pathSegments: string[]): string {
-        // 如果基础 URL 没有以斜杠结尾，先加上一个，方便后续拼接
-        const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-
-        const url = new URL(base)
+        // 1. 去掉 baseUrl 尾部的所有斜杠
+        let url = baseUrl.replace(/\/+$/, '')
 
         for (const segment of pathSegments) {
-            // 移除路径片段开头和结尾的斜杠，避免重复
-            const cleanedSegment = segment.replace(/^\/|\/$/g, '')
-            if (cleanedSegment) {
-                url.pathname = `${url.pathname}/${cleanedSegment}`
+            // 2. 去掉 segment 首尾的所有斜杠
+            const cleanSegment = segment.replace(/^\/+|\/+$/g, '')
+
+            // 3. 仅当片段非空时拼接
+            if (cleanSegment) {
+                url += `/${cleanSegment}`
             }
         }
 
-        // 返回最终的 URL 字符串
-        return url.toString()
+        return url
     }
 
     /**
@@ -67,11 +66,18 @@ export class NetHelper {
     }
 
     /**
+     * 将cookie对象转换为cookie字符串
+     */
+    private static _cookieToString(cookie: Record<string, string>): string {
+        return Object.entries(cookie)
+            .map(([key, value]) => `${key}=${value}`)
+            .join('; ')
+    }
+
+    /**
      * GET请求
-     * @param url
-     * @param [parse] 将返回的body数据解析成什么类型
-     * @param headers
-     * @param [options] 请求选项，当前请求会覆盖掉settings设置的
+     * @param url 请求地址
+     * @param options 请求选项
      * @return 只有status在200-299之间，ok字段才为true
      * @example
      * ```ts
@@ -79,23 +85,38 @@ export class NetHelper {
      * if (re.ok) {
      *     console.log(re.body)
      * }
+     *
+     * // 带选项的请求
+     * const re = await NetHelper.get('https://api.example.com', {
+     *     parse: 'json',
+     *     headers: { 'Authorization': 'Bearer token' },
+     *     cookie: { session: 'abc123' }
+     * })
      * ```
      */
     static async get<P extends IFetchParse = 'text'>(
         url: string,
-        parse?: P,
-        headers?: Record<string, string>,
-        options?: IRequestOptions
+        options?: IRequestOptions<P>
     ): Promise<IResult<ParseResultType<P>>> {
         const settings = settingsStore()
         let timeout: number = settings.net.timeout * 1000
         let delay: number = settings.net.delay
         let retry: number = settings.net.retry
+        let parse: IFetchParse = 'text'
+        let headers: Record<string, string> = {}
 
         if (options) {
-            timeout = options.timeout || options.timeout === 0 ? options.timeout : timeout
-            delay = options.delay || options.delay === 0 ? options.delay : delay
-            retry = options.retry || options.retry === 0 ? options.retry : retry
+            timeout = options.timeout ?? timeout
+            delay = options.delay ?? delay
+            retry = options.retry ?? retry
+            parse = options.parse ?? parse
+            headers = options.headers ?? headers
+
+            // 处理cookie
+            if (options.cookie) {
+                const cookieStr = this._cookieToString(options.cookie)
+                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
+            }
         }
 
         const defaultHeaders = {
@@ -106,7 +127,7 @@ export class NetHelper {
         const config: IFetchOptions = {
             headers: { ...defaultHeaders, ...headers },
             timeout,
-            parse: parse || ('text' as P)
+            parse: parse as P
         }
 
         let re
@@ -150,11 +171,9 @@ export class NetHelper {
 
     /**
      * POST请求
-     * @param url
+     * @param url 请求地址
      * @param data 请求体body数据
-     * @param [parse] 将返回的body数据解析成什么类型
-     * @param headers
-     * @param [options] 请求选项，当前请求会覆盖掉settings设置的
+     * @param options 请求选项
      * @return 只有status在200-299之间，ok字段才为true
      * @example
      * ```ts
@@ -162,24 +181,38 @@ export class NetHelper {
      * if (re.ok) {
      *     console.log(re.body)
      * }
+     *
+     * // 带选项的请求
+     * const re = await NetHelper.post('https://api.example.com', { name: 'test' }, {
+     *     parse: 'json',
+     *     headers: { 'Content-Type': 'application/json' }
+     * })
      * ```
      */
     static async post<P extends IFetchParse = 'text'>(
         url: string,
         data: any,
-        parse?: P,
-        headers?: Record<string, string>,
-        options?: IRequestOptions
+        options?: IRequestOptions<P>
     ): Promise<IResult<ParseResultType<P>>> {
         const settings = settingsStore()
         let timeout: number = settings.net.timeout * 1000
         let delay: number = settings.net.delay
         let retry: number = settings.net.retry
+        let parse: IFetchParse = 'text'
+        let headers: Record<string, string> = {}
 
         if (options) {
-            timeout = options.timeout || options.timeout === 0 ? options.timeout : timeout
-            delay = options.delay || options.delay === 0 ? options.delay : delay
-            retry = options.retry || options.retry === 0 ? options.retry : retry
+            timeout = options.timeout ?? timeout
+            delay = options.delay ?? delay
+            retry = options.retry ?? retry
+            parse = options.parse ?? parse
+            headers = options.headers ?? headers
+
+            // 处理cookie
+            if (options.cookie) {
+                const cookieStr = this._cookieToString(options.cookie)
+                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
+            }
         }
 
         const defaultHeaders = {
@@ -190,7 +223,7 @@ export class NetHelper {
         const config: IFetchOptions = {
             headers: { ...defaultHeaders, ...headers },
             timeout,
-            parse: parse || ('text' as P)
+            parse: parse as P
         }
 
         let re
@@ -236,22 +269,25 @@ export class NetHelper {
 
     /**
      * 图片请求，忽略请求之间的间隔
-     * @param url
-     * @param headers
-     * @param options
+     * @param url 请求地址
+     * @param options 请求选项（parse字段会被忽略，固定为arrayBuffer）
      */
-    static async getImage(
-        url: string,
-        headers?: Record<string, string>,
-        options?: IRequestOptions
-    ) {
+    static async getImage(url: string, options?: Omit<IRequestOptions, 'parse' | 'delay'>) {
         const settings = settingsStore()
         let timeout: number = settings.net.timeout * 1000
         let retry: number = settings.net.retry
+        let headers: Record<string, string> = {}
 
         if (options) {
-            timeout = options.timeout || options.timeout === 0 ? options.timeout : timeout
-            retry = options.retry || options.retry === 0 ? options.retry : retry
+            timeout = options.timeout ?? timeout
+            retry = options.retry ?? retry
+            headers = options.headers ?? headers
+
+            // 处理cookie
+            if (options.cookie) {
+                const cookieStr = this._cookieToString(options.cookie)
+                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
+            }
         }
 
         const defaultHeaders = {
@@ -356,9 +392,21 @@ export class NetHelper {
     }
 }
 
-export interface IRequestOptions {
+export interface IRequestOptions<P extends IFetchParse = 'text'> {
     /**
-     * 请求超时时间
+     * 将返回的body数据解析成什么类型
+     */
+    parse?: P
+    /**
+     * 请求头
+     */
+    headers?: Record<string, string>
+    /**
+     * Cookie对象，会自动转换为cookie字符串并添加到headers中
+     */
+    cookie?: Record<string, string>
+    /**
+     * 请求超时时间（毫秒）
      */
     timeout?: number
     /**
@@ -366,7 +414,7 @@ export interface IRequestOptions {
      */
     retry?: number
     /**
-     * 每次相同网站的请求间隔
+     * 每次相同网站的请求间隔（毫秒）
      */
     delay?: number
 }
