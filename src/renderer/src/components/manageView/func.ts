@@ -136,7 +136,11 @@ async function read(path: string): Promise<IVideoFile> {
 /**
  * 读取extrafanart目录下的文件
  */
-export async function readExtrafanart(videoDir: Path, video: IVideoFile): Promise<number> {
+export async function readExtrafanart(
+    videoDir: Path,
+    video: IVideoFile,
+    sourceVideo: IVideoFile
+): Promise<number> {
     const extrafanart = await PathHelper.readDirectory(
         videoDir.join('extrafanart'),
         'file',
@@ -146,13 +150,16 @@ export async function readExtrafanart(videoDir: Path, video: IVideoFile): Promis
     )
 
     video.extrafanart = []
+    sourceVideo.extrafanart = []
     for (const file of extrafanart) {
         const filePath = PathHelper.newPath(file)
         const ext = filePath.extname.toLowerCase()
         if (ext === '.jpg' || ext === '.png' || ext === '.jpeg' || ext === '.webp') {
             const re = await ImageHelper.readImage(filePath)
             if (re) {
+                //因为是拷贝之后的异步执行，所以两个都要有
                 video.extrafanart.push(re)
+                sourceVideo.extrafanart.push(re)
             }
         }
     }

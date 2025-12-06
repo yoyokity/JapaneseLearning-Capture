@@ -170,10 +170,10 @@ export class DebugHelper {
         }
 
         const queue = this._taskQueues.get(taskName)!
-        const lastExecutionTime = this._lastExecutionTimes.get(taskName)!
 
         // 创建一个任务函数，用于在队列中执行
         const task = async (): Promise<T> => {
+            const lastExecutionTime = this._lastExecutionTimes.get(taskName)!
             const now = Date.now()
             const timeSinceLastExecution = now - lastExecutionTime
 
@@ -202,5 +202,28 @@ export class DebugHelper {
         // 添加任务到队列并返回结果
         // 使用类型断言确保返回类型正确
         return queue.add(task) as Promise<T>
+    }
+
+    /**
+     * 清除指定任务队列，取消所有待执行的任务
+     * @param taskName 任务名称，如果不传则清除所有队列
+     */
+    static queueClear(taskName?: string): void {
+        if (taskName) {
+            const queue = this._taskQueues.get(taskName)
+            if (queue) {
+                queue.clear()
+                this._lastExecutionTimes.set(taskName, 0)
+            }
+        } else {
+            // 清除所有队列
+            for (const queue of this._taskQueues.values()) {
+                queue.clear()
+            }
+            this._lastExecutionTimes.clear()
+            for (const taskName of this._taskQueues.keys()) {
+                this._lastExecutionTimes.set(taskName, 0)
+            }
+        }
     }
 }

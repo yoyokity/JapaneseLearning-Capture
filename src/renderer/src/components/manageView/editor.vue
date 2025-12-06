@@ -4,7 +4,14 @@ import type { Ref } from 'vue'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import VideoImage from '@renderer/components/control/VideoImage.vue'
-import { ImageHelper, isNumeric, isUrl, isValidDate, PathHelper } from '@renderer/helper'
+import {
+    DebugHelper,
+    ImageHelper,
+    isNumeric,
+    isUrl,
+    isValidDate,
+    PathHelper
+} from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -68,6 +75,7 @@ useKeyPress(['esc'], () => {
     if (previewImage.value) {
         previewImage.value = null
     } else {
+        DebugHelper.queueClear('scraper')
         dialogRef.value.close()
     }
 })
@@ -81,34 +89,37 @@ async function onSave() {
 
     if (!scraper) return
 
-    //如果视频没有修改，则不保存
-    if (isEqual(newVideo.value, sourceVideoFile)) {
-        toast.success('未修改，无需保存')
-        dialogRef.value.close()
-        return
-    }
+    DebugHelper.queueWithInterval('scraper', 0, true, async () => {
+        //如果视频没有修改，则不保存
+        if (isEqual(newVideo.value, sourceVideoFile)) {
+            toast.success('未修改，无需保存')
+            dialogRef.value.close()
+            return
+        }
 
-    if (isSaving.value) return
-    isSaving.value = true
+        if (isSaving.value) return
+        isSaving.value = true
 
-    //保存
-    const re = await scraperSave(newVideo.value, sourceVideoFile, a.webContent, toast)
-    if (!re) {
-        toast.error('保存失败！')
+        //保存
+        const re = await scraperSave(newVideo.value, sourceVideoFile, a.webContent, toast)
+        if (!re) {
+            toast.error('保存失败！')
+            isSaving.value = false
+            return
+        }
+
+        //删除空文件夹
+        await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
+
+        //重新扫描文件
+        await scanFiles(toast)
+
+        toast.success('保存成功！')
+
         isSaving.value = false
-        return
-    }
-
-    //删除空文件夹
-    await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
-
-    //重新扫描文件
-    await scanFiles(toast)
-
-    toast.success('保存成功！')
-
-    isSaving.value = false
-    dialogRef.value.close(newVideo.value)
+        dialogRef.value.close(newVideo.value)
+        DebugHelper.queueClear('scraper')
+    })
 }
 
 /**
@@ -178,12 +189,14 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
 }
 
 onMounted(async () => {
-    //读取extrafanart
-    await readExtrafanart(video.dir, video).then((count) => {
-        console.info(`读取${count}个extrafanart`)
-    })
+    DebugHelper.queueWithInterval('scraper', 0, true, async () => {
+        newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
 
-    newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
+        //读取extrafanart
+        readExtrafanart(video.dir, newVideo.value, video).then((count) => {
+            console.info(`读取${count}个extrafanart`)
+        })
+    })
 })
 </script>
 
@@ -206,7 +219,7 @@ onMounted(async () => {
             </div>
             <div
                 :style="{
-                    transform: `translateX(${tabs.findIndex((tab) => tab.id === activeTab) * 5 + 1}rem)`
+                    transform: `translateX(${tabs.findIndex((tab) => tab.id === activeTab) * 5 + 0.5}rem)`
                 }"
                 class="active-indicator"
             />
