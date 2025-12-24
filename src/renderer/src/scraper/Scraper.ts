@@ -150,6 +150,12 @@ export interface IScraper {
      */
     checkConnect: () => Promise<boolean>
     /**
+     * 编号源
+     * @remarks 刮削器刮削时，信息网站的名称
+     * @example ['getchu', 'hanime1', 'dlsite']
+     */
+    numSource: string[]
+    /**
      * 刮削视频信息的方法
      */
     scraperVideoFuncs: IScraperVideoFuncs

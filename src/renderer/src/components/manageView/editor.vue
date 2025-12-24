@@ -228,7 +228,7 @@ onMounted(async () => {
             <div class="content">
                 <!-- 信息编辑部分 -->
                 <div v-show="activeTab === 'info'" class="form-container">
-                    <h2 style="margin-top: 0">刮削</h2>
+                    <h2 style="margin-top: 0">刮削器</h2>
                     <div style="display: flex">
                         <Select
                             v-model="newVideo.scraperName"
@@ -245,15 +245,18 @@ onMounted(async () => {
                         />
                     </div>
 
+                    <h2>编号</h2>
                     <FloatLabel
+                        v-for="value in Scraper.getScraperInstance(newVideo.scraperName)?.numSource"
+                        :key="value"
                         v-tooltip.top="
                             '作品在刮削网站的编号。刮削搜索时，如果有编号则直接使用编号，否则使用原标题。'
                         "
                         variant="on"
                         style="display: flex"
                     >
-                        <InputText id="title_num" v-model.trim="newVideo.num" />
-                        <label for="title_num">编号</label>
+                        <InputText id="title_num" v-model.trim="newVideo.num[value]" />
+                        <label for="title_num">{{ value }}</label>
                     </FloatLabel>
 
                     <h2>标题</h2>

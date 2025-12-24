@@ -3,9 +3,6 @@
     "npm.scriptRunner": "npm",
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "[svg]": {
-        "editor.defaultFormatter": "jock.svg"
-    },
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.patterns": {
         "tsconfig.json": "tsconfig.*.json, env.d.ts",

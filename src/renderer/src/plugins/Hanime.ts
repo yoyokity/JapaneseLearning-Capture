@@ -40,24 +40,6 @@ let temp = {
     tag: [] as string[]
 }
 
-/**
- * 解析视频编号到 temp.num
- * @param video 视频信息，num 格式如 "hanime1-15678,getchu-54400,dlsite-VJ013217"
- */
-function parseNum(video: IVideo): void {
-    temp.num = { hanime1: '', getchu: '', dlsite: '' }
-
-    if (!video.num) {
-        return
-    }
-
-    const regex = /(?<key>hanime1|getchu|dlsite)-(?<value>[^,]+)/gi
-    for (const match of video.num.matchAll(regex)) {
-        const { key, value } = match.groups!
-        temp.num[key.toLowerCase() as keyof typeof temp.num] = value
-    }
-}
-
 async function searchVideoHanime1(
     originaltitle: string
 ): Promise<{ href: string; poster: string | undefined } | null> {
@@ -284,6 +266,7 @@ const hanimeScraper: IScraper = {
     checkConnect: async () => {
         return true
     },
+    numSource: ['hanime1', 'getchu', 'dlsite'],
     scraperVideoFuncs: {
         getWebContent: async (video: IVideo) => {
             temp = {
@@ -302,8 +285,6 @@ const hanimeScraper: IScraper = {
                 maker: '',
                 tag: []
             }
-
-            parseNum(video)
 
             //获取webContent
             const [hanime1, getchu, dlsite] = await Promise.all([
@@ -352,14 +333,9 @@ const hanimeScraper: IScraper = {
             return video
         },
         parseNum: async (video: IVideo) => {
-            let num = ''
-            if (temp.num.hanime1) num = `${num}hanime1-${temp.num.hanime1}`
-            if (temp.num.getchu) num = `${num},getchu-${temp.num.getchu}`
-            if (temp.num.dlsite) num = `${num},dlsite-${temp.num.dlsite}`
-
-            if (!num) return null
-
-            video.num = num
+            if (temp.num.hanime1) video.num.hanime1 = temp.num.hanime1
+            if (temp.num.getchu) video.num.getchu = temp.num.getchu
+            if (temp.num.dlsite) video.num.dlsite = temp.num.dlsite
             return video
         },
         parseMpaa: async (video: IVideo) => {

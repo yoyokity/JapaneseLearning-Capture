@@ -43,8 +43,9 @@ export interface IVideo {
     tagline: string
     /**
      * 编号，如番号、网站-编号
+     * @description key: 网站名称 value: 编号
      */
-    num: string
+    num: Record<string, string>
     /**
      * 分级，如JP-18+
      */
@@ -166,7 +167,7 @@ export function createVideoFile(path: string): IVideoFile {
         sorttitle: '',
         tagline: '',
         plot: '',
-        num: '',
+        num: {},
         mpaa: '',
         rating: '',
         director: '',

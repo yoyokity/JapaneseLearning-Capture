@@ -75,7 +75,6 @@ async function read(path: string): Promise<IVideoFile> {
     video.sorttitle = movie.sorttitle || ''
     video.tagline = movie.tagline || ''
     video.plot = movie.plot || ''
-    video.num = movie.num || ''
     video.mpaa = movie.mpaa || ''
     video.rating = movie.rating || ''
     video.director = movie.director || ''
@@ -85,6 +84,18 @@ async function read(path: string): Promise<IVideoFile> {
     video.year = movie.year || ''
     video.premiered = movie.premiered || ''
     video.releasedate = movie.releasedate || ''
+
+    // 处理编号信息
+    video.num = {}
+    if (movie.num) {
+        const nums = Array.isArray(movie.num) ? movie.num : [movie.num]
+
+        try {
+            for (const num of nums) {
+                video.num[num.source] = num.value
+            }
+        } catch {}
+    }
 
     // 处理演员信息
     if (movie.actor) {

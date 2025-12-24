@@ -38,7 +38,16 @@ export class Nfo {
         addElement(root, 'sorttitle')
         addElement(root, 'tagline')
         addElement(root, 'plot')
-        addElement(root, 'num')
+
+        for (const [source, value] of Object.entries(video.num)) {
+            // 只有当 value 不为空时才添加
+            if (value !== undefined && value !== null && value !== '') {
+                const numNode = root.ele('num')
+                numNode.ele('value').txt(String(value))
+                numNode.ele('source').txt(source)
+            }
+        }
+
         addElement(root, 'mpaa')
         addElement(root, 'rating')
         addElement(root, 'director')
