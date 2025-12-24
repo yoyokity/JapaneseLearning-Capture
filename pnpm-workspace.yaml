@@ -1,0 +1,8 @@
+onlyBuiltDependencies:
+    - '@parcel/watcher'
+    - electron
+    - electron-winstaller
+    - esbuild
+    - phantomjs-prebuilt
+    - sharp
+    - unrs-resolver

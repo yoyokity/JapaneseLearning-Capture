@@ -38,7 +38,8 @@ export default antfu(
                     groups: [
                         'type', // 类型导入
                         ['builtin', 'external'], // Node.js 内置模块、外部依赖
-                        ['internal', 'parent', 'sibling'], // 内部模块、父级和同级目录
+                        'internal', // 内部模块（@ 别名）
+                        ['parent', 'sibling'], // 父级和同级目录
                         ['index', 'object'] // index 文件、object imports
                     ],
                     // 不同组之间添加空行
@@ -51,9 +52,13 @@ export default antfu(
                             position: 'before'
                         }
                     ],
-                    pathGroupsExcludedImportTypes: ['type']
+                    pathGroupsExcludedImportTypes: ['type'],
+                    distinctGroup: true // 确保 pathGroups 被识别为独立的组
                 }
             ]
         }
+    },
+    {
+        ignores: ['pnpm-workspace.yaml', 'pnpm-lock.yaml']
     }
 )
