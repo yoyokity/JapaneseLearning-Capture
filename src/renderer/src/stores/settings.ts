@@ -58,6 +58,11 @@ export const settingsStore = defineStore(
             retryWithGoogle: true,
             targetLanguage: 'zh-CN',
             translateEngine: 'google',
+            openai: {
+                apiKey: '',
+                model: 'gpt-5.4',
+                baseURL: 'https://api.openai.com/v1'
+            },
             gemini: {
                 apiKey: '',
                 model: 'gemini-2.5-flash-lite'

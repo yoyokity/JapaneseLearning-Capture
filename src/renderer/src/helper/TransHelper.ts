@@ -14,6 +14,11 @@ export interface ITranslateSettings {
     retryWithGoogle: boolean
     targetLanguage: TranslateTargetLanguage
     translateEngine: TranslateEngine
+    openai: {
+        apiKey: string
+        model: string
+        baseURL: string
+    }
     gemini: {
         apiKey: string
         model: string
@@ -124,6 +129,60 @@ const translators = {
         }
     },
 
+    openai: {
+        description: 'OpenAI翻译，适合接入官方接口或兼容OpenAI格式的中转服务',
+        func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
+            const settings = settingsStore()
+
+            //url
+            const url = `${settings.translate.openai.baseURL.replace(/\/$/, '')}/chat/completions`
+
+            //headers
+            const headers = {
+                Authorization: `Bearer ${settings.translate.openai.apiKey}`,
+                'Content-Type': 'application/json'
+            }
+
+            //body
+            const body = {
+                model: settings.translate.openai.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: getAITranslatePrompt(targetLanguage)
+                    },
+                    {
+                        role: 'user',
+                        content: escapeSpecialSymbols(s_text)
+                    }
+                ],
+                temperature: 0.3,
+                stream: false
+            }
+
+            const re = await NetHelper.post(url, body, {
+                parse: 'json',
+                headers,
+                delay: 500
+            })
+
+            if (re.ok) {
+                try {
+                    const text = parseLLM(re.body.choices[0].message.content).trim()
+                    return {
+                        ok: true,
+                        text
+                    }
+                } catch (e) {
+                    DebugHelper.error(`openai翻译返回内容解析失败：`, re.body, e)
+                }
+            }
+
+            // 翻译失败则原文返回
+            return { ok: false, text: s_text }
+        }
+    },
+
     gemini: {
         description: 'AI效果好但是很多敏感的部分不给翻译，不给翻译的部分会调用谷歌翻译',
         func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
@@ -143,7 +202,7 @@ const translators = {
                 system_instruction: {
                     parts: [
                         {
-                            text: `你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。同时不要返回md格式，按照原文的排版格式，返回纯文本给我。标点符号之类的转为${targetLanguage}的标点。`
+                            text: getAITranslatePrompt(targetLanguage)
                         }
                     ]
                 },
@@ -210,7 +269,7 @@ const translators = {
                 messages: [
                     {
                         role: 'system',
-                        content: `你是一个翻译模型，可以通顺地使用给定的术语表以指定的风格将原文翻译成${targetLanguage}，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的特殊符号，也不要擅自增加或减少换行。`
+                        content: getAITranslatePrompt(targetLanguage)
                     },
                     {
                         role: 'user',
@@ -351,4 +410,11 @@ function parseLLM(inputString: string) {
 
     // 如果没有匹配到<think>标签，则返回原文
     return inputString
+}
+
+/**
+ * 获取 AI 翻译提示词
+ */
+function getAITranslatePrompt(targetLanguage: string) {
+    return `你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。同时不要返回md格式，按照原文的排版格式，返回纯文本给我。标点符号之类的转为${targetLanguage}的标点。注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的特殊符号，也不要擅自增加或减少换行。如果遇到屏蔽字符比如○之类的，请自行联想色情词汇。`
 }

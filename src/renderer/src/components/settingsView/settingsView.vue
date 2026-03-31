@@ -233,6 +233,42 @@ function openLlmInfo() {
                         :title="`${settings.translate.translateEngine}配置`"
                         @open="fetchLLMModels"
                     >
+                        <div v-if="settings.translate.translateEngine === 'openai'">
+                            <SettingsLineItem title="API Key">
+                                <Button
+                                    as="a"
+                                    href="https://platform.openai.com/api-keys"
+                                    target="_blank"
+                                    variant="link"
+                                >
+                                    获取API Key
+                                </Button>
+                                <InputText
+                                    v-model.trim="settings.translate.openai.apiKey"
+                                    type="text"
+                                />
+                            </SettingsLineItem>
+                            <SettingsLineItem title="Base URL">
+                                <InputText
+                                    v-model.trim="settings.translate.openai.baseURL"
+                                    type="text"
+                                />
+                            </SettingsLineItem>
+                            <SettingsLineItem title="模型">
+                                <Button
+                                    as="a"
+                                    href="https://platform.openai.com/docs/models"
+                                    target="_blank"
+                                    variant="link"
+                                >
+                                    查看全部模型
+                                </Button>
+                                <InputText
+                                    v-model.trim="settings.translate.openai.model"
+                                    type="text"
+                                />
+                            </SettingsLineItem>
+                        </div>
                         <div v-if="settings.translate.translateEngine === 'gemini'">
                             <SettingsLineItem title="API Key">
                                 <Button
