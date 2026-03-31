@@ -167,7 +167,10 @@ export class Scraper {
      */
     static instances: IScraper[] = (() => {
         const instances: IScraper[] = []
-        const modules = import.meta.glob('../plugins/*.ts', { eager: true }) as IModuleType
+        const modules = {
+            ...((import.meta.glob('../plugins/*.ts', { eager: true }) as IModuleType) ?? {}),
+            ...((import.meta.glob('../plugins/*/index.ts', { eager: true }) as IModuleType) ?? {})
+        }
         for (const path in modules) {
             const module = modules[path]
             const scraper = module.default
