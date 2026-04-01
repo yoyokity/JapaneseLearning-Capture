@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      justified-layout:
-        specifier: ^4.1.0
-        version: 4.1.0
       sharp:
         specifier: ^0.34.3
         version: 0.34.5
@@ -171,6 +168,9 @@ importers:
       vue-tsc:
         specifier: ^3.0.3
         version: 3.2.1(typescript@5.9.3)
+      vue-waterfall-plugin-next:
+        specifier: ^3.0.1
+        version: 3.0.1
       xmlbuilder2:
         specifier: ^3.1.1
         version: 3.1.1
@@ -3676,7 +3676,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
@@ -4061,9 +4061,6 @@ packages:
   junk@3.1.0:
     resolution: {integrity: sha512-pBxcB3LFc8QVgdggvZWyeys+hnrNWg4OcZIU/1X59k5jQdLBlCsYGRQaz234SqoRLTCgMH00fY0xRJH+F9METQ==}
     engines: {node: '>=8'}
-
-  justified-layout@4.1.0:
-    resolution: {integrity: sha512-M5FimNMXgiOYerVRGsXZ2YK9YNCaTtwtYp7Hb2308U1Q9TXXHx5G0p08mcVR5O53qf8bWY4NJcPBxE6zuayXSg==}
 
   kew@0.7.0:
     resolution: {integrity: sha512-IG6nm0+QtAMdXt9KvbgbGdvY50RSrw+U4sGZg+KlrSKPJEwVE5JVoI3d7RWfSMdBQneRheeAOj3lIjX5VL/9RQ==}
@@ -5854,6 +5851,9 @@ packages:
     hasBin: true
     peerDependencies:
       typescript: '>=5.0.0'
+
+  vue-waterfall-plugin-next@3.0.1:
+    resolution: {integrity: sha512-ggtP0LkDRKABsTflya9l0YE/D2S6MYG+VBgvkVmCwqLanJy6STYCPFumYCujV9/ansxd81GBgwPe6DUegRDT+w==}
 
   vue@3.5.26:
     resolution: {integrity: sha512-SJ/NTccVyAoNUJmkM9KUqPcYlY+u8OVL1X5EW9RIs3ch5H2uERxyyIUI4MRxVCSOiEcupX9xNGde1tL9ZKpimA==}
@@ -10113,8 +10113,6 @@ snapshots:
 
   junk@3.1.0: {}
 
-  justified-layout@4.1.0: {}
-
   kew@0.7.0: {}
 
   keyv@4.5.4:
@@ -12139,6 +12137,8 @@ snapshots:
       '@volar/typescript': 2.4.27
       '@vue/language-core': 3.2.1
       typescript: 5.9.3
+
+  vue-waterfall-plugin-next@3.0.1: {}
 
   vue@3.5.26(typescript@5.9.3):
     dependencies:

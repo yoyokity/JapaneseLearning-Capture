@@ -1,5 +1,5 @@
-<script lang="ts" setup>
-import type { CSSProperties } from 'vue'
+<script setup lang="ts">
+import type { StyleValue } from 'vue'
 
 import imgFall from '@renderer/assets/img-fall.svg?url'
 import { onMounted, ref, watch } from 'vue'
@@ -9,12 +9,12 @@ interface ImageProps {
     /**
      * 普通状态下的图片样式
      */
-    imageStyle?: CSSProperties
+    imageStyle?: StyleValue
     /**
      * 错误状态下的图片样式
      */
-    errorImageStyle?: CSSProperties
-    borderRadius?: CSSProperties['borderRadius']
+    errorImageStyle?: StyleValue
+    borderRadius?: string
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {

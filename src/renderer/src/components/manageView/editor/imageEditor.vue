@@ -6,6 +6,7 @@ import VideoImage from '@renderer/components/control/VideoImage.vue'
 import { ImageHelper, PathHelper } from '@renderer/helper'
 import Button from 'primevue/button'
 import { computed } from 'vue'
+import { LazyImg, Waterfall } from 'vue-waterfall-plugin-next'
 
 import { useMessage } from '../../control/message'
 import { scraperField } from '../func.scraper'
@@ -44,6 +45,43 @@ const previewImage = computed({
         emit('update:previewImage', value)
     }
 })
+
+/**
+ * 剧照瀑布流数据
+ */
+const extrafanartList = computed(() =>
+    (video.value.extrafanart || []).map((item, index) => ({
+        id: index,
+        imgData: item,
+        src: arrayBufferToDataUrl(item)
+    }))
+)
+
+/**
+ * 将 ArrayBuffer 转换为 Data URL
+ * @param buffer 图片二进制数据
+ */
+function arrayBufferToDataUrl(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i])
+    }
+
+    const base64 = btoa(binary)
+    const header = bytes.slice(0, 4)
+    let mimeType = 'image/jpeg'
+
+    if (header[0] === 0x89 && header[1] === 0x50) {
+        mimeType = 'image/png'
+    } else if (header[0] === 0x47 && header[1] === 0x49) {
+        mimeType = 'image/gif'
+    } else if (header[0] === 0x52 && header[1] === 0x49) {
+        mimeType = 'image/webp'
+    }
+
+    return `data:${mimeType};base64,${base64}`
+}
 
 /**
  * 同步预览图到父组件
@@ -170,21 +208,32 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                 />
             </div>
 
-            <div class="form-container" style="gap: 0.5rem; flex-direction: row; flex-wrap: wrap">
-                <VideoImage
-                    v-for="(value, index) in video.extrafanart"
-                    :key="index"
-                    :img-data="value"
-                    :style="{
-                        height: '15rem',
-                        cursor: 'pointer'
-                    }"
-                    :error-image-style="{
-                        padding: '2rem'
-                    }"
-                    @click="setPreviewImage(value)"
-                />
-            </div>
+            <Waterfall
+                :list="extrafanartList"
+                row-key="id"
+                img-selector="src"
+                :gutter="8"
+                :breakpoints="{
+                    1600: {
+                        rowPerView: 5
+                    },
+                    1200: {
+                        rowPerView: 4
+                    },
+                    900: {
+                        rowPerView: 3
+                    },
+                    600: {
+                        rowPerView: 2
+                    }
+                }"
+            >
+                <template #default="{ item, url }">
+                    <div class="waterfall-image-item" @click="setPreviewImage(item.imgData)">
+                        <LazyImg :url="url" />
+                    </div>
+                </template>
+            </Waterfall>
         </div>
 
         <Teleport to="body">
@@ -276,6 +325,24 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
 
     &.dragover {
         --border-color: var(--p-primary-color);
+    }
+}
+
+.waterfall-image-item {
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: calc(var(--border-radius) * 2);
+
+    :deep(img) {
+        width: 100%;
+        display: block;
+        transition: transform 0.3s var(--animation-type);
+    }
+
+    &:hover {
+        :deep(img) {
+            transform: scale(1.2);
+        }
     }
 }
 

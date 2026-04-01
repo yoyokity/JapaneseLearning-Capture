@@ -16,7 +16,6 @@
         "make ": "npm run build && electron-forge make"
     },
     "dependencies": {
-        "justified-layout": "^4.1.0",
         "sharp": "^0.34.3"
     },
     "devDependencies": {
@@ -72,6 +71,7 @@
         "vue": "^3.5.17",
         "vue-hooks-plus": "^2.4.1",
         "vue-tsc": "^3.0.3",
+        "vue-waterfall-plugin-next": "^3.0.1",
         "xmlbuilder2": "^3.1.1"
     }
 }
