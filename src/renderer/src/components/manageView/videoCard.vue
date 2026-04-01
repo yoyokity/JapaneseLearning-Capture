@@ -5,7 +5,7 @@ import VideoImage from '@renderer/components/control/VideoImage.vue'
 import { useDialog } from 'primevue/usedialog'
 import { computed } from 'vue'
 
-import Editor from './editor.vue'
+import Editor from './editor/editor.vue'
 
 const props = defineProps<{
     video: IVideoFile

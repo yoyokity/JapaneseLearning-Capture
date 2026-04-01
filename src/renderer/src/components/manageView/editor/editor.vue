@@ -1,17 +1,9 @@
 <script lang="ts" setup>
-import type { IActor, IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
+import type { IActor, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
-import VideoImage from '@renderer/components/control/VideoImage.vue'
-import {
-    DebugHelper,
-    ImageHelper,
-    isNumeric,
-    isUrl,
-    isValidDate,
-    PathHelper
-} from '@renderer/helper'
+import { DebugHelper, isNumeric, isUrl, isValidDate, PathHelper } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -25,9 +17,10 @@ import Textarea from 'primevue/textarea'
 import { inject, onMounted, ref } from 'vue'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
-import { useMessage } from '../control/message'
-import { readExtrafanart, scanFiles } from './func'
-import { scraperAll, scraperField, scraperSave } from './func.scraper'
+import { useMessage } from '../../control/message'
+import { readExtrafanart, scanFiles } from '../func'
+import { scraperAll, scraperField, scraperSave } from '../func.scraper'
+import ImageEditor from './imageEditor.vue'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
@@ -60,12 +53,6 @@ const addActorValue = ref<IActor>({
 })
 const addTagValue = ref('')
 const addGenreValue = ref('')
-
-const imageLabels = {
-    poster: '封面',
-    fanart: '背景',
-    thumb: '缩略图'
-}
 
 //预览图片
 const previewImage = ref<ArrayBuffer | null>(null)
@@ -144,49 +131,6 @@ function createMenuItems(inputRef: Ref<string>) {
 // 菜单选项
 const tagMenuItems = createMenuItems(addTagValue)
 const genreMenuItems = createMenuItems(addGenreValue)
-
-/**
- * 处理文件拖放事件
- * @param e 拖放事件
- * @param imageType 图片类型（poster、fanart、thumb）
- */
-async function handleDrop(e: DragEvent, imageType: 'poster' | 'fanart' | 'thumb') {
-    e.preventDefault()
-
-    // 确保拖放结束后移除dragover样式
-    if (e.currentTarget instanceof HTMLElement) {
-        e.currentTarget.classList.remove('dragover')
-    }
-
-    if (!e.dataTransfer?.files?.length) return
-
-    const file = e.dataTransfer.files[0]
-
-    // 更新对应类型的图片路径
-    const filePath = await PathHelper.getPathForFile(file)
-    if (!filePath) return
-    newVideo.value[imageType] = await ImageHelper.readImage(filePath)
-}
-
-/**
- * 处理拖动事件
- * @param e 拖动事件
- * @param action 动作类型：'enter'、'leave'或'over'
- */
-function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
-    e.preventDefault()
-
-    if (e.currentTarget instanceof HTMLElement) {
-        if (action === 'enter') {
-            e.currentTarget.classList.add('dragover')
-        } else if (action === 'leave') {
-            // 确保只有当鼠标真正离开元素时才移除dragover样式
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                e.currentTarget.classList.remove('dragover')
-            }
-        }
-    }
-}
 
 onMounted(async () => {
     DebugHelper.queueWithInterval('scraper', 0, true, async () => {
@@ -758,134 +702,12 @@ onMounted(async () => {
                 </div>
 
                 <!-- 图片编辑部分 -->
-                <div v-show="activeTab === 'image'">
-                    <!-- 海报 -->
-                    <div
-                        class="form-container"
-                        style="gap: 2rem; flex-direction: row; flex-wrap: wrap"
-                    >
-                        <div v-for="label in Object.keys(imageLabels)" :key="label">
-                            <div style="display: flex; align-items: center">
-                                <h2 style="margin-bottom: 1rem; text-align: center">
-                                    {{ imageLabels[label] }}
-                                </h2>
-                                <Button
-                                    v-tooltip="'搜索'"
-                                    icon="pi pi-search"
-                                    variant="outlined"
-                                    style="height: fit-content"
-                                    size="small"
-                                    @click="
-                                        scraperField(
-                                            newVideo,
-                                            a.webContent,
-                                            toast,
-                                            `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs,
-                                            imageLabels[label]
-                                        )
-                                    "
-                                />
-                            </div>
-
-                            <div
-                                class="image-container"
-                                @click="previewImage = newVideo[label]"
-                                @dragover.prevent="(e) => handleDrag(e, 'over')"
-                                @drop.prevent="
-                                    (e) => handleDrop(e, label as 'poster' | 'fanart' | 'thumb')
-                                "
-                                @dragenter.prevent="(e) => handleDrag(e, 'enter')"
-                                @dragleave.prevent="(e) => handleDrag(e, 'leave')"
-                            >
-                                <VideoImage
-                                    :img-data="newVideo[label]"
-                                    :style="{
-                                        height: '15rem'
-                                    }"
-                                    :error-image-style="{
-                                        padding: '2rem'
-                                    }"
-                                />
-                                <div class="image-overlay">
-                                    <p>拖入图片以更改</p>
-                                    <i class="pi pi-eye" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 剧照 -->
-                    <div class="form-container" style="gap: 0">
-                        <div style="display: flex; align-items: center; margin-top: var(--spacing)">
-                            <h2 style="margin-right: 5rem; margin-bottom: 1rem; text-align: center">
-                                剧照
-                            </h2>
-                            <Button
-                                v-tooltip="'搜索'"
-                                icon="pi pi-search"
-                                variant="outlined"
-                                style="height: fit-content"
-                                size="small"
-                                @click="
-                                    scraperField(
-                                        newVideo,
-                                        a.webContent,
-                                        toast,
-                                        'parseExtrafanart',
-                                        '剧照'
-                                    )
-                                "
-                            />
-                        </div>
-
-                        <div
-                            class="form-container"
-                            style="gap: 0.5rem; flex-direction: row; flex-wrap: wrap"
-                        >
-                            <VideoImage
-                                v-for="(value, index) in newVideo.extrafanart"
-                                :key="index"
-                                :img-data="value"
-                                :style="{
-                                    height: '15rem',
-                                    cursor: 'pointer'
-                                }"
-                                :error-image-style="{
-                                    padding: '2rem'
-                                }"
-                                @click="previewImage = value"
-                            />
-                        </div>
-                    </div>
-
-                    <!-- 放大显示 -->
-                    <Teleport to="body">
-                        <Transition mode="out-in" name="fade">
-                            <div
-                                v-if="previewImage"
-                                class="preview-image-modal"
-                                @click="previewImage = null"
-                            >
-                                <VideoImage
-                                    :img-data="previewImage"
-                                    :image-style="{
-                                        width: '100%',
-                                        height: '100%',
-                                        objectFit: 'contain'
-                                    }"
-                                    :style="{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        width: '90vw',
-                                        height: '90vh'
-                                    }"
-                                    border-radius="none"
-                                />
-                            </div>
-                        </Transition>
-                    </Teleport>
-                </div>
+                <ImageEditor
+                    v-show="activeTab === 'image'"
+                    v-model:video="newVideo"
+                    v-model:preview-image="previewImage"
+                    :web-content="a.webContent"
+                />
             </div>
         </Scroll>
 
@@ -1034,87 +856,6 @@ onMounted(async () => {
         padding-right: 1rem;
         border-top: var(--separator);
     }
-
-    //图片覆盖层
-    .image-container {
-        --border-color: var(--p-surface-400);
-
-        cursor: pointer;
-        position: relative;
-        transition: all 0.3s var(--animation-type);
-        border-radius: calc(var(--border-radius) * 2 + 5px);
-        overflow: hidden;
-
-        border: 4px dashed var(--border-color);
-        padding: 4px;
-
-        .image-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            transition: all 0.3s var(--animation-type);
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--p-primary-inverse-color);
-
-            p {
-                position: absolute;
-                top: 0;
-            }
-
-            i {
-                font-size: 3rem;
-            }
-        }
-
-        &:hover,
-        &.dragover {
-            .image-overlay {
-                opacity: 1;
-            }
-        }
-
-        &.dragover {
-            --border-color: var(--p-primary-color);
-        }
-    }
-}
-
-//放大预览图片
-.preview-image-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: color-mix(in srgb, var(--p-surface-900) 80%, transparent);
-    color: var(--p-mask-color);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(16px);
-}
-
-// 淡入淡出动画
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-.fade-enter-to,
-.fade-leave-from {
-    opacity: 1;
 }
 
 input {
