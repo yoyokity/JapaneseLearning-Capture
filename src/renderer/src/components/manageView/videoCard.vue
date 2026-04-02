@@ -51,7 +51,12 @@ function openEditor() {
 
 <template>
     <div class="video-card" @click="openEditor" @contextmenu="onContextmenu">
-        <VideoImage :img-data="image" style="aspect-ratio: 379 / 538" />
+        <VideoImage
+            :img-data="image"
+            image-loading="lazy"
+            image-decoding="async"
+            style="aspect-ratio: 379 / 538"
+        />
         <div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
             {{ name }}
         </div>

@@ -5,8 +5,8 @@ import type { Ref } from 'vue'
 import VideoImage from '@renderer/components/control/VideoImage.vue'
 import { ImageHelper, PathHelper } from '@renderer/helper'
 import Button from 'primevue/button'
-import { computed } from 'vue'
-import { LazyImg, Waterfall } from 'vue-waterfall-plugin-next'
+import { computed, ref } from 'vue'
+import { Waterfall } from 'vue-waterfall-plugin-next'
 
 import { useMessage } from '../../control/message'
 import { scraperField } from '../func.scraper'
@@ -46,6 +46,8 @@ const previewImage = computed({
     }
 })
 
+const waterfallRef = ref<{ renderer: () => void } | null>(null)
+
 /**
  * 剧照瀑布流数据
  */
@@ -63,6 +65,26 @@ const extrafanartList = computed(() =>
  */
 function setPreviewImage(value: string | null) {
     previewImage.value = value
+}
+
+/**
+ * 图片加载后重排瀑布流，确保按原图比例显示
+ */
+function renderWaterfall() {
+    waterfallRef.value?.renderer()
+}
+
+/**
+ * 处理剧照加载失败
+ * @param imgData 原始路径
+ * @param url 图片地址
+ */
+function handleWaterfallImageError(imgData: string, url: string) {
+    console.error('local-file 图片加载失败', {
+        originalPath: imgData,
+        imageUrl: url
+    })
+    renderWaterfall()
 }
 
 /**
@@ -126,6 +148,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
 
 <template>
     <div>
+        <!-- 主图 -->
         <div class="form-container" style="gap: 2rem; flex-direction: row; flex-wrap: wrap">
             <div v-for="label in Object.keys(imageLabels)" :key="label">
                 <div style="display: flex; align-items: center">
@@ -152,6 +175,8 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                 >
                     <VideoImage
                         :img-data="video[label as 'poster' | 'fanart' | 'thumb']"
+                        image-loading="eager"
+                        image-decoding="async"
                         :style="{
                             height: '15rem'
                         }"
@@ -167,9 +192,10 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
             </div>
         </div>
 
+        <!-- 剧照图 -->
         <div class="form-container" style="gap: 0">
             <div style="display: flex; align-items: center; margin-top: var(--spacing)">
-                <h2 style="margin-right: 5rem; margin-bottom: 1rem; text-align: center">剧照</h2>
+                <h2 style="margin-right: 1rem; margin-bottom: 1rem; text-align: center">剧照</h2>
                 <Button
                     v-tooltip="'搜索'"
                     icon="pi pi-search"
@@ -183,10 +209,11 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
             </div>
 
             <Waterfall
+                ref="waterfallRef"
                 :list="extrafanartList"
                 row-key="id"
                 img-selector="src"
-                :check-images-loaded="false"
+                :check-images-loaded="true"
                 :animation-duration="300"
                 :gutter="8"
                 :breakpoints="{
@@ -206,17 +233,26 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
             >
                 <template #default="{ item, url }">
                     <div class="waterfall-image-item" @click="setPreviewImage(item.imgData)">
-                        <LazyImg :url="url" />
+                        <img
+                            :src="url"
+                            loading="lazy"
+                            decoding="async"
+                            @load="renderWaterfall"
+                            @error="handleWaterfallImageError(item.imgData, url)"
+                        />
                     </div>
                 </template>
             </Waterfall>
         </div>
 
+        <!-- 预览图 -->
         <Teleport to="body">
             <Transition mode="out-in" name="fade">
                 <div v-if="previewImage" class="preview-image-modal" @click="setPreviewImage(null)">
                     <VideoImage
                         :img-data="previewImage"
+                        image-loading="eager"
+                        image-decoding="sync"
                         :image-style="{
                             width: '100%',
                             height: '100%',
@@ -311,6 +347,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
 
     :deep(img) {
         width: 100%;
+        height: auto;
         display: block;
         transition: transform 0.3s var(--animation-type);
     }

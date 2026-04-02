@@ -7,6 +7,8 @@ import { onMounted, ref, watch } from 'vue'
 
 interface ImageProps {
     imgData?: string | null
+    imageLoading?: 'eager' | 'lazy'
+    imageDecoding?: 'sync' | 'async' | 'auto'
     /**
      * 普通状态下的图片样式
      */
@@ -20,6 +22,8 @@ interface ImageProps {
 
 const props = withDefaults(defineProps<ImageProps>(), {
     imgData: null,
+    imageLoading: 'lazy',
+    imageDecoding: 'async',
     imageStyle: () => ({}),
     errorImageStyle: () => ({}),
     borderRadius: 'calc(var(--border-radius) * 2)'
@@ -42,6 +46,17 @@ function loadImage() {
     isImgError.value = false
 }
 
+/**
+ * 处理图片加载失败
+ */
+function handleImageError() {
+    console.error('local-file 图片加载失败', {
+        originalPath: props.imgData,
+        imageUrl: imageData.value
+    })
+    isImgError.value = true
+}
+
 watch(() => props.imgData, loadImage)
 
 onMounted(loadImage)
@@ -52,9 +67,11 @@ onMounted(loadImage)
         <img
             v-if="!isImgError"
             :src="imageData"
+            :loading="imageLoading"
+            :decoding="imageDecoding"
             :style="imageStyle"
             class="video-card-img"
-            @error="isImgError = true"
+            @error="handleImageError"
         />
         <img v-else :src="imgFall" :style="errorImageStyle" class="video-card-img error" />
     </div>
