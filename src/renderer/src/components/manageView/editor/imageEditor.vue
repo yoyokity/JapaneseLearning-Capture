@@ -212,6 +212,8 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                 :list="extrafanartList"
                 row-key="id"
                 img-selector="src"
+                :check-images-loaded="false"
+                :animation-duration="300"
                 :gutter="8"
                 :breakpoints="{
                     1600: {

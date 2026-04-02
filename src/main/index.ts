@@ -6,6 +6,19 @@ import { registerCloudflareIpc } from './CloudflareWindow'
 import { appPath } from './ipc'
 import { createWindow } from './window'
 
+// 预注册本地文件协议，确保渲染进程可识别
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'local-file',
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            corsEnabled: true
+        }
+    }
+])
+
 // 设置app路径
 appPath.root = process.cwd()
 appPath.arsr = app.getAppPath()
@@ -32,8 +45,13 @@ app.whenReady().then(() => {
 
     // 注册一个名为 'local-file' 的协议
     protocol.handle('local-file', (request) => {
-        const url = decodeURI(request.url.replace(/^local-file:\/\//, ''))
-        return net.fetch(`file://${url}`)
+        const requestUrl = new URL(request.url)
+        const pathname = decodeURIComponent(requestUrl.pathname)
+        const normalizedPath = requestUrl.host
+            ? `${requestUrl.host.toUpperCase()}:${pathname}`
+            : pathname.replace(/^\/(?<drive>[A-Z]:\/)/i, '$<drive>')
+
+        return net.fetch(encodeURI(`file:///${normalizedPath.replace(/\\/g, '/')}`))
     })
 
     createWindow()

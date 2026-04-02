@@ -6,6 +6,15 @@ import { Ipc } from '@renderer/ipc'
 
 export class ImageHelper {
     /**
+     * 将本地图片路径转换为 img 可识别的本地协议 URL
+     * @param path 本地图片路径
+     * @returns 本地协议 URL
+     */
+    static toLocalFileUrl(path: Path | string): string {
+        return encodeURI(`local-file:///${path.toString().replace(/\\/g, '/')}`)
+    }
+
+    /**
      * 读取图片
      * @remarks 用时 <10ms
      * @param path 图片路径
