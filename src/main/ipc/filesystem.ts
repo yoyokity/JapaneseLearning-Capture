@@ -264,10 +264,10 @@ ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
         for (const entry of entries) {
             if (entry.stats && entry.stats.isDirectory()) {
                 // 文件夹
-                dirs.push(path.normalize(entry.path).replace(rootPath, ''))
+                dirs.push(path.normalize(path.relative(rootPath, entry.path)))
             } else if (entry.stats && entry.stats.isFile()) {
                 // 视频文件
-                videoFiles.push(path.normalize(entry.path).replace(rootPath, ''))
+                videoFiles.push(path.normalize(path.relative(rootPath, entry.path)))
             }
         }
 
@@ -309,8 +309,12 @@ ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
         const result = Array.from(topLevelDirs).map((dir) => path.join(rootPath, dir))
 
         for (const dir of result) {
-            await shell.trashItem(dir)
-            log.info(`删除无视频文件夹：${dir}`)
+            try {
+                await shell.trashItem(dir)
+                log.info(`删除无视频文件夹：${dir}`)
+            } catch (error) {
+                log.warn(`删除无视频文件夹失败：${dir}`, error)
+            }
         }
     })
 })
