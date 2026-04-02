@@ -7,7 +7,6 @@ import sharp from 'sharp'
 
 import { Cmd } from '../helper/shell'
 import { appPath } from './app'
-import { createDirectory } from './filesystem'
 import { tryExecute, tryExecuteSync } from './func'
 
 type ImageData =
@@ -40,17 +39,19 @@ ipcMain.handle('image:read', (_, path: string) => {
 })
 
 //超分图片
-ipcMain.handle('image:superResolution', async (_, imageData: ImageData, anime: boolean = false) => {
+ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: boolean = false) => {
     return tryExecute(async () => {
         //保存图片到temp
         const tempPath = app.getPath('temp')
 
         //如果没有temp则创建
-        createDirectory(tempPath)
+        const tempFileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        const tempImageBefore = join(tempPath, `realesrgan_before_${tempFileId}.png`)
+        const tempImageAfter = join(tempPath, `realesrgan_after_${tempFileId}.png`)
+        const tempResultPath = join(tempPath, `super_resolution_${tempFileId}.jpg`)
+        const sourceImageData = await fs.promises.readFile(imagePath)
 
-        const tempImageBefore = join(tempPath, 'realesrgan_before.png')
-        const tempImageAfter = join(tempPath, 'realesrgan_after.png')
-        await sharp(imageData).toFile(tempImageBefore)
+        await sharp(sourceImageData).toFile(tempImageBefore)
 
         //超分
         const ars = [
@@ -67,19 +68,14 @@ ipcMain.handle('image:superResolution', async (_, imageData: ImageData, anime: b
             'tools/realesrgan/realesrgan-ncnn-vulkan.exe'
         )
 
-        return new Promise<ArrayBuffer>((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
             const realesrgan = new Cmd(realesrganPath)
             const cmd = realesrgan.run(ars)
             cmd.onExit(async (code, text) => {
                 if (code === 0) {
-                    //使用sharp转换为jpg，质量92，返回ArrayBuffer
-                    const buffer = await sharp(tempImageAfter).jpeg({ quality: 92 }).toBuffer()
-                    resolve(
-                        buffer.buffer.slice(
-                            buffer.byteOffset,
-                            buffer.byteOffset + buffer.byteLength
-                        ) as ArrayBuffer
-                    )
+                    //使用sharp转换为jpg，质量92，返回temp路径
+                    await sharp(tempImageAfter).jpeg({ quality: 92 }).toFile(tempResultPath)
+                    resolve(tempResultPath)
                 } else {
                     reject(new Error(text))
                 }

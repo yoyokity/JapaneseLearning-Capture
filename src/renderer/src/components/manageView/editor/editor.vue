@@ -14,7 +14,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
-import { inject, onMounted, ref } from 'vue'
+import { inject, nextTick, onMounted, ref } from 'vue'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 import { useMessage } from '../../control/message'
@@ -95,16 +95,19 @@ async function onSave() {
             return
         }
 
-        //删除空文件夹
-        await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
-
         //重新扫描文件
         await scanFiles(toast)
 
-        toast.success('保存成功！')
-
+        // 先关闭弹窗并清空预览，释放旧图片文件引用
+        previewImage.value = null
         isSaving.value = false
+        toast.success('保存成功！')
         dialogRef.value.close(newVideo.value)
+
+        // 等待界面完成更新后，再删除旧的空文件夹，避免 Windows 判定文件占用
+        await nextTick()
+        await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
+
         DebugHelper.queueClear('scraper')
     })
 }

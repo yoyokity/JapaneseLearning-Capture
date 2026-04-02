@@ -226,7 +226,10 @@ const hanimeScraper: IScraper = {
         parsePlot: async (video: IVideo, webContent: string) => {
             const $ = cheerioLoad(webContent)
             let plot = $('div.video-caption-text').text()
-            plot = plot.split('[中文字幕]')[1].trim()
+
+            if (plot.includes('[中文字幕]')) {
+                plot = plot.split('[中文字幕]')[1].trim()
+            }
 
             //翻译一下
             const re = await TransHelper.translate(plot)
@@ -295,7 +298,7 @@ const hanimeScraper: IScraper = {
             if (!poster) return null
 
             if (!temp.超分封面) {
-                const re = await ImageHelper.superResolutionImagePath(poster, true)
+                const re = await ImageHelper.superResolutionImage(poster, true)
                 temp.超分封面 = re ?? poster
             }
 
@@ -312,7 +315,7 @@ const hanimeScraper: IScraper = {
             if (!poster) return null
 
             if (!temp.超分封面) {
-                const re = await ImageHelper.superResolutionImagePath(poster, true)
+                const re = await ImageHelper.superResolutionImage(poster, true)
                 temp.超分封面 = re ?? poster
             }
 

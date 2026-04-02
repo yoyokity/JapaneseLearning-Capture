@@ -33,10 +33,10 @@ export const image = {
 
     /**
      * 超分辨率处理图片
-     * @param imageData 图片数据
+     * @param imagePath 原图路径
      * @param anime 是否为动漫图片，默认为false
-     * @returns 超分后的图片ArrayBuffer
+     * @returns 超分后的临时图片路径
      */
-    superResolutionImage: (imageData: ImageData, anime: boolean = false): Promise<ArrayBuffer> =>
-        invoke('image:superResolution', imageData, anime)
+    superResolutionImage: (imagePath: string, anime: boolean = false): Promise<string> =>
+        invoke('image:superResolution', imagePath, anime)
 }

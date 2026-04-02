@@ -1,9 +1,11 @@
+import * as fs from 'node:fs'
 import { join } from 'node:path'
 import { electronApp } from '@electron-toolkit/utils'
 import { app, BrowserWindow, net, protocol } from 'electron'
 
 import { registerCloudflareIpc } from './CloudflareWindow'
 import { appPath } from './ipc'
+import { createDirectory } from './ipc/filesystem'
 import { createWindow } from './window'
 
 // 预注册本地文件协议，确保渲染进程可识别
@@ -30,6 +32,8 @@ appPath.renderer = join(appPath.arsr, 'dist', 'renderer')
 app.setPath('userData', join(appPath.root, 'data'))
 app.setPath('logs', join(appPath.root, 'data', 'logs'))
 app.setPath('temp', join(appPath.root, 'data', 'temp'))
+
+createDirectory(app.getPath('temp'))
 
 app.whenReady().then(() => {
     // 为 Windows 设置应用用户模型 ID。这是一个专门针对 Windows 的唯一标识符。
@@ -73,4 +77,9 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
     }
+})
+
+// 程序退出时清理 temp 文件夹
+app.on('will-quit', () => {
+    fs.rmSync(app.getPath('temp'), { recursive: true, force: true })
 })

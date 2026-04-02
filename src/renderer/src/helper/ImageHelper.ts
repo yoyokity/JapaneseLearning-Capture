@@ -43,25 +43,6 @@ export class ImageHelper {
     }
 
     /**
-     * 超分辨率处理图片
-     * @param imageData 图片数据
-     * @param anime 是否为动漫图片，默认为false
-     * @returns 超分后的图片ArrayBuffer
-     */
-    static async superResolutionImage(
-        imageData: ImageData,
-        anime: boolean = false
-    ): Promise<ArrayBuffer | null> {
-        const re = await DebugHelper.tryExecute(Ipc.image.superResolutionImage, imageData, anime)
-        if (!re.hasError) {
-            return re.result
-        } else {
-            DebugHelper.error(`超分辨率处理图片失败：`, re.error)
-            return null
-        }
-    }
-
-    /**
      * 保存图片到临时目录并返回本地路径
      * @param imageData 图片数据
      * @param name 临时文件名
@@ -71,11 +52,8 @@ export class ImageHelper {
         imageData: ImageData,
         name: string = `image_${Date.now()}`
     ): Promise<string | null> {
-        const tempDir = PathHelper.tempPath.join('images')
-        const uniqueName = `${name}_${Math.random().toString(36).slice(2, 8)}`
-        await PathHelper.createDirectory(tempDir)
-
-        const tempImagePath = tempDir.join(`${uniqueName}.jpg`)
+        const uniqueName = `${name}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        const tempImagePath = PathHelper.tempPath.join(`${uniqueName}.jpg`)
         const result = await DebugHelper.tryExecute(
             Ipc.image.saveImage,
             imageData,
@@ -90,18 +68,25 @@ export class ImageHelper {
     }
 
     /**
-     * 超分辨率处理图片并保存到临时目录
-     * @param imageData 图片数据
+     * 超分辨率处理图片并返回临时图片路径
+     * @param imagePath 原图路径
      * @param anime 是否为动漫图片
      * @returns 超分后的本地图片路径
      */
-    static async superResolutionImagePath(
-        imageData: ImageData,
+    static async superResolutionImage(
+        imagePath: Path | string,
         anime: boolean = false
     ): Promise<string | null> {
-        const result = await this.superResolutionImage(imageData, anime)
-        if (!result) return null
-
-        return this.saveTempImage(result, `super_resolution_${Date.now()}`)
+        const re = await DebugHelper.tryExecute(
+            Ipc.image.superResolutionImage,
+            imagePath.toString(),
+            anime
+        )
+        if (!re.hasError) {
+            return re.result
+        } else {
+            DebugHelper.error(`超分辨率处理图片失败：`, re.error)
+            return null
+        }
     }
 }
