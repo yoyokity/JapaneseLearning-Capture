@@ -1,6 +1,6 @@
 import type { IVideo } from '@renderer/scraper'
 
-import { DebugHelper, NetHelper } from '@renderer/helper'
+import { DebugHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { temp } from './temp'
@@ -107,7 +107,7 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
 /**
  * 获取 Getchu 剧照
  */
-export async function getExtrafanartGetchu(): Promise<ArrayBuffer[]> {
+export async function getExtrafanartGetchu(): Promise<string[]> {
     if (!temp.webContent.getchu) {
         DebugHelper.log(`- 没有getchu，无法获取剧照`)
         return []
@@ -121,12 +121,16 @@ export async function getExtrafanartGetchu(): Promise<ArrayBuffer[]> {
         .filter((href): href is string => !!href)
         .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
 
-    const extrafanart: ArrayBuffer[] = []
+    const extrafanart: string[] = []
     for (const url of urls) {
         const re = await NetHelper.getImage(url, getchuOptions)
         if (re.ok) {
             DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
-            extrafanart.push(re.body)
+            const tempPath = await ImageHelper.saveTempImage(
+                re.body,
+                `getchu_extrafanart_${Date.now()}`
+            )
+            if (tempPath) extrafanart.push(tempPath)
         } else {
             DebugHelper.warn(`- [Getchu] 获取剧照失败！:${url}`)
         }
@@ -138,7 +142,7 @@ export async function getExtrafanartGetchu(): Promise<ArrayBuffer[]> {
 /**
  * 获取 Getchu 封面
  */
-export async function getPosterGetchu(): Promise<ArrayBuffer | null> {
+export async function getPosterGetchu(): Promise<string | null> {
     if (!temp.webContent.getchu) {
         return null
     }
@@ -162,5 +166,5 @@ export async function getPosterGetchu(): Promise<ArrayBuffer | null> {
     }
 
     DebugHelper.log(`- [Getchu] 获取封面成功！:${posterUrl}`)
-    return re.body
+    return ImageHelper.saveTempImage(re.body, `getchu_poster_${Date.now()}`)
 }

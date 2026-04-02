@@ -101,19 +101,19 @@ export interface IVideo {
     /**
      * 视频文件的封面路径
      */
-    poster: ArrayBuffer | null
+    poster: string | null
     /**
      * 视频文件的缩略图路径
      */
-    thumb: ArrayBuffer | null
+    thumb: string | null
     /**
      * 视频文件的背景图路径
      */
-    fanart: ArrayBuffer | null
+    fanart: string | null
     /**
      * 视频文件的额外背景图路径
      */
-    extrafanart: Array<ArrayBuffer>
+    extrafanart: string[]
 }
 
 /**

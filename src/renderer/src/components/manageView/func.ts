@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper'
 import type { IVideoFile } from '@renderer/scraper'
 
-import { DebugHelper, ImageHelper, PathHelper, videoExtensions } from '@renderer/helper'
+import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
 import { Ipc } from '@renderer/ipc'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { globalStatesStore } from '@renderer/stores'
@@ -121,24 +121,29 @@ async function read(path: string): Promise<IVideoFile> {
 
     //处理图片
     if (movie.poster) {
-        if (!PathHelper.newPath(movie.poster).isAbsolute) {
-            movie.poster = video.dir.join(movie.poster)
-        }
-        video.poster = await ImageHelper.readImage(movie.poster)
+        const posterPath = PathHelper.newPath(movie.poster)
+        const normalizedPosterPath = posterPath.isAbsolute
+            ? posterPath
+            : video.dir.join(movie.poster)
+        video.poster = (await normalizedPosterPath.isExist())
+            ? normalizedPosterPath.toString()
+            : null
     }
 
     if (movie.thumb) {
-        if (!PathHelper.newPath(movie.thumb).isAbsolute) {
-            movie.thumb = video.dir.join(movie.thumb)
-        }
-        video.thumb = await ImageHelper.readImage(movie.thumb)
+        const thumbPath = PathHelper.newPath(movie.thumb)
+        const normalizedThumbPath = thumbPath.isAbsolute ? thumbPath : video.dir.join(movie.thumb)
+        video.thumb = (await normalizedThumbPath.isExist()) ? normalizedThumbPath.toString() : null
     }
 
     if (movie.fanart) {
-        if (!PathHelper.newPath(movie.fanart).isAbsolute) {
-            movie.fanart = video.dir.join(movie.fanart)
-        }
-        video.fanart = await ImageHelper.readImage(movie.fanart)
+        const fanartPath = PathHelper.newPath(movie.fanart)
+        const normalizedFanartPath = fanartPath.isAbsolute
+            ? fanartPath
+            : video.dir.join(movie.fanart)
+        video.fanart = (await normalizedFanartPath.isExist())
+            ? normalizedFanartPath.toString()
+            : null
     }
 
     return video
@@ -172,12 +177,9 @@ export async function readExtrafanart(
         const filePath = PathHelper.newPath(file)
         const ext = filePath.extname.toLowerCase()
         if (ext === '.jpg' || ext === '.png' || ext === '.jpeg' || ext === '.webp') {
-            const re = await ImageHelper.readImage(filePath)
-            if (re) {
-                //因为是拷贝之后的异步执行，所以两个都要有
-                video.extrafanart.push(re)
-                sourceVideo.extrafanart.push(re)
-            }
+            //因为是拷贝之后的异步执行，所以两个都要有
+            video.extrafanart.push(filePath.toString())
+            sourceVideo.extrafanart.push(filePath.toString())
         }
     }
 

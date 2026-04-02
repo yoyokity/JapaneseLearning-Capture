@@ -50,8 +50,18 @@ app.whenReady().then(() => {
         const normalizedPath = requestUrl.host
             ? `${requestUrl.host.toUpperCase()}:${pathname}`
             : pathname.replace(/^\/(?<drive>[A-Z]:\/)/i, '$<drive>')
+        const encodedPath = normalizedPath
+            .replace(/\\/g, '/')
+            .split('/')
+            .map((item, index) => {
+                if (index === 0 && /^[A-Z]:$/i.test(item)) {
+                    return item
+                }
+                return encodeURIComponent(item)
+            })
+            .join('/')
 
-        return net.fetch(encodeURI(`file:///${normalizedPath.replace(/\\/g, '/')}`))
+        return net.fetch(`file:///${encodedPath}`)
     })
 
     createWindow()

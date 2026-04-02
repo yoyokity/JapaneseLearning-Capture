@@ -2,10 +2,11 @@
 import type { StyleValue } from 'vue'
 
 import imgFall from '@renderer/assets/img-fall.svg?url'
+import { ImageHelper } from '@renderer/helper'
 import { onMounted, ref, watch } from 'vue'
 
 interface ImageProps {
-    imgData?: ArrayBuffer | null
+    imgData?: string | null
     /**
      * 普通状态下的图片样式
      */
@@ -28,29 +29,6 @@ const isImgError = ref(true)
 const imageData = ref<string>()
 
 /**
- * 将 ArrayBuffer 转换为 Data URL
- */
-function arrayBufferToDataUrl(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i])
-    }
-    const base64 = btoa(binary)
-    // 根据文件头判断图片类型
-    const header = bytes.slice(0, 4)
-    let mimeType = 'image/jpeg'
-    if (header[0] === 0x89 && header[1] === 0x50) {
-        mimeType = 'image/png'
-    } else if (header[0] === 0x47 && header[1] === 0x49) {
-        mimeType = 'image/gif'
-    } else if (header[0] === 0x52 && header[1] === 0x49) {
-        mimeType = 'image/webp'
-    }
-    return `data:${mimeType};base64,${base64}`
-}
-
-/**
  * 加载图片
  */
 function loadImage() {
@@ -60,7 +38,7 @@ function loadImage() {
         return
     }
 
-    imageData.value = arrayBufferToDataUrl(props.imgData)
+    imageData.value = ImageHelper.toLocalFileUrl(props.imgData)
     isImgError.value = false
 }
 

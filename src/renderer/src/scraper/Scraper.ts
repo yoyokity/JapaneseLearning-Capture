@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper'
 import type { IVideo, IVideoFile } from './Video'
 
-import { DebugHelper, ImageHelper, PathHelper } from '@renderer/helper'
+import { DebugHelper, PathHelper } from '@renderer/helper'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 
@@ -277,7 +277,7 @@ export class Scraper {
         if (video.poster && (!isEqual(sourceVideoFile.poster, video.poster) || dirDiff)) {
             const posterPath = videoDir.join('poster.jpg')
             imagePromises.push(
-                ImageHelper.saveImage(video.poster, posterPath).then(() => {
+                PathHelper.copy(video.poster, posterPath).then(() => {
                     DebugHelper.info(`- 保存封面poster成功！:${posterPath}`)
                 })
             )
@@ -286,7 +286,7 @@ export class Scraper {
         if (video.thumb && (!isEqual(sourceVideoFile.thumb, video.thumb) || dirDiff)) {
             const thumbPath = videoDir.join('thumb.jpg')
             imagePromises.push(
-                ImageHelper.saveImage(video.thumb, thumbPath).then(() => {
+                PathHelper.copy(video.thumb, thumbPath).then(() => {
                     DebugHelper.info(`- 保存缩略图thumb成功！:${thumbPath}`)
                 })
             )
@@ -295,7 +295,7 @@ export class Scraper {
         if (video.fanart && (!isEqual(sourceVideoFile.fanart, video.fanart) || dirDiff)) {
             const fanartPath = videoDir.join('fanart.jpg')
             imagePromises.push(
-                ImageHelper.saveImage(video.fanart, fanartPath).then(() => {
+                PathHelper.copy(video.fanart, fanartPath).then(() => {
                     DebugHelper.info(`- 保存背景图fanart成功！:${fanartPath}`)
                 })
             )
@@ -313,7 +313,7 @@ export class Scraper {
                     const extrafanart = video.extrafanart[index - 1]
                     const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
                     imagePromises.push(
-                        ImageHelper.saveImage(extrafanart, path).then(() => {
+                        PathHelper.copy(extrafanart, path).then(() => {
                             DebugHelper.info(`- 保存剧照extrafanart-${index}成功！:${path}`)
                         })
                     )

@@ -295,7 +295,7 @@ const hanimeScraper: IScraper = {
             if (!poster) return null
 
             if (!temp.超分封面) {
-                const re = await ImageHelper.superResolutionImage(poster, true)
+                const re = await ImageHelper.superResolutionImagePath(poster, true)
                 temp.超分封面 = re ?? poster
             }
 
@@ -312,7 +312,7 @@ const hanimeScraper: IScraper = {
             if (!poster) return null
 
             if (!temp.超分封面) {
-                const re = await ImageHelper.superResolutionImage(poster, true)
+                const re = await ImageHelper.superResolutionImagePath(poster, true)
                 temp.超分封面 = re ?? poster
             }
 

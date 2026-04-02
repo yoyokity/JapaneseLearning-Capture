@@ -1,6 +1,6 @@
 import type { IVideo } from '@renderer/scraper'
 
-import { DebugHelper, NetHelper } from '@renderer/helper'
+import { DebugHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { temp } from './temp'
@@ -64,7 +64,7 @@ export async function getWebContentHanime1(video: IVideo): Promise<string | null
     if (searchResult.poster) {
         const re = await NetHelper.getImage(searchResult.poster)
         if (re.ok) {
-            temp.封面 = re.body
+            temp.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
         }
     }
 
@@ -85,7 +85,7 @@ export async function getWebContentHanime1(video: IVideo): Promise<string | null
 /**
  * 获取 Hanime1 封面
  */
-export async function getPosterHanime1(originaltitle: string): Promise<ArrayBuffer | null> {
+export async function getPosterHanime1(originaltitle: string): Promise<string | null> {
     const searchResult = await searchVideoHanime1(originaltitle)
     if (!searchResult?.poster) {
         DebugHelper.warn(`- [Hanime1] 没有找到封面`)
@@ -99,5 +99,5 @@ export async function getPosterHanime1(originaltitle: string): Promise<ArrayBuff
     }
 
     DebugHelper.log(`- [Hanime1] 获取封面成功！:${searchResult.poster}`)
-    return re.body
+    return ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
 }

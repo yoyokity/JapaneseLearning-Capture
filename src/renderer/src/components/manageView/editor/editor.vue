@@ -55,7 +55,7 @@ const addTagValue = ref('')
 const addGenreValue = ref('')
 
 //预览图片
-const previewImage = ref<ArrayBuffer | null>(null)
+const previewImage = ref<string | null>(null)
 
 //快捷键退出
 useKeyPress(['esc'], () => {

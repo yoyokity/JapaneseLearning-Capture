@@ -14,14 +14,14 @@ import { scraperField } from '../func.scraper'
 interface IProps {
     video: IVideoFile
     webContent: Ref<string>
-    previewImage: ArrayBuffer | null
+    previewImage: string | null
 }
 
 const props = defineProps<IProps>()
 
 const emit = defineEmits<{
     'update:video': [value: IVideoFile]
-    'update:previewImage': [value: ArrayBuffer | null]
+    'update:previewImage': [value: string | null]
 }>()
 
 const { toast } = useMessage()
@@ -41,7 +41,7 @@ const video = computed({
 
 const previewImage = computed({
     get: () => props.previewImage,
-    set: (value: ArrayBuffer | null) => {
+    set: (value: string | null) => {
         emit('update:previewImage', value)
     }
 })
@@ -53,41 +53,15 @@ const extrafanartList = computed(() =>
     (video.value.extrafanart || []).map((item, index) => ({
         id: index,
         imgData: item,
-        src: arrayBufferToDataUrl(item)
+        src: ImageHelper.toLocalFileUrl(item)
     }))
 )
-
-/**
- * 将 ArrayBuffer 转换为 Data URL
- * @param buffer 图片二进制数据
- */
-function arrayBufferToDataUrl(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i])
-    }
-
-    const base64 = btoa(binary)
-    const header = bytes.slice(0, 4)
-    let mimeType = 'image/jpeg'
-
-    if (header[0] === 0x89 && header[1] === 0x50) {
-        mimeType = 'image/png'
-    } else if (header[0] === 0x47 && header[1] === 0x49) {
-        mimeType = 'image/gif'
-    } else if (header[0] === 0x52 && header[1] === 0x49) {
-        mimeType = 'image/webp'
-    }
-
-    return `data:${mimeType};base64,${base64}`
-}
 
 /**
  * 同步预览图到父组件
  * @param value 预览图数据
  */
-function setPreviewImage(value: ArrayBuffer | null) {
+function setPreviewImage(value: string | null) {
     previewImage.value = value
 }
 
@@ -111,7 +85,7 @@ async function handleDrop(e: DragEvent, imageType: 'poster' | 'fanart' | 'thumb'
 
     video.value = {
         ...video.value,
-        [imageType]: await ImageHelper.readImage(filePath)
+        [imageType]: filePath
     }
 }
 
