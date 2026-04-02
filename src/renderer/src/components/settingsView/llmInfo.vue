@@ -3,15 +3,15 @@ import llmInfo1 from '@renderer/assets/llm-info-1.jpg'
 import llmInfo2 from '@renderer/assets/llm-info-2.jpg'
 import llmInfo3 from '@renderer/assets/llm-info-3.jpg'
 import llmInfo4 from '@renderer/assets/llm-info-4.jpg'
+import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import Button from 'primevue/button'
 import Image from 'primevue/image'
 import Message from 'primevue/message'
-import ScrollPanel from 'primevue/scrollpanel'
 </script>
 
 <template>
     <div class="llm-info" style="user-select: text">
-        <ScrollPanel style="height: calc(90vh - 7rem)">
+        <Scroll style="height: calc(90vh - 7rem)">
             <div class="content">
                 <h1>本地LLM API服务器推荐对新手最友好的：</h1>
                 <Message severity="info"> LM Studio </Message>
@@ -58,7 +58,7 @@ import ScrollPanel from 'primevue/scrollpanel'
                     </li>
                 </ol>
             </div>
-        </ScrollPanel>
+        </Scroll>
     </div>
 </template>
 

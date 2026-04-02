@@ -112,7 +112,7 @@ const initScroll = () => {
         // 滚动条配置
         scrollbar: props.showScrollbar
             ? {
-                  fade: props.showScrollbarAllways, // 滚动停止时自动隐藏
+                  fade: false, // 透明度显示逻辑统一交给 CSS 控制
                   interactive: true, // 允许拖动滚动条
                   scrollbarTrackClickable: true
               }
@@ -191,7 +191,11 @@ watch(
 </script>
 
 <template>
-    <div ref="wrapperRef" class="bs-wrapper">
+    <div
+        ref="wrapperRef"
+        :class="{ 'is-scrollbar-allways': props.showScrollbarAllways }"
+        class="bs-wrapper"
+    >
         <div
             ref="contentRef"
             class="bs-content"
@@ -214,12 +218,25 @@ watch(
 
 :deep(.bscroll-vertical-scrollbar) {
     right: -1px !important;
-    width: 8px !important;
+    width: 10px !important;
 }
 
 :deep(.bscroll-horizontal-scrollbar) {
     bottom: -1px !important;
-    height: 8px !important;
+    height: 10px !important;
+}
+
+:deep(.bscroll-vertical-scrollbar),
+:deep(.bscroll-horizontal-scrollbar) {
+    opacity: 0 !important;
+    transition: opacity 0.3s !important;
+}
+
+.bs-wrapper:hover :deep(.bscroll-vertical-scrollbar),
+.bs-wrapper:hover :deep(.bscroll-horizontal-scrollbar),
+.bs-wrapper.is-scrollbar-allways :deep(.bscroll-vertical-scrollbar),
+.bs-wrapper.is-scrollbar-allways :deep(.bscroll-horizontal-scrollbar) {
+    opacity: 1 !important;
 }
 
 /*
@@ -242,5 +259,7 @@ watch(
  */
 :deep(.bscroll-indicator) {
     border-radius: 1rem !important;
+    cursor: pointer !important;
+    background: var(--p-surface-400) !important;
 }
 </style>

@@ -2,14 +2,13 @@
 import type { IVideoFile } from '@renderer/scraper'
 import type { SelectChangeEvent } from 'primevue/select'
 
+import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import { PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
-import ScrollPanel from 'primevue/scrollpanel'
-import ScrollTop from 'primevue/scrolltop'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { computed, ref } from 'vue'
@@ -95,7 +94,7 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
                 @click="scanFiles(toast)"
             />
         </div>
-        <ScrollPanel style="height: calc(100% - var(--header-height))">
+        <Scroll style="height: calc(100% - var(--header-height))">
             <div class="manage-view-content">
                 <!-- 卡片视图 -->
                 <VideoCard
@@ -105,18 +104,7 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
                     @show-menu="showMenu"
                 />
             </div>
-            <ScrollTop
-                :button-props="{
-                    severity: 'secondary',
-                    raised: true,
-                    rounded: true,
-                    size: 'small'
-                }"
-                :threshold="100"
-                icon="pi pi-arrow-up"
-                target="parent"
-            />
-        </ScrollPanel>
+        </Scroll>
 
         <!--灵动岛-->
         <div v-if="globalStates.manageViewFiles.length > 0" class="manage-view-float">
@@ -213,11 +201,11 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 
 .manage-view-float {
     position: absolute;
-    left: 0;
+    left: 50%;
     bottom: 0;
-    width: 100%;
-    display: flex;
-    justify-content: center;
+    transform: translateX(-50%);
+    width: fit-content;
+    display: inline-flex;
 
     .manage-view-float-content {
         z-index: 2;

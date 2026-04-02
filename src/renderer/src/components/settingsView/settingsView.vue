@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import { TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
@@ -7,7 +8,6 @@ import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
-import ScrollPanel from 'primevue/scrollpanel'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
@@ -105,7 +105,7 @@ function openLlmInfo() {
                 class="active-indicator"
             />
         </div>
-        <ScrollPanel class="content">
+        <Scroll class="content">
             <transition name="slide-up">
                 <div v-if="activeTab === 'settings'" key="settings" class="settings-tab-content">
                     <h1 style="margin-top: 0">输出目录</h1>
@@ -362,7 +362,7 @@ function openLlmInfo() {
                     123
                 </div>
             </transition>
-        </ScrollPanel>
+        </Scroll>
     </div>
 </template>
 
