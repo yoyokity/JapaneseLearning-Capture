@@ -82,6 +82,16 @@ export const theme = definePreset(Theme, {
             content: {
                 padding: '0 2rem 2rem 2rem'
             }
+        },
+        // 提示框
+        tooltip: {
+            colorScheme: {
+                light: {
+                    root: {
+                        padding: '0.5em 0.75em'
+                    }
+                }
+            }
         }
     }
 })

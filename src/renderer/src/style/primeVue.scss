@@ -8,6 +8,11 @@ input {
     font-size: calc(1rem - 2px) !important;
 }
 
+//隐藏tooltip箭头
+.p-tooltip-arrow {
+    display: none !important;
+}
+
 .p-scrolltop.p-button {
     inset-block-end: 1rem !important;
     inset-inline-end: 1rem !important;

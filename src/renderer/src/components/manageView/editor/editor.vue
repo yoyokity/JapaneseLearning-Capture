@@ -169,7 +169,6 @@ onMounted(async () => {
                 v-for="tab in tabs"
                 :key="tab.id"
                 :class="{ active: activeTab === tab.id }"
-                :title="tab.name"
                 class="tab-item"
                 @click="switchTab(tab.id)"
             >

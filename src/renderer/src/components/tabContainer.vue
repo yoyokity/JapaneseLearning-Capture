@@ -31,7 +31,6 @@ const currentComponent = () => {
                 :key="tab.id"
                 :class="{ active: activeTab === tab.id }"
                 :style="{ marginTop: tab.id === 'settings' ? 'auto' : undefined }"
-                :title="tab.name"
                 class="tab-item"
                 @click="switchTab(tab.id)"
             >

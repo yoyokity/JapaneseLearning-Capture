@@ -11,7 +11,7 @@ import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { scanFiles } from './func'
 import VideoCard from './videoCard.vue'
@@ -191,6 +191,39 @@ function backToHomeView() {
 }
 
 /**
+ * 处理鼠标和键盘返回
+ */
+function handleBackAction(event: MouseEvent | KeyboardEvent) {
+    if (!isSetView.value) return
+
+    if (event instanceof MouseEvent) {
+        // 鼠标侧键返回
+        if (event.button === 3) {
+            event.preventDefault()
+            backToHomeView()
+        }
+        return
+    }
+
+    // Alt + 左方向键 / Backspace 视为返回
+    if (
+        (event.key === 'ArrowLeft' && event.altKey) ||
+        event.key === 'BrowserBack' ||
+        event.key === 'Backspace'
+    ) {
+        const target = event.target as HTMLElement | null
+        const tagName = target?.tagName?.toUpperCase()
+        const isEditable =
+            !!target && (target.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA')
+
+        if (isEditable && event.key === 'Backspace') return
+
+        event.preventDefault()
+        backToHomeView()
+    }
+}
+
+/**
  * 处理卡片点击
  */
 function handleCardClick(item: ManageCardItem, _event: MouseEvent) {
@@ -223,18 +256,30 @@ watch(
     },
     { deep: true }
 )
+
+onMounted(() => {
+    window.addEventListener('mouseup', handleBackAction)
+    window.addEventListener('keydown', handleBackAction)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('mouseup', handleBackAction)
+    window.removeEventListener('keydown', handleBackAction)
+})
 </script>
 
 <template>
     <div class="manage-view">
         <div class="manage-view-header">
             <h3 v-if="!isSetView">管理</h3>
-            <i
-                v-else
-                class="pi pi-arrow-left manage-view-back"
-                title="返回"
-                @click="backToHomeView"
-            />
+            <div v-else class="manage-view-back-wrapper">
+                <i
+                    v-tooltip.left="'返回'"
+                    class="pi pi-arrow-left manage-view-back"
+                    @click="backToHomeView"
+                />
+                <h3 style="transform: translate(0.5rem, -1px)">{{ currentSet }}</h3>
+            </div>
             <Select
                 v-model="settings.currentScraper"
                 v-tooltip.left="{
@@ -370,11 +415,23 @@ watch(
         margin-right: auto;
     }
 
-    .manage-view-back {
+    .manage-view-back-wrapper {
         margin-right: auto;
-        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        h3 {
+            margin: 0;
+            font-weight: normal;
+            pointer-events: none;
+            color: inherit;
+        }
+    }
+
+    .manage-view-back {
         font-size: 1.1rem;
-        transition: color 0.2s var(--animation-type);
+        cursor: pointer;
 
         &:hover {
             color: var(--p-primary-color);
