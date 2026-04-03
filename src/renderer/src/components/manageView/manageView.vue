@@ -11,7 +11,7 @@ import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { scanFiles } from './func'
 import VideoCard from './videoCard.vue'
@@ -22,10 +22,25 @@ const toast = useToast()
 
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
+const currentSet = ref<string | null>(null)
 
 const isSortActive = ref(false)
 const isSearchActive = ref(false)
 const isFloatActive = computed(() => isSortActive.value || isSearchActive.value)
+
+interface ISeriesCardItem {
+    type: 'series'
+    name: string
+    coverVideo: IVideoFile
+    files: IVideoFile[]
+}
+
+interface IVideoCardItem {
+    type: 'video'
+    video: IVideoFile
+}
+
+type ManageCardItem = ISeriesCardItem | IVideoCardItem
 
 // 右键菜单项
 const menuItems = ref([
@@ -53,6 +68,7 @@ const menuItems = ref([
 function clearFiles(e: SelectChangeEvent) {
     if (e.value !== settings.currentScraper) {
         globalStates.manageViewFiles = []
+        currentSet.value = null
     }
 }
 
@@ -75,12 +91,150 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 function hideMenuOnScroll() {
     cm.value?.hide?.()
 }
+
+/**
+ * 管理页展示列表
+ */
+const displayItems = computed<ManageCardItem[]>(() => {
+    const files = globalStates.manageViewFilesFilter as IVideoFile[]
+    const allFiles = globalStates.manageViewFiles as IVideoFile[]
+    const isSearching = globalStates.manageViewFilesFilterValue.trim() !== ''
+
+    if (currentSet.value) {
+        return files
+            .filter((file) => file.set === currentSet.value)
+            .map((video) => ({
+                type: 'video',
+                video
+            }))
+    }
+
+    const setMap = new Map<string, IVideoFile[]>()
+    const allSetMap = new Map<string, IVideoFile[]>()
+
+    for (const file of allFiles) {
+        const setName = file.set.trim()
+        if (!setName) continue
+
+        const setFiles = allSetMap.get(setName) || []
+        setFiles.push(file)
+        allSetMap.set(setName, setFiles)
+    }
+
+    for (const file of files) {
+        const setName = file.set.trim()
+        if (!setName) continue
+
+        const setFiles = setMap.get(setName) || []
+        setFiles.push(file)
+        setMap.set(setName, setFiles)
+    }
+
+    const items: ManageCardItem[] = []
+
+    for (const file of files) {
+        const setName = file.set.trim()
+
+        if (!setName) {
+            items.push({
+                type: 'video',
+                video: file
+            })
+            continue
+        }
+
+        const setFiles = setMap.get(setName) || []
+        const allSetFiles = allSetMap.get(setName) || []
+
+        if (!isSearching && allSetFiles.length <= 1) {
+            items.push({
+                type: 'video',
+                video: file
+            })
+            continue
+        }
+
+        if (items.some((item) => item.type === 'series' && item.name === setName)) {
+            continue
+        }
+
+        items.push({
+            type: 'series',
+            name: setName,
+            coverVideo: allSetFiles[0],
+            files: setFiles
+        })
+    }
+
+    return items
+})
+
+/**
+ * 是否在系列详情视角
+ */
+const isSetView = computed(() => currentSet.value !== null)
+
+/**
+ * 点击系列卡片
+ */
+function enterSet(setName: string) {
+    currentSet.value = setName
+    hideMenuOnScroll()
+}
+
+/**
+ * 回到主页视角
+ */
+function backToHomeView() {
+    currentSet.value = null
+    hideMenuOnScroll()
+}
+
+/**
+ * 处理卡片点击
+ */
+function handleCardClick(item: ManageCardItem, _event: MouseEvent) {
+    if (item.type === 'series') {
+        enterSet(item.name)
+    }
+}
+
+/**
+ * 处理卡片右键
+ */
+function handleCardContextmenu(item: ManageCardItem, event: MouseEvent) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (item.type !== 'video') return
+
+    showMenu(event, item.video)
+}
+
+watch(
+    () => globalStates.manageViewFilesFilter,
+    (files) => {
+        if (!currentSet.value) return
+
+        const hasCurrentSet = (files as IVideoFile[]).some((file) => file.set === currentSet.value)
+        if (!hasCurrentSet) {
+            currentSet.value = null
+        }
+    },
+    { deep: true }
+)
 </script>
 
 <template>
     <div class="manage-view">
         <div class="manage-view-header">
-            <h3>管理</h3>
+            <h3 v-if="!isSetView">管理</h3>
+            <i
+                v-else
+                class="pi pi-arrow-left manage-view-back"
+                title="返回"
+                @click="backToHomeView"
+            />
             <Select
                 v-model="settings.currentScraper"
                 v-tooltip.left="{
@@ -107,15 +261,32 @@ function hideMenuOnScroll() {
             @touchmove="hideMenuOnScroll"
             @wheel.capture="hideMenuOnScroll"
         >
-            <div class="manage-view-content">
-                <!-- 卡片视图 -->
-                <VideoCard
-                    v-for="file in globalStates.manageViewFilesFilter"
-                    :key="file.path.toString()"
-                    :video="file as IVideoFile"
-                    @show-menu="showMenu"
-                />
-            </div>
+            <transition mode="out-in" name="manage-view-fade">
+                <div :key="currentSet || 'home'" class="manage-view-content">
+                    <!-- 卡片视图 -->
+                    <template
+                        v-for="item in displayItems"
+                        :key="
+                            item.type === 'series'
+                                ? `series-${item.name}`
+                                : item.video.path.toString()
+                        "
+                    >
+                        <VideoCard
+                            :video="item.type === 'series' ? item.coverVideo : item.video"
+                            :title="item.type === 'series' ? item.name : undefined"
+                            :on-click="
+                                item.type === 'series'
+                                    ? (_, event) => {
+                                          handleCardClick(item, event)
+                                      }
+                                    : undefined
+                            "
+                            @contextmenu="(event) => handleCardContextmenu(item, event)"
+                        />
+                    </template>
+                </div>
+            </transition>
         </Scroll>
 
         <!--灵动岛-->
@@ -197,6 +368,17 @@ function hideMenuOnScroll() {
     h3 {
         font-weight: normal;
         margin-right: auto;
+    }
+
+    .manage-view-back {
+        margin-right: auto;
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: color 0.2s var(--animation-type);
+
+        &:hover {
+            color: var(--p-primary-color);
+        }
     }
 }
 
@@ -300,6 +482,21 @@ function hideMenuOnScroll() {
 .search-animation-enter-to,
 .search-animation-leave-from {
     max-width: 10rem;
+    opacity: 1;
+}
+
+.manage-view-fade-enter-active,
+.manage-view-fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.manage-view-fade-enter-from,
+.manage-view-fade-leave-to {
+    opacity: 0;
+}
+
+.manage-view-fade-enter-to,
+.manage-view-fade-leave-from {
     opacity: 1;
 }
 </style>

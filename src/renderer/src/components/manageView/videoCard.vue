@@ -9,26 +9,18 @@ import Editor from './editor/editor.vue'
 
 const props = defineProps<{
     video: IVideoFile
-}>()
-
-const emit = defineEmits<{
-    showMenu: [event: MouseEvent, video: IVideoFile]
+    title?: string
+    onClick?: (video: IVideoFile, event: MouseEvent) => void
 }>()
 
 const dialog = useDialog()
 
 const name = computed(() => {
-    return props.video.title || props.video.fileName
+    return props.title || props.video.title || props.video.fileName
 })
 const image = computed(() => {
     return props.video.poster || props.video.fanart || props.video.thumb
 })
-
-function onContextmenu(event: MouseEvent) {
-    event.preventDefault()
-    event.stopPropagation()
-    emit('showMenu', event, props.video)
-}
 
 function openEditor() {
     dialog.open(Editor, {
@@ -49,10 +41,22 @@ function openEditor() {
         }
     })
 }
+
+/**
+ * 点击卡片
+ */
+function handleClick(event: MouseEvent) {
+    if (props.onClick) {
+        props.onClick(props.video, event)
+        return
+    }
+
+    openEditor()
+}
 </script>
 
 <template>
-    <div class="video-card" @click="openEditor" @contextmenu="onContextmenu">
+    <div class="video-card" @click="handleClick">
         <VideoImage
             :img-data="image"
             image-loading="lazy"

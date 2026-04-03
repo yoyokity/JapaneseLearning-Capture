@@ -399,13 +399,11 @@ onActivated(() => {
     nextTick(() => {
         syncScrollLayout()
         restoreScrollPosition()
-        console.log(1)
     })
 })
 
 onDeactivated(() => {
     lastScrollPosition.value = getCurrentScrollPosition()
-    console.log(2)
 })
 
 onUnmounted(() => {
