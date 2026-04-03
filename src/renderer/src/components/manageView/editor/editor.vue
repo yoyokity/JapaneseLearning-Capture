@@ -88,9 +88,9 @@ async function onSave() {
         isSaving.value = true
 
         //保存
-        const re = await scraperSave(newVideo.value, sourceVideoFile, a.webContent, toast)
-        if (!re) {
-            toast.error('保存失败！')
+        const re = await scraperSave(newVideo.value, sourceVideoFile, a.webContent)
+        if (re.hasError) {
+            toast.error(`保存失败！${re.error}`)
             isSaving.value = false
             return
         }

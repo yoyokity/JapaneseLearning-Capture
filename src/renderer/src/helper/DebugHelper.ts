@@ -2,6 +2,24 @@ import { Ipc } from '@renderer/ipc'
 import { delay } from 'es-toolkit'
 import PQueue from 'p-queue'
 
+export type IResultWithError<T> =
+    | {
+          result: T
+          hasError: false
+          /**
+           * 错误信息，如果没有错误则为 null
+           */
+          error?: null
+      }
+    | {
+          result?: null
+          hasError: true
+          /**
+           * 错误信息，如果有错误则为错误对象或错误信息
+           */
+          error: any
+      }
+
 /**
  * debug相关，用于调试、日志记录等
  */
@@ -81,10 +99,7 @@ export class DebugHelper {
     static async tryExecute<T>(
         fn: (...args: any[]) => T | Promise<T>,
         ...args: any[]
-    ): Promise<
-        | { hasError: false; result: T; error: null }
-        | { hasError: true; result: null; error: unknown }
-    > {
+    ): Promise<IResultWithError<T>> {
         try {
             const result = await fn(...args)
             return {
@@ -115,12 +130,7 @@ export class DebugHelper {
      * result将会是Promise对象本身，而不是Promise解析后的值。
      * 对于异步函数，请使用tryExecute方法代替。
      */
-    static tryExecuteSync<T>(
-        fn: (...args: any[]) => T,
-        ...args: any[]
-    ):
-        | { hasError: false; result: T; error: null }
-        | { hasError: true; result: null; error: unknown } {
+    static tryExecuteSync<T>(fn: (...args: any[]) => T, ...args: any[]): IResultWithError<T> {
         try {
             const result = fn(...args)
             return {

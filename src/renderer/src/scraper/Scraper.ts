@@ -1,4 +1,4 @@
-import type { Path } from '@renderer/helper'
+import type { IResultWithError, Path } from '@renderer/helper'
 import type { IVideo, IVideoFile } from './Video'
 
 import { DebugHelper, PathHelper } from '@renderer/helper'
@@ -231,7 +231,7 @@ export class Scraper {
         sourceVideoFile: IVideoFile,
         dir: string,
         fileName: string
-    ): Promise<Path | null> {
+    ): Promise<IResultWithError<Path>> {
         //最终目录
         const videoDir = scraperPath.join(dir)
 
@@ -248,14 +248,14 @@ export class Scraper {
         //如果最终目录和原视频目录不同，则创建最终目录
         if (dirDiff) {
             if (!(await PathHelper.createDirectory(videoDir))) {
-                return null
+                return { error: '创建新目录失败！', hasError: true }
             }
         }
 
         //将视频文件移动到新目录或改名
         if (_sourceVideoPath.toString() !== _videoPath.toString()) {
-            if (!(await PathHelper.move(_sourceVideoPath, _videoPath))) {
-                return null
+            if (!(await PathHelper.move(_sourceVideoPath, _videoPath, false))) {
+                return { error: '存在同名视频文件！', hasError: true }
             }
         }
 
@@ -267,7 +267,7 @@ export class Scraper {
         //如果有两个nfo，则删除原来的
         if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {
             if (!(await PathHelper.remove(sourceVideoFile.nfoPath))) {
-                return null
+                return { error: '删除原来的nfo文件失败！', hasError: true }
             }
         }
 
@@ -323,6 +323,6 @@ export class Scraper {
 
         await Promise.all(imagePromises)
 
-        return videoDir
+        return { result: videoDir, hasError: false }
     }
 }

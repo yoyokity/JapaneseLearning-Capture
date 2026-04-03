@@ -1,3 +1,4 @@
+import type { IResultWithError } from '@renderer/helper'
 import type { IScraper, IVideo, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
@@ -147,13 +148,11 @@ export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: 
 export async function scraperSave(
     video: IVideo,
     sourceVideoFile: IVideoFile,
-    webContent: Ref<string>,
-    toast: any
-): Promise<boolean> {
+    webContent: Ref<string>
+): Promise<IResultWithError<boolean>> {
     const scraper = Scraper.getScraperInstance(video.scraperName)
     if (!scraper) {
-        toast.error(`未找到对应的刮削器！`)
-        return false
+        return { error: '未找到对应的刮削器！', hasError: true }
     }
 
     console.log('sourceVideoFile: ', toRaw(sourceVideoFile))
@@ -173,9 +172,12 @@ export async function scraperSave(
         dir,
         fileName
     )
-    if (!videoDir) {
-        return false
+    if (videoDir.hasError) {
+        return { error: videoDir.error, hasError: true }
     }
 
-    return true
+    return {
+        result: true,
+        hasError: false
+    }
 }
