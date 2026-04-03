@@ -135,6 +135,20 @@ function createMenuItems(inputRef: Ref<string>) {
 const tagMenuItems = createMenuItems(addTagValue)
 const genreMenuItems = createMenuItems(addGenreValue)
 
+/**
+ * 获取编号对应的跳转链接
+ * @param sourceName 编号源名称
+ */
+function getNumLink(sourceName: string) {
+    const numSource = Scraper.getScraperInstance(newVideo.value.scraperName)?.numSource || {}
+    const template = numSource[sourceName]
+    const num = newVideo.value.num[sourceName]?.trim()
+
+    if (!template || !num) return undefined
+
+    return template.replace('{num}', encodeURIComponent(num))
+}
+
 onMounted(async () => {
     DebugHelper.queueWithInterval('scraper', 0, true, async () => {
         newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
@@ -194,7 +208,9 @@ onMounted(async () => {
 
                     <h2>编号</h2>
                     <FloatLabel
-                        v-for="value in Scraper.getScraperInstance(newVideo.scraperName)?.numSource"
+                        v-for="value in Object.keys(
+                            Scraper.getScraperInstance(newVideo.scraperName)?.numSource || {}
+                        )"
                         :key="value"
                         v-tooltip.top="
                             '作品在刮削网站的编号。刮削搜索时，如果有编号则直接使用编号，否则使用原标题。'
@@ -204,6 +220,16 @@ onMounted(async () => {
                     >
                         <InputText id="title_num" v-model.trim="newVideo.num[value]" />
                         <label for="title_num">{{ value }}</label>
+                        <Button
+                            v-tooltip="'打开链接'"
+                            :disabled="!getNumLink(value)"
+                            :href="getNumLink(value)"
+                            as="a"
+                            icon="pi pi-link"
+                            style="margin-left: 0.5rem"
+                            target="_blank"
+                            variant="outlined"
+                        />
                     </FloatLabel>
 
                     <h2>标题</h2>

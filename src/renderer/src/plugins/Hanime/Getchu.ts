@@ -42,14 +42,14 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
         const body = await fetchPage(url)
         if (body) {
             if (body.includes('年齢認証')) {
-                DebugHelper.warn(`- [Getchu] 成人验证失败，无法获取网页内容`)
+                DebugHelper.warn(`- [Getchu] 成人验证失败，无法获取网页内容`, url)
                 return null
             }
 
             DebugHelper.info(`- [Getchu] 获取到网页内容`)
             return body
         }
-        DebugHelper.log(`- [Getchu] 使用编号搜索失败，使用原标题搜索`)
+        DebugHelper.log(`- [Getchu] 使用编号搜索失败，使用原标题搜索`, url)
     }
 
     //如果编号搜索失败，则使用原标题搜索
@@ -57,7 +57,7 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
 
     const searchBody = await fetchPage(searchUrl)
     if (!searchBody) {
-        DebugHelper.warn(`- [Getchu] 获取搜索结果失败`)
+        DebugHelper.warn(`- [Getchu] 获取搜索结果失败`, searchUrl)
         return null
     }
 
@@ -88,12 +88,12 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     //根据href获取webContent
     const body = await fetchPage(fullUrl)
     if (!body) {
-        DebugHelper.warn(`- [Getchu] 获取网页内容失败`)
+        DebugHelper.warn(`- [Getchu] 获取网页内容失败`, fullUrl)
         return null
     }
 
     if (body.includes('年齢認証')) {
-        DebugHelper.warn(`- [Getchu] 成人验证失败，无法获取网页内容`)
+        DebugHelper.warn(`- [Getchu] 成人验证失败，无法获取网页内容`, fullUrl)
         return null
     }
 
@@ -125,14 +125,14 @@ export async function getExtrafanartGetchu(): Promise<string[]> {
     for (const url of urls) {
         const re = await NetHelper.getImage(url, getchuOptions)
         if (re.ok) {
-            DebugHelper.log(`- [Getchu] 获取剧照成功！:${url}`)
+            DebugHelper.log(`- [Getchu] 获取剧照成功！`, url)
             const tempPath = await ImageHelper.saveTempImage(
                 re.body,
                 `getchu_extrafanart_${Date.now()}`
             )
             if (tempPath) extrafanart.push(tempPath)
         } else {
-            DebugHelper.warn(`- [Getchu] 获取剧照失败！:${url}`)
+            DebugHelper.warn(`- [Getchu] 获取剧照失败！`, url)
         }
     }
 

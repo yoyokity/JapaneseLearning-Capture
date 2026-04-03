@@ -151,10 +151,10 @@ export interface IScraper {
     checkConnect: () => Promise<boolean>
     /**
      * 编号源
-     * @remarks 刮削器刮削时，信息网站的名称
-     * @example ['getchu', 'hanime1', 'dlsite']
+     * @remarks 刮削器刮削时，信息网站的名称和url
+     * @remarks url用{num}作为占位符，例如 https://www.getchu.com/soft.phtml?id={num}&gc=gc
      */
-    numSource: string[]
+    numSource: Record<string, string>
     /**
      * 刮削视频信息的方法
      */

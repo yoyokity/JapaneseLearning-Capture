@@ -14,7 +14,11 @@ const hanimeScraper: IScraper = {
     checkConnect: async () => {
         return true
     },
-    numSource: ['hanime1', 'getchu', 'dlsite'],
+    numSource: {
+        hanime1: 'https://hanime1.me/watch?v={num}',
+        getchu: 'https://www.getchu.com/soft.phtml?id={num}&gc=gc',
+        dlsite: 'https://www.dlsite.com/pro/work/=/product_id/{num}.html?locale=ja_JP'
+    },
     scraperVideoFuncs: {
         getWebContent: async (video: IVideo) => {
             temp.封面 = null
@@ -134,7 +138,7 @@ const hanimeScraper: IScraper = {
             }
 
             //getchu
-            else if (temp.webContent.getchu) {
+            if (temp.webContent.getchu) {
                 DebugHelper.log(`- [Getchu] 搜索导演...`)
                 const $ = cheerioLoad(temp.webContent.getchu)
                 const text = $('div#wrapper').text()

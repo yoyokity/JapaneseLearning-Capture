@@ -11,7 +11,7 @@ export async function searchVideoHanime1(
     const url = `https://hanime1.me/search?query=${encodeURIComponent(originaltitle)}&genre=${encodeURIComponent('裏番')}`
     const webContent = await NetHelper.get(url)
     if (!webContent.ok) {
-        DebugHelper.warn(`- [Hanime1] 获取搜索结果失败`)
+        DebugHelper.warn(`- [Hanime1] 获取搜索结果失败`, url)
         return null
     }
 
@@ -51,7 +51,7 @@ export async function getWebContentHanime1(video: IVideo): Promise<string | null
             DebugHelper.info(`- [Hanime1] 获取到网页内容`)
             return webContent.body
         }
-        DebugHelper.log(`- [Hanime1] 使用编号搜索失败，使用原标题搜索`)
+        DebugHelper.log(`- [Hanime1] 使用编号搜索失败，使用原标题搜索`, url)
     }
 
     //如果编号搜索失败，则使用原标题搜索

@@ -30,14 +30,15 @@ export async function getWebContentDlsite(video: IVideo): Promise<string | null>
             return webContent.body
         }
 
-        DebugHelper.log(`- [Dlsite] 使用编号搜索失败，使用原标题搜索`)
+        DebugHelper.log(`- [Dlsite] 使用编号搜索失败，使用原标题搜索`, url)
     }
 
     //如果编号搜索失败，则使用原标题搜索
-    const searchUrl = `https://www.dlsite.com/maniax/fsr/=/keyword/${encodeURIComponent(video.originaltitle)}/order/trend/work_type_category[0]/movie`
+    const keyword = encodeURIComponent(video.originaltitle).replace(/%20/g, '+')
+    const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
     const webContent = await NetHelper.get(searchUrl, dlsiteOptions)
     if (!webContent.ok) {
-        DebugHelper.warn(`- [Dlsite] 获取搜索结果失败`)
+        DebugHelper.warn(`- [Dlsite] 获取搜索结果失败`, searchUrl)
         return null
     }
 
@@ -45,7 +46,7 @@ export async function getWebContentDlsite(video: IVideo): Promise<string | null>
     const $ = cheerioLoad(webContent.body)
     const videoList = $('ul#search_result_img_box > li .multiline_truncate a')
 
-    DebugHelper.log(`- [Dlsite] 搜索到${videoList.length}个番剧作为候选项：`)
+    DebugHelper.log(`- [Dlsite] 搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
     videoList.each((_, el) => DebugHelper.log(`- [Dlsite] 【${$(el).text().trim()}】`))
 
     const target = videoList
@@ -61,7 +62,7 @@ export async function getWebContentDlsite(video: IVideo): Promise<string | null>
     //根据href获取webContent
     const body = await NetHelper.get(href, dlsiteOptions)
     if (!body.ok) {
-        DebugHelper.warn(`- [Dlsite] 获取网页内容失败`)
+        DebugHelper.warn(`- [Dlsite] 获取网页内容失败`, href)
         return null
     }
 
