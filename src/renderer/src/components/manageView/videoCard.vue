@@ -25,6 +25,8 @@ const image = computed(() => {
 })
 
 function onContextmenu(event: MouseEvent) {
+    event.preventDefault()
+    event.stopPropagation()
     emit('showMenu', event, props.video)
 }
 

@@ -15,15 +15,6 @@ importers:
       '@antfu/eslint-config':
         specifier: ^6.2.0
         version: 6.7.3(@vue/compiler-sfc@3.5.26)(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
-      '@better-scroll/core':
-        specifier: ^2.5.1
-        version: 2.5.1
-      '@better-scroll/mouse-wheel':
-        specifier: ^2.5.1
-        version: 2.5.1
-      '@better-scroll/scroll-bar':
-        specifier: ^2.5.1
-        version: 2.5.1
       '@electron-forge/cli':
         specifier: ^7.8.3
         version: 7.10.2(encoding@0.1.13)
@@ -57,6 +48,9 @@ importers:
       '@primeuix/themes':
         specifier: ^1.2.3
         version: 1.2.5
+      '@studio-freight/lenis':
+        specifier: ^1.0.42
+        version: 1.0.42
       '@tsconfig/strictest':
         specifier: ^2.0.8
         version: 2.0.8
@@ -1944,6 +1938,10 @@ packages:
   '@sindresorhus/is@4.6.0':
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
     engines: {node: '>=10'}
+
+  '@studio-freight/lenis@1.0.42':
+    resolution: {integrity: sha512-HJAGf2DeM+BTvKzHv752z6Z7zy6bA643nZM7W88Ft9tnw2GsJSp6iJ+3cekjyMIWH+cloL2U9X82dKXgdU8kPg==}
+    deprecated: 'The ''@studio-freight/lenis'' package has been renamed to ''lenis''. Please update your dependencies: npm install lenis and visit the documentation: https://www.npmjs.com/package/lenis'
 
   '@stylistic/eslint-plugin@5.6.1':
     resolution: {integrity: sha512-JCs+MqoXfXrRPGbGmho/zGS/jMcn3ieKl/A8YImqib76C8kjgZwq5uUFzc30lJkMvcchuRn6/v8IApLxli3Jyw==}
@@ -7731,6 +7729,8 @@ snapshots:
   '@sindresorhus/base62@1.0.0': {}
 
   '@sindresorhus/is@4.6.0': {}
+
+  '@studio-freight/lenis@1.0.42': {}
 
   '@stylistic/eslint-plugin@5.6.1(eslint@9.39.2(jiti@2.6.1))':
     dependencies:

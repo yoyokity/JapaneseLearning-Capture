@@ -68,6 +68,13 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
     currentVideo.value = video
     cm.value.show(event)
 }
+
+/**
+ * 滚动时关闭右键菜单
+ */
+function hideMenuOnScroll() {
+    cm.value?.hide?.()
+}
 </script>
 
 <template>
@@ -94,7 +101,12 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
                 @click="scanFiles(toast)"
             />
         </div>
-        <Scroll style="height: calc(100% - var(--header-height))">
+        <Scroll
+            style="height: calc(100% - var(--header-height))"
+            :scrollbar-occupy-space="false"
+            @touchmove="hideMenuOnScroll"
+            @wheel.capture="hideMenuOnScroll"
+        >
             <div class="manage-view-content">
                 <!-- 卡片视图 -->
                 <VideoCard

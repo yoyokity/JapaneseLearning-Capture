@@ -1,24 +1,23 @@
 <script setup lang="ts">
-import BScroll from '@better-scroll/core'
-import MouseWheel from '@better-scroll/mouse-wheel'
-import ScrollBar from '@better-scroll/scroll-bar'
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import Lenis from '@studio-freight/lenis'
+import {
+    computed,
+    nextTick,
+    onActivated,
+    onDeactivated,
+    onMounted,
+    onUnmounted,
+    ref,
+    watch
+} from 'vue'
 
 const props = withDefaults(defineProps<IProps>(), {
     direction: 'vertical',
     showScrollbar: true,
     showScrollbarAllways: false,
-    speed: 10,
-    easeTime: 500,
-    disableMouse: false,
-    disableTouch: false,
-    bounce: false,
-    stopPropagation: false
+    scrollbarOccupySpace: true,
+    scrollbarSize: 10
 })
-
-// 注册插件
-BScroll.use(MouseWheel)
-BScroll.use(ScrollBar)
 
 // 定义属性
 interface IProps {
@@ -30,236 +29,566 @@ interface IProps {
      * @default true
      */
     showScrollbar?: boolean
-    /** 是否始终显示滚动条
+    /** 是否始终显示滚动条，为 false 时仅在鼠标移入后显示
      * @default false
      */
     showScrollbarAllways?: boolean
-    /** 滚动速度因子，值越大滚动越快
-     * @default 10
-     */
-    speed?: number
-    /** 滚动动画持续时间(毫秒)
-     * @default 500
-     */
-    easeTime?: number
-    /** 是否禁用鼠标事件，滚动条也不能点击了
-     * @default false
-     */
-    disableMouse?: boolean
-    /** 是否禁用触摸事件
-     * @default false
-     */
-    disableTouch?: boolean
-    /** 是否开启回弹效果
-     * @default false
-     */
-    bounce?: boolean
     /** 内容区域的自定义CSS样式对象
      * @default undefined
      */
     contentCss?: Record<string, string | number>
-    /** 是否阻止事件冒泡
-     * @default false
+    /** 滚动条是否挤压内容区域
+     * @default true
      */
-    stopPropagation?: boolean
-    /** 自定义 BetterScroll 配置选项,会与默认配置合并
-     * @default undefined
+    scrollbarOccupySpace?: boolean
+    /** 滑块粗细，px
+     * @default 10
      */
-    options?: Record<string, any>
+    scrollbarSize?: number
 }
 
 const wrapperRef = ref<HTMLElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
-const bsInstance = ref<BScroll | null>(null)
+const lenisInstance = ref<Lenis | null>(null)
+const scrollbarThumbSize = ref(0)
+const scrollbarThumbOffset = ref(0)
+const scrollbarVisible = ref(false)
+const lastScrollPosition = ref(0)
+const isDraggingScrollbar = ref(false)
 let mutationObserver: MutationObserver | null = null
 let resizeObserver: ResizeObserver | null = null
+let resizeHandler: (() => void) | null = null
+let removeDragListeners: (() => void) | null = null
+let rafId = 0
 
-// 初始化 BetterScroll
-const initScroll = () => {
+/**
+ * 获取滑块最小尺寸，默认 3rem
+ */
+function getMinThumbSize() {
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+    return (Number.isNaN(rootFontSize) ? 16 : rootFontSize) * 5
+}
+
+/**
+ * 虚拟滚动条是否需要显示
+ */
+const shouldShowVirtualScrollbar = computed(() => {
+    return props.showScrollbar && scrollbarVisible.value
+})
+
+/**
+ * 是否需要为滚动条预留空间
+ */
+const shouldOccupyScrollbarSpace = computed(() => {
+    return props.showScrollbar && props.scrollbarOccupySpace
+})
+
+/**
+ * 滚动条粗细
+ */
+const scrollbarSize = computed(() => {
+    return `${props.scrollbarSize}px`
+})
+
+/**
+ * 挤压内容时预留的空间，等于粗细 + 3px
+ */
+const scrollbarOccupySize = computed(() => {
+    return `${props.scrollbarSize + 5}px`
+})
+
+/**
+ * 虚拟滚动条滑块样式
+ */
+const scrollbarThumbStyle = computed(() => {
+    if (props.direction === 'horizontal') {
+        return {
+            width: `${scrollbarThumbSize.value}px`,
+            transform: `translateX(${scrollbarThumbOffset.value}px)`
+        }
+    }
+
+    return {
+        height: `${scrollbarThumbSize.value}px`,
+        transform: `translateY(${scrollbarThumbOffset.value}px)`
+    }
+})
+
+/**
+ * 更新虚拟滚动条的位置和尺寸
+ */
+function updateVirtualScrollbar() {
+    if (!wrapperRef.value || !contentRef.value) return
+
+    const isHorizontal = props.direction === 'horizontal'
+    const wrapperSize = isHorizontal ? wrapperRef.value.clientWidth : wrapperRef.value.clientHeight
+    const contentSize = isHorizontal ? contentRef.value.scrollWidth : contentRef.value.scrollHeight
+    const scrollSize = Math.max(contentSize - wrapperSize, 0)
+    const currentScroll = isHorizontal ? wrapperRef.value.scrollLeft : wrapperRef.value.scrollTop
+
+    if (scrollSize <= 0 || wrapperSize <= 0) {
+        scrollbarVisible.value = false
+        scrollbarThumbSize.value = 0
+        scrollbarThumbOffset.value = 0
+        return
+    }
+
+    const thumbSize = Math.max((wrapperSize / contentSize) * wrapperSize, getMinThumbSize())
+    const movableTrackSize = wrapperSize - thumbSize
+    const thumbOffset = scrollSize > 0 ? (currentScroll / scrollSize) * movableTrackSize : 0
+
+    scrollbarVisible.value = true
+    scrollbarThumbSize.value = Math.min(thumbSize, wrapperSize)
+    scrollbarThumbOffset.value = Math.min(Math.max(thumbOffset, 0), Math.max(movableTrackSize, 0))
+}
+
+/**
+ * 获取当前滚动位置
+ */
+function getCurrentScrollPosition() {
+    if (!wrapperRef.value) return 0
+
+    return props.direction === 'horizontal'
+        ? wrapperRef.value.scrollLeft
+        : wrapperRef.value.scrollTop
+}
+
+/**
+ * 恢复缓存的滚动位置，并同步 Lenis 内部状态
+ */
+function restoreScrollPosition() {
     if (!wrapperRef.value) return
 
-    // 销毁旧实例（如果存在）
-    if (bsInstance.value) {
-        bsInstance.value.destroy()
+    const position = lastScrollPosition.value
+
+    if (props.direction === 'horizontal') {
+        wrapperRef.value.scrollLeft = position
+    } else {
+        wrapperRef.value.scrollTop = position
     }
 
-    // 基础配置
-    const config = {
-        // 核心滚动方向配置
-        scrollX: props.direction === 'horizontal',
-        scrollY: props.direction === 'vertical',
+    lenisInstance.value?.scrollTo(position, {
+        immediate: true,
+        force: true
+    })
 
-        // 必须设置为 true 才能派发 scroll 事件
-        probeType: 3,
+    updateVirtualScrollbar()
+}
 
-        // 允许点击
-        click: true,
+/**
+ * 根据滑块偏移同步滚动位置
+ */
+function syncScrollByThumbOffset(thumbOffset: number) {
+    if (!wrapperRef.value || !contentRef.value) return
 
-        bounce: props.bounce,
+    const isHorizontal = props.direction === 'horizontal'
+    const wrapperSize = isHorizontal ? wrapperRef.value.clientWidth : wrapperRef.value.clientHeight
+    const contentSize = isHorizontal ? contentRef.value.scrollWidth : contentRef.value.scrollHeight
+    const scrollSize = Math.max(contentSize - wrapperSize, 0)
+    const movableTrackSize = Math.max(wrapperSize - scrollbarThumbSize.value, 0)
 
-        disableMouse: props.disableMouse,
-        disableTouch: props.disableTouch,
+    if (scrollSize <= 0 || movableTrackSize <= 0) return
 
-        stopPropagation: props.stopPropagation,
+    const safeThumbOffset = Math.min(Math.max(thumbOffset, 0), movableTrackSize)
+    const targetScroll = (safeThumbOffset / movableTrackSize) * scrollSize
 
-        // 鼠标滚轮配置
-        mouseWheel: {
-            speed: props.speed,
-            invert: false,
-            easeTime: props.easeTime
-        },
-
-        // 滚动条配置
-        scrollbar: props.showScrollbar
-            ? {
-                  fade: false, // 透明度显示逻辑统一交给 CSS 控制
-                  interactive: true, // 允许拖动滚动条
-                  scrollbarTrackClickable: true
-              }
-            : false, // 如果为 false 则不开启插件
-
-        // 合并用户自定义配置
-        ...props.options
+    if (isHorizontal) {
+        wrapperRef.value.scrollLeft = targetScroll
+    } else {
+        wrapperRef.value.scrollTop = targetScroll
     }
 
-    // 创建实例
-    bsInstance.value = new BScroll(wrapperRef.value, config)
+    lenisInstance.value?.scrollTo(targetScroll, {
+        immediate: true,
+        force: true
+    })
+
+    updateVirtualScrollbar()
+}
+
+/**
+ * 清理拖拽事件
+ */
+function clearDragListeners() {
+    removeDragListeners?.()
+    removeDragListeners = null
+    isDraggingScrollbar.value = false
+}
+
+/**
+ * 开始拖拽虚拟滚动条
+ */
+function handleScrollbarDragStart(event: MouseEvent) {
+    if (!props.showScrollbar || !scrollbarVisible.value) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    isDraggingScrollbar.value = true
+
+    const startPointer = props.direction === 'horizontal' ? event.clientX : event.clientY
+    const startThumbOffset = scrollbarThumbOffset.value
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+        const currentPointer =
+            props.direction === 'horizontal' ? moveEvent.clientX : moveEvent.clientY
+        const delta = currentPointer - startPointer
+
+        syncScrollByThumbOffset(startThumbOffset + delta)
+    }
+
+    const handleMouseUp = () => {
+        clearDragListeners()
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    removeDragListeners = () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+    }
+}
+
+/**
+ * 同步容器滚动能力与内容尺寸
+ */
+function syncScrollLayout() {
+    if (!wrapperRef.value || !contentRef.value) return
+
+    const isHorizontal = props.direction === 'horizontal'
+
+    if (isHorizontal) {
+        const contentWidth = contentRef.value.scrollWidth
+        wrapperRef.value.style.overflowX =
+            contentWidth > wrapperRef.value.clientWidth ? 'auto' : 'hidden'
+        wrapperRef.value.style.overflowY = 'hidden'
+    } else {
+        const contentHeight = contentRef.value.scrollHeight
+        wrapperRef.value.style.overflowY =
+            contentHeight > wrapperRef.value.clientHeight ? 'auto' : 'hidden'
+        wrapperRef.value.style.overflowX = 'hidden'
+    }
+
+    lenisInstance.value?.resize()
+    updateVirtualScrollbar()
+}
+
+/**
+ * 销毁 Lenis 实例与动画帧
+ */
+function destroyScroll() {
+    if (rafId) {
+        cancelAnimationFrame(rafId)
+        rafId = 0
+    }
+
+    lenisInstance.value?.destroy()
+    lenisInstance.value = null
+}
+
+/**
+ * 初始化 Lenis
+ */
+function initScroll() {
+    if (!wrapperRef.value || !contentRef.value) return
+
+    destroyScroll()
+
+    const isHorizontal = props.direction === 'horizontal'
+
+    lenisInstance.value = new Lenis({
+        wrapper: wrapperRef.value,
+        content: contentRef.value,
+        orientation: isHorizontal ? 'horizontal' : 'vertical',
+        gestureOrientation: isHorizontal ? 'horizontal' : 'vertical',
+        smoothWheel: true,
+        syncTouch: false,
+        infinite: false
+    })
+
+    lenisInstance.value.on('scroll', () => {
+        updateVirtualScrollbar()
+    })
+
+    const raf = (time: number) => {
+        lenisInstance.value?.raf(time)
+        rafId = requestAnimationFrame(raf)
+    }
+
+    rafId = requestAnimationFrame(raf)
+
+    nextTick(() => {
+        syncScrollLayout()
+    })
+}
+
+/**
+ * 刷新滚动实例
+ */
+function refresh() {
+    nextTick(() => {
+        syncScrollLayout()
+    })
+}
+
+/**
+ * 滚动到指定位置
+ */
+function scrollTo(x: number, y: number, time = 500) {
+    const target = props.direction === 'horizontal' ? x : y
+
+    lenisInstance.value?.scrollTo(target, {
+        duration: time / 1000,
+        immediate: time <= 0
+    })
+
+    nextTick(() => {
+        updateVirtualScrollbar()
+    })
 }
 
 // 暴露方法给父组件
 defineExpose({
-    instance: bsInstance,
-    refresh: () => bsInstance.value?.refresh(),
-    scrollTo: (x: number, y: number, time?: number) => bsInstance.value?.scrollTo(x, y, time)
+    instance: lenisInstance,
+    refresh,
+    scrollTo
 })
 
 onMounted(() => {
     initScroll()
 
-    // 监听窗口大小变化，自动刷新 BS
-    window.addEventListener('resize', () => {
-        bsInstance.value?.refresh()
-    })
+    resizeHandler = () => {
+        refresh()
+    }
+    window.addEventListener('resize', resizeHandler)
 
-    // 使用 MutationObserver 监听 DOM 变化
+    // 监听内容节点变化，自动刷新滚动区域
     if (contentRef.value) {
         mutationObserver = new MutationObserver(() => {
-            nextTick(() => {
-                bsInstance.value?.refresh()
-            })
+            refresh()
         })
 
         mutationObserver.observe(contentRef.value, {
-            childList: true, // 监听子节点的添加或删除
-            subtree: true, // 监听所有后代节点
-            attributes: true, // 监听属性变化
-            characterData: true // 监听文本内容变化
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true
         })
     }
 
-    // 使用 ResizeObserver 监听内容尺寸变化
+    // 监听尺寸变化，自动同步滚动边界
     if (contentRef.value) {
         resizeObserver = new ResizeObserver(() => {
-            nextTick(() => {
-                bsInstance.value?.refresh()
-            })
+            refresh()
         })
 
         resizeObserver.observe(contentRef.value)
     }
+
+    if (wrapperRef.value) {
+        resizeObserver ??= new ResizeObserver(() => {
+            refresh()
+        })
+
+        resizeObserver.observe(wrapperRef.value)
+    }
+})
+
+onActivated(() => {
+    nextTick(() => {
+        syncScrollLayout()
+        restoreScrollPosition()
+        console.log(1)
+    })
+})
+
+onDeactivated(() => {
+    lastScrollPosition.value = getCurrentScrollPosition()
+    console.log(2)
 })
 
 onUnmounted(() => {
-    // 销毁观察器
+    lastScrollPosition.value = getCurrentScrollPosition()
+    clearDragListeners()
+
     mutationObserver?.disconnect()
     mutationObserver = null
+
     resizeObserver?.disconnect()
     resizeObserver = null
 
-    // 销毁 BetterScroll 实例
-    bsInstance.value?.destroy()
-    bsInstance.value = null
+    if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+        resizeHandler = null
+    }
+
+    destroyScroll()
 })
 
-// 监听内容变化或属性变化，重新初始化或刷新
 watch(
-    () => [props.direction, props.showScrollbar, props.bounce],
+    () => props.direction,
     () => {
-        nextTick(() => initScroll())
+        nextTick(() => {
+            initScroll()
+        })
     }
+)
+
+watch(
+    () => props.contentCss,
+    () => {
+        refresh()
+    },
+    { deep: true }
 )
 </script>
 
 <template>
     <div
-        ref="wrapperRef"
-        :class="{ 'is-scrollbar-allways': props.showScrollbarAllways }"
-        class="bs-wrapper"
+        :class="{
+            'is-scrollbar-hidden': !props.showScrollbar,
+            'is-scrollbar-allways': props.showScrollbarAllways,
+            'is-scrollbar-dragging': isDraggingScrollbar,
+            'is-scrollbar-occupy-space': shouldOccupyScrollbarSpace
+        }"
+        :style="{
+            '--scrollbar-size': scrollbarSize,
+            '--scrollbar-occupy-size': scrollbarOccupySize
+        }"
+        class="scroll-shell"
     >
+        <div ref="wrapperRef" :class="[`is-${props.direction}`]" class="scroll-wrapper">
+            <div
+                ref="contentRef"
+                class="scroll-content"
+                :class="[`is-${props.direction}`]"
+                :style="props.contentCss"
+            >
+                <slot />
+            </div>
+        </div>
         <div
-            ref="contentRef"
-            class="bs-content"
+            v-if="shouldShowVirtualScrollbar"
             :class="[`is-${props.direction}`]"
-            :style="props.contentCss"
+            class="virtual-scrollbar-track"
         >
-            <slot />
+            <div
+                :style="scrollbarThumbStyle"
+                class="virtual-scrollbar-thumb"
+                @mousedown="handleScrollbarDragStart"
+            />
         </div>
     </div>
 </template>
 
-<style scoped>
-/* 容器必须有固定高度(或父级限制)且 overflow hidden */
-.bs-wrapper {
+<style lang="scss" scoped>
+.scroll-shell {
     width: 100%;
     height: 100%;
     position: relative;
-    overflow: hidden;
-}
 
-:deep(.bscroll-vertical-scrollbar) {
-    right: -1px !important;
-    width: 10px !important;
-}
+    &:hover,
+    &.is-scrollbar-allways {
+        .virtual-scrollbar-track {
+            opacity: 1;
+        }
+    }
 
-:deep(.bscroll-horizontal-scrollbar) {
-    bottom: -1px !important;
-    height: 10px !important;
-}
+    &.is-scrollbar-dragging {
+        .virtual-scrollbar-track {
+            opacity: 1;
+        }
+    }
 
-:deep(.bscroll-vertical-scrollbar),
-:deep(.bscroll-horizontal-scrollbar) {
-    opacity: 0 !important;
-    transition: opacity 0.3s !important;
-}
+    .scroll-wrapper {
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
 
-.bs-wrapper:hover :deep(.bscroll-vertical-scrollbar),
-.bs-wrapper:hover :deep(.bscroll-horizontal-scrollbar),
-.bs-wrapper.is-scrollbar-allways :deep(.bscroll-vertical-scrollbar),
-.bs-wrapper.is-scrollbar-allways :deep(.bscroll-horizontal-scrollbar) {
-    opacity: 1 !important;
-}
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
 
-/*
-  关键：水平滚动布局
-  必须让子元素横向排列，且不换行，宽度由内容撑开
-*/
-.bs-content.is-horizontal {
-    display: inline-flex; /* 或者 white-space: nowrap + display: inline-block */
-    min-width: 100%; /* 确保内容少时也能撑满容器 */
-}
+    &.is-scrollbar-hidden {
+        .scroll-wrapper {
+            scrollbar-width: none;
 
-/* 垂直滚动布局 */
-.bs-content.is-vertical {
-    display: block;
-    min-height: 100%;
-}
+            &::-webkit-scrollbar {
+                display: none;
+            }
+        }
+    }
 
-/**
-  滚动条颜色
- */
-:deep(.bscroll-indicator) {
-    border-radius: 1rem !important;
-    cursor: pointer !important;
-    background: var(--p-surface-400) !important;
+    &.is-scrollbar-occupy-space {
+        .scroll-wrapper {
+            &.is-vertical {
+                padding-right: var(--scrollbar-occupy-size);
+            }
+
+            &.is-horizontal {
+                padding-bottom: var(--scrollbar-occupy-size);
+            }
+        }
+    }
+
+    .scroll-content {
+        min-width: 100%;
+        min-height: 100%;
+
+        &.is-horizontal {
+            display: inline-flex;
+            width: max-content;
+        }
+
+        &.is-vertical {
+            display: block;
+        }
+    }
+
+    .virtual-scrollbar-track {
+        position: absolute;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+
+        &.is-vertical {
+            top: 0;
+            right: 0;
+            width: var(--scrollbar-size);
+            height: 100%;
+
+            .virtual-scrollbar-thumb {
+                top: 0;
+                right: 0;
+                width: var(--scrollbar-size);
+            }
+        }
+
+        &.is-horizontal {
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: var(--scrollbar-size);
+
+            .virtual-scrollbar-thumb {
+                left: 0;
+                bottom: 0;
+                height: var(--scrollbar-size);
+            }
+        }
+
+        .virtual-scrollbar-thumb {
+            position: absolute;
+            border-radius: 1rem;
+            background: var(--p-surface-400);
+            pointer-events: auto;
+            cursor: pointer;
+            user-select: none;
+        }
+    }
 }
 </style>

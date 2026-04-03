@@ -105,7 +105,7 @@ function openLlmInfo() {
                 class="active-indicator"
             />
         </div>
-        <Scroll class="content">
+        <Scroll class="content" :scrollbar-occupy-space="false">
             <transition name="slide-up">
                 <div v-if="activeTab === 'settings'" key="settings" class="settings-tab-content">
                     <h1 style="margin-top: 0">输出目录</h1>
@@ -405,7 +405,7 @@ function openLlmInfo() {
 }
 
 .content {
-    height: calc(100% - var(--header-height));
+    height: calc(100% - var(--header-height)) !important;
 
     .settings-tab-content {
         padding: 1.25rem 1.25rem 5rem;

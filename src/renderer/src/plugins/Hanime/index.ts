@@ -187,7 +187,7 @@ const hanimeScraper: IScraper = {
         parseSet: async (video: IVideo, webContent: string) => {
             const $ = cheerioLoad(webContent)
             let set = $('.single-icon-wrapper.video-playlist-top').children('h4').first().text()
-            set = set.split('/')[1].trim()
+            set = set.includes('/') ? set.split('/')[1].trim() : set.trim()
 
             if (!set) return null
 
