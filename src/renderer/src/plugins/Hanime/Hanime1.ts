@@ -1,14 +1,12 @@
-import type { IVideo } from '@renderer/scraper'
-
 import { DebugHelper, EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { temp } from './temp'
 
 export async function searchVideoHanime1(
-    originaltitle: string
+    searchTitle: string
 ): Promise<{ href: string; poster: string | undefined } | null> {
-    const url = `https://hanime1.me/search?query=${EncodeHelper.encodeUrl(originaltitle)}&genre=${EncodeHelper.encodeUrl('裏番')}`
+    const url = `https://hanime1.me/search?query=${EncodeHelper.encodeUrl(searchTitle)}&genre=${EncodeHelper.encodeUrl('裏番')}`
     const webContent = await NetHelper.get(url)
     if (!webContent.ok) {
         DebugHelper.warn(`- [Hanime1] 获取搜索结果失败`, url)
@@ -38,7 +36,7 @@ export async function searchVideoHanime1(
 /**
  * Hanime1
  */
-export async function getWebContentHanime1(video: IVideo): Promise<string | null> {
+export async function getWebContentHanime1(searchTitle: string): Promise<string | null> {
     DebugHelper.log(`- [Hanime1] 开始获取网页内容`)
 
     //先使用编号搜索
@@ -55,7 +53,7 @@ export async function getWebContentHanime1(video: IVideo): Promise<string | null
     }
 
     //如果编号搜索失败，则使用原标题搜索
-    const searchResult = await searchVideoHanime1(video.originaltitle)
+    const searchResult = await searchVideoHanime1(searchTitle)
     if (!searchResult) {
         DebugHelper.warn(`- [Hanime1] 获取网页内容失败`)
         return null
@@ -85,8 +83,8 @@ export async function getWebContentHanime1(video: IVideo): Promise<string | null
 /**
  * 获取 Hanime1 封面
  */
-export async function getPosterHanime1(originaltitle: string): Promise<string | null> {
-    const searchResult = await searchVideoHanime1(originaltitle)
+export async function getPosterHanime1(searchTitle: string): Promise<string | null> {
+    const searchResult = await searchVideoHanime1(searchTitle)
     if (!searchResult?.poster) {
         DebugHelper.warn(`- [Hanime1] 没有找到封面`)
         return null

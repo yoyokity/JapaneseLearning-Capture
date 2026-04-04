@@ -1,5 +1,3 @@
-import type { IVideo } from '@renderer/scraper'
-
 import { DebugHelper, EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
@@ -13,7 +11,7 @@ export const getchuOptions = {
 /**
  * Getchu
  */
-export async function getWebContentGetchu(video: IVideo): Promise<string | null> {
+export async function getWebContentGetchu(searchTitle: string): Promise<string | null> {
     DebugHelper.log(`- [Getchu] 开始获取网页内容`)
 
     /**
@@ -46,7 +44,7 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     }
 
     //如果编号搜索失败，则使用原标题搜索
-    const searchKeyword = await EncodeHelper.encodeUrlEucJp(video.originaltitle)
+    const searchKeyword = await EncodeHelper.encodeUrlEucJp(searchTitle)
     const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
 
     const searchBody = await fetchPage(searchUrl)
@@ -62,9 +60,7 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     DebugHelper.log(`- [Getchu] 搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
     videoList.each((_, el) => DebugHelper.log(`- [Getchu] 【${$(el).text().trim()}】`))
 
-    const target = videoList
-        .filter((_, el) => $(el).text().trim().includes(video.originaltitle))
-        .first()
+    const target = videoList.filter((_, el) => $(el).text().trim().includes(searchTitle)).first()
     const href = target.attr('href')
     if (!href) {
         DebugHelper.warn(`- [Getchu] 没有找到匹配的番剧`)

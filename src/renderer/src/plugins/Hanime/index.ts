@@ -21,6 +21,7 @@ const hanimeScraper: IScraper = {
     },
     scraperVideoFuncs: {
         getWebContent: async (video: IVideo) => {
+            const searchTitle = video.originaltitle || video.title || video.sorttitle
             temp.封面 = null
             temp.超分封面 = null
             temp.num.hanime1 = video.num.hanime1 ?? ''
@@ -35,9 +36,9 @@ const hanimeScraper: IScraper = {
 
             //获取webContent
             const [hanime1, getchu, dlsite] = await Promise.all([
-                getWebContentHanime1(video),
-                getWebContentGetchu(video),
-                getWebContentDlsite(video)
+                getWebContentHanime1(searchTitle),
+                getWebContentGetchu(searchTitle),
+                getWebContentDlsite(searchTitle)
             ])
 
             temp.webContent.hanime1 = hanime1 ?? ''
@@ -283,7 +284,9 @@ const hanimeScraper: IScraper = {
 
             //没有则从hanime上获取
             if (!temp.封面) {
-                temp.封面 = await getPosterHanime1(video.originaltitle)
+                temp.封面 = await getPosterHanime1(
+                    video.originaltitle || video.title || video.sorttitle
+                )
             }
 
             if (!temp.封面) {

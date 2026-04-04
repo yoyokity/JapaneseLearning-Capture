@@ -1,5 +1,3 @@
-import type { IVideo } from '@renderer/scraper'
-
 import { DebugHelper, EncodeHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
@@ -16,7 +14,7 @@ export const dlsiteOptions = {
 /**
  * Dlsite
  */
-export async function getWebContentDlsite(video: IVideo): Promise<string | null> {
+export async function getWebContentDlsite(searchTitle: string): Promise<string | null> {
     DebugHelper.log(`- [Dlsite] 开始获取网页内容`)
 
     //先使用编号搜索
@@ -34,7 +32,7 @@ export async function getWebContentDlsite(video: IVideo): Promise<string | null>
     }
 
     //如果编号搜索失败，则使用原标题搜索
-    const keyword = EncodeHelper.encodeUrl(video.originaltitle).replace(/%20/g, '+')
+    const keyword = EncodeHelper.encodeUrl(searchTitle).replace(/%20/g, '+')
     const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
     const webContent = await NetHelper.get(searchUrl, dlsiteOptions)
     if (!webContent.ok) {
@@ -49,9 +47,7 @@ export async function getWebContentDlsite(video: IVideo): Promise<string | null>
     DebugHelper.log(`- [Dlsite] 搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
     videoList.each((_, el) => DebugHelper.log(`- [Dlsite] 【${$(el).text().trim()}】`))
 
-    const target = videoList
-        .filter((_, el) => $(el).text().trim().includes(video.originaltitle))
-        .first()
+    const target = videoList.filter((_, el) => $(el).text().trim().includes(searchTitle)).first()
     const href = target.attr('href')
     if (!href) {
         DebugHelper.warn(`- [Dlsite] 没有找到匹配的番剧`)
