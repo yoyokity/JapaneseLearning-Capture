@@ -12,6 +12,7 @@ import {
     PathHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
+import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
 import Button from 'primevue/button'
@@ -31,6 +32,7 @@ import ImageEditor from './imageEditor.vue'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
+const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
 
@@ -159,6 +161,14 @@ function getNumLink(sourceName: string) {
 onMounted(async () => {
     DebugHelper.queueWithInterval('scraper', 0, true, async () => {
         newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
+
+        // 如果未设置刮削器，或当前刮削器已不在列表中，则默认使用当前选择的刮削器
+        if (
+            !newVideo.value.scraperName ||
+            !Scraper.instances.some((scraper) => scraper.scraperName === newVideo.value.scraperName)
+        ) {
+            newVideo.value.scraperName = settings.currentScraper
+        }
 
         //读取extrafanart
         readExtrafanart(video.dir, newVideo.value, video).then((count) => {
