@@ -19,6 +19,18 @@ export const globalStatesStore = defineStore('globalStates', () => {
      */
     const manageViewFilesFilterValue = ref<string>('')
 
+    /**
+     * 图片缓存版本
+     * @description 用于刷新同路径图片的显示缓存
+     */
+    const imageCacheVersion = ref(Date.now())
+    /**
+     * 刷新图片缓存版本
+     */
+    function refreshImageCacheVersion() {
+        imageCacheVersion.value = Date.now()
+    }
+
     const settings = settingsStore()
 
     /**
@@ -71,7 +83,9 @@ export const globalStatesStore = defineStore('globalStates', () => {
         /**
          * 是否正在进行文件扫描
          */
-        scanFilesLoading: ref(false)
+        scanFilesLoading: ref(false),
+        imageCacheVersion,
+        refreshImageCacheVersion
     }
 })
 

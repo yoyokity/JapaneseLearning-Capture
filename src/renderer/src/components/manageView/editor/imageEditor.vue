@@ -4,6 +4,7 @@ import type { Ref } from 'vue'
 
 import VideoImage from '@renderer/components/control/VideoImage.vue'
 import { ImageHelper, PathHelper } from '@renderer/helper'
+import { globalStatesStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import { computed, ref } from 'vue'
 import { Waterfall } from 'vue-waterfall-plugin-next'
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const { toast } = useMessage()
+const globalStates = globalStatesStore()
 
 const imageLabels: Record<'poster' | 'fanart' | 'thumb', string> = {
     poster: '封面',
@@ -55,7 +57,7 @@ const extrafanartList = computed(() =>
     (video.value.extrafanart || []).map((item, index) => ({
         id: index,
         imgData: item,
-        src: ImageHelper.toLocalFileUrl(item)
+        src: ImageHelper.toLocalFileUrl(item, globalStates.imageCacheVersion)
     }))
 )
 

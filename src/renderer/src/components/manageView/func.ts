@@ -31,6 +31,8 @@ export async function scanFiles(toast: any) {
 
         //更新文件列表状态
         globalStates.setManageViewFiles(videoFiles)
+        // 扫描完成后刷新图片缓存状态，确保同路径图片重新加载
+        globalStates.refreshImageCacheVersion()
     } catch (error) {
         DebugHelper.error('扫描目录下的文件发生错误', error)
         toast.add({

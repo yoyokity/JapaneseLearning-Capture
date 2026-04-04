@@ -10,9 +10,10 @@ export class ImageHelper {
     /**
      * 将本地图片路径转换为 img 可识别的本地协议 URL
      * @param path 本地图片路径
+     * @param cacheVersion 缓存版本，用于强制刷新同路径图片
      * @returns 本地协议 URL
      */
-    static toLocalFileUrl(path: Path | string): string {
+    static toLocalFileUrl(path: Path | string, cacheVersion?: string | number): string {
         const normalizedPath = path.toString().replace(/\\/g, '/')
         const encodedPath = normalizedPath
             .split('/')
@@ -24,7 +25,12 @@ export class ImageHelper {
             })
             .join('/')
 
-        return `local-file:///${encodedPath}`
+        const baseUrl = `local-file:///${encodedPath}`
+        if (cacheVersion === undefined || cacheVersion === null || cacheVersion === '') {
+            return baseUrl
+        }
+
+        return `${baseUrl}?v=${encodeURIComponent(cacheVersion.toString())}`
     }
 
     /**

@@ -3,6 +3,7 @@ import type { StyleValue } from 'vue'
 
 import imgFall from '@renderer/assets/img-fall.svg?url'
 import { ImageHelper } from '@renderer/helper'
+import { globalStatesStore } from '@renderer/stores'
 import { onMounted, ref, watch } from 'vue'
 
 interface ImageProps {
@@ -28,6 +29,7 @@ const props = withDefaults(defineProps<ImageProps>(), {
     errorImageStyle: () => ({}),
     borderRadius: 'calc(var(--border-radius) * 2)'
 })
+const globalStates = globalStatesStore()
 
 const isImgError = ref(true)
 const imageData = ref<string>()
@@ -42,7 +44,7 @@ function loadImage() {
         return
     }
 
-    imageData.value = ImageHelper.toLocalFileUrl(props.imgData)
+    imageData.value = ImageHelper.toLocalFileUrl(props.imgData, globalStates.imageCacheVersion)
     isImgError.value = false
 }
 
@@ -58,6 +60,7 @@ function handleImageError() {
 }
 
 watch(() => props.imgData, loadImage)
+watch(() => globalStates.imageCacheVersion, loadImage)
 
 onMounted(loadImage)
 </script>
