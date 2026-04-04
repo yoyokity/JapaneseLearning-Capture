@@ -1,6 +1,6 @@
 import type { IVideo } from '@renderer/scraper'
 
-import { DebugHelper, ImageHelper, NetHelper } from '@renderer/helper'
+import { DebugHelper, EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { temp } from './temp'
@@ -17,13 +17,6 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     DebugHelper.log(`- [Getchu] 开始获取网页内容`)
 
     /**
-     * 解码 EUC-JP 编码的 ArrayBuffer
-     */
-    function decodeEucJp(buffer: ArrayBuffer): string {
-        return new TextDecoder('EUC-JP').decode(new Uint8Array(buffer))
-    }
-
-    /**
      * 获取 Getchu 页面内容
      */
     async function fetchPage(url: string): Promise<string | null> {
@@ -31,12 +24,12 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
         if (!res.ok) {
             return null
         }
-        return decodeEucJp(res.body)
+        return EncodeHelper.decodeEucJp(res.body)
     }
 
     //先使用编号搜索
     if (temp.num.getchu) {
-        const url = `https://www.getchu.com/soft.phtml?id=${temp.num.getchu}&gc=gc`
+        const url = `https://www.getchu.com/item/${temp.num.getchu}/?gc=gc`
         DebugHelper.log(`- [Getchu] 使用编号搜索：${temp.num.getchu}`)
 
         const body = await fetchPage(url)
@@ -53,7 +46,7 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     }
 
     //如果编号搜索失败，则使用原标题搜索
-    const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${encodeURIComponent(video.originaltitle)}&check_key_dtl=1&submit=&gc=gc`
+    const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${EncodeHelper.encodeEucJp(video.originaltitle)}&check_key_dtl=1&submit=&gc=gc`
 
     const searchBody = await fetchPage(searchUrl)
     if (!searchBody) {
@@ -65,7 +58,7 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     const $ = cheerioLoad(searchBody)
     const videoList = $('td > a.blueb[href*="/soft.phtml?id="]')
 
-    DebugHelper.log(`- [Getchu] 搜索到${videoList.length}个番剧作为候选项：`)
+    DebugHelper.log(`- [Getchu] 搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
     videoList.each((_, el) => DebugHelper.log(`- [Getchu] 【${$(el).text().trim()}】`))
 
     const target = videoList

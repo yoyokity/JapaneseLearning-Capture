@@ -52,6 +52,7 @@
         "eslint-plugin-import-x": "^4.16.1",
         "fast-glob": "^3.3.3",
         "fs-extra": "^11.3.1",
+        "iconv-lite": "^0.7.2",
         "p-queue": "^8.1.0",
         "pathe": "^2.0.3",
         "pinia": "^3.0.3",

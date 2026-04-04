@@ -34,6 +34,8 @@ export function scraperField(
     }
 
     DebugHelper.queueWithInterval('scraper', 0, true, async () => {
+        console.log('video: ', toRaw(video))
+
         //如果webContent为空，则获取网页内容
         if (!webContent.value) {
             DebugHelper.log('[刮削] 获取网页内容...')

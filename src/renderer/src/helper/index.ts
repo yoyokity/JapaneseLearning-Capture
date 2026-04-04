@@ -1,6 +1,7 @@
 export * from './const.ts'
 export * from './DataHelper.ts'
 export * from './DebugHelper.ts'
+export * from './EncodeHelper.ts'
 export * from './ImageHelper.ts'
 export * from './NetHelper.ts'
 export * from './PathHelper.ts'
