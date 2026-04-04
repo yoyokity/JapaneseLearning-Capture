@@ -23,6 +23,31 @@ type ImageData =
     | Float64Array
     | string
 
+/**
+ * 按最大边限制等比缩放图片
+ */
+const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
+    const metadata = await input.metadata()
+    const { width, height } = metadata
+
+    if (!width || !height) {
+        return input
+    }
+
+    const longestSide = Math.max(width, height)
+    if (longestSide <= maxSide) {
+        return input
+    }
+
+    return input.resize({
+        width: width >= height ? maxSide : undefined,
+        height: height > width ? maxSide : undefined,
+        fit: 'inside',
+        withoutEnlargement: true,
+        kernel: sharp.kernel.mks2021
+    })
+}
+
 // 保存图片
 ipcMain.handle('image:save', (_, imageData: ImageData, path: string) => {
     return tryExecute(async () => {
@@ -51,7 +76,8 @@ ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: bool
         const tempResultPath = join(tempPath, `super_resolution_${tempFileId}.jpg`)
         const sourceImageData = await fs.promises.readFile(imagePath)
 
-        await sharp(sourceImageData).toFile(tempImageBefore)
+        const inputImage = await resizeByMaxSide(sharp(sourceImageData), 1080)
+        await inputImage.toFile(tempImageBefore)
 
         //超分
         const ars = [
@@ -74,7 +100,8 @@ ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: bool
             cmd.onExit(async (code, text) => {
                 if (code === 0) {
                     //使用sharp转换为jpg，质量92，返回temp路径
-                    await sharp(tempImageAfter).jpeg({ quality: 92 }).toFile(tempResultPath)
+                    const outputImage = await resizeByMaxSide(sharp(tempImageAfter), 3840)
+                    await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
                     resolve(tempResultPath)
                 } else {
                     reject(new Error(text))

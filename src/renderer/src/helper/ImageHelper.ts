@@ -79,6 +79,7 @@ export class ImageHelper {
      * @param imagePath 原图路径
      * @param anime 是否为动漫图片
      * @returns 超分后的本地图片路径
+     * @remarks 输出的图片任意一边的长度不会高于3840
      */
     static async superResolutionImage(
         imagePath: Path | string,
