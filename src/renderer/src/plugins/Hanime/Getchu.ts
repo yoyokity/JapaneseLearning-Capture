@@ -46,7 +46,8 @@ export async function getWebContentGetchu(video: IVideo): Promise<string | null>
     }
 
     //如果编号搜索失败，则使用原标题搜索
-    const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${EncodeHelper.encodeUrlEucJp(video.originaltitle)}&check_key_dtl=1&submit=&gc=gc`
+    const searchKeyword = await EncodeHelper.encodeUrlEucJp(video.originaltitle)
+    const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
 
     const searchBody = await fetchPage(searchUrl)
     if (!searchBody) {

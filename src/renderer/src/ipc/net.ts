@@ -61,7 +61,15 @@ export const net = {
      * @returns 返回验证结果，包含 Cookie 信息
      */
     cloudflareVerify: (url: string, targetCookies?: string[]): Promise<IVerifyCookies> =>
-        invoke('cloudflare:verify', url, targetCookies)
+        invoke('cloudflare:verify', url, targetCookies),
+
+    /**
+     * 按指定编码输出字节数组
+     * @param value 原始字符串
+     * @param encoding 字符编码，默认为 utf-8
+     */
+    encode: (value: string, encoding: string = 'utf-8'): Promise<number[]> =>
+        invoke('net:encode', value, encoding)
 }
 
 /**

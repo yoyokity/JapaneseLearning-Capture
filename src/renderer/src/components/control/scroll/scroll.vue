@@ -302,6 +302,7 @@ function initScroll() {
         content: contentRef.value,
         orientation: isHorizontal ? 'horizontal' : 'vertical',
         gestureOrientation: isHorizontal ? 'horizontal' : 'vertical',
+        duration: 0.8,
         smoothWheel: true,
         syncTouch: false,
         infinite: false

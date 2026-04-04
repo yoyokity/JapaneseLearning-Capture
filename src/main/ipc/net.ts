@@ -1,5 +1,6 @@
 import { ipcMain, session } from 'electron'
 import fetch from 'electron-fetch'
+import iconv from 'iconv-lite'
 
 import { tryExecute } from './func'
 
@@ -179,5 +180,17 @@ ipcMain.handle('net:ping', async (_, host: string, timeout: number = 3000) => {
                 error: (error as Error).message
             }
         }
+    })
+})
+
+/**
+ * 按指定编码输出字节数组
+ * @param value 原始字符串
+ * @param encoding 字符编码
+ */
+ipcMain.handle('net:encode', async (_, value: string, encoding: string = 'utf-8') => {
+    return await tryExecute(async () => {
+        const buffer = iconv.encode(value, encoding)
+        return Array.from(buffer)
     })
 })

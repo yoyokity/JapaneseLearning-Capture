@@ -1,4 +1,4 @@
-import iconv from 'iconv-lite'
+import { Ipc } from '@renderer/ipc'
 
 export class EncodeHelper {
     /**
@@ -18,10 +18,8 @@ export class EncodeHelper {
     /**
      * EUC-JP URL 编码
      */
-    static encodeUrlEucJp(value: string): string {
-        const buffer = iconv.encode(value, 'EUC-JP')
-        return Array.from(buffer)
-            .map((byte) => `%${byte.toString(16).toUpperCase().padStart(2, '0')}`)
-            .join('')
+    static async encodeUrlEucJp(value: string): Promise<string> {
+        const bytes = await Ipc.net.encode(value, 'EUC-JP')
+        return bytes.map((byte) => `%${byte.toString(16).toUpperCase().padStart(2, '0')}`).join('')
     }
 }
