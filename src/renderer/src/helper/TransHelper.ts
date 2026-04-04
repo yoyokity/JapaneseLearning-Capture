@@ -4,6 +4,8 @@ import { settingsStore } from '@renderer/stores'
 import { toSimplified, toTraditional } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
 
+import { EncodeHelper } from './EncodeHelper'
+
 // 注入短语库，提高准确性
 setupEnhance()
 
@@ -60,7 +62,7 @@ const translators = {
 
             //body
             const normalizedText = escapeSpecialSymbols(s_text)
-            const encodedData = encodeURIComponent(
+            const encodedData = EncodeHelper.encodeUrl(
                 `[[["${translateOptions.rpcids}","[[\\"${normalizedText}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
             )
             const body = `f.req=${encodedData}&`

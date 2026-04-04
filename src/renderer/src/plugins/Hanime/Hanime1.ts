@@ -1,6 +1,6 @@
 import type { IVideo } from '@renderer/scraper'
 
-import { DebugHelper, ImageHelper, NetHelper } from '@renderer/helper'
+import { DebugHelper, EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { temp } from './temp'
@@ -8,7 +8,7 @@ import { temp } from './temp'
 export async function searchVideoHanime1(
     originaltitle: string
 ): Promise<{ href: string; poster: string | undefined } | null> {
-    const url = `https://hanime1.me/search?query=${encodeURIComponent(originaltitle)}&genre=${encodeURIComponent('裏番')}`
+    const url = `https://hanime1.me/search?query=${EncodeHelper.encodeUrl(originaltitle)}&genre=${EncodeHelper.encodeUrl('裏番')}`
     const webContent = await NetHelper.get(url)
     if (!webContent.ok) {
         DebugHelper.warn(`- [Hanime1] 获取搜索结果失败`, url)

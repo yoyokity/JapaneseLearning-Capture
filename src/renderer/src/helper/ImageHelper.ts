@@ -4,6 +4,7 @@ import type { ImageData } from '@renderer/ipc'
 import { DebugHelper } from '@renderer/helper/DebugHelper'
 import { Ipc } from '@renderer/ipc'
 
+import { EncodeHelper } from './EncodeHelper'
 import { PathHelper } from './PathHelper'
 
 export class ImageHelper {
@@ -21,7 +22,7 @@ export class ImageHelper {
                 if (index === 0 && /^[A-Z]:$/i.test(item)) {
                     return item
                 }
-                return encodeURIComponent(item)
+                return EncodeHelper.encodeUrl(item)
             })
             .join('/')
 
@@ -30,7 +31,7 @@ export class ImageHelper {
             return baseUrl
         }
 
-        return `${baseUrl}?v=${encodeURIComponent(cacheVersion.toString())}`
+        return `${baseUrl}?v=${EncodeHelper.encodeUrl(cacheVersion.toString())}`
     }
 
     /**

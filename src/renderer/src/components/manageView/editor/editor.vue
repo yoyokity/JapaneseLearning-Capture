@@ -3,7 +3,14 @@ import type { IActor, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
-import { DebugHelper, isNumeric, isUrl, isValidDate, PathHelper } from '@renderer/helper'
+import {
+    DebugHelper,
+    EncodeHelper,
+    isNumeric,
+    isUrl,
+    isValidDate,
+    PathHelper
+} from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -146,7 +153,7 @@ function getNumLink(sourceName: string) {
 
     if (!template || !num) return undefined
 
-    return template.replace('{num}', encodeURIComponent(num))
+    return template.replace('{num}', EncodeHelper.encodeUrl(num))
 }
 
 onMounted(async () => {

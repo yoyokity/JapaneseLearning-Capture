@@ -1,6 +1,6 @@
 import type { IActor } from './Video'
 
-import { DataHelper, NetHelper } from '@renderer/helper'
+import { DataHelper, EncodeHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 const requestOptions = {
@@ -51,7 +51,7 @@ export class Actor implements IActor {
             const response = await NetHelper.get(
                 NetHelper.joinUrl(
                     'https://javdb.com/',
-                    `search?f=actor&q=${encodeURIComponent(this.name)}`
+                    `search?f=actor&q=${EncodeHelper.encodeUrl(this.name)}`
                 ),
                 requestOptions
             )
