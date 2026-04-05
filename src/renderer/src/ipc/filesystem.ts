@@ -182,7 +182,7 @@ const to = '/home/user/app/dist';
      * 写入日志
      * @remarks 用时 <10ms
      */
-    writeLog: (type: 'log' | 'error' | 'warn' | 'info', ...params: any[]): void =>
+    writeLog: (type: 'log' | 'error' | 'warn' | 'success' | 'debug', ...params: any[]): void =>
         send('filesystem:writeLog', type, ...params),
 
     /**

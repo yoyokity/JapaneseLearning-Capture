@@ -15,8 +15,8 @@ import { createApp } from 'vue'
 import 'vue-waterfall-plugin-next/dist/style.css'
 import 'primeicons/primeicons.css'
 
-LogHelper.log('============================')
-LogHelper.log('应用初始化中...')
+LogHelper.debug('============================')
+LogHelper.debug('应用初始化中...')
 
 async function initApp() {
     await PathHelper.init()

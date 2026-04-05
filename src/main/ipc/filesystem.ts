@@ -198,17 +198,24 @@ ipcMain.handle(
     }
 )
 
+type ILogType = 'log' | 'error' | 'warn' | 'success' | 'debug'
+
+const logMethodMap: Record<ILogType, 'log' | 'error' | 'warn' | 'info' | 'debug'> = {
+    log: 'log',
+    error: 'error',
+    warn: 'warn',
+    success: 'info',
+    debug: 'debug'
+}
+
 // 写入log文件
-ipcMain.on(
-    'filesystem:writeLog',
-    (_, type: 'log' | 'error' | 'warn' | 'info', ...params: any[]) => {
-        try {
-            log[type](...params)
-        } catch (e) {
-            console.warn(`log写入失败: [${type}] ${params.join(' ')}`, e)
-        }
+ipcMain.on('filesystem:writeLog', (_, type: ILogType, ...params: any[]) => {
+    try {
+        log[logMethodMap[type]](...params)
+    } catch (e) {
+        console.warn(`log写入失败: [${type}] ${params.join(' ')}`, e)
     }
-)
+})
 
 // 在资源管理器中打开路径
 ipcMain.handle('filesystem:openInExplorer', (_, filePath: string) => {

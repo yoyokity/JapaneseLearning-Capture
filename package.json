@@ -39,7 +39,6 @@
         "autoprefixer": "^10.4.21",
         "cheerio": "^1.1.2",
         "chinese-simple2traditional": "^2.2.2",
-        "consola": "^3.4.2",
         "cssnano": "^7.1.1",
         "electron": "^37.2.3",
         "electron-fetch": "^1.9.1",
