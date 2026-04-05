@@ -1,4 +1,4 @@
-import { DebugHelper } from './DebugHelper'
+import { LogHelper } from './LogHelper'
 
 /**
  * 数据处理相关，提供数据的存储和读取功能
@@ -53,12 +53,12 @@ export class DataHelper {
                 }
 
                 request.onerror = (event) => {
-                    DebugHelper.error('存储数据失败:', (event.target as IDBRequest).error)
+                    LogHelper.error('存储数据失败:', (event.target as IDBRequest).error)
                     resolve(false)
                 }
             })
         } catch (error) {
-            DebugHelper.error('存储数据时发生错误:', error)
+            LogHelper.error('存储数据时发生错误:', error)
             return false
         }
     }
@@ -91,12 +91,12 @@ export class DataHelper {
                 }
 
                 request.onerror = (event) => {
-                    DebugHelper.error('获取数据失败:', (event.target as IDBRequest).error)
+                    LogHelper.error('获取数据失败:', (event.target as IDBRequest).error)
                     resolve(null)
                 }
             })
         } catch (error) {
-            DebugHelper.error('获取数据时发生错误:', error)
+            LogHelper.error('获取数据时发生错误:', error)
             return null
         }
     }
@@ -109,9 +109,9 @@ export class DataHelper {
     protected static async init(): Promise<void> {
         try {
             this._db = await this.openDB()
-            DebugHelper.info('数据库连接已初始化')
+            LogHelper.debug('数据库连接已初始化')
         } catch (error) {
-            DebugHelper.error('初始化数据库连接失败:', error)
+            LogHelper.error('初始化数据库连接失败:', error)
         }
     }
 
@@ -124,7 +124,7 @@ export class DataHelper {
         if (this._db) {
             this._db.close()
             this._db = null
-            DebugHelper.info('数据库连接已关闭')
+            LogHelper.debug('数据库连接已关闭')
         }
     }
 
@@ -166,7 +166,7 @@ export class DataHelper {
             const request = indexedDB.open(this.DB_NAME, this.DB_VERSION)
 
             request.onerror = (event) => {
-                DebugHelper.error('打开数据库失败:', (event.target as IDBRequest).error)
+                LogHelper.error('打开数据库失败:', (event.target as IDBRequest).error)
                 reject((event.target as IDBRequest).error)
             }
 
@@ -175,7 +175,7 @@ export class DataHelper {
 
                 // 监听连接关闭事件，清除连接实例
                 db.onclose = () => {
-                    DebugHelper.info('数据库连接已关闭')
+                    LogHelper.debug('数据库连接已关闭')
                     if (this._db === db) {
                         this._db = null
                     }
@@ -183,7 +183,7 @@ export class DataHelper {
 
                 // 监听连接错误事件
                 db.onerror = (event) => {
-                    DebugHelper.error('数据库连接错误:', event)
+                    LogHelper.error('数据库连接错误:', event)
                 }
 
                 resolve(db)

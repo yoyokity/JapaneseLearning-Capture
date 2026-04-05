@@ -1,5 +1,6 @@
 import { Ipc } from '@renderer/ipc'
 
+/** 编码相关 */
 export class EncodeHelper {
     /**
      * URL 编码

@@ -4,12 +4,12 @@ import type { Ref } from 'vue'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import {
-    DebugHelper,
     EncodeHelper,
     isNumeric,
     isUrl,
     isValidDate,
-    PathHelper
+    PathHelper,
+    TaskHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
@@ -71,7 +71,7 @@ useKeyPress(['esc'], () => {
     if (previewImage.value) {
         previewImage.value = null
     } else {
-        DebugHelper.queueClear('scraper')
+        TaskHelper.queueClear('scraper')
         dialogRef.value.close()
     }
 })
@@ -85,7 +85,7 @@ async function onSave() {
 
     if (!scraper) return
 
-    DebugHelper.queueWithInterval('scraper', 0, true, async () => {
+    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
         //如果视频没有修改，则不保存
         if (isEqual(newVideo.value, sourceVideoFile)) {
             toast.success('未修改，无需保存')
@@ -117,7 +117,7 @@ async function onSave() {
         await nextTick()
         await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
 
-        DebugHelper.queueClear('scraper')
+        TaskHelper.queueClear('scraper')
     })
 }
 
@@ -159,7 +159,7 @@ function getNumLink(sourceName: string) {
 }
 
 onMounted(async () => {
-    DebugHelper.queueWithInterval('scraper', 0, true, async () => {
+    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
         newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
 
         // 如果未设置刮削器，或当前刮削器已不在列表中，则默认使用当前选择的刮削器

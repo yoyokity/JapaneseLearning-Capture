@@ -1,7 +1,8 @@
 import { Ipc } from '@renderer/ipc'
 import * as pathe from 'pathe'
 
-import { DebugHelper } from './DebugHelper.ts'
+import { LogHelper } from './LogHelper.ts'
+import { TaskHelper } from './TaskHelper.ts'
 
 export class Path {
     readonly _path: string
@@ -70,11 +71,11 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async isExist() {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.isExist, this._path)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.isExist, this._path)
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`判断path是否存在失败：`, re.error)
+            LogHelper.error(`判断path是否存在失败：`, re.error)
             return false
         }
     }
@@ -83,11 +84,11 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async isDirectory() {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.isDirectory, this._path)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.isDirectory, this._path)
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`判断path是否为目录失败：`, re.error)
+            LogHelper.error(`判断path是否为目录失败：`, re.error)
             return false
         }
     }
@@ -97,11 +98,11 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async isFile() {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.isFile, this._path)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.isFile, this._path)
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`判断path是否为文件失败：`, re.error)
+            LogHelper.error(`判断path是否为文件失败：`, re.error)
             return false
         }
     }
@@ -111,11 +112,11 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async getSats() {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.getSatus, this._path)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.getSatus, this._path)
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`获取path的状态信息失败：`, re.error)
+            LogHelper.error(`获取path的状态信息失败：`, re.error)
             return null
         }
     }
@@ -147,20 +148,20 @@ export class PathHelper {
     static tempPath: Path
 
     static async init() {
-        const appPath = await DebugHelper.tryExecute(Ipc.app.appPath)
+        const appPath = await TaskHelper.tryExecute(Ipc.app.appPath)
         if (!appPath.hasError) {
-            DebugHelper.info(`获取appPath成功：`, appPath.result)
+            LogHelper.debug(`获取appPath成功：`, appPath.result)
             PathHelper.appPath = new Path(appPath.result)
         } else {
-            DebugHelper.error(`获取appPath失败：`, appPath.error)
+            LogHelper.error(`获取appPath失败：`, appPath.error)
         }
 
-        const arsrPath = await DebugHelper.tryExecute(Ipc.app.arsrPath)
+        const arsrPath = await TaskHelper.tryExecute(Ipc.app.arsrPath)
         if (!arsrPath.hasError) {
-            DebugHelper.info(`获取arsrPath成功：`, arsrPath.result.root)
-            DebugHelper.info(`获取resources成功：`, arsrPath.result.resources)
-            DebugHelper.info(`获取extraResource成功：`, arsrPath.result.extraResource)
-            DebugHelper.info(`获取renderer成功：`, arsrPath.result.renderer)
+            LogHelper.debug(`获取arsrPath成功：`, arsrPath.result.root)
+            LogHelper.debug(`获取resources成功：`, arsrPath.result.resources)
+            LogHelper.debug(`获取extraResource成功：`, arsrPath.result.extraResource)
+            LogHelper.debug(`获取renderer成功：`, arsrPath.result.renderer)
             PathHelper.arsrPath = {
                 root: new Path(arsrPath.result.root),
                 resources: new Path(arsrPath.result.resources),
@@ -168,31 +169,31 @@ export class PathHelper {
                 renderer: new Path(arsrPath.result.renderer)
             }
         } else {
-            DebugHelper.error(`获取arsrPath失败：`, arsrPath.error)
+            LogHelper.error(`获取arsrPath失败：`, arsrPath.error)
         }
 
-        const userDataPath = await DebugHelper.tryExecute(Ipc.app.userPath)
+        const userDataPath = await TaskHelper.tryExecute(Ipc.app.userPath)
         if (!userDataPath.hasError) {
-            DebugHelper.info(`获取userDataPath成功：`, userDataPath.result)
+            LogHelper.debug(`获取userDataPath成功：`, userDataPath.result)
             PathHelper.userPath = new Path(userDataPath.result)
         } else {
-            DebugHelper.error(`获取userDataPath失败：`, userDataPath.error)
+            LogHelper.error(`获取userDataPath失败：`, userDataPath.error)
         }
 
-        const logsPath = await DebugHelper.tryExecute(Ipc.app.logsPath)
+        const logsPath = await TaskHelper.tryExecute(Ipc.app.logsPath)
         if (!logsPath.hasError) {
-            DebugHelper.info(`获取logsPath成功：`, logsPath.result)
+            LogHelper.debug(`获取logsPath成功：`, logsPath.result)
             PathHelper.logsPath = new Path(logsPath.result)
         } else {
-            DebugHelper.error(`获取logsPath失败：`, logsPath.error)
+            LogHelper.error(`获取logsPath失败：`, logsPath.error)
         }
 
-        const tempPath = await DebugHelper.tryExecute(Ipc.app.tempPath)
+        const tempPath = await TaskHelper.tryExecute(Ipc.app.tempPath)
         if (!tempPath.hasError) {
-            DebugHelper.info(`获取tempPath成功：`, tempPath.result)
+            LogHelper.debug(`获取tempPath成功：`, tempPath.result)
             PathHelper.tempPath = new Path(tempPath.result)
         } else {
-            DebugHelper.error(`获取tempPath失败：`, tempPath.error)
+            LogHelper.error(`获取tempPath失败：`, tempPath.error)
         }
     }
 
@@ -234,11 +235,11 @@ export class PathHelper {
      * @returns 目录是否存在或创建成功
      */
     static async createDirectory(path: Path | string): Promise<boolean> {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.createDirectory, path.toString())
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.createDirectory, path.toString())
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`创建目录失败：`, re.error)
+            LogHelper.error(`创建目录失败：`, re.error)
             return false
         }
     }
@@ -266,7 +267,7 @@ export class PathHelper {
             path = PathHelper.appPath.join(path.toString())
         }
 
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.readDirectory, filter, {
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.readDirectory, filter, {
             cwd: path.toString(),
             deep,
             onlyFiles: type === 'file' ? true : undefined,
@@ -276,7 +277,7 @@ export class PathHelper {
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`读取目录失败：`, re.error)
+            LogHelper.error(`读取目录失败：`, re.error)
             return []
         }
     }
@@ -287,11 +288,11 @@ export class PathHelper {
      * @returns 目标是否已不存在
      */
     static async remove(path: Path | string): Promise<boolean> {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.remove, path.toString())
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.remove, path.toString())
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`删除文件或目录失败：`, re.error)
+            LogHelper.error(`删除文件或目录失败：`, re.error)
             return false
         }
     }
@@ -303,11 +304,11 @@ export class PathHelper {
      * @param data 要写入的数据
      */
     static async writeFile(path: Path | string, data: string | ArrayBufferView): Promise<boolean> {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.writeFile, path.toString(), data)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.writeFile, path.toString(), data)
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`写入文件失败：`, re.error)
+            LogHelper.error(`写入文件失败：`, re.error)
             return false
         }
     }
@@ -319,11 +320,11 @@ export class PathHelper {
      * @param data 要追加的数据
      */
     static async appendFile(path: Path | string, data: string | Uint8Array): Promise<boolean> {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.appendFile, path.toString(), data)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.appendFile, path.toString(), data)
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`追加文件内容失败：`, re.error)
+            LogHelper.error(`追加文件内容失败：`, re.error)
             return false
         }
     }
@@ -338,11 +339,11 @@ export class PathHelper {
         path: Path | string,
         encoding: BufferEncoding | 'arraybuffer' = 'utf-8'
     ): Promise<string | ArrayBuffer | null> {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.readFile, path.toString(), encoding)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.readFile, path.toString(), encoding)
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`读取文件失败：`, re.error)
+            LogHelper.error(`读取文件失败：`, re.error)
             return null
         }
     }
@@ -361,7 +362,7 @@ export class PathHelper {
         overwrite: boolean = true,
         filter?: (src: string, dest: string) => boolean
     ): Promise<boolean> {
-        const re = await DebugHelper.tryExecute(
+        const re = await TaskHelper.tryExecute(
             Ipc.filesystem.copy,
             sourcePath.toString(),
             destPath.toString(),
@@ -371,7 +372,7 @@ export class PathHelper {
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`复制文件或目录失败：`, re.error)
+            LogHelper.error(`复制文件或目录失败：`, re.error)
             return false
         }
     }
@@ -388,7 +389,7 @@ export class PathHelper {
         destPath: Path | string,
         overwrite: boolean = true
     ): Promise<boolean> {
-        const re = await DebugHelper.tryExecute(
+        const re = await TaskHelper.tryExecute(
             Ipc.filesystem.move,
             sourcePath.toString(),
             destPath.toString(),
@@ -397,7 +398,7 @@ export class PathHelper {
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`移动文件或目录失败：`, re.error)
+            LogHelper.error(`移动文件或目录失败：`, re.error)
             return false
         }
     }
@@ -408,11 +409,11 @@ export class PathHelper {
      * @param path 要打开的路径
      */
     static async openInExplorer(path: Path | string) {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.openInExplorer, path.toString())
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.openInExplorer, path.toString())
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`在资源管理器中打开路径失败：`, re.error)
+            LogHelper.error(`在资源管理器中打开路径失败：`, re.error)
             return false
         }
     }
@@ -424,11 +425,11 @@ export class PathHelper {
      * @returns 文件路径
      */
     static async getPathForFile(file: File): Promise<string | null> {
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.getPathForFile, file)
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.getPathForFile, file)
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`获取前端文件的实际绝对路径失败：`, re.error)
+            LogHelper.error(`获取前端文件的实际绝对路径失败：`, re.error)
             return null
         }
     }
@@ -439,15 +440,15 @@ export class PathHelper {
      * @param rootPath 根路径
      */
     static async removeEmptyFolders(rootPath: Path | string) {
-        DebugHelper.info(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
-        const re = await DebugHelper.tryExecute(
+        LogHelper.log(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
+        const re = await TaskHelper.tryExecute(
             Ipc.filesystem.removeEmptyFolders,
             rootPath.toString()
         )
         if (!re.hasError) {
             return true
         } else {
-            DebugHelper.error(`删除空文件夹失败：`, re.error)
+            LogHelper.error(`删除空文件夹失败：`, re.error)
             return false
         }
     }
@@ -459,12 +460,12 @@ export class PathHelper {
      * @returns 是否成功清空
      */
     static async clearFolder(folderPath: Path | string): Promise<boolean> {
-        DebugHelper.info(`清空文件夹：`, folderPath.toString())
-        const re = await DebugHelper.tryExecute(Ipc.filesystem.clearFolder, folderPath.toString())
+        LogHelper.success(`清空文件夹：`, folderPath.toString())
+        const re = await TaskHelper.tryExecute(Ipc.filesystem.clearFolder, folderPath.toString())
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`清空文件夹失败：`, re.error)
+            LogHelper.error(`清空文件夹失败：`, re.error)
             return false
         }
     }

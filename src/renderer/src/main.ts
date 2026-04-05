@@ -1,5 +1,5 @@
 import App from '@renderer/App.vue'
-import { DebugHelper, PathHelper } from '@renderer/helper'
+import { LogHelper, PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import { theme } from '@renderer/style/theme'
@@ -15,8 +15,8 @@ import { createApp } from 'vue'
 import 'vue-waterfall-plugin-next/dist/style.css'
 import 'primeicons/primeicons.css'
 
-DebugHelper.log('============================')
-DebugHelper.log('应用初始化中...')
+LogHelper.log('============================')
+LogHelper.log('应用初始化中...')
 
 async function initApp() {
     await PathHelper.init()
@@ -43,7 +43,7 @@ async function initApp() {
     //刮削器初始化
     const settings = settingsStore()
     Scraper.instances.forEach((scraper) => {
-        DebugHelper.info(`刮削器已加载：${scraper.scraperName}`)
+        LogHelper.success(`刮削器已加载：${scraper.scraperName}`)
         // 初始化刮削器路径缺省值为output
         settings.scraperPath[scraper.scraperName] =
             settings.scraperPath[scraper.scraperName] || '/output'
@@ -52,7 +52,7 @@ async function initApp() {
     // 初始化当前刮削器缺省值为第一个刮削器
     settings.currentScraper = settings.currentScraper || Scraper.instances[0].scraperName
 
-    DebugHelper.info('应用初始化完成')
+    LogHelper.success('应用初始化完成')
 }
 
 initApp()

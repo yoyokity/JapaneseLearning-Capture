@@ -1,7 +1,7 @@
 import type { IResultWithError, Path } from '@renderer/helper'
 import type { IVideo, IVideoFile } from './Video'
 
-import { DebugHelper, PathHelper } from '@renderer/helper'
+import { LogHelper, PathHelper } from '@renderer/helper'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 
@@ -177,23 +177,23 @@ export class Scraper {
 
             // 检查scraper是否符合IScraper接口
             if (!scraper || typeof scraper !== 'object') {
-                DebugHelper.error(`${path} 导出的默认对象不是有效对象，此刮削器加载失败`)
+                LogHelper.error(`${path} 导出的默认对象不是有效对象，此刮削器加载失败`)
                 continue
             }
 
             // 检查必要的属性和方法
             if (!scraper.scraperName || typeof scraper.scraperName !== 'string') {
-                DebugHelper.error(`${path} 缺少有效的scraperName属性，此刮削器加载失败`)
+                LogHelper.error(`${path} 缺少有效的scraperName属性，此刮削器加载失败`)
                 continue
             }
 
             if (!scraper.checkConnect || typeof scraper.checkConnect !== 'function') {
-                DebugHelper.error(`${path} 缺少有效的checkConnect方法，此刮削器加载失败`)
+                LogHelper.error(`${path} 缺少有效的checkConnect方法，此刮削器加载失败`)
                 continue
             }
 
             if (!scraper.scraperVideoFuncs || typeof scraper.scraperVideoFuncs !== 'object') {
-                DebugHelper.error(`${path} 缺少有效的scraperVideoFuncs方法，此刮削器加载失败`)
+                LogHelper.error(`${path} 缺少有效的scraperVideoFuncs方法，此刮削器加载失败`)
                 continue
             }
 
@@ -262,7 +262,7 @@ export class Scraper {
         //创建nfo文件
         const nfo = Nfo.create(video)
         await nfo.save(_nfoPath)
-        DebugHelper.info(`- 保存nfo成功！:${_nfoPath}`)
+        LogHelper.success(`- 保存nfo成功！:${_nfoPath}`)
 
         //如果有两个nfo，则删除原来的
         if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {
@@ -278,7 +278,7 @@ export class Scraper {
             const posterPath = videoDir.join('poster.jpg')
             imagePromises.push(
                 PathHelper.copy(video.poster, posterPath).then(() => {
-                    DebugHelper.info(`- 保存封面poster成功！:${posterPath}`)
+                    LogHelper.success(`- 保存封面poster成功！:${posterPath}`)
                 })
             )
         }
@@ -287,7 +287,7 @@ export class Scraper {
             const thumbPath = videoDir.join('thumb.jpg')
             imagePromises.push(
                 PathHelper.copy(video.thumb, thumbPath).then(() => {
-                    DebugHelper.info(`- 保存缩略图thumb成功！:${thumbPath}`)
+                    LogHelper.success(`- 保存缩略图thumb成功！:${thumbPath}`)
                 })
             )
         }
@@ -296,7 +296,7 @@ export class Scraper {
             const fanartPath = videoDir.join('fanart.jpg')
             imagePromises.push(
                 PathHelper.copy(video.fanart, fanartPath).then(() => {
-                    DebugHelper.info(`- 保存背景图fanart成功！:${fanartPath}`)
+                    LogHelper.success(`- 保存背景图fanart成功！:${fanartPath}`)
                 })
             )
         }
@@ -314,7 +314,7 @@ export class Scraper {
                     const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
                     imagePromises.push(
                         PathHelper.copy(extrafanart, path).then(() => {
-                            DebugHelper.info(`- 保存剧照extrafanart-${index}成功！:${path}`)
+                            LogHelper.success(`- 保存剧照extrafanart-${index}成功！:${path}`)
                         })
                     )
                 }

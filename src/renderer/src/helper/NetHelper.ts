@@ -7,9 +7,10 @@ import type {
     ParseResultType
 } from '@renderer/ipc/net.ts'
 
-import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
 import { Ipc } from '@renderer/ipc'
 import { settingsStore } from '@renderer/stores'
+
+import { LogHelper, TaskHelper } from '.'
 
 /**
  * 网络相关
@@ -46,21 +47,21 @@ export class NetHelper {
             const proxyRules = `http://${host}:${port}`
             const proxyBypassRules = 'localhost'
 
-            const re = await DebugHelper.tryExecute(Ipc.net.setProxy, {
+            const re = await TaskHelper.tryExecute(Ipc.net.setProxy, {
                 proxyRules,
                 proxyBypassRules
             })
             if (!re.hasError) {
-                DebugHelper.info(`设置网络代理成功：`, proxyRules)
+                LogHelper.success(`设置网络代理成功：`, proxyRules)
             } else {
-                DebugHelper.error(`设置网络代理失败：`, re.error)
+                LogHelper.error(`设置网络代理失败：`, re.error)
             }
         } else {
-            const re = await DebugHelper.tryExecute(Ipc.net.clearProxy)
+            const re = await TaskHelper.tryExecute(Ipc.net.clearProxy)
             if (!re.hasError) {
-                DebugHelper.info(`取消网络代理`)
+                LogHelper.success(`取消网络代理`)
             } else {
-                DebugHelper.error(`取消网络代理失败：`, re.error)
+                LogHelper.error(`取消网络代理失败：`, re.error)
             }
         }
     }
@@ -136,16 +137,16 @@ export class NetHelper {
         // 失败则重试
         do {
             if (retryCount > 0) {
-                DebugHelper.warn(`GET请求重试第${retryCount}次：${url}`)
+                LogHelper.warn(`GET请求重试第${retryCount}次：${url}`)
             }
 
             if (retry > 0) {
                 const hostName = new URL(url).hostname
-                re = await DebugHelper.queueWithInterval(hostName, delay, false, async () =>
-                    DebugHelper.tryExecute(async () => await Ipc.net.get(url, config))
+                re = await TaskHelper.queueWithInterval(hostName, delay, false, async () =>
+                    TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
                 )
             } else {
-                re = await DebugHelper.tryExecute(async () => await Ipc.net.get(url, config))
+                re = await TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
             }
 
             if (!re.hasError) {
@@ -154,7 +155,7 @@ export class NetHelper {
                     return result
                 }
             } else {
-                DebugHelper.error(`GET请求失败：${url}`, re.error)
+                LogHelper.error(`GET请求失败：${url}`, re.error)
             }
 
             retryCount++
@@ -232,16 +233,16 @@ export class NetHelper {
         // 失败则重试
         do {
             if (retryCount > 0) {
-                DebugHelper.warn(`POST请求重试第${retryCount}次：${url}`)
+                LogHelper.warn(`POST请求重试第${retryCount}次：${url}`)
             }
 
             if (retry > 0) {
                 const hostName = new URL(url).hostname
-                re = await DebugHelper.queueWithInterval(hostName, delay, false, async () =>
-                    DebugHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
+                re = await TaskHelper.queueWithInterval(hostName, delay, false, async () =>
+                    TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
                 )
             } else {
-                re = await DebugHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
+                re = await TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
             }
 
             if (!re.hasError) {
@@ -249,10 +250,10 @@ export class NetHelper {
                 if (result.ok || result.status === 403) {
                     return result
                 } else {
-                    DebugHelper.warn(`POST请求失败：${url}`, re.result)
+                    LogHelper.warn(`POST请求失败：${url}`, re.result)
                 }
             } else {
-                DebugHelper.error(`POST请求失败：${url}`, re.error)
+                LogHelper.error(`POST请求失败：${url}`, re.error)
             }
 
             retryCount++
@@ -307,10 +308,10 @@ export class NetHelper {
         // 失败则重试
         do {
             if (retryCount > 0) {
-                DebugHelper.warn(`GET请求重试第${retryCount}次：${url}`)
+                LogHelper.warn(`GET请求重试第${retryCount}次：${url}`)
             }
 
-            re = await DebugHelper.tryExecute(async () => await Ipc.net.get(url, config))
+            re = await TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
 
             if (!re.hasError) {
                 const result = re.result as IResult<ArrayBuffer>
@@ -318,7 +319,7 @@ export class NetHelper {
                     return result
                 }
             } else {
-                DebugHelper.error(`GET请求失败：${url}`, re.error)
+                LogHelper.error(`GET请求失败：${url}`, re.error)
             }
 
             retryCount++
@@ -352,12 +353,12 @@ export class NetHelper {
         const settings = settingsStore()
         const pingTimeout = timeout || settings.net.timeout * 1000
 
-        const re = await DebugHelper.tryExecute(async () => await Ipc.net.ping(host, pingTimeout))
+        const re = await TaskHelper.tryExecute(async () => await Ipc.net.ping(host, pingTimeout))
 
         if (!re.hasError) {
             return re.result as IPingResult
         } else {
-            DebugHelper.error(`Ping请求失败：${host}`, re.error)
+            LogHelper.error(`Ping请求失败：${host}`, re.error)
             return {
                 success: false,
                 time: -1,
@@ -374,14 +375,14 @@ export class NetHelper {
      * @returns 返回验证结果，包含 Cookie 信息
      */
     static async verify(url: string, targetCookies?: string[]): Promise<IVerifyCookies> {
-        const re = await DebugHelper.tryExecute(
+        const re = await TaskHelper.tryExecute(
             async () => await Ipc.net.cloudflareVerify(url, targetCookies)
         )
 
         if (!re.hasError) {
             return re.result as IVerifyCookies
         } else {
-            DebugHelper.error(`验证失败：${url}`, re.error)
+            LogHelper.error(`验证失败：${url}`, re.error)
             return {
                 success: false,
                 cookies: '',

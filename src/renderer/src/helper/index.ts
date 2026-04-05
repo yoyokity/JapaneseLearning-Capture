@@ -3,8 +3,10 @@ export * from './DataHelper.ts'
 export * from './DebugHelper.ts'
 export * from './EncodeHelper.ts'
 export * from './ImageHelper.ts'
+export * from './LogHelper.ts'
 export * from './NetHelper.ts'
 export * from './PathHelper.ts'
+export * from './TaskHelper.ts'
 export * from './TransHelper.ts'
 
 /**

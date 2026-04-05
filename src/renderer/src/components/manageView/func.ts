@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper'
 import type { IVideoFile } from '@renderer/scraper'
 
-import { DebugHelper, PathHelper, videoExtensions } from '@renderer/helper'
+import { LogHelper, PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
 import { Ipc } from '@renderer/ipc'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { globalStatesStore } from '@renderer/stores'
@@ -34,7 +34,7 @@ export async function scanFiles(toast: any) {
         // 扫描完成后刷新图片缓存状态，确保同路径图片重新加载
         globalStates.refreshImageCacheVersion()
     } catch (error) {
-        DebugHelper.error('扫描目录下的文件发生错误', error)
+        LogHelper.error('扫描目录下的文件发生错误', error)
         toast.add({
             severity: 'error',
             summary: '扫描目录下的文件发生错误',
@@ -53,19 +53,19 @@ async function read(path: string): Promise<IVideoFile> {
     const video = createVideoFile(path)
 
     //打开文件
-    const re = await DebugHelper.tryExecute(
+    const re = await TaskHelper.tryExecute(
         Ipc.filesystem.readFile,
         video.nfoPath.toString(),
         'utf-8'
     )
     if (re.hasError) {
-        DebugHelper.warn(`读取NFO文件失败：${video.nfoPath.toString()} \n`, re.error)
+        LogHelper.warn(`读取NFO文件失败：${video.nfoPath.toString()} \n`, re.error)
         return video
     }
 
     const obj: any = convert({ encoding: 'UTF-8' }, re.result, { format: 'object' })
     if (!obj || !obj.movie) {
-        DebugHelper.warn(`读取NFO文件失败（数据格式错误）：${video.nfoPath.toString()}`)
+        LogHelper.warn(`读取NFO文件失败（数据格式错误）：${video.nfoPath.toString()}`)
         return video
     }
 

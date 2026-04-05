@@ -1,12 +1,14 @@
 import type { Path } from '@renderer/helper/PathHelper'
 import type { ImageData } from '@renderer/ipc'
 
-import { DebugHelper } from '@renderer/helper/DebugHelper'
 import { Ipc } from '@renderer/ipc'
 
 import { EncodeHelper } from './EncodeHelper'
+import { LogHelper } from './LogHelper'
 import { PathHelper } from './PathHelper'
+import { TaskHelper } from './TaskHelper'
 
+/** 图片处理相关 */
 export class ImageHelper {
     /**
      * 将本地图片路径转换为 img 可识别的本地协议 URL
@@ -41,11 +43,11 @@ export class ImageHelper {
      * @param path 图片路径
      */
     static async saveImage(imageData: ImageData, path: Path | string) {
-        const re = await DebugHelper.tryExecute(Ipc.image.saveImage, imageData, path.toString())
+        const re = await TaskHelper.tryExecute(Ipc.image.saveImage, imageData, path.toString())
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`保存图片失败：`, re.error)
+            LogHelper.error(`保存图片失败：`, re.error)
         }
     }
 
@@ -61,7 +63,7 @@ export class ImageHelper {
     ): Promise<string | null> {
         const uniqueName = `${name}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
         const tempImagePath = PathHelper.tempPath.join(`${uniqueName}.jpg`)
-        const result = await DebugHelper.tryExecute(
+        const result = await TaskHelper.tryExecute(
             Ipc.image.saveImage,
             imageData,
             tempImagePath.toString()
@@ -69,7 +71,7 @@ export class ImageHelper {
         if (!result.hasError) {
             return tempImagePath.toString()
         } else {
-            DebugHelper.error(`保存临时图片失败：`, result.error)
+            LogHelper.error(`保存临时图片失败：`, result.error)
             return null
         }
     }
@@ -85,7 +87,7 @@ export class ImageHelper {
         imagePath: Path | string,
         anime: boolean = false
     ): Promise<string | null> {
-        const re = await DebugHelper.tryExecute(
+        const re = await TaskHelper.tryExecute(
             Ipc.image.superResolutionImage,
             imagePath.toString(),
             anime
@@ -93,7 +95,7 @@ export class ImageHelper {
         if (!re.hasError) {
             return re.result
         } else {
-            DebugHelper.error(`超分辨率处理图片失败：`, re.error)
+            LogHelper.error(`超分辨率处理图片失败：`, re.error)
             return null
         }
     }

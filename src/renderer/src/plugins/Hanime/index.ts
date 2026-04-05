@@ -1,6 +1,6 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 
-import { DebugHelper, ImageHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { dlsiteOptions, getWebContentDlsite } from './Dlsite'
@@ -94,7 +94,7 @@ const hanimeScraper: IScraper = {
             //dlsite
             if (temp.num.dlsite) {
                 const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${temp.num.dlsite}&cdn_cache_min=1`
-                DebugHelper.log(`- [Dlsite] 搜索评分...`)
+                LogHelper.log(`- [Dlsite] 搜索评分...`)
                 const webContent = await NetHelper.get(url, dlsiteOptions)
                 if (webContent.ok) {
                     const a = JSON.parse(webContent.body)[temp.num.dlsite]
@@ -107,9 +107,9 @@ const hanimeScraper: IScraper = {
                     }
                 }
 
-                DebugHelper.warn(`- [Dlsite] 没有找到评分`)
+                LogHelper.warn(`- [Dlsite] 没有找到评分`)
             } else {
-                DebugHelper.warn(`- 没有dlsite，无法获取评分`)
+                LogHelper.warn(`- 没有dlsite，无法获取评分`)
             }
 
             return video
@@ -117,7 +117,7 @@ const hanimeScraper: IScraper = {
         parseDirector: async (video: IVideo) => {
             //dlsite
             if (temp.webContent.dlsite) {
-                DebugHelper.log(`- [Dlsite] 搜索导演...`)
+                LogHelper.log(`- [Dlsite] 搜索导演...`)
                 const $ = cheerioLoad(temp.webContent.dlsite)
                 const text = $('#work_right_inner').text()
 
@@ -135,12 +135,12 @@ const hanimeScraper: IScraper = {
                     }
                 }
 
-                DebugHelper.warn(`- [Dlsite] 没有找到导演`)
+                LogHelper.warn(`- [Dlsite] 没有找到导演`)
             }
 
             //getchu
             if (temp.webContent.getchu) {
-                DebugHelper.log(`- [Getchu] 搜索导演...`)
+                LogHelper.log(`- [Getchu] 搜索导演...`)
                 const $ = cheerioLoad(temp.webContent.getchu)
                 const text = $('div#wrapper').text()
 
@@ -159,7 +159,7 @@ const hanimeScraper: IScraper = {
                     return video
                 }
 
-                DebugHelper.warn(`- [Getchu] 没有找到导演`)
+                LogHelper.warn(`- [Getchu] 没有找到导演`)
             }
 
             return video

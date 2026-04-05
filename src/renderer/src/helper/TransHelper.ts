@@ -1,10 +1,10 @@
-import { DebugHelper } from '@renderer/helper/DebugHelper.ts'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
 import { toSimplified, toTraditional } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
 
 import { EncodeHelper } from './EncodeHelper'
+import { LogHelper } from './LogHelper'
 
 // 注入短语库，提高准确性
 setupEnhance()
@@ -86,7 +86,7 @@ const translators = {
                         text
                     }
                 } catch (e) {
-                    DebugHelper.error(`google翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`google翻译返回内容解析失败：`, re.body, e)
                 }
             }
 
@@ -176,7 +176,7 @@ const translators = {
                         text
                     }
                 } catch (e) {
-                    DebugHelper.error(`openai翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`openai翻译返回内容解析失败：`, re.body, e)
                 }
             }
 
@@ -237,7 +237,7 @@ const translators = {
                         text
                     }
                 } catch (e) {
-                    DebugHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
                 }
             }
 
@@ -300,7 +300,7 @@ const translators = {
                         text
                     }
                 } catch (e) {
-                    DebugHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
                 }
             }
 
@@ -371,11 +371,11 @@ export class TransHelper {
                     })
                     .sort((a, b) => a.localeCompare(b))
             } catch (e) {
-                DebugHelper.error(`获取LLM模型失败：`, e)
+                LogHelper.error(`获取LLM模型失败：`, e)
             }
         }
 
-        DebugHelper.error(`获取LLM模型失败：`, re)
+        LogHelper.error(`获取LLM模型失败：`, re)
         return []
     }
 
