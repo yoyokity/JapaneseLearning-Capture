@@ -506,17 +506,29 @@ onMounted(async () => {
                     </div>
                     <div style="display: flex">
                         <div class="flex-content" style="flex: 1">
-                            <Chip
-                                v-for="tag in newVideo.tag"
-                                :key="tag"
-                                :label="tag"
-                                removable
-                                @remove="
-                                    () => {
-                                        newVideo.tag = newVideo.tag.filter((t) => t !== tag)
-                                    }
-                                "
-                            />
+                            <transition-group
+                                name="editable-chip"
+                                tag="div"
+                                class="editable-chip-list"
+                            >
+                                <div
+                                    v-for="tag in newVideo.tag"
+                                    :key="tag"
+                                    class="editable-chip-wrapper"
+                                >
+                                    <Chip
+                                        :label="tag"
+                                        class="editable-chip"
+                                        removable
+                                        remove-icon="pi pi-times"
+                                        @remove="
+                                            () => {
+                                                newVideo.tag = newVideo.tag.filter((t) => t !== tag)
+                                            }
+                                        "
+                                    />
+                                </div>
+                            </transition-group>
                         </div>
                         <Button
                             v-tooltip="'搜索'"
@@ -556,17 +568,31 @@ onMounted(async () => {
                     </div>
                     <div style="display: flex">
                         <div class="flex-content" style="flex: 1">
-                            <Chip
-                                v-for="genre in newVideo.genre"
-                                :key="genre"
-                                :label="genre"
-                                removable
-                                @remove="
-                                    () => {
-                                        newVideo.genre = newVideo.genre.filter((g) => g !== genre)
-                                    }
-                                "
-                            />
+                            <transition-group
+                                name="editable-chip"
+                                tag="div"
+                                class="editable-chip-list"
+                            >
+                                <div
+                                    v-for="genre in newVideo.genre"
+                                    :key="genre"
+                                    class="editable-chip-wrapper"
+                                >
+                                    <Chip
+                                        :label="genre"
+                                        class="editable-chip"
+                                        removable
+                                        remove-icon="pi pi-times"
+                                        @remove="
+                                            () => {
+                                                newVideo.genre = newVideo.genre.filter(
+                                                    (g) => g !== genre
+                                                )
+                                            }
+                                        "
+                                    />
+                                </div>
+                            </transition-group>
                         </div>
                         <Button
                             v-tooltip="'搜索'"
@@ -849,6 +875,45 @@ onMounted(async () => {
 
             :deep(svg) {
                 font-size: var(--p-button-sm-font-size);
+            }
+        }
+
+        .editable-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .editable-chip-wrapper {
+            display: inline-flex;
+        }
+
+        .editable-chip-move,
+        .editable-chip-enter-active,
+        .editable-chip-leave-active {
+            transition:
+                transform 0.25s ease-out,
+                opacity 0.25s ease-out;
+        }
+
+        .editable-chip-enter-from,
+        .editable-chip-leave-to {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.9);
+        }
+
+        .editable-chip-leave-active {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .editable-chip {
+            :deep(.p-chip-remove-icon) {
+                font-size: 0.8rem;
+            }
+
+            :deep(.p-chip-remove-icon:hover) {
+                color: var(--p-primary-color);
             }
         }
     }

@@ -92,6 +92,12 @@ export const theme = definePreset(Theme, {
                     }
                 }
             }
+        },
+        chip: {
+            root: { transitionDuration: '0.3s' },
+            removeIcon: {
+                size: '0.8rem'
+            }
         }
     }
 })
