@@ -8,6 +8,25 @@ import { globalStatesStore } from '@renderer/stores'
 import { convert } from 'xmlbuilder2'
 
 /**
+ * 将 NFO 中的文本节点规范化为字符串
+ * @param value 原始值
+ */
+function normalizeTextValue(value: unknown): string {
+    if (typeof value === 'string' || typeof value === 'number') {
+        return String(value)
+    }
+
+    if (value && typeof value === 'object') {
+        const text = Reflect.get(value, '#')
+        if (typeof text === 'string' || typeof text === 'number') {
+            return String(text)
+        }
+    }
+
+    return ''
+}
+
+/**
  * 扫描目录下的文件
  * @remarks 忽略extrafanart目录下的文件
  */
@@ -112,13 +131,13 @@ async function read(path: string): Promise<IVideoFile> {
     // 处理标签
     if (movie.tag) {
         const tags = Array.isArray(movie.tag) ? movie.tag : [movie.tag]
-        video.tag = tags.map((tag) => tag || '')
+        video.tag = tags.map((tag) => normalizeTextValue(tag)).filter(Boolean)
     }
 
     // 处理类型
     if (movie.genre) {
         const genres = Array.isArray(movie.genre) ? movie.genre : [movie.genre]
-        video.genre = genres.map((genre) => genre || '')
+        video.genre = genres.map((genre) => normalizeTextValue(genre)).filter(Boolean)
     }
 
     //处理图片

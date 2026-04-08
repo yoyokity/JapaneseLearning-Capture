@@ -66,6 +66,41 @@ const addGenreValue = ref('')
 //预览图片
 const previewImage = ref<string | null>(null)
 
+/**
+ * 将标签/类型值规范化为字符串，兼容历史脏数据
+ * @param value 原始值
+ */
+function normalizeTextValue(value: unknown): string {
+    if (typeof value === 'string' || typeof value === 'number') {
+        return String(value).trim()
+    }
+
+    if (value && typeof value === 'object') {
+        const text = Reflect.get(value, '#')
+        if (typeof text === 'string' || typeof text === 'number') {
+            return String(text).trim()
+        }
+    }
+
+    return ''
+}
+
+/**
+ * 规范化字符串数组字段，过滤空值
+ * @param values 原始数组
+ */
+function normalizeTextList(values: unknown[]): string[] {
+    return values.map((value) => normalizeTextValue(value)).filter(Boolean)
+}
+
+/**
+ * 规范化当前视频中的标签和类型
+ */
+function normalizeTagGenre() {
+    newVideo.value.tag = normalizeTextList(newVideo.value.tag)
+    newVideo.value.genre = normalizeTextList(newVideo.value.genre)
+}
+
 //快捷键退出
 useKeyPress(['esc'], () => {
     if (previewImage.value) {
@@ -84,6 +119,8 @@ async function onSave() {
     const scraper = Scraper.getCurrentScraperInstance()
 
     if (!scraper) return
+
+    normalizeTagGenre()
 
     TaskHelper.queueWithInterval('scraper', 0, true, async () => {
         //如果视频没有修改，则不保存
@@ -161,6 +198,7 @@ function getNumLink(sourceName: string) {
 onMounted(async () => {
     TaskHelper.queueWithInterval('scraper', 0, true, async () => {
         newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
+        normalizeTagGenre()
 
         // 如果未设置刮削器，或当前刮削器已不在列表中，则默认使用当前选择的刮削器
         if (
@@ -512,18 +550,20 @@ onMounted(async () => {
                                 class="editable-chip-list"
                             >
                                 <div
-                                    v-for="tag in newVideo.tag"
-                                    :key="tag"
+                                    v-for="(tag, index) in newVideo.tag"
+                                    :key="`${normalizeTextValue(tag)}-${index}`"
                                     class="editable-chip-wrapper"
                                 >
                                     <Chip
-                                        :label="tag"
+                                        :label="normalizeTextValue(tag)"
                                         class="editable-chip"
                                         removable
                                         remove-icon="pi pi-times"
                                         @remove="
                                             () => {
-                                                newVideo.tag = newVideo.tag.filter((t) => t !== tag)
+                                                newVideo.tag = newVideo.tag.filter(
+                                                    (_, i) => i !== index
+                                                )
                                             }
                                         "
                                     />
@@ -574,19 +614,19 @@ onMounted(async () => {
                                 class="editable-chip-list"
                             >
                                 <div
-                                    v-for="genre in newVideo.genre"
-                                    :key="genre"
+                                    v-for="(genre, index) in newVideo.genre"
+                                    :key="`${normalizeTextValue(genre)}-${index}`"
                                     class="editable-chip-wrapper"
                                 >
                                     <Chip
-                                        :label="genre"
+                                        :label="normalizeTextValue(genre)"
                                         class="editable-chip"
                                         removable
                                         remove-icon="pi pi-times"
                                         @remove="
                                             () => {
                                                 newVideo.genre = newVideo.genre.filter(
-                                                    (g) => g !== genre
+                                                    (_, i) => i !== index
                                                 )
                                             }
                                         "

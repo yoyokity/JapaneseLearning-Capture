@@ -36,7 +36,7 @@ export class TaskHelper {
      * 使用队列执行函数，确保同名任务之间的执行间隔不小于指定时间
      * @param [taskName] 任务名称，相同名称的任务会共享同一个队列和间隔限制
      * @param [intervalMs] 最小间隔时间（毫秒）
-     * @param [updateTimeAfterExecution] 是否在任务执行后更新最后执行时间，true表示在任务结束时更新，false表示在任务开始时更新
+     * @param [updateTimeAfterExecution] 是否在任务执行后更新最后执行时间，用于间隔计算，true表示在任务结束时更新，false表示在任务开始时更新
      * @param fn 要执行的函数
      * @param args 函数参数
      * @returns 函数执行的结果

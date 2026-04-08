@@ -110,8 +110,8 @@ export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: 
         return
     }
 
-    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-        //如果webContent为空，则获取网页内容
+    //如果webContent为空，则获取网页内容
+    await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
         if (!webContent.value) {
             LogHelper.log('[刮削] 获取网页内容...')
             const re = await scraper.scraperVideoFuncs.getWebContent(video)
@@ -121,10 +121,16 @@ export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: 
             }
             webContent.value = re
         }
+    })
 
-        //执行所有解析函数
-        const failed: string[] = []
-        for (const { name, label } of PARSE_FUNCS) {
+    if (!webContent.value) {
+        return
+    }
+
+    //执行所有解析函数
+    const failed: string[] = []
+    for (const { name, label } of PARSE_FUNCS) {
+        await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
             LogHelper.log(`[刮削] 解析${label}...`)
             const func = scraper.scraperVideoFuncs[name] as (
                 video: IVideo,
@@ -134,17 +140,17 @@ export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: 
             if (!re) {
                 failed.push(label)
             }
-        }
+        })
+    }
 
-        if (failed.length > 0) {
-            warn(`以下字段解析失败：${failed.join('、')}`, toast)
-        } else {
-            LogHelper.success('[刮削] 全部解析成功！')
-            toast.success('全部信息获取成功！')
-        }
+    if (failed.length > 0) {
+        warn(`以下字段解析失败：${failed.join('、')}`, toast)
+    } else {
+        LogHelper.success('[刮削] 全部解析成功！')
+        toast.success('全部信息获取成功！')
+    }
 
-        console.log('video: ', toRaw(video))
-    })
+    console.log('video: ', toRaw(video))
 }
 
 export async function scraperSave(
