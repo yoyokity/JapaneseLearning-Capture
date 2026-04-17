@@ -248,7 +248,7 @@ const translators = {
 
     localLLM: {
         description: '本地AI大模型，效果好且不用担心敏感内容被屏蔽，需要按照说明安装本地模型',
-        func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
+        func: async (s_text: string, targetLanguage = '简体中文'): Promise<ITranslateResult> => {
             // 先用getLLMModels()测试下本地llm有没有启动
             const models = await TransHelper.getLLMModels()
             if (models.length === 0) {

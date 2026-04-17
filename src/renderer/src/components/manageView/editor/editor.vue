@@ -209,9 +209,7 @@ onMounted(async () => {
         }
 
         //读取extrafanart
-        readExtrafanart(video.dir, newVideo.value, video).then((count) => {
-            console.info(`读取${count}个extrafanart`)
-        })
+        readExtrafanart(video.dir, newVideo.value, video)
     })
 })
 </script>

@@ -1,7 +1,7 @@
-import { EncodeHelper, ImageHelper, LogHelper, NetHelper } from '@renderer/helper'
+import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { temp } from './temp'
+import { loggerGetchu, temp } from './temp'
 
 export const getchuOptions = {
     headers: { referer: 'https://www.getchu.com' },
@@ -12,7 +12,7 @@ export const getchuOptions = {
  * Getchu
  */
 export async function getWebContentGetchu(searchTitle: string): Promise<string | null> {
-    LogHelper.log(`- [Getchu] 开始获取网页内容`)
+    loggerGetchu.log(`开始获取网页内容`)
 
     /**
      * 获取 Getchu 页面内容
@@ -28,19 +28,19 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
     //先使用编号搜索
     if (temp.num.getchu) {
         const url = `https://www.getchu.com/item/${temp.num.getchu}/?gc=gc`
-        LogHelper.log(`- [Getchu] 使用编号搜索：${temp.num.getchu}`)
+        loggerGetchu.log(`使用编号搜索：${temp.num.getchu}`)
 
         const body = await fetchPage(url)
         if (body) {
             if (body.includes('年齢認証')) {
-                LogHelper.warn(`- [Getchu] 成人验证失败，无法获取网页内容`, url)
+                loggerGetchu.warn(`成人验证失败，无法获取网页内容`, url)
                 return null
             }
 
-            LogHelper.success(`- [Getchu] 获取到网页内容`)
+            loggerGetchu.success(`获取到网页内容`)
             return body
         }
-        LogHelper.log(`- [Getchu] 使用编号搜索失败，使用原标题搜索`, url)
+        loggerGetchu.log(`使用编号搜索失败，使用原标题搜索`, url)
     }
 
     //如果编号搜索失败，则使用原标题搜索
@@ -49,7 +49,7 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
 
     const searchBody = await fetchPage(searchUrl)
     if (!searchBody) {
-        LogHelper.warn(`- [Getchu] 获取搜索结果失败`, searchUrl)
+        loggerGetchu.warn(`获取搜索结果失败`, searchUrl)
         return null
     }
 
@@ -57,40 +57,40 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
     const $ = cheerioLoad(searchBody)
     const videoList = $('td > a.blueb[href*="/soft.phtml?id="]')
 
-    LogHelper.log(`- [Getchu] 搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
-    videoList.each((_, el) => LogHelper.log(`- [Getchu] 【${$(el).text().trim()}】`))
+    loggerGetchu.log(`搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
+    videoList.each((_, el) => loggerGetchu.log(`【${$(el).text().trim()}】`))
 
     const target = videoList.filter((_, el) => $(el).text().trim().includes(searchTitle)).first()
     const href = target.attr('href')
     if (!href) {
-        LogHelper.warn(`- [Getchu] 没有找到匹配的番剧`)
+        loggerGetchu.warn(`没有找到匹配的番剧`)
         return null
     }
     const id = href.match(/[?&]id=(?<id>\d+)/)?.groups?.id
     if (!id) {
-        LogHelper.warn(`- [Getchu] 没有找到匹配的番剧`)
+        loggerGetchu.warn(`没有找到匹配的番剧`)
         return null
     }
 
     const fullUrl = NetHelper.joinUrl('https://www.getchu.com/item', id, '?gc=gc')
-    LogHelper.log(`- [Getchu] 找到匹配的番剧：【${target.text().trim()}】 ${fullUrl}`)
+    loggerGetchu.log(`找到匹配的番剧：【${target.text().trim()}】 ${fullUrl}`)
 
     //根据href获取webContent
     const body = await fetchPage(fullUrl)
     if (!body) {
-        LogHelper.warn(`- [Getchu] 获取网页内容失败`, fullUrl)
+        loggerGetchu.warn(`获取网页内容失败`, fullUrl)
         return null
     }
 
     if (body.includes('年齢認証')) {
-        LogHelper.warn(`- [Getchu] 成人验证失败，无法获取网页内容`, fullUrl)
+        loggerGetchu.warn(`成人验证失败，无法获取网页内容`, fullUrl)
         return null
     }
 
     //记录num
     temp.num.getchu = id
 
-    LogHelper.success(`- [Getchu] 获取到网页内容`)
+    loggerGetchu.success(`获取到网页内容`)
     return body
 }
 
@@ -99,7 +99,7 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
  */
 export async function getExtrafanartGetchu(): Promise<string[]> {
     if (!temp.webContent.getchu) {
-        LogHelper.log(`- 没有getchu，无法获取剧照`)
+        loggerGetchu.log(`- 没有getchu，无法获取剧照`)
         return []
     }
 
@@ -112,18 +112,28 @@ export async function getExtrafanartGetchu(): Promise<string[]> {
         .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
 
     const extrafanart: string[] = []
+    const successUrls: string[] = []
+    const failedUrls: string[] = []
     for (const url of urls) {
         const re = await NetHelper.getImage(url, getchuOptions)
         if (re.ok) {
-            LogHelper.log(`- [Getchu] 获取剧照成功！`, url)
+            successUrls.push(url)
             const tempPath = await ImageHelper.saveTempImage(
                 re.body,
                 `getchu_extrafanart_${Date.now()}`
             )
             if (tempPath) extrafanart.push(tempPath)
         } else {
-            LogHelper.warn(`- [Getchu] 获取剧照失败！`, url)
+            failedUrls.push(url)
         }
+    }
+
+    if (successUrls.length > 0) {
+        loggerGetchu.log(`获取${successUrls.length}张剧照成功`)
+    }
+
+    if (failedUrls.length > 0) {
+        loggerGetchu.warn(`获取${failedUrls.length}张剧照失败`, failedUrls)
     }
 
     return extrafanart
@@ -151,10 +161,10 @@ export async function getPosterGetchu(): Promise<string | null> {
     const posterUrl = NetHelper.joinUrl('https://www.getchu.com/', url)
     const re = await NetHelper.getImage(posterUrl, getchuOptions)
     if (!re.ok) {
-        LogHelper.warn(`- [Getchu] 获取封面失败！:${posterUrl}`)
+        loggerGetchu.warn(`获取封面失败！:${posterUrl}`)
         return null
     }
 
-    LogHelper.log(`- [Getchu] 获取封面成功！:${posterUrl}`)
+    loggerGetchu.log(`获取封面成功！:${posterUrl}`)
     return ImageHelper.saveTempImage(re.body, `getchu_poster_${Date.now()}`)
 }

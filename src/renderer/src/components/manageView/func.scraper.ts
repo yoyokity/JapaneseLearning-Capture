@@ -7,13 +7,92 @@ import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import { toRaw } from 'vue'
 
-function warn(text: string, toast: any) {
-    toast.warn(text)
-    LogHelper.warn(text)
+type TScraperFuncName = keyof IScraper['scraperVideoFuncs']
+type TScraperParseFunc = (video: IVideo, webContent: string) => Promise<IVideo | null>
+
+interface IScraperContext {
+    logger: ReturnType<typeof LogHelper.title>
+    scraper: NonNullable<ReturnType<typeof Scraper.getScraperInstance>>
 }
 
 /**
- * 通用刮削函数
+ * 获取刮削上下文
+ * @param video 视频对象
+ * @param toast 提示组件
+ */
+function getScraperContext(video: IVideo, toast: any): IScraperContext | null {
+    const scraper = Scraper.getScraperInstance(video.scraperName)
+    if (!scraper) {
+        toast.error(`未找到对应的刮削器！`)
+        return null
+    }
+
+    const log = LogHelper.title(video.scraperName)
+    return { scraper, logger: log }
+}
+
+/**
+ * 确保网页内容已获取
+ * @param context 刮削上下文
+ * @param video 视频对象
+ * @param webContent 网页内容
+ * @param toast 提示组件
+ */
+async function ensureWebContent(
+    context: IScraperContext,
+    video: IVideo,
+    webContent: Ref<string>,
+    toast: any
+) {
+    if (webContent.value) {
+        return true
+    }
+
+    try {
+        context.logger.log(`获取网页内容中...`)
+        const re = await context.scraper.scraperVideoFuncs.getWebContent(video)
+        if (!re) {
+            context.logger.error(`获取网页内容失败！`)
+            toast.error(`获取网页内容失败！`)
+            return false
+        }
+
+        webContent.value = re
+        return true
+    } catch (error) {
+        context.logger.error(`获取网页内容出错！`, error)
+        return false
+    }
+}
+
+/**
+ * 执行单个字段解析
+ * @param context 刮削上下文
+ * @param video 视频对象
+ * @param webContent 网页内容
+ * @param funcName 解析函数名称
+ * @param label 字段名称
+ */
+async function parseField(
+    context: IScraperContext,
+    video: IVideo,
+    webContent: string,
+    funcName: TScraperFuncName,
+    label: string
+) {
+    try {
+        context.logger.log(`解析${label}...`)
+        const func = context.scraper.scraperVideoFuncs[funcName] as TScraperParseFunc
+        const re = await func(video, webContent)
+        return Boolean(re)
+    } catch (error) {
+        context.logger.error(`解析${label}出错！`, error)
+        return false
+    }
+}
+
+/**
+ * 通用刮削函数，刮削单个字段
  * @param video 视频对象
  * @param webContent 网页内容
  * @param toast 提示组件
@@ -24,55 +103,50 @@ export function scraperField(
     video: IVideo,
     webContent: Ref<string>,
     toast: any,
-    funcName: keyof IScraper['scraperVideoFuncs'],
+    funcName: TScraperFuncName,
     logName: string
 ) {
-    const scraper = Scraper.getScraperInstance(video.scraperName)
-    if (!scraper) {
-        toast.error(`未找到对应的刮削器！`)
+    const context = getScraperContext(video, toast)
+    if (!context) {
         return
     }
 
-    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-        console.log('video: ', toRaw(video))
+    context.logger.separator()
+    context.logger.log(`开始刮削：`, toRaw(video))
 
-        //如果webContent为空，则获取网页内容
-        if (!webContent.value) {
-            LogHelper.log('[刮削] 获取网页内容...')
-            const re = await scraper.scraperVideoFuncs.getWebContent(video)
-            if (!re) {
-                warn(`获取网页内容失败！`, toast)
-                return
-            }
-            webContent.value = re
+    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
+        const hasWebContent = await ensureWebContent(context, video, webContent, toast)
+        if (!hasWebContent) {
+            return
         }
 
-        //开始解析
-        LogHelper.log(`[刮削] 解析${logName}...`)
-        const func = scraper.scraperVideoFuncs[funcName] as (
-            video: IVideo,
-            webContent: string
-        ) => Promise<IVideo | null>
-        const re = await func(video, webContent.value)
-        if (!re) {
-            warn(`${logName}解析出错！`, toast)
+        const success = await parseField(context, video, webContent.value, funcName, logName)
+        if (!success) {
+            context.logger.warn(`${logName}解析出错！`)
+            toast.warn(`${logName}解析出错！`)
         } else {
-            LogHelper.success(`[刮削] 解析${logName}成功！`)
+            context.logger.success(`${logName}解析成功！`)
             toast.success(`${logName}获取成功！`)
         }
 
         //更新编号
-        const re2 = await scraper.scraperVideoFuncs.parseNum(video, webContent.value)
+        const parseNum = context.scraper.scraperVideoFuncs.parseNum as TScraperParseFunc
+        const re2 = await parseNum(video, webContent.value)
         if (!re2) {
-            LogHelper.warn(`更新编号出错！`, toast)
+            context.logger.warn(`更新编号出错！`)
+            toast.warn(`更新编号出错！`)
         }
 
-        console.log('video: ', toRaw(video))
+        if (success) {
+            context.logger.success(`刮削结束：`, toRaw(video))
+        } else {
+            context.logger.warn(`刮削结束：`, toRaw(video))
+        }
     })
 }
 
 /** 需要执行的解析函数列表 */
-const PARSE_FUNCS: { name: keyof IScraper['scraperVideoFuncs']; label: string }[] = [
+const PARSE_FUNCS: { name: TScraperFuncName; label: string }[] = [
     { name: 'parseTitle', label: '标题' },
     { name: 'parseOriginaltitle', label: '原标题' },
     { name: 'parseSorttitle', label: '排序标题' },
@@ -104,26 +178,18 @@ const PARSE_FUNCS: { name: keyof IScraper['scraperVideoFuncs']; label: string }[
  * @param toast 提示组件
  */
 export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: any) {
-    const scraper = Scraper.getScraperInstance(video.scraperName)
-    if (!scraper) {
-        toast.error(`未找到对应的刮削器！`)
+    const context = getScraperContext(video, toast)
+    if (!context) {
         return
     }
 
-    //如果webContent为空，则获取网页内容
-    await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-        if (!webContent.value) {
-            LogHelper.log('[刮削] 获取网页内容...')
-            const re = await scraper.scraperVideoFuncs.getWebContent(video)
-            if (!re) {
-                warn(`获取网页内容失败！`, toast)
-                return
-            }
-            webContent.value = re
-        }
-    })
+    context.logger.separator()
+    context.logger.log(`开始刮削：`, toRaw(video))
 
-    if (!webContent.value) {
+    const hasWebContent = await TaskHelper.queueWithInterval('scraper', 0, true, async () =>
+        ensureWebContent(context, video, webContent, toast)
+    )
+    if (!hasWebContent || !webContent.value) {
         return
     }
 
@@ -131,26 +197,22 @@ export async function scraperAll(video: IVideo, webContent: Ref<string>, toast: 
     const failed: string[] = []
     for (const { name, label } of PARSE_FUNCS) {
         await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-            LogHelper.log(`[刮削] 解析${label}...`)
-            const func = scraper.scraperVideoFuncs[name] as (
-                video: IVideo,
-                webContent: string
-            ) => Promise<IVideo | null>
-            const re = await func(video, webContent.value)
-            if (!re) {
+            const success = await parseField(context, video, webContent.value, name, label)
+            if (!success) {
                 failed.push(label)
             }
         })
     }
 
     if (failed.length > 0) {
-        warn(`以下字段解析失败：${failed.join('、')}`, toast)
+        context.logger.warn(`以下字段解析失败：${failed.join('、')}`)
+        toast.warn(`以下字段解析失败：${failed.join('、')}`)
     } else {
-        LogHelper.success('[刮削] 全部解析成功！')
+        context.logger.success('全部解析成功！')
         toast.success('全部信息获取成功！')
     }
 
-    console.log('video: ', toRaw(video))
+    context.logger.success(`刮削结束：`, toRaw(video))
 }
 
 export async function scraperSave(
@@ -162,9 +224,6 @@ export async function scraperSave(
     if (!scraper) {
         return { error: '未找到对应的刮削器！', hasError: true }
     }
-
-    console.log('sourceVideoFile: ', toRaw(sourceVideoFile))
-    console.log('video:', toRaw(video))
 
     const settings = settingsStore()
 

@@ -1,16 +1,16 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 
-import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { EncodeHelper, ImageHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { dlsiteOptions, getWebContentDlsite } from './Dlsite'
 import { getExtrafanartGetchu, getPosterGetchu, getWebContentGetchu } from './Getchu'
 import { getPosterHanime1, getWebContentHanime1 } from './Hanime1'
 import { maker_trans } from './makerTrans'
-import { temp } from './temp'
+import { loggerDlsite, loggerGetchu, scraperName, temp } from './temp'
 
 const hanimeScraper: IScraper = {
-    scraperName: '里番',
+    scraperName,
     checkConnect: async () => {
         return true
     },
@@ -93,8 +93,9 @@ const hanimeScraper: IScraper = {
         parseRating: async (video: IVideo) => {
             //dlsite
             if (temp.num.dlsite) {
+                loggerDlsite.log(`搜索评分...`)
+
                 const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${temp.num.dlsite}&cdn_cache_min=1`
-                LogHelper.log(`- [Dlsite] 搜索评分...`)
                 const webContent = await NetHelper.get(url, dlsiteOptions)
                 if (webContent.ok) {
                     const a = JSON.parse(webContent.body)[temp.num.dlsite]
@@ -107,9 +108,9 @@ const hanimeScraper: IScraper = {
                     }
                 }
 
-                LogHelper.warn(`- [Dlsite] 没有找到评分`)
+                loggerDlsite.warn(`没有找到评分`)
             } else {
-                LogHelper.warn(`- 没有dlsite，无法获取评分`)
+                loggerDlsite.warn(`找不到dlsite页面，无法获取评分`)
             }
 
             return video
@@ -117,7 +118,8 @@ const hanimeScraper: IScraper = {
         parseDirector: async (video: IVideo) => {
             //dlsite
             if (temp.webContent.dlsite) {
-                LogHelper.log(`- [Dlsite] 搜索导演...`)
+                loggerDlsite.log(`搜索导演...`)
+
                 const $ = cheerioLoad(temp.webContent.dlsite)
                 const text = $('#work_right_inner').text()
 
@@ -135,12 +137,13 @@ const hanimeScraper: IScraper = {
                     }
                 }
 
-                LogHelper.warn(`- [Dlsite] 没有找到导演`)
+                loggerDlsite.warn(`没有找到导演`)
             }
 
             //getchu
             if (temp.webContent.getchu) {
-                LogHelper.log(`- [Getchu] 搜索导演...`)
+                loggerGetchu.log(`搜索导演...`)
+
                 const $ = cheerioLoad(temp.webContent.getchu)
                 const text = $('div#wrapper').text()
 
@@ -159,7 +162,7 @@ const hanimeScraper: IScraper = {
                     return video
                 }
 
-                LogHelper.warn(`- [Getchu] 没有找到导演`)
+                loggerGetchu.warn(`没有找到导演`)
             }
 
             return video
@@ -239,7 +242,8 @@ const hanimeScraper: IScraper = {
             //翻译一下
             const re = await TransHelper.translate(plot)
             if (re.ok) {
-                plot = re.text.trim()
+                plot = TransHelper.translateSC(re.text.trim())
+                plot = EncodeHelper.normalizePlotLineBreak(plot)
             }
 
             if (!plot) return null

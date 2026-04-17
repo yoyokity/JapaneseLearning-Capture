@@ -23,4 +23,16 @@ export class EncodeHelper {
         const bytes = await Ipc.net.encode(value, 'EUC-JP')
         return bytes.map((byte) => `%${byte.toString(16).toUpperCase().padStart(2, '0')}`).join('')
     }
+
+    /**
+     * 将文本中的转义换行符转为普通换行
+     * @param text 原始文本
+     */
+    static normalizePlotLineBreak(text: string) {
+        return text
+            .replace(/\\r\\n/g, '\n')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\n')
+            .replace(/\\/, '')
+    }
 }

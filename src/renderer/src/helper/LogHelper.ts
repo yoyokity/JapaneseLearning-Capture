@@ -53,6 +53,13 @@ export class LogHelper {
     }
 
     /**
+     * 打印分隔线
+     */
+    static separator() {
+        new LogHelper().debug('---------------')
+    }
+
+    /**
      * 打印成功日志
      */
     static success(...args: any[]) {
@@ -82,6 +89,7 @@ export class LogHelper {
 
     /**
      * 打印错误日志
+     * @remark 如果不是运行出错的报错，请使用warn
      */
     static error(...args: any[]) {
         new LogHelper().error(...args)
@@ -92,6 +100,13 @@ export class LogHelper {
      */
     title(text: string, color?: string) {
         return new LogHelper([...this.titles, { text, color }])
+    }
+
+    /**
+     * 打印分隔线
+     */
+    separator() {
+        this.print('debug', ['---------------'])
     }
 
     /**
@@ -124,6 +139,7 @@ export class LogHelper {
 
     /**
      * 打印错误日志
+     * @remark 如果不是运行出错的报错，请使用warn
      */
     error(...args: any[]) {
         this.print('error', args)
