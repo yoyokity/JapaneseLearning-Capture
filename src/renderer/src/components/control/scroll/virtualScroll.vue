@@ -66,6 +66,10 @@ const scrollbarVisible = ref(false)
 const lastScrollPosition = ref(0)
 const isDraggingScrollbar = ref(false)
 const viewportSize = ref(0)
+const contentPaddingStart = ref(0)
+const contentPaddingEnd = ref(0)
+const contentPaddingCrossStart = ref(0)
+const contentPaddingCrossEnd = ref(0)
 let resizeObserver: ResizeObserver | null = null
 let resizeHandler: (() => void) | null = null
 let removeDragListeners: (() => void) | null = null
@@ -90,7 +94,11 @@ const isHorizontal = computed(() => {
  * 虚拟滚动总尺寸
  */
 const totalSize = computed(() => {
-    return Math.max(props.itemCount, 0) * Math.max(props.itemSize, 0)
+    return (
+        Math.max(props.itemCount, 0) * Math.max(props.itemSize, 0) +
+        contentPaddingStart.value +
+        contentPaddingEnd.value
+    )
 })
 
 /**
@@ -98,8 +106,8 @@ const totalSize = computed(() => {
  */
 const currentScrollOffset = computed(() => {
     return Math.min(
-        Math.max(lastScrollPosition.value, 0),
-        Math.max(totalSize.value - viewportSize.value, 0)
+        Math.max(lastScrollPosition.value - contentPaddingStart.value, 0),
+        Math.max(totalSize.value - viewportSize.value - contentPaddingStart.value, 0)
     )
 })
 
@@ -202,14 +210,21 @@ const contentStyle = computed(() => {
 const renderListStyle = computed(() => {
     if (isHorizontal.value) {
         return {
-            transform: `translateX(${renderOffset.value}px)`,
-            height: '100%'
+            transform: `translateX(${renderOffset.value + contentPaddingStart.value}px)`,
+            height: '100%',
+            top: '0',
+            bottom: '0',
+            left: `${contentPaddingCrossStart.value}px`,
+            right: `${contentPaddingCrossEnd.value}px`
         }
     }
 
     return {
-        transform: `translateY(${renderOffset.value}px)`,
-        width: '100%'
+        transform: `translateY(${renderOffset.value + contentPaddingStart.value}px)`,
+        top: '0',
+        bottom: '0',
+        left: `${contentPaddingCrossStart.value}px`,
+        right: `${contentPaddingCrossEnd.value}px`
     }
 })
 
@@ -231,6 +246,28 @@ function getItemStyle() {
         height: `${safeItemSize}px`,
         width: '100%'
     }
+}
+
+/**
+ * 读取内容区域 padding，用于修正虚拟滚动的尺寸与偏移
+ */
+function updateContentPadding() {
+    if (!contentRef.value) return
+
+    const style = getComputedStyle(contentRef.value)
+
+    if (isHorizontal.value) {
+        contentPaddingStart.value = Number.parseFloat(style.paddingLeft) || 0
+        contentPaddingEnd.value = Number.parseFloat(style.paddingRight) || 0
+        contentPaddingCrossStart.value = Number.parseFloat(style.paddingTop) || 0
+        contentPaddingCrossEnd.value = Number.parseFloat(style.paddingBottom) || 0
+        return
+    }
+
+    contentPaddingStart.value = Number.parseFloat(style.paddingTop) || 0
+    contentPaddingEnd.value = Number.parseFloat(style.paddingBottom) || 0
+    contentPaddingCrossStart.value = Number.parseFloat(style.paddingLeft) || 0
+    contentPaddingCrossEnd.value = Number.parseFloat(style.paddingRight) || 0
 }
 
 /**
@@ -406,6 +443,8 @@ function handleScrollbarDragStart(event: MouseEvent) {
  */
 function syncScrollLayout() {
     if (!wrapperRef.value) return
+
+    updateContentPadding()
 
     updateViewportSize()
 
@@ -692,6 +731,7 @@ watch(
         min-width: 100%;
         min-height: 100%;
         position: relative;
+        box-sizing: border-box;
 
         &.is-horizontal {
             height: 100%;
@@ -709,11 +749,10 @@ watch(
 
         &.is-horizontal {
             display: flex;
-            height: 100%;
         }
 
         &.is-vertical {
-            width: 100%;
+            width: auto;
         }
     }
 

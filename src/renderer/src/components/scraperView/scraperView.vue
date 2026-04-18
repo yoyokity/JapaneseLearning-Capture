@@ -194,7 +194,7 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
             style="height: calc(100% - var(--header-height))"
             :item-count="fileList.length"
             :item-size="fileItemSize"
-            :content-css="{ padding: '1rem 1rem 0 1rem' }"
+            :content-css="{ padding: '1rem' }"
             :scrollbar-occupy-space="false"
             @dragover.prevent
             @drop.prevent="handleDrop"
