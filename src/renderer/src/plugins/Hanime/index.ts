@@ -54,15 +54,11 @@ const hanimeScraper: IScraper<IHanimeContent> = {
             content.num.dlsite = video.num.dlsite ?? ''
 
             //获取webContent
-            const [hanime1, getchu, dlsite] = await Promise.all([
+            await Promise.all([
                 getWebContentHanime1(searchTitle, content),
                 getWebContentGetchu(searchTitle, content),
                 getWebContentDlsite(searchTitle, content)
             ])
-
-            content.webContent.hanime1 = hanime1 ?? ''
-            content.webContent.getchu = getchu ?? ''
-            content.webContent.dlsite = dlsite ?? ''
 
             return Boolean(content.webContent.hanime1)
         },

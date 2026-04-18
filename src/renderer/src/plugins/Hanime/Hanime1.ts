@@ -41,7 +41,7 @@ export async function searchVideoHanime1(
 export async function getWebContentHanime1(
     searchTitle: string,
     content: IHanimeContent
-): Promise<string | null> {
+): Promise<void> {
     loggerHanime1.log(`开始获取网页内容`)
 
     //先使用编号搜索
@@ -51,8 +51,9 @@ export async function getWebContentHanime1(
 
         const webContent = await NetHelper.get(url)
         if (webContent.ok) {
+            content.webContent.hanime1 = webContent.body
             loggerHanime1.success(`获取到网页内容`)
-            return webContent.body
+            return
         }
         loggerHanime1.log(`使用编号搜索失败，使用原标题搜索`, url)
     }
@@ -61,7 +62,7 @@ export async function getWebContentHanime1(
     const searchResult = await searchVideoHanime1(searchTitle)
     if (!searchResult) {
         loggerHanime1.warn(`获取网页内容失败`)
-        return null
+        return
     }
 
     if (searchResult.poster) {
@@ -75,14 +76,14 @@ export async function getWebContentHanime1(
     const webContent = await NetHelper.get(searchResult.href)
     if (!webContent.ok) {
         loggerHanime1.warn(`获取网页内容失败`)
-        return null
+        return
     }
 
     //记录num
     content.num.hanime1 = searchResult.href.split('watch?v=')[1]
+    content.webContent.hanime1 = webContent.body
 
     loggerHanime1.success(`获取到网页内容`)
-    return webContent.body
 }
 
 /**

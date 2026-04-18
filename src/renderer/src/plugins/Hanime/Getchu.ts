@@ -16,7 +16,7 @@ export const getchuOptions = {
 export async function getWebContentGetchu(
     searchTitle: string,
     content: IHanimeContent
-): Promise<string | null> {
+): Promise<void> {
     loggerGetchu.log(`开始获取网页内容`)
 
     /**
@@ -39,11 +39,12 @@ export async function getWebContentGetchu(
         if (body) {
             if (body.includes('年齢認証')) {
                 loggerGetchu.warn(`成人验证失败，无法获取网页内容`, url)
-                return null
+                return
             }
 
+            content.webContent.getchu = body
             loggerGetchu.success(`获取到网页内容`)
-            return body
+            return
         }
         loggerGetchu.log(`使用编号搜索失败，使用原标题搜索`, url)
     }
@@ -55,7 +56,7 @@ export async function getWebContentGetchu(
     const searchBody = await fetchPage(searchUrl)
     if (!searchBody) {
         loggerGetchu.warn(`获取搜索结果失败`, searchUrl)
-        return null
+        return
     }
 
     //在视频列表中找到符合条件的第一个
@@ -69,12 +70,12 @@ export async function getWebContentGetchu(
     const href = target.attr('href')
     if (!href) {
         loggerGetchu.warn(`没有找到匹配的番剧`)
-        return null
+        return
     }
     const id = href.match(/[?&]id=(?<id>\d+)/)?.groups?.id
     if (!id) {
         loggerGetchu.warn(`没有找到匹配的番剧`)
-        return null
+        return
     }
 
     const fullUrl = NetHelper.joinUrl('https://www.getchu.com/item', id, '?gc=gc')
@@ -84,19 +85,19 @@ export async function getWebContentGetchu(
     const body = await fetchPage(fullUrl)
     if (!body) {
         loggerGetchu.warn(`获取网页内容失败`, fullUrl)
-        return null
+        return
     }
 
     if (body.includes('年齢認証')) {
         loggerGetchu.warn(`成人验证失败，无法获取网页内容`, fullUrl)
-        return null
+        return
     }
 
     //记录num
     content.num.getchu = id
+    content.webContent.getchu = body
 
     loggerGetchu.success(`获取到网页内容`)
-    return body
 }
 
 /**

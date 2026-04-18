@@ -19,7 +19,7 @@ export const dlsiteOptions = {
 export async function getWebContentDlsite(
     searchTitle: string,
     content: IHanimeContent
-): Promise<string | null> {
+): Promise<void> {
     loggerDlsite.log(`开始获取网页内容`)
 
     //先使用编号搜索
@@ -29,8 +29,9 @@ export async function getWebContentDlsite(
         loggerDlsite.log(`使用编号搜索：${content.num.dlsite}`)
         const webContent = await NetHelper.get(url, dlsiteOptions)
         if (webContent.ok) {
+            content.webContent.dlsite = webContent.body
             loggerDlsite.success(`获取到网页内容`)
-            return webContent.body
+            return
         }
 
         loggerDlsite.log(`使用编号搜索失败，使用原标题搜索`, url)
@@ -42,7 +43,7 @@ export async function getWebContentDlsite(
     const webContent = await NetHelper.get(searchUrl, dlsiteOptions)
     if (!webContent.ok) {
         loggerDlsite.warn(`获取搜索结果失败`, searchUrl)
-        return null
+        return
     }
 
     //在视频列表中找到符合条件的第一个
@@ -56,7 +57,7 @@ export async function getWebContentDlsite(
     const href = target.attr('href')
     if (!href) {
         loggerDlsite.warn(`没有找到匹配的番剧`)
-        return null
+        return
     }
     loggerDlsite.log(`找到匹配的番剧：【${target.text().trim()}】 ${href}`)
 
@@ -64,12 +65,12 @@ export async function getWebContentDlsite(
     const body = await NetHelper.get(href, dlsiteOptions)
     if (!body.ok) {
         loggerDlsite.warn(`获取网页内容失败`, href)
-        return null
+        return
     }
 
     //记录num
     content.num.dlsite = href.split('/product_id/')[1].split('.')[0]
+    content.webContent.dlsite = body.body
 
     loggerDlsite.success(`获取到网页内容`)
-    return body.body
 }
