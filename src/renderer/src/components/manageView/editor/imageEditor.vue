@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import type { IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
-import type { Ref } from 'vue'
 
-import { useMessage } from '@renderer/components/control/message'
 import VideoImage from '@renderer/components/control/videoImage.vue'
-import { scraperField } from '@renderer/components/func.scraper'
 import { ImageHelper, PathHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import Button from 'primevue/button'
@@ -13,7 +10,7 @@ import { Waterfall } from 'vue-waterfall-plugin-next'
 
 interface IProps {
     video: IVideoFile
-    webContent: Ref<string>
+    scraperField: (video: IVideoFile, funcName: keyof IScraperVideoFuncs, logName: string) => void
     previewImage: string | null
 }
 
@@ -24,7 +21,6 @@ const emit = defineEmits<{
     'update:previewImage': [value: string | null]
 }>()
 
-const { toast } = useMessage()
 const globalStates = globalStatesStore()
 
 const imageLabels: Record<'poster' | 'fanart' | 'thumb', string> = {
@@ -137,10 +133,8 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
  * @param label 图片字段
  */
 function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
-    scraperField(
+    props.scraperField(
         video.value,
-        props.webContent,
-        toast,
         `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs,
         imageLabels[label]
     )
@@ -203,9 +197,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     variant="outlined"
                     style="height: fit-content"
                     size="small"
-                    @click="
-                        scraperField(video, props.webContent, toast, 'parseExtrafanart', '剧照')
-                    "
+                    @click="props.scraperField(video, 'parseExtrafanart', '剧照')"
                 />
             </div>
 

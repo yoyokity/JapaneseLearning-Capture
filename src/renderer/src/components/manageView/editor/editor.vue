@@ -4,7 +4,6 @@ import type { Ref } from 'vue'
 
 import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
-import { scraperAll, scraperField, scraperSave } from '@renderer/components/func.scraper'
 import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
 import { readExtrafanart, scanFiles } from '@renderer/components/manageView/func'
 import {
@@ -16,6 +15,7 @@ import {
     TaskHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
+import { useScraper } from '@renderer/scraper/useScraper'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -31,16 +31,13 @@ import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
+const { scraperAll, scraperField, scraperSave } = useScraper()
 const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
 
 const newVideo = ref<IVideoFile>(createVideoFile(''))
 const isSaving = ref(false)
-
-const a = {
-    webContent: ref('')
-}
 
 //tab部分
 const tabs = [
@@ -133,7 +130,7 @@ async function onSave() {
         isSaving.value = true
 
         //保存
-        const re = await scraperSave(newVideo.value, sourceVideoFile, a.webContent)
+        const re = await scraperSave(newVideo.value, sourceVideoFile)
         if (re.hasError) {
             toast.error(`保存失败！${re.error}`)
             isSaving.value = false
@@ -256,7 +253,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperAll(newVideo, a.webContent, toast)"
+                            @click="scraperAll(newVideo)"
                         />
                     </div>
 
@@ -301,9 +298,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="
-                                scraperField(newVideo, a.webContent, toast, 'parseTitle', '标题')
-                            "
+                            @click="scraperField(newVideo, 'parseTitle', '标题')"
                         />
                     </FloatLabel>
 
@@ -322,15 +317,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="
-                                scraperField(
-                                    newVideo,
-                                    a.webContent,
-                                    toast,
-                                    'parseOriginaltitle',
-                                    '原标题'
-                                )
-                            "
+                            @click="scraperField(newVideo, 'parseOriginaltitle', '原标题')"
                         />
                     </FloatLabel>
 
@@ -346,15 +333,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="
-                                scraperField(
-                                    newVideo,
-                                    a.webContent,
-                                    toast,
-                                    'parseSorttitle',
-                                    '排序标题'
-                                )
-                            "
+                            @click="scraperField(newVideo, 'parseSorttitle', '排序标题')"
                         />
                     </FloatLabel>
 
@@ -366,9 +345,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="
-                                scraperField(newVideo, a.webContent, toast, 'parseSet', '影片系列')
-                            "
+                            @click="scraperField(newVideo, 'parseSet', '影片系列')"
                         />
                     </FloatLabel>
 
@@ -390,9 +367,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="
-                                scraperField(newVideo, a.webContent, toast, 'parsePlot', '内容简介')
-                            "
+                            @click="scraperField(newVideo, 'parsePlot', '内容简介')"
                         />
                     </FloatLabel>
 
@@ -404,15 +379,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="
-                                scraperField(
-                                    newVideo,
-                                    a.webContent,
-                                    toast,
-                                    'parseTagline',
-                                    '宣传词'
-                                )
-                            "
+                            @click="scraperField(newVideo, 'parseTagline', '宣传词')"
                         />
                     </FloatLabel>
 
@@ -428,9 +395,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="
-                                scraperField(newVideo, a.webContent, toast, 'parseDirector', '导演')
-                            "
+                            @click="scraperField(newVideo, 'parseDirector', '导演')"
                         />
                     </FloatLabel>
 
@@ -525,9 +490,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="
-                                scraperField(newVideo, a.webContent, toast, 'parseActor', '演员')
-                            "
+                            @click="scraperField(newVideo, 'parseActor', '演员')"
                         />
                     </div>
 
@@ -590,7 +553,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperField(newVideo, a.webContent, toast, 'parseTag', '标签')"
+                            @click="scraperField(newVideo, 'parseTag', '标签')"
                         />
                     </div>
 
@@ -657,9 +620,7 @@ onMounted(async () => {
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="
-                                scraperField(newVideo, a.webContent, toast, 'parseGenre', '类型')
-                            "
+                            @click="scraperField(newVideo, 'parseGenre', '类型')"
                         />
                     </div>
 
@@ -680,9 +641,7 @@ onMounted(async () => {
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="
-                                    scraperField(newVideo, a.webContent, toast, 'parseMpaa', '分级')
-                                "
+                                @click="scraperField(newVideo, 'parseMpaa', '分级')"
                             />
                         </FloatLabel>
 
@@ -703,15 +662,7 @@ onMounted(async () => {
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="
-                                    scraperField(
-                                        newVideo,
-                                        a.webContent,
-                                        toast,
-                                        'parseRating',
-                                        '评分'
-                                    )
-                                "
+                                @click="scraperField(newVideo, 'parseRating', '评分')"
                             />
                         </FloatLabel>
                     </div>
@@ -733,15 +684,7 @@ onMounted(async () => {
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="
-                                    scraperField(
-                                        newVideo,
-                                        a.webContent,
-                                        toast,
-                                        'parseStudio',
-                                        '发行商'
-                                    )
-                                "
+                                @click="scraperField(newVideo, 'parseStudio', '发行商')"
                             />
                         </FloatLabel>
 
@@ -757,15 +700,7 @@ onMounted(async () => {
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="
-                                    scraperField(
-                                        newVideo,
-                                        a.webContent,
-                                        toast,
-                                        'parseMaker',
-                                        '制片商'
-                                    )
-                                "
+                                @click="scraperField(newVideo, 'parseMaker', '制片商')"
                             />
                         </FloatLabel>
                     </div>
@@ -784,15 +719,7 @@ onMounted(async () => {
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="
-                                    scraperField(
-                                        newVideo,
-                                        a.webContent,
-                                        toast,
-                                        'parseYear',
-                                        '发行年份'
-                                    )
-                                "
+                                @click="scraperField(newVideo, 'parseYear', '发行年份')"
                             />
                         </FloatLabel>
 
@@ -822,15 +749,7 @@ onMounted(async () => {
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="
-                                    scraperField(
-                                        newVideo,
-                                        a.webContent,
-                                        toast,
-                                        'parseReleasedate',
-                                        '上映日期'
-                                    )
-                                "
+                                @click="scraperField(newVideo, 'parseReleasedate', '上映日期')"
                             />
                         </FloatLabel>
                     </div>
@@ -841,7 +760,7 @@ onMounted(async () => {
                     v-show="activeTab === 'image'"
                     v-model:video="newVideo"
                     v-model:preview-image="previewImage"
-                    :web-content="a.webContent"
+                    :scraper-field="scraperField"
                 />
             </div>
         </Scroll>
