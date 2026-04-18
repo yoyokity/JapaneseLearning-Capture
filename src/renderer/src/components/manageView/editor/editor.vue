@@ -241,7 +241,10 @@ onMounted(async () => {
             <div class="content">
                 <!-- 信息编辑部分 -->
                 <div v-show="activeTab === 'info'" class="form-container">
-                    <h2 style="margin-top: 0">刮削器</h2>
+                    <h2 style="margin-top: 0">
+                        <i class="pi pi-search section-title-icon" />
+                        刮削器
+                    </h2>
                     <div style="display: flex">
                         <Select
                             v-model="newVideo.scraperName"
@@ -258,7 +261,10 @@ onMounted(async () => {
                         />
                     </div>
 
-                    <h2>编号</h2>
+                    <h2>
+                        <i class="pi pi-hashtag section-title-icon" />
+                        编号
+                    </h2>
                     <FloatLabel
                         v-for="value in Object.keys(
                             Scraper.getScraperInstance(newVideo.scraperName)?.numSource || {}
@@ -284,7 +290,10 @@ onMounted(async () => {
                         />
                     </FloatLabel>
 
-                    <h2>标题</h2>
+                    <h2>
+                        <i class="pi pi-bookmark section-title-icon" />
+                        标题
+                    </h2>
                     <FloatLabel variant="on" style="display: flex">
                         <InputText id="title_label" v-model.trim="newVideo.title" />
                         <label for="title_label">标题</label>
@@ -364,7 +373,10 @@ onMounted(async () => {
                         />
                     </FloatLabel>
 
-                    <h2>介绍</h2>
+                    <h2>
+                        <i class="pi pi-file-edit section-title-icon" />
+                        介绍
+                    </h2>
                     <FloatLabel variant="on" style="display: flex">
                         <Textarea
                             id="plot_label"
@@ -405,7 +417,10 @@ onMounted(async () => {
                         />
                     </FloatLabel>
 
-                    <h2>人员</h2>
+                    <h2>
+                        <i class="pi pi-users section-title-icon" />
+                        人员
+                    </h2>
                     <FloatLabel variant="on" style="display: flex">
                         <InputText id="director_label" v-model.trim="newVideo.director" />
                         <label for="director_label">导演</label>
@@ -519,7 +534,10 @@ onMounted(async () => {
 
                     <!-- 标签 -->
                     <div class="flex-title">
-                        <h2 style="margin-top: 0">标签</h2>
+                        <h2 style="margin-top: 0">
+                            <i class="pi pi-tags section-title-icon" />
+                            标签
+                        </h2>
                         <FloatLabel class="add-input" variant="on">
                             <InputText id="add_tag_label" v-model.trim="addTagValue" size="small" />
                             <label for="add_tag_label">添加标签</label>
@@ -579,7 +597,10 @@ onMounted(async () => {
 
                     <!-- 类型 -->
                     <div class="flex-title">
-                        <h2 style="margin-top: 0">类型</h2>
+                        <h2 style="margin-top: 0">
+                            <i class="pi pi-sitemap section-title-icon" />
+                            类型
+                        </h2>
                         <FloatLabel class="add-input" variant="on">
                             <InputText
                                 id="add_genre_label"
@@ -643,7 +664,10 @@ onMounted(async () => {
                         />
                     </div>
 
-                    <h2>数据</h2>
+                    <h2>
+                        <i class="pi pi-chart-bar section-title-icon" />
+                        数据
+                    </h2>
                     <div class="flex-input">
                         <FloatLabel v-tooltip.top="'如JP-18+'" variant="on" style="display: flex">
                             <InputText
@@ -693,7 +717,10 @@ onMounted(async () => {
                         </FloatLabel>
                     </div>
 
-                    <h2>发行</h2>
+                    <h2>
+                        <i class="pi pi-send section-title-icon" />
+                        发行
+                    </h2>
                     <div class="flex-input">
                         <FloatLabel variant="on" style="display: flex">
                             <InputText
@@ -890,6 +917,13 @@ onMounted(async () => {
             padding-left: 0.5rem;
             color: var(--p-primary-color);
             margin-right: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title-icon {
+            font-size: 1.25rem;
         }
 
         .add-input {

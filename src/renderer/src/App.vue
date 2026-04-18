@@ -13,7 +13,7 @@ import Toast from 'primevue/toast'
 </template>
 
 <style lang="scss">
-.header {
+.tab-header {
     width: 100%;
     height: var(--header-height);
     border-bottom: var(--separator);

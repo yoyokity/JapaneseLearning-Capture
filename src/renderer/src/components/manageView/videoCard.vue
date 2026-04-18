@@ -63,7 +63,7 @@ function handleClick(event: MouseEvent) {
             image-decoding="async"
             style="aspect-ratio: 379 / 538"
         />
-        <div v-tooltip.bottom="{ value: name, showDelay: 500 }" class="video-card-title">
+        <div v-tooltip.bottom="name" class="video-card-title">
             {{ name }}
         </div>
     </div>

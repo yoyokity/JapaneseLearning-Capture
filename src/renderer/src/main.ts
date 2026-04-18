@@ -1,4 +1,5 @@
 import App from '@renderer/App.vue'
+import Tooltip from '@renderer/components/control/tooltip'
 import { LogHelper, PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
@@ -9,9 +10,7 @@ import PrimeVue from 'primevue/config'
 import ConfirmationService from 'primevue/confirmationservice'
 import DialogService from 'primevue/dialogservice'
 import ToastService from 'primevue/toastservice'
-import Tooltip from 'primevue/tooltip'
 import { createApp } from 'vue'
-
 import 'vue-waterfall-plugin-next/dist/style.css'
 import 'primeicons/primeicons.css'
 

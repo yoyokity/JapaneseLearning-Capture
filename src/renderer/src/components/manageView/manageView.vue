@@ -270,7 +270,7 @@ onUnmounted(() => {
 
 <template>
     <div class="manage-view">
-        <div class="header">
+        <div class="tab-header">
             <h3 v-if="!isSetView">管理</h3>
             <div v-else class="manage-view-back-wrapper">
                 <i
@@ -282,10 +282,7 @@ onUnmounted(() => {
             </div>
             <Select
                 v-model="settings.currentScraper"
-                v-tooltip.left="{
-                    value: '选择目录',
-                    showDelay: 700
-                }"
+                v-tooltip.left="'选择目录'"
                 :options="Scraper.instances.map((scraper) => scraper.scraperName)"
                 size="small"
                 style="width: 8rem"
@@ -339,10 +336,7 @@ onUnmounted(() => {
             <div :class="{ active: isFloatActive }" class="manage-view-float-content">
                 <!-- 搜索 -->
                 <i
-                    v-tooltip.top="{
-                        value: '搜索',
-                        showDelay: 500
-                    }"
+                    v-tooltip.top="'搜索'"
                     :class="{ active: isSearchActive }"
                     class="search-button pi pi-search"
                     @click="
@@ -373,10 +367,7 @@ onUnmounted(() => {
                 <!-- 排序 -->
                 <Select
                     v-model="settings.manageViewSort"
-                    v-tooltip.top="{
-                        value: '排序',
-                        showDelay: 500
-                    }"
+                    v-tooltip.top="'排序'"
                     :option-label="(option) => VideoSortTypeList[option]"
                     :options="Object.keys(VideoSortTypeList)"
                     class="sort-select"

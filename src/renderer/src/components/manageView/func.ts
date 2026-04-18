@@ -43,7 +43,7 @@ export async function scanFiles(toast: any) {
         // 过滤出视频文件
         for (const file of files.filter((file) => {
             const ext = PathHelper.newPath(file).extname.toLowerCase()
-            return videoExtensions.includes(ext)
+            return Object.keys(videoExtensions).includes(ext)
         })) {
             videoFiles.push(await read(file))
         }
