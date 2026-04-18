@@ -270,7 +270,7 @@ onUnmounted(() => {
 
 <template>
     <div class="manage-view">
-        <div class="manage-view-header">
+        <div class="header">
             <h3 v-if="!isSetView">管理</h3>
             <div v-else class="manage-view-back-wrapper">
                 <i
@@ -401,41 +401,26 @@ onUnmounted(() => {
     position: relative;
 }
 
-.manage-view-header {
-    width: 100%;
-    height: var(--header-height);
-    border-bottom: var(--separator);
+.manage-view-back-wrapper {
+    margin-right: auto;
     display: flex;
     align-items: center;
-    padding: 0 1.5rem;
-    gap: 1rem;
+    gap: 0.5rem;
 
     h3 {
+        margin: 0;
         font-weight: normal;
-        margin-right: auto;
+        pointer-events: none;
+        color: inherit;
     }
+}
 
-    .manage-view-back-wrapper {
-        margin-right: auto;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+.manage-view-back {
+    font-size: 1.1rem;
+    cursor: pointer;
 
-        h3 {
-            margin: 0;
-            font-weight: normal;
-            pointer-events: none;
-            color: inherit;
-        }
-    }
-
-    .manage-view-back {
-        font-size: 1.1rem;
-        cursor: pointer;
-
-        &:hover {
-            color: var(--p-primary-color);
-        }
+    &:hover {
+        color: var(--p-primary-color);
     }
 }
 
