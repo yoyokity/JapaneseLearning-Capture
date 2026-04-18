@@ -1,6 +1,7 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
+import type { IHanimeContent } from './temp'
 
-import { EncodeHelper, ImageHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { EncodeHelper, ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { dlsiteOptions, getWebContentDlsite } from '@renderer/plugins/Hanime/Dlsite'
 import {
     getExtrafanartGetchu,
@@ -9,10 +10,11 @@ import {
 } from '@renderer/plugins/Hanime/Getchu'
 import { getPosterHanime1, getWebContentHanime1 } from '@renderer/plugins/Hanime/Hanime1'
 import { maker_trans } from '@renderer/plugins/Hanime/makerTrans'
-import { loggerDlsite, loggerGetchu, scraperName, temp } from '@renderer/plugins/Hanime/temp'
 import { load as cheerioLoad } from 'cheerio'
 
-const hanimeScraper: IScraper = {
+import { loggerDlsite, loggerGetchu, scraperName } from './temp'
+
+const hanimeScraper: IScraper<IHanimeContent> = {
     scraperName,
     checkConnect: async () => {
         return true
@@ -22,91 +24,106 @@ const hanimeScraper: IScraper = {
         getchu: 'https://www.getchu.com/soft.phtml?id={num}&gc=gc',
         dlsite: 'https://www.dlsite.com/pro/work/=/product_id/{num}.html?locale=ja_JP'
     },
+    createContent: () => ({
+        封面: null,
+        超分封面: null,
+        num: {
+            hanime1: '',
+            getchu: '',
+            dlsite: ''
+        },
+        webContent: {
+            hanime1: '',
+            getchu: '',
+            dlsite: ''
+        },
+        originaltitle: '',
+        maker: '',
+        tag: []
+    }),
     scraperVideoFuncs: {
-        getWebContent: async (video: IVideo) => {
+        getWebContent: async (video: IVideo, content: IHanimeContent) => {
+            if (content.webContent.hanime1) {
+                LogHelper.title(scraperName).log('网页内容已获取过，跳过')
+                return true
+            }
+
             const searchTitle = video.originaltitle || video.title || video.sorttitle
-            temp.封面 = null
-            temp.超分封面 = null
-            temp.num.hanime1 = video.num.hanime1 ?? ''
-            temp.num.getchu = video.num.getchu ?? ''
-            temp.num.dlsite = video.num.dlsite ?? ''
-            temp.webContent.hanime1 = ''
-            temp.webContent.getchu = ''
-            temp.webContent.dlsite = ''
-            temp.originaltitle = ''
-            temp.maker = ''
-            temp.tag = []
+            content.num.hanime1 = video.num.hanime1 ?? ''
+            content.num.getchu = video.num.getchu ?? ''
+            content.num.dlsite = video.num.dlsite ?? ''
 
             //获取webContent
             const [hanime1, getchu, dlsite] = await Promise.all([
-                getWebContentHanime1(searchTitle),
-                getWebContentGetchu(searchTitle),
-                getWebContentDlsite(searchTitle)
+                getWebContentHanime1(searchTitle, content),
+                getWebContentGetchu(searchTitle, content),
+                getWebContentDlsite(searchTitle, content)
             ])
 
-            temp.webContent.hanime1 = hanime1 ?? ''
-            temp.webContent.getchu = getchu ?? ''
-            temp.webContent.dlsite = dlsite ?? ''
+            content.webContent.hanime1 = hanime1 ?? ''
+            content.webContent.getchu = getchu ?? ''
+            content.webContent.dlsite = dlsite ?? ''
 
-            return temp.webContent.hanime1 || null
+            return Boolean(content.webContent.hanime1)
         },
-        parseTitle: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseTitle: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             let title = $('.video-description-panel').children().eq(1).text()
             title = TransHelper.translateSC(title.trim())
 
-            if (!title) return null
+            if (!title) return false
 
             video.title = title
-            return video
+            return true
         },
-        parseOriginaltitle: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseOriginaltitle: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             let originaltitle = $('h3#shareBtn-title').text()
             originaltitle = originaltitle.split('[中文字幕]')[0].trim()
 
-            if (!originaltitle) return null
+            if (!originaltitle) return false
 
             video.originaltitle = originaltitle
-            temp.originaltitle = video.originaltitle
-            return video
+            content.originaltitle = video.originaltitle
+            return true
         },
-        parseSorttitle: async (video: IVideo, webContent: string) => {
-            if (!temp.originaltitle) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseOriginaltitle(video, webContent)))
-                    return null
+        parseSorttitle: async (video: IVideo, content: IHanimeContent) => {
+            if (!content.originaltitle) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parseOriginaltitle(video, content))) {
+                    return false
+                }
             }
 
-            video.sorttitle = temp.originaltitle
-            return video
+            video.sorttitle = content.originaltitle
+            return true
         },
-        parseTagline: async (video: IVideo) => {
-            return video
+        parseTagline: async (_video: IVideo, _content: IHanimeContent) => {
+            return true
         },
-        parseNum: async (video: IVideo) => {
-            if (temp.num.hanime1) video.num.hanime1 = temp.num.hanime1
-            if (temp.num.getchu) video.num.getchu = temp.num.getchu
-            if (temp.num.dlsite) video.num.dlsite = temp.num.dlsite
-            return video
+        parseNum: async (video: IVideo, content: IHanimeContent) => {
+            if (content.num.hanime1) video.num.hanime1 = content.num.hanime1
+            if (content.num.getchu) video.num.getchu = content.num.getchu
+            if (content.num.dlsite) video.num.dlsite = content.num.dlsite
+            return true
         },
-        parseMpaa: async (video: IVideo) => {
+        parseMpaa: async (video: IVideo, _content: IHanimeContent) => {
             video.mpaa = 'JP-18+'
-            return video
+            return true
         },
-        parseRating: async (video: IVideo) => {
+        parseRating: async (video: IVideo, content: IHanimeContent) => {
             //dlsite
-            if (temp.num.dlsite) {
+            if (content.num.dlsite) {
                 loggerDlsite.log(`搜索评分...`)
 
-                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${temp.num.dlsite}&cdn_cache_min=1`
+                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${content.num.dlsite}&cdn_cache_min=1`
                 const webContent = await NetHelper.get(url, dlsiteOptions)
                 if (webContent.ok) {
-                    const a = JSON.parse(webContent.body)[temp.num.dlsite]
+                    const a = JSON.parse(webContent.body)[content.num.dlsite]
                     if (a) {
                         const rating = a.rate_average_2dp
                         if (rating) {
                             video.rating = (Number.parseFloat(rating) * 2).toString()
-                            return video
+                            return true
                         }
                     }
                 }
@@ -116,27 +133,27 @@ const hanimeScraper: IScraper = {
                 loggerDlsite.warn(`找不到dlsite页面，无法获取评分`)
             }
 
-            return video
+            return false
         },
-        parseDirector: async (video: IVideo) => {
+        parseDirector: async (video: IVideo, content: IHanimeContent) => {
             //dlsite
-            if (temp.webContent.dlsite) {
+            if (content.webContent.dlsite) {
                 loggerDlsite.log(`搜索导演...`)
 
-                const $ = cheerioLoad(temp.webContent.dlsite)
+                const $ = cheerioLoad(content.webContent.dlsite)
                 const text = $('#work_right_inner').text()
 
                 const ROLE_PRIORITY = ['監督', '演出', '脚本']
-                const ROLE_REGEX_TEMPLATE = /([^\s（]+?)\s*[（(]\{\{role\}\}/
+                const ROLE_REGEX_TEMPLATE = /(?<name>[^\s（]+?)\s*[（(]\{\{role\}\}/
 
                 for (const role of ROLE_PRIORITY) {
                     const dynamicRegex = new RegExp(
                         ROLE_REGEX_TEMPLATE.source.replace('{{role}}', role)
                     )
                     const match = text.match(dynamicRegex)
-                    if (match) {
-                        video.director = match[1].trim()
-                        return video
+                    if (match?.groups?.name) {
+                        video.director = match.groups.name.trim()
+                        return true
                     }
                 }
 
@@ -144,17 +161,17 @@ const hanimeScraper: IScraper = {
             }
 
             //getchu
-            if (temp.webContent.getchu) {
+            if (content.webContent.getchu) {
                 loggerGetchu.log(`搜索导演...`)
 
-                const $ = cheerioLoad(temp.webContent.getchu)
+                const $ = cheerioLoad(content.webContent.getchu)
                 const text = $('div#wrapper').text()
 
                 let regex = /監督([^：]*)：\n?(?<name>[^／\n ]+)/
                 let match = text.match(regex)
                 if (match && match.groups) {
                     video.director = match.groups.name.trim()
-                    return video
+                    return true
                 }
 
                 //没有監督用制片人
@@ -162,51 +179,52 @@ const hanimeScraper: IScraper = {
                 match = text.match(regex)
                 if (match && match.groups) {
                     video.director = match.groups.name
-                    return video
+                    return true
                 }
 
                 loggerGetchu.warn(`没有找到导演`)
             }
 
-            return video
+            return false
         },
-        parseActor: async (video: IVideo) => {
-            return video
+        parseActor: async (_video: IVideo, _content: IHanimeContent) => {
+            return true
         },
-        parseStudio: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseStudio: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             let maker = $('a#video-artist-name').text().trim()
             if (maker in maker_trans) {
                 maker = maker_trans[maker]
             }
 
-            if (!maker) return null
+            if (!maker) return false
 
             video.studio = maker
-            temp.maker = maker
-            return video
+            content.maker = maker
+            return true
         },
-        parseMaker: async (video: IVideo, webContent: string) => {
-            if (!temp.maker) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseStudio(video, webContent)))
-                    return null
+        parseMaker: async (video: IVideo, content: IHanimeContent) => {
+            if (!content.maker) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parseStudio(video, content))) {
+                    return false
+                }
             }
 
-            video.maker = temp.maker
-            return video
+            video.maker = content.maker
+            return true
         },
-        parseSet: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseSet: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             let set = $('.single-icon-wrapper.video-playlist-top').children('h4').first().text()
             set = set.includes('/') ? set.split('/')[1].trim() : set.trim()
 
-            if (!set) return null
+            if (!set) return false
 
             video.set = set
-            return video
+            return true
         },
-        parseTag: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseTag: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             const tags: string[] = ['成人动漫']
             $('.single-video-tag a').each((_, el) => {
                 const text = $(el)
@@ -219,23 +237,24 @@ const hanimeScraper: IScraper = {
                 }
             })
 
-            if (tags.length === 0) return null
+            if (tags.length === 0) return false
 
             video.tag = tags
-            temp.tag = tags
-            return video
+            content.tag = tags
+            return true
         },
-        parseGenre: async (video: IVideo, webContent: string) => {
-            if (!temp.tag) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseTag(video, webContent)))
-                    return null
+        parseGenre: async (video: IVideo, content: IHanimeContent) => {
+            if (!content.tag.length) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parseTag(video, content))) {
+                    return false
+                }
             }
 
-            video.genre = temp.tag
-            return video
+            video.genre = content.tag
+            return true
         },
-        parsePlot: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parsePlot: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             let plot = $('div.video-caption-text').text()
 
             if (plot.includes('[中文字幕]')) {
@@ -249,98 +268,103 @@ const hanimeScraper: IScraper = {
                 plot = EncodeHelper.normalizePlotLineBreak(plot)
             }
 
-            if (!plot) return null
+            if (!plot) return false
 
             video.plot = plot
-            return video
+            return true
         },
-        parseYear: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseYear: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             const text = $('.video-description-panel').children().eq(0).text()
             const match = text.match(/\d{4}/)
             const year = match ? match[0] : ''
-            if (!year) return null
+            if (!year) return false
 
             video.year = year
-            return video
+            return true
         },
-        parsePremiered: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parsePremiered: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             const text = $('.video-description-panel').children().eq(0).text()
             const match = text.match(/\d{4}-\d{2}-\d{2}/)
             const premiered = match ? match[0] : ''
 
-            if (!premiered) return null
+            if (!premiered) return false
 
             video.premiered = premiered
-            return video
+            return true
         },
-        parseReleasedate: async (video: IVideo, webContent: string) => {
-            const $ = cheerioLoad(webContent)
+        parseReleasedate: async (video: IVideo, content: IHanimeContent) => {
+            const $ = cheerioLoad(content.webContent.hanime1)
             const text = $('.video-description-panel').children().eq(0).text()
             const match = text.match(/\d{4}-\d{2}-\d{2}/)
             const releasedate = match ? match[0] : ''
 
-            if (!releasedate) return null
+            if (!releasedate) return false
 
             video.releasedate = releasedate
-            return video
+            return true
         },
-        parsePoster: async (video: IVideo) => {
-            if (temp.webContent.getchu) temp.封面 = await getPosterGetchu()
+        parsePoster: async (video: IVideo, content: IHanimeContent) => {
+            if (content.webContent.getchu) {
+                content.封面 = await getPosterGetchu(content)
+            }
 
             //没有则从hanime上获取
-            if (!temp.封面) {
-                temp.封面 = await getPosterHanime1(
-                    video.originaltitle || video.title || video.sorttitle
+            if (!content.封面) {
+                content.封面 = await getPosterHanime1(
+                    video.originaltitle || video.title || video.sorttitle,
+                    content
                 )
             }
 
-            if (!temp.封面) {
-                return null
+            if (!content.封面) {
+                return false
             }
 
-            video.poster = temp.封面
-            return video
+            video.poster = content.封面
+            return true
         },
-        parseThumb: async (video: IVideo, webContent: string) => {
+        parseThumb: async (video: IVideo, content: IHanimeContent) => {
             if (!video.poster) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, webContent)))
-                    return null
+                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, content))) {
+                    return false
+                }
             }
             const poster = video.poster
-            if (!poster) return null
+            if (!poster) return false
 
-            if (!temp.超分封面) {
+            if (!content.超分封面) {
                 const re = await ImageHelper.superResolutionImage(poster, true)
-                temp.超分封面 = re ?? poster
+                content.超分封面 = re ?? poster
             }
 
-            video.thumb = temp.超分封面
+            video.thumb = content.超分封面
 
-            return video
+            return true
         },
-        parseFanart: async (video: IVideo, webContent: string) => {
+        parseFanart: async (video: IVideo, content: IHanimeContent) => {
             if (!video.poster) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, webContent)))
-                    return null
+                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, content))) {
+                    return false
+                }
             }
             const poster = video.poster
-            if (!poster) return null
+            if (!poster) return false
 
-            if (!temp.超分封面) {
+            if (!content.超分封面) {
                 const re = await ImageHelper.superResolutionImage(poster, true)
-                temp.超分封面 = re ?? poster
+                content.超分封面 = re ?? poster
             }
 
-            video.fanart = temp.超分封面
-            return video
+            video.fanart = content.超分封面
+            return true
         },
-        parseExtrafanart: async (video: IVideo) => {
-            video.extrafanart = await getExtrafanartGetchu()
-            return video
+        parseExtrafanart: async (video: IVideo, _content: IHanimeContent) => {
+            video.extrafanart = await getExtrafanartGetchu(_content)
+            return true
         },
-        parseOutput: async (video: IVideo) => {
+        parseOutput: async (video: IVideo, _content: IHanimeContent) => {
             const dir = `${video.set}/${video.originaltitle}`
             return { dir, fileName: video.originaltitle }
         }

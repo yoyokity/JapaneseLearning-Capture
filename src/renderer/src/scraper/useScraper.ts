@@ -1,5 +1,5 @@
 import type { IResultWithError } from '@renderer/helper'
-import type { IScraper, IVideo, IVideoFile } from '@renderer/scraper'
+import type { IScraper, IScraperVideoFuncs, IVideo, IVideoFile } from '@renderer/scraper'
 
 import { useMessage } from '@renderer/components/control/message'
 import { LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
@@ -7,8 +7,7 @@ import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import { toRaw } from 'vue'
 
-type TScraperFuncName = keyof IScraper['scraperVideoFuncs']
-type TScraperParseFunc = (video: IVideo, webContent: string) => Promise<IVideo | null>
+type TScraperFuncName = keyof IScraperVideoFuncs
 
 interface IScraperContext {
     logger: ReturnType<typeof LogHelper.title>
@@ -20,32 +19,15 @@ interface IScraperContext {
  */
 export function useScraper() {
     const { toast } = useMessage()
-    const webContentCache = new Map<string, string>()
+    const contentCache = new Map<string, unknown>()
 
     /**
-     * 获取网页缓存键
+     * 获取内容缓存键
      * @param video 视频对象
      */
-    function getWebContentCacheKey(video: IVideo) {
+    function getContentCacheKey(video: IVideo) {
         const originaltitle = video.originaltitle?.trim() || ''
         return [video.scraperName, originaltitle].join('__')
-    }
-
-    /**
-     * 获取网页缓存
-     * @param video 视频对象
-     */
-    function getWebContent(video: IVideo) {
-        return webContentCache.get(getWebContentCacheKey(video)) || ''
-    }
-
-    /**
-     * 写入网页缓存
-     * @param video 视频对象
-     * @param webContent 网页内容
-     */
-    function setWebContent(video: IVideo, webContent: string) {
-        webContentCache.set(getWebContentCacheKey(video), webContent)
     }
 
     /**
@@ -64,26 +46,37 @@ export function useScraper() {
     }
 
     /**
-     * 确保网页内容已获取
+     * 获取内容缓存
+     * @param scraper 刮削器
+     * @param video 视频对象
+     */
+    function getContent<TContent>(scraper: IScraper<TContent>, video: IVideo): TContent {
+        const cacheKey = getContentCacheKey(video)
+        const cachedContent = contentCache.get(cacheKey)
+        if (cachedContent) {
+            return cachedContent as TContent
+        }
+
+        const content = scraper.createContent()
+        contentCache.set(cacheKey, content)
+        return content
+    }
+
+    /**
+     * 确保内容已获取
      * @param context 刮削上下文
      * @param video 视频对象
      */
-    async function ensureWebContent(context: IScraperContext, video: IVideo) {
-        const cachedWebContent = getWebContent(video)
-        if (cachedWebContent) {
-            return true
-        }
-
+    async function ensureContent(context: IScraperContext, video: IVideo) {
         try {
+            const content = getContent(context.scraper, video)
             context.logger.log(`获取网页内容中...`)
-            const re = await context.scraper.scraperVideoFuncs.getWebContent(video)
-            if (!re) {
+            if (!(await context.scraper.scraperVideoFuncs.getWebContent(video, content))) {
                 context.logger.error(`获取网页内容失败！`)
                 toast.error(`获取网页内容失败！`)
                 return false
             }
 
-            setWebContent(video, re)
             return true
         } catch (error) {
             context.logger.error(`获取网页内容出错！`, error)
@@ -95,22 +88,23 @@ export function useScraper() {
      * 执行单个字段解析
      * @param context 刮削上下文
      * @param video 视频对象
-     * @param content 网页内容
      * @param funcName 解析函数名称
      * @param label 字段名称
      */
     async function parseField(
         context: IScraperContext,
         video: IVideo,
-        content: string,
         funcName: TScraperFuncName,
         label: string
     ) {
         try {
             context.logger.log(`解析${label}...`)
-            const func = context.scraper.scraperVideoFuncs[funcName] as TScraperParseFunc
-            const re = await func(video, content)
-            return Boolean(re)
+            const content = getContent(context.scraper, video)
+            const func = context.scraper.scraperVideoFuncs[funcName] as (
+                video: IVideo,
+                content: unknown
+            ) => Promise<boolean>
+            return await func(video, content)
         } catch (error) {
             context.logger.error(`解析${label}出错！`, error)
             return false
@@ -133,13 +127,13 @@ export function useScraper() {
         context.logger.log(`开始刮削：`, toRaw(video))
 
         TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-            const hasWebContent = await ensureWebContent(context, video)
-            if (!hasWebContent) {
+            // 先确保有网页内容
+            if (!(await ensureContent(context, video))) {
                 return
             }
 
-            const webContent = getWebContent(video)
-            const success = await parseField(context, video, webContent, funcName, logName)
+            // 执行解析
+            const success = await parseField(context, video, funcName, logName)
             if (!success) {
                 context.logger.warn(`${logName}解析出错！`)
                 toast.warn(`${logName}解析出错！`)
@@ -149,13 +143,25 @@ export function useScraper() {
             }
 
             // 更新编号
-            const parseNum = context.scraper.scraperVideoFuncs.parseNum as TScraperParseFunc
-            const re = await parseNum(video, webContent)
-            if (!re) {
+            let numSuccess = false
+            let numHasError = false
+
+            try {
+                const content = getContent(context.scraper, video)
+                numSuccess = await context.scraper.scraperVideoFuncs.parseNum(video, content)
+            } catch (error) {
+                numHasError = true
+                context.logger.error(`更新编号出错！`, error)
+            }
+
+            if (numSuccess) {
+                context.logger.success(`更新编号成功！`)
+            } else if (!numHasError) {
                 context.logger.warn(`更新编号出错！`)
                 toast.warn(`更新编号出错！`)
             }
 
+            // 结束
             if (success) {
                 context.logger.success(`刮削结束：`, toRaw(video))
             } else {
@@ -203,20 +209,17 @@ export function useScraper() {
         context.logger.separator()
         context.logger.log(`开始刮削：`, toRaw(video))
 
-        const hasWebContent = await TaskHelper.queueWithInterval('scraper', 0, true, async () =>
-            ensureWebContent(context, video)
+        const hasContent = await TaskHelper.queueWithInterval('scraper', 0, true, async () =>
+            ensureContent(context, video)
         )
-        const webContent = getWebContent(video)
-        if (!hasWebContent || !webContent) {
+        if (!hasContent) {
             return
         }
 
-        // 执行所有解析函数
         const failed: string[] = []
         for (const { name, label } of parseFuncs) {
             await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-                const success = await parseField(context, video, webContent, name, label)
-                if (!success) {
+                if (!(await parseField(context, video, name, label))) {
                     failed.push(label)
                 }
             })
@@ -248,15 +251,11 @@ export function useScraper() {
         }
 
         const settings = settingsStore()
+        const content = getContent(scraper, video)
 
-        // 解析输出目录
-        const { dir, fileName } = await scraper.scraperVideoFuncs.parseOutput(
-            video,
-            getWebContent(video)
-        )
+        const { dir, fileName } = await scraper.scraperVideoFuncs.parseOutput(video, content)
         const scraperPath = settings.scraperPath[video.scraperName]
 
-        // 创建目录
         const videoDir = await Scraper.createDirectory(
             PathHelper.newPath(scraperPath),
             video,

@@ -1,7 +1,9 @@
+import type { IHanimeContent } from './temp'
+
 import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { loggerHanime1, temp } from './temp'
+import { loggerHanime1 } from './temp'
 
 export async function searchVideoHanime1(
     searchTitle: string
@@ -36,13 +38,16 @@ export async function searchVideoHanime1(
 /**
  * Hanime1
  */
-export async function getWebContentHanime1(searchTitle: string): Promise<string | null> {
+export async function getWebContentHanime1(
+    searchTitle: string,
+    content: IHanimeContent
+): Promise<string | null> {
     loggerHanime1.log(`开始获取网页内容`)
 
     //先使用编号搜索
-    if (temp.num.hanime1) {
-        const url = `https://hanime1.me/watch?v=${temp.num.hanime1}`
-        loggerHanime1.log(`使用编号搜索：${temp.num.hanime1}`)
+    if (content.num.hanime1) {
+        const url = `https://hanime1.me/watch?v=${content.num.hanime1}`
+        loggerHanime1.log(`使用编号搜索：${content.num.hanime1}`)
 
         const webContent = await NetHelper.get(url)
         if (webContent.ok) {
@@ -62,7 +67,7 @@ export async function getWebContentHanime1(searchTitle: string): Promise<string 
     if (searchResult.poster) {
         const re = await NetHelper.getImage(searchResult.poster)
         if (re.ok) {
-            temp.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
+            content.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
         }
     }
 
@@ -74,7 +79,7 @@ export async function getWebContentHanime1(searchTitle: string): Promise<string 
     }
 
     //记录num
-    temp.num.hanime1 = searchResult.href.split('watch?v=')[1]
+    content.num.hanime1 = searchResult.href.split('watch?v=')[1]
 
     loggerHanime1.success(`获取到网页内容`)
     return webContent.body
@@ -83,7 +88,10 @@ export async function getWebContentHanime1(searchTitle: string): Promise<string 
 /**
  * 获取 Hanime1 封面
  */
-export async function getPosterHanime1(searchTitle: string): Promise<string | null> {
+export async function getPosterHanime1(
+    searchTitle: string,
+    _content: IHanimeContent
+): Promise<string | null> {
     const searchResult = await searchVideoHanime1(searchTitle)
     if (!searchResult?.poster) {
         loggerHanime1.warn(`没有找到封面`)

@@ -1,7 +1,9 @@
+import type { IHanimeContent } from './temp'
+
 import { EncodeHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { loggerDlsite, temp } from './temp'
+import { loggerDlsite } from './temp'
 
 export const dlsiteOptions = {
     headers: {
@@ -14,14 +16,17 @@ export const dlsiteOptions = {
 /**
  * Dlsite
  */
-export async function getWebContentDlsite(searchTitle: string): Promise<string | null> {
+export async function getWebContentDlsite(
+    searchTitle: string,
+    content: IHanimeContent
+): Promise<string | null> {
     loggerDlsite.log(`开始获取网页内容`)
 
     //先使用编号搜索
-    if (temp.num.dlsite) {
-        const url = `https://www.dlsite.com/pro/work/=/product_id/${temp.num.dlsite}.html?locale=ja_JP`
+    if (content.num.dlsite) {
+        const url = `https://www.dlsite.com/pro/work/=/product_id/${content.num.dlsite}.html?locale=ja_JP`
 
-        loggerDlsite.log(`使用编号搜索：${temp.num.dlsite}`)
+        loggerDlsite.log(`使用编号搜索：${content.num.dlsite}`)
         const webContent = await NetHelper.get(url, dlsiteOptions)
         if (webContent.ok) {
             loggerDlsite.success(`获取到网页内容`)
@@ -63,7 +68,7 @@ export async function getWebContentDlsite(searchTitle: string): Promise<string |
     }
 
     //记录num
-    temp.num.dlsite = href.split('/product_id/')[1].split('.')[0]
+    content.num.dlsite = href.split('/product_id/')[1].split('.')[0]
 
     loggerDlsite.success(`获取到网页内容`)
     return body.body

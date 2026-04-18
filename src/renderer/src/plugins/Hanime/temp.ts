@@ -2,22 +2,22 @@ import { LogHelper } from '@renderer/helper'
 
 export const scraperName = '里番'
 
-export const temp = {
-    封面: null as string | null,
-    超分封面: null as string | null,
+export interface IHanimeContent {
+    封面: string | null
+    超分封面: string | null
     num: {
-        hanime1: '',
-        getchu: '',
-        dlsite: ''
-    },
+        hanime1: string
+        getchu: string
+        dlsite: string
+    }
     webContent: {
-        hanime1: '',
-        getchu: '',
-        dlsite: ''
-    },
-    originaltitle: '',
-    maker: '',
-    tag: [] as string[]
+        hanime1: string
+        getchu: string
+        dlsite: string
+    }
+    originaltitle: string
+    maker: string
+    tag: string[]
 }
 
 export const loggerDlsite = LogHelper.title(scraperName).title('Dlsite')

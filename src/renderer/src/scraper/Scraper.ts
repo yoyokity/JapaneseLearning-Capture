@@ -15,131 +15,131 @@ interface IModuleType {
     }
 }
 
-export interface IScraperVideoFuncs {
+export interface IScraperVideoFuncs<TContent = unknown> {
     /**
      * 获取网页内容
      */
-    getWebContent: (video: IVideo) => Promise<string | null>
+    getWebContent: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析大标题
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseTitle: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseTitle: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析原始标题
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseOriginaltitle: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseOriginaltitle: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析排序标题
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseSorttitle: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseSorttitle: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析宣传词
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseTagline: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseTagline: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析编号
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseNum: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseNum: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析分级
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseMpaa: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseMpaa: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析评分
-     * @description 尽量以10分为满分
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @description 以10分为满分
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseRating: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseRating: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析导演
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseDirector: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseDirector: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析演员
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseActor: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseActor: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析发行商
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseStudio: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseStudio: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析制片商
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseMaker: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseMaker: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析影片系列
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseSet: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseSet: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析影片标签
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseTag: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseTag: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析影片类型
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseGenre: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseGenre: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析简介
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parsePlot: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parsePlot: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析发行年份
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseYear: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseYear: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析首映日期
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parsePremiered: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parsePremiered: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析上映日期
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseReleasedate: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseReleasedate: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析视频封面
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parsePoster: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parsePoster: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析视频缩略图
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseThumb: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseThumb: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析视频背景图
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseFanart: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseFanart: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析视频额外背景图
-     * @remarks 不管解不解析都返回video，如果解析出错，请返回null
+     * @remarks 解析结果直接写入 video，返回是否解析成功
      */
-    parseExtrafanart: (video: IVideo, webContent: string) => Promise<IVideo | null>
+    parseExtrafanart: (video: IVideo, content: TContent) => Promise<boolean>
     /**
      * 解析视频输出信息
      * @remarks 是相对路径，最终目录的绝对路径=刮削器输出路径+这个相对路径
      * @returns dir是输出目录的相对路径，fileName是视频文件名
      */
-    parseOutput: (video: IVideo, webContent: string) => Promise<{ dir: string; fileName: string }>
+    parseOutput: (video: IVideo, content: TContent) => Promise<{ dir: string; fileName: string }>
 }
 
-export interface IScraper {
+export interface IScraper<TContent = unknown> {
     /**
      * 刮削器名称
      */
@@ -155,9 +155,13 @@ export interface IScraper {
      */
     numSource: Record<string, string>
     /**
+     * 上下文缓存创建方法
+     */
+    createContent: () => TContent
+    /**
      * 刮削视频信息的方法
      */
-    scraperVideoFuncs: IScraperVideoFuncs
+    scraperVideoFuncs: IScraperVideoFuncs<TContent>
 }
 
 export class Scraper {

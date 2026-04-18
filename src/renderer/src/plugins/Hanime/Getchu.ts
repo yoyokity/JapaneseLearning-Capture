@@ -1,7 +1,9 @@
+import type { IHanimeContent } from './temp'
+
 import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { loggerGetchu, temp } from './temp'
+import { loggerGetchu } from './temp'
 
 export const getchuOptions = {
     headers: { referer: 'https://www.getchu.com' },
@@ -11,7 +13,10 @@ export const getchuOptions = {
 /**
  * Getchu
  */
-export async function getWebContentGetchu(searchTitle: string): Promise<string | null> {
+export async function getWebContentGetchu(
+    searchTitle: string,
+    content: IHanimeContent
+): Promise<string | null> {
     loggerGetchu.log(`开始获取网页内容`)
 
     /**
@@ -26,9 +31,9 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
     }
 
     //先使用编号搜索
-    if (temp.num.getchu) {
-        const url = `https://www.getchu.com/item/${temp.num.getchu}/?gc=gc`
-        loggerGetchu.log(`使用编号搜索：${temp.num.getchu}`)
+    if (content.num.getchu) {
+        const url = `https://www.getchu.com/item/${content.num.getchu}/?gc=gc`
+        loggerGetchu.log(`使用编号搜索：${content.num.getchu}`)
 
         const body = await fetchPage(url)
         if (body) {
@@ -88,7 +93,7 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
     }
 
     //记录num
-    temp.num.getchu = id
+    content.num.getchu = id
 
     loggerGetchu.success(`获取到网页内容`)
     return body
@@ -97,13 +102,13 @@ export async function getWebContentGetchu(searchTitle: string): Promise<string |
 /**
  * 获取 Getchu 剧照
  */
-export async function getExtrafanartGetchu(): Promise<string[]> {
-    if (!temp.webContent.getchu) {
+export async function getExtrafanartGetchu(content: IHanimeContent): Promise<string[]> {
+    if (!content.webContent.getchu) {
         loggerGetchu.log(`- 没有getchu，无法获取剧照`)
         return []
     }
 
-    const $ = cheerioLoad(temp.webContent.getchu)
+    const $ = cheerioLoad(content.webContent.getchu)
     const hrefs = $('div.item-Samplecard a').map((_, el) => $(el).attr('href')?.trim())
 
     const urls = hrefs
@@ -142,12 +147,12 @@ export async function getExtrafanartGetchu(): Promise<string[]> {
 /**
  * 获取 Getchu 封面
  */
-export async function getPosterGetchu(): Promise<string | null> {
-    if (!temp.webContent.getchu) {
+export async function getPosterGetchu(content: IHanimeContent): Promise<string | null> {
+    if (!content.webContent.getchu) {
         return null
     }
 
-    const $ = cheerioLoad(temp.webContent.getchu)
+    const $ = cheerioLoad(content.webContent.getchu)
     const url = $('table#soft_table')
         .find('a')
         .first()
