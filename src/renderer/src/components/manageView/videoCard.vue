@@ -2,10 +2,9 @@
 import type { IVideoFile } from '@renderer/scraper'
 
 import VideoImage from '@renderer/components/control/videoImage.vue'
+import Editor from '@renderer/components/manageView/editor/editor.vue'
 import { useDialog } from 'primevue/usedialog'
 import { computed } from 'vue'
-
-import Editor from './editor/editor.vue'
 
 const props = defineProps<{
     video: IVideoFile

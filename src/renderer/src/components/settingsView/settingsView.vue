@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
+import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
+import SettingsLineItem from '@renderer/components/settingsView/settingsLineItem.vue'
 import { TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
@@ -13,9 +15,6 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 import { ref } from 'vue'
-
-import SettingsLine from './settingsLine.vue'
-import SettingsLineItem from './settingsLineItem.vue'
 
 const settings = settingsStore()
 const translateEngineConfigRef = ref()

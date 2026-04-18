@@ -2,7 +2,11 @@
 import type { IActor, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
+import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
+import { scraperAll, scraperField, scraperSave } from '@renderer/components/func.scraper'
+import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
+import { readExtrafanart, scanFiles } from '@renderer/components/manageView/func'
 import {
     EncodeHelper,
     isNumeric,
@@ -24,11 +28,6 @@ import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
 import { inject, nextTick, onMounted, ref } from 'vue'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
-
-import { useMessage } from '../../control/message'
-import { readExtrafanart, scanFiles } from '../func'
-import { scraperAll, scraperField, scraperSave } from '../func.scraper'
-import ImageEditor from './imageEditor.vue'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()

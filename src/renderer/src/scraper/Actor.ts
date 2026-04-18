@@ -1,4 +1,4 @@
-import type { IActor } from './Video'
+import type { IActor } from '@renderer/scraper'
 
 import { DataHelper, EncodeHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'

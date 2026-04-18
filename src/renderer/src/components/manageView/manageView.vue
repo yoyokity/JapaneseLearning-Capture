@@ -3,6 +3,8 @@ import type { IVideoFile } from '@renderer/scraper'
 import type { SelectChangeEvent } from 'primevue/select'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
+import { scanFiles } from '@renderer/components/manageView/func'
+import VideoCard from '@renderer/components/manageView/videoCard.vue'
 import { PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
@@ -12,9 +14,6 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-
-import { scanFiles } from './func'
-import VideoCard from './videoCard.vue'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()

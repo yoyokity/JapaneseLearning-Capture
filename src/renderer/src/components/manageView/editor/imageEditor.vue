@@ -2,15 +2,14 @@
 import type { IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
-import VideoImage from '@renderer/components/control/VideoImage.vue'
+import { useMessage } from '@renderer/components/control/message'
+import VideoImage from '@renderer/components/control/videoImage.vue'
+import { scraperField } from '@renderer/components/func.scraper'
 import { ImageHelper, PathHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import { computed, ref } from 'vue'
 import { Waterfall } from 'vue-waterfall-plugin-next'
-
-import { useMessage } from '../../control/message'
-import { scraperField } from '../func.scraper'
 
 interface IProps {
     video: IVideoFile

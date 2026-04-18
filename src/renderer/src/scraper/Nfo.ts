@@ -1,6 +1,6 @@
 import type { Path } from '@renderer/helper'
+import type { IVideo } from '@renderer/scraper'
 import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'
-import type { IVideo } from './Video'
 
 import { PathHelper } from '@renderer/helper'
 import { isString } from 'es-toolkit'

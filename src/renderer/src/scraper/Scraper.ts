@@ -1,11 +1,10 @@
 import type { IResultWithError, Path } from '@renderer/helper'
-import type { IVideo, IVideoFile } from './Video'
+import type { IVideo, IVideoFile } from '@renderer/scraper/Video'
 
 import { LogHelper, PathHelper } from '@renderer/helper'
+import { Nfo } from '@renderer/scraper/Nfo'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
-
-import { Nfo } from './Nfo'
 
 /**
  * 模块导入类型接口

@@ -12,5 +12,7 @@
     "terminal.integrated.env.windows": {
         "http_proxy": "http://127.0.0.1:7890",
         "https_proxy": "http://127.0.0.1:7890"
-    }
+    },
+    "js/ts.preferences.importModuleSpecifier": "non-relative",
+    "js/ts.preferences.importModuleSpecifierEnding": "minimal"
 }

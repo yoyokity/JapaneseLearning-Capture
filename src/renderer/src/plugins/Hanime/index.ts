@@ -1,13 +1,16 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 
 import { EncodeHelper, ImageHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { dlsiteOptions, getWebContentDlsite } from '@renderer/plugins/Hanime/Dlsite'
+import {
+    getExtrafanartGetchu,
+    getPosterGetchu,
+    getWebContentGetchu
+} from '@renderer/plugins/Hanime/Getchu'
+import { getPosterHanime1, getWebContentHanime1 } from '@renderer/plugins/Hanime/Hanime1'
+import { maker_trans } from '@renderer/plugins/Hanime/makerTrans'
+import { loggerDlsite, loggerGetchu, scraperName, temp } from '@renderer/plugins/Hanime/temp'
 import { load as cheerioLoad } from 'cheerio'
-
-import { dlsiteOptions, getWebContentDlsite } from './Dlsite'
-import { getExtrafanartGetchu, getPosterGetchu, getWebContentGetchu } from './Getchu'
-import { getPosterHanime1, getWebContentHanime1 } from './Hanime1'
-import { maker_trans } from './makerTrans'
-import { loggerDlsite, loggerGetchu, scraperName, temp } from './temp'
 
 const hanimeScraper: IScraper = {
     scraperName,
