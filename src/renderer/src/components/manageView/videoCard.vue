@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { IVideoFile } from '@renderer/scraper'
 
-import VideoImage from '@renderer/components/control/VideoImage.vue'
+import VideoImage from '@renderer/components/control/videoImage.vue'
 import { useDialog } from 'primevue/usedialog'
 import { computed } from 'vue'
 

@@ -2,11 +2,10 @@
 import type { Path } from '@renderer/helper'
 import type { MenuItem } from 'primevue/menuitem'
 
-import Scroll from '@renderer/components/control/scroll/scroll.vue'
+import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
 import { PathHelper, videoExtensions } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
-import { AnimatePresence } from 'motion-v'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import Select from 'primevue/select'
@@ -17,6 +16,7 @@ const globalStates = globalStatesStore()
 const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
 const scraperMenu = ref()
 const currentMenuItem = ref<IFileItem | null>(null)
+const fileItemSize = 78
 
 interface IFileItem {
     /** 文件路径 */
@@ -142,6 +142,7 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
 
 <template>
     <div class="scraper-view">
+        <Menu ref="scraperMenu" :model="scraperMenuItems" popup />
         <div class="tab-header">
             <h3 v-if="fileList.length === 0">刮削</h3>
 
@@ -188,36 +189,38 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
         </div>
 
         <!-- 列表 -->
-        <Scroll
+        <VirtualScroll
             v-else
             style="height: calc(100% - var(--header-height))"
+            :item-count="fileList.length"
+            :item-size="fileItemSize"
+            :content-css="{ padding: '1rem 1rem 0 1rem' }"
             :scrollbar-occupy-space="false"
             @dragover.prevent
             @drop.prevent="handleDrop"
             @dragenter.prevent="handleDragEnter"
             @dragleave.prevent="handleDragLeave"
         >
-            <Menu ref="scraperMenu" :model="scraperMenuItems" popup />
-            <div class="file-list">
-                <AnimatePresence>
-                    <div v-for="item in fileList" :key="item.file.toString()" class="file-item">
+            <template #default="{ index }">
+                <div class="file-item-shell">
+                    <div class="file-item">
                         <div class="file-main">
                             <span
                                 class="file-ext-icon"
-                                :style="{ backgroundColor: getFileExtColor(item.file) }"
+                                :style="{ backgroundColor: getFileExtColor(fileList[index].file) }"
                             >
-                                {{ item.file.extname.replace('.', '').toUpperCase() }}
+                                {{ fileList[index].file.extname.replace('.', '').toUpperCase() }}
                             </span>
-                            <span class="file-name">{{ item.file.basename }}</span>
+                            <span class="file-name">{{ fileList[index].file.basename }}</span>
                         </div>
                         <div class="file-actions">
                             <Button
-                                :label="item.scraper"
+                                :label="fileList[index].scraper"
                                 class="scraper-button"
                                 severity="secondary"
                                 size="small"
                                 text
-                                @click="showScraperMenu($event, item)"
+                                @click="showScraperMenu($event, fileList[index])"
                             />
                             <Button
                                 icon="pi pi-times"
@@ -226,13 +229,13 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
                                 text
                                 rounded
                                 size="small"
-                                @click="removeFile(item.file)"
+                                @click="removeFile(fileList[index].file)"
                             />
                         </div>
                     </div>
-                </AnimatePresence>
-            </div>
-        </Scroll>
+                </div>
+            </template>
+        </VirtualScroll>
     </div>
 </template>
 
@@ -286,17 +289,17 @@ $transition: all 0.4s var(--animation-type);
     }
 }
 
-.file-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem;
+.file-item-shell {
+    height: 100%;
+    padding-bottom: 0.75rem;
+    box-sizing: border-box;
 }
 
 .file-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    height: 100%;
     gap: 1rem;
     padding: 0.75rem 1rem;
     border: 1px solid var(--p-content-border-color);
