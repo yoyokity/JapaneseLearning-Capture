@@ -15,131 +15,180 @@ interface IModuleType {
     }
 }
 
-export interface IScraperVideoFuncs<TContent = unknown> {
+export interface IScraperVideoFuncs<TContext = unknown> {
     /**
-     * 获取网页内容
+     * 获取网页上下文
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false
      */
-    getWebContent: (video: IVideo, content: TContent) => Promise<boolean>
+    getWebContext: (video: IVideo, context: TContext) => Promise<boolean>
     /**
      * 解析大标题
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseTitle: (video: IVideo, content: TContent) => Promise<boolean>
+    parseTitle: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析原始标题
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseOriginaltitle: (video: IVideo, content: TContent) => Promise<boolean>
+    parseOriginaltitle: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析排序标题
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseSorttitle: (video: IVideo, content: TContent) => Promise<boolean>
+    parseSorttitle: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析宣传词
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseTagline: (video: IVideo, content: TContent) => Promise<boolean>
+    parseTagline: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析编号
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseNum: (video: IVideo, content: TContent) => Promise<boolean>
+    parseNum: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析分级
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseMpaa: (video: IVideo, content: TContent) => Promise<boolean>
+    parseMpaa: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析评分
      * @description 以10分为满分
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseRating: (video: IVideo, content: TContent) => Promise<boolean>
+    parseRating: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析导演
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseDirector: (video: IVideo, content: TContent) => Promise<boolean>
+    parseDirector: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析演员
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseActor: (video: IVideo, content: TContent) => Promise<boolean>
+    parseActor: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析发行商
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseStudio: (video: IVideo, content: TContent) => Promise<boolean>
+    parseStudio: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析制片商
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseMaker: (video: IVideo, content: TContent) => Promise<boolean>
+    parseMaker: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析影片系列
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseSet: (video: IVideo, content: TContent) => Promise<boolean>
+    parseSet: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析影片标签
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseTag: (video: IVideo, content: TContent) => Promise<boolean>
+    parseTag: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析影片类型
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseGenre: (video: IVideo, content: TContent) => Promise<boolean>
+    parseGenre: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析简介
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parsePlot: (video: IVideo, content: TContent) => Promise<boolean>
+    parsePlot: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析发行年份
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseYear: (video: IVideo, content: TContent) => Promise<boolean>
+    parseYear: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析首映日期
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parsePremiered: (video: IVideo, content: TContent) => Promise<boolean>
+    parsePremiered: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析上映日期
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseReleasedate: (video: IVideo, content: TContent) => Promise<boolean>
+    parseReleasedate: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析视频封面
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parsePoster: (video: IVideo, content: TContent) => Promise<boolean>
+    parsePoster: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析视频缩略图
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseThumb: (video: IVideo, content: TContent) => Promise<boolean>
+    parseThumb: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析视频背景图
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseFanart: (video: IVideo, content: TContent) => Promise<boolean>
+    parseFanart: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析视频额外背景图
-     * @remarks 解析结果直接写入 video，返回是否解析成功
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
+     * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
-    parseExtrafanart: (video: IVideo, content: TContent) => Promise<boolean>
+    parseExtrafanart: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
      * 解析视频输出信息
+     * @param video 视频对象，解析结果直接写入 video
+     * @param context 刮削上下文，用于缓存信息
      * @remarks 是相对路径，最终目录的绝对路径=刮削器输出路径+这个相对路径
      * @returns dir是输出目录的相对路径，fileName是视频文件名
      */
-    parseOutput: (video: IVideo, content: TContent) => Promise<{ dir: string; fileName: string }>
+    parseOutput: (video: IVideo, context: TContext) => Promise<{ dir: string; fileName: string }>
 }
 
-export interface IScraper<TContent = unknown> {
+export interface IScraper<TContext = unknown> {
     /**
      * 刮削器名称
      */
@@ -157,11 +206,11 @@ export interface IScraper<TContent = unknown> {
     /**
      * 上下文缓存创建方法
      */
-    createContent: () => TContent
+    createContext: () => TContext
     /**
      * 刮削视频信息的方法
      */
-    scraperVideoFuncs: IScraperVideoFuncs<TContent>
+    scraperVideoFuncs: IScraperVideoFuncs<TContext>
 }
 
 export class Scraper {
@@ -235,97 +284,125 @@ export class Scraper {
         dir: string,
         fileName: string
     ): Promise<IResultWithError<Path>> {
-        //最终目录
-        const videoDir = scraperPath.join(dir)
+        try {
+            //最终目录
+            const videoDir = scraperPath.join(dir)
 
-        //原视频path
-        const _sourceVideoPath = sourceVideoFile.path
-        //视频path
-        const _videoPath = videoDir.join(fileName + sourceVideoFile.extname)
-        //nfo path
-        const _nfoPath = videoDir.join(`${fileName}.nfo`)
+            //原视频path
+            const _sourceVideoPath = sourceVideoFile.path
+            //视频path
+            const _videoPath = videoDir.join(fileName + sourceVideoFile.extname)
+            //nfo path
+            const _nfoPath = videoDir.join(`${fileName}.nfo`)
 
-        //不同目录
-        const dirDiff = sourceVideoFile.dir.toString() !== videoDir.toString()
+            //不同目录
+            const dirDiff = sourceVideoFile.dir.toString() !== videoDir.toString()
 
-        //如果最终目录和原视频目录不同，则创建最终目录
-        if (dirDiff) {
-            if (!(await PathHelper.createDirectory(videoDir))) {
-                return { error: '创建新目录失败！', hasError: true }
+            //如果最终目录和原视频目录不同，则创建最终目录
+            if (dirDiff) {
+                if (!(await PathHelper.createDirectory(videoDir))) {
+                    return { error: '创建新目录失败！', hasError: true }
+                }
             }
-        }
 
-        //将视频文件移动到新目录或改名
-        if (_sourceVideoPath.toString() !== _videoPath.toString()) {
-            if (!(await PathHelper.move(_sourceVideoPath, _videoPath, false))) {
-                return { error: '存在同名视频文件！', hasError: true }
+            //将视频文件移动到新目录或改名
+            if (_sourceVideoPath.toString() !== _videoPath.toString()) {
+                if (!(await PathHelper.move(_sourceVideoPath, _videoPath, false))) {
+                    return { error: '存在同名视频文件！', hasError: true }
+                }
             }
-        }
 
-        //创建nfo文件
-        const nfo = Nfo.create(video)
-        await nfo.save(_nfoPath)
-        LogHelper.success(`- 保存nfo成功！:${_nfoPath}`)
+            //创建nfo文件
+            const nfo = Nfo.create(video)
+            await nfo.save(_nfoPath)
+            LogHelper.success(`- 保存nfo成功！:${_nfoPath}`)
 
-        //如果有两个nfo，则删除原来的
-        if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {
-            if (!(await PathHelper.remove(sourceVideoFile.nfoPath))) {
-                return { error: '删除原来的nfo文件失败！', hasError: true }
+            //如果有两个nfo，则删除原来的
+            if (
+                !sourceVideoFile.nfoPath.toString().match(/[\\/]/) &&
+                (await sourceVideoFile.nfoPath.isExist())
+            ) {
+                if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {
+                    if (!(await PathHelper.remove(sourceVideoFile.nfoPath))) {
+                        return { error: '删除原来的nfo文件失败！', hasError: true }
+                    }
+                }
             }
-        }
 
-        //保存图片
-        const imagePromises: Promise<void>[] = []
+            //保存图片
+            const imagePromises: Promise<void>[] = []
 
-        if (video.poster && (!isEqual(sourceVideoFile.poster, video.poster) || dirDiff)) {
-            const posterPath = videoDir.join('poster.jpg')
-            imagePromises.push(
-                PathHelper.copy(video.poster, posterPath).then(() => {
-                    LogHelper.success(`- 保存封面poster成功！:${posterPath}`)
-                })
-            )
-        }
+            if (video.poster && (!isEqual(sourceVideoFile.poster, video.poster) || dirDiff)) {
+                const posterPath = videoDir.join('poster.jpg')
+                imagePromises.push(
+                    PathHelper.copy(video.poster, posterPath).then(() => {
+                        LogHelper.success(`- 保存封面poster成功！:${posterPath}`)
+                    })
+                )
+            }
 
-        if (video.thumb && (!isEqual(sourceVideoFile.thumb, video.thumb) || dirDiff)) {
-            const thumbPath = videoDir.join('thumb.jpg')
-            imagePromises.push(
-                PathHelper.copy(video.thumb, thumbPath).then(() => {
-                    LogHelper.success(`- 保存缩略图thumb成功！:${thumbPath}`)
-                })
-            )
-        }
+            if (video.thumb && (!isEqual(sourceVideoFile.thumb, video.thumb) || dirDiff)) {
+                const thumbPath = videoDir.join('thumb.jpg')
+                imagePromises.push(
+                    PathHelper.copy(video.thumb, thumbPath).then(() => {
+                        LogHelper.success(`- 保存缩略图thumb成功！:${thumbPath}`)
+                    })
+                )
+            }
 
-        if (video.fanart && (!isEqual(sourceVideoFile.fanart, video.fanart) || dirDiff)) {
-            const fanartPath = videoDir.join('fanart.jpg')
-            imagePromises.push(
-                PathHelper.copy(video.fanart, fanartPath).then(() => {
-                    LogHelper.success(`- 保存背景图fanart成功！:${fanartPath}`)
-                })
-            )
-        }
+            if (video.fanart && (!isEqual(sourceVideoFile.fanart, video.fanart) || dirDiff)) {
+                const fanartPath = videoDir.join('fanart.jpg')
+                imagePromises.push(
+                    PathHelper.copy(video.fanart, fanartPath).then(() => {
+                        LogHelper.success(`- 保存背景图fanart成功！:${fanartPath}`)
+                    })
+                )
+            }
 
-        //保存extrafanart
-        if (
-            video.extrafanart &&
-            (!isEqual(sourceVideoFile.extrafanart, video.extrafanart) || dirDiff)
-        ) {
-            //清空剧照文件夹
-            const result = await PathHelper.clearFolder(videoDir.join('extrafanart'))
-            if (result) {
-                for (let index = 1; index <= video.extrafanart.length; index++) {
-                    const extrafanart = video.extrafanart[index - 1]
-                    const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
+            //保存extrafanart
+            if (
+                video.extrafanart &&
+                (!isEqual(sourceVideoFile.extrafanart, video.extrafanart) || dirDiff)
+            ) {
+                //清空剧照文件夹
+                const result = await PathHelper.clearFolder(videoDir.join('extrafanart'))
+                if (result) {
+                    const extrafanartPromises: Promise<boolean>[] = []
+                    for (let index = 1; index <= video.extrafanart.length; index++) {
+                        const extrafanart = video.extrafanart[index - 1]
+                        const path = videoDir.join('extrafanart', `extrafanart-${index}.jpg`)
+                        extrafanartPromises.push(
+                            PathHelper.copy(extrafanart, path)
+                                .then(() => true)
+                                .catch(() => false)
+                        )
+                    }
+
                     imagePromises.push(
-                        PathHelper.copy(extrafanart, path).then(() => {
-                            LogHelper.success(`- 保存剧照extrafanart-${index}成功！:${path}`)
+                        Promise.all(extrafanartPromises).then((results) => {
+                            const successCount = results.filter(Boolean).length
+                            const failedCount = results.length - successCount
+
+                            if (successCount > 0) {
+                                LogHelper.success(`- 保存${successCount}张剧照成功！`)
+                            }
+
+                            if (failedCount > 0) {
+                                LogHelper.warn(`- 保存${failedCount}张剧照失败！`)
+                            }
                         })
                     )
                 }
             }
+
+            await Promise.all(imagePromises)
+
+            return { result: videoDir, hasError: false }
+        } catch (error) {
+            // 统一处理保存过程中的异常
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            LogHelper.error(`保存刮削结果异常：${errorMessage}`)
+            return { error: `保存刮削结果失败！`, hasError: true }
         }
-
-        await Promise.all(imagePromises)
-
-        return { result: videoDir, hasError: false }
     }
 }

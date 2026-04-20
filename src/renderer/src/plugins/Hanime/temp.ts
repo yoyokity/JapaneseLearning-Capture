@@ -2,7 +2,7 @@ import { LogHelper } from '@renderer/helper'
 
 export const scraperName = '里番'
 
-export interface IHanimeContent {
+export interface IHanimeContext {
     封面: string | null
     超分封面: string | null
     num: {

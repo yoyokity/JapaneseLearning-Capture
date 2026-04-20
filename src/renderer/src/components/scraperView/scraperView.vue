@@ -3,8 +3,9 @@ import type { Path } from '@renderer/helper'
 import type { MenuItem } from 'primevue/menuitem'
 
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
-import { PathHelper, videoExtensions } from '@renderer/helper'
+import { PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
+import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
@@ -24,6 +25,9 @@ interface IFileItem {
     /** 刮削器名称 */
     scraper: string
 }
+
+const { scraperRun, progressValue } = useBatchScraper()
+const totalProgress = ref(0)
 
 const fileList = ref<IFileItem[]>([])
 const isDragging = ref(false)
@@ -138,6 +142,23 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
     currentMenuItem.value = item
     scraperMenu.value?.toggle?.(event)
 }
+
+/**
+ * 开始刮削
+ */
+async function handleStart() {
+    for (const file of fileList.value) {
+        await TaskHelper.queueWithInterval('scraper-all', 0, true, async () => {
+            await scraperRun(
+                {
+                    title: file.file.basename
+                },
+                file.file,
+                file.scraper
+            )
+        })
+    }
+}
 </script>
 
 <template>
@@ -170,6 +191,7 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
                 label="开始刮削"
                 size="small"
                 style="width: 7rem"
+                @click="handleStart"
             />
         </div>
 

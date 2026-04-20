@@ -15,7 +15,7 @@ import {
     TaskHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
-import { useScraper } from '@renderer/scraper/useScraper'
+import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -31,7 +31,7 @@ import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
-const { scraperAll, scraperField, scraperSave } = useScraper()
+const { scraperAll, scraperField, scraperSave } = useEditeScraper()
 const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile

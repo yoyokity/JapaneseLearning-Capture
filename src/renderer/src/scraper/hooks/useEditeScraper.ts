@@ -1,23 +1,18 @@
 import type { IResultWithError } from '@renderer/helper'
-import type { IScraper, IScraperVideoFuncs, IVideo, IVideoFile } from '@renderer/scraper'
+import type { IScraper, IVideo, IVideoFile } from '@renderer/scraper'
+import type { IScraperContext, ScraperFuncName } from '@renderer/scraper/hooks/type'
 
 import { useMessage } from '@renderer/components/control/message'
 import { LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
+import { parseFuncs } from '@renderer/scraper/hooks/type'
 import { settingsStore } from '@renderer/stores'
 import { toRaw } from 'vue'
 
-type TScraperFuncName = keyof IScraperVideoFuncs
-
-interface IScraperContext {
-    logger: ReturnType<typeof LogHelper.title>
-    scraper: NonNullable<ReturnType<typeof Scraper.getScraperInstance>>
-}
-
 /**
- * 刮削 Hook
+ * 管理编辑界面的刮削Hook
  */
-export function useScraper() {
+export function useEditeScraper() {
     const { toast } = useMessage()
     const contentCache = new Map<string, unknown>()
 
@@ -57,7 +52,7 @@ export function useScraper() {
             return cachedContent as TContent
         }
 
-        const content = scraper.createContent()
+        const content = scraper.createContext()
         contentCache.set(cacheKey, content)
         return content
     }
@@ -71,7 +66,7 @@ export function useScraper() {
         try {
             const content = getContent(context.scraper, video)
             context.logger.log(`获取网页内容中...`)
-            if (!(await context.scraper.scraperVideoFuncs.getWebContent(video, content))) {
+            if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, content))) {
                 context.logger.error(`获取网页内容失败！`)
                 toast.error(`获取网页内容失败！`)
                 return false
@@ -94,7 +89,7 @@ export function useScraper() {
     async function parseField(
         context: IScraperContext,
         video: IVideo,
-        funcName: TScraperFuncName,
+        funcName: ScraperFuncName,
         label: string
     ) {
         try {
@@ -117,7 +112,7 @@ export function useScraper() {
      * @param funcName 刮削函数名称
      * @param logName 日志显示名称
      */
-    function scraperField(video: IVideo, funcName: TScraperFuncName, logName: string) {
+    function scraperField(video: IVideo, funcName: ScraperFuncName, logName: string) {
         const context = getScraperContext(video)
         if (!context) {
             return
@@ -148,7 +143,8 @@ export function useScraper() {
 
             try {
                 const content = getContent(context.scraper, video)
-                numSuccess = await context.scraper.scraperVideoFuncs.parseNum(video, content)
+                numSuccess =
+                    (await context.scraper.scraperVideoFuncs.parseNum(video, content)) ?? false
             } catch (error) {
                 numHasError = true
                 context.logger.error(`更新编号出错！`, error)
@@ -170,32 +166,6 @@ export function useScraper() {
         })
     }
 
-    /** 需要执行的解析函数列表 */
-    const parseFuncs: { name: TScraperFuncName; label: string }[] = [
-        { name: 'parseTitle', label: '标题' },
-        { name: 'parseOriginaltitle', label: '原标题' },
-        { name: 'parseSorttitle', label: '排序标题' },
-        { name: 'parseTagline', label: '宣传词' },
-        { name: 'parseNum', label: '编号' },
-        { name: 'parseMpaa', label: '分级' },
-        { name: 'parseRating', label: '评分' },
-        { name: 'parseDirector', label: '导演' },
-        { name: 'parseActor', label: '演员' },
-        { name: 'parseStudio', label: '发行商' },
-        { name: 'parseMaker', label: '制片商' },
-        { name: 'parseSet', label: '影片系列' },
-        { name: 'parseTag', label: '标签' },
-        { name: 'parseGenre', label: '类型' },
-        { name: 'parsePlot', label: '简介' },
-        { name: 'parseYear', label: '发行年份' },
-        { name: 'parsePremiered', label: '首映日期' },
-        { name: 'parseReleasedate', label: '上映日期' },
-        { name: 'parsePoster', label: '封面' },
-        { name: 'parseThumb', label: '缩略图' },
-        { name: 'parseFanart', label: '背景图' },
-        { name: 'parseExtrafanart', label: '额外背景图' }
-    ]
-
     /**
      * 刮削全部信息
      * @param video 视频对象
@@ -209,6 +179,7 @@ export function useScraper() {
         context.logger.separator()
         context.logger.log(`开始刮削：`, toRaw(video))
 
+        // 先确保有网页内容
         const hasContent = await TaskHelper.queueWithInterval('scraper', 0, true, async () =>
             ensureContent(context, video)
         )
@@ -228,6 +199,9 @@ export function useScraper() {
         if (failed.length > 0) {
             context.logger.warn(`以下字段解析失败：${failed.join('、')}`)
             toast.warn(`以下字段解析失败：${failed.join('、')}`)
+        } else if (failed.length === parseFuncs.length) {
+            context.logger.warn('全部解析失败！')
+            toast.warn('全部信息获取失败！')
         } else {
             context.logger.success('全部解析成功！')
             toast.success('全部信息获取成功！')

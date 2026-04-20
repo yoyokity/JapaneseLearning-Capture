@@ -1,4 +1,4 @@
-import type { IHanimeContent } from './temp'
+import type { IHanimeContext } from './temp'
 
 import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
@@ -40,18 +40,18 @@ export async function searchVideoHanime1(
  */
 export async function getWebContentHanime1(
     searchTitle: string,
-    content: IHanimeContent
+    context: IHanimeContext
 ): Promise<void> {
     loggerHanime1.log(`开始获取网页内容`)
 
     //先使用编号搜索
-    if (content.num.hanime1) {
-        const url = `https://hanime1.me/watch?v=${content.num.hanime1}`
-        loggerHanime1.log(`使用编号搜索：${content.num.hanime1}`)
+    if (context.num.hanime1) {
+        const url = `https://hanime1.me/watch?v=${context.num.hanime1}`
+        loggerHanime1.log(`使用编号搜索：${context.num.hanime1}`)
 
         const webContent = await NetHelper.get(url)
         if (webContent.ok) {
-            content.webContent.hanime1 = webContent.body
+            context.webContent.hanime1 = webContent.body
             loggerHanime1.success(`获取到网页内容`)
             return
         }
@@ -68,7 +68,7 @@ export async function getWebContentHanime1(
     if (searchResult.poster) {
         const re = await NetHelper.getImage(searchResult.poster)
         if (re.ok) {
-            content.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
+            context.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
         }
     }
 
@@ -80,8 +80,8 @@ export async function getWebContentHanime1(
     }
 
     //记录num
-    content.num.hanime1 = searchResult.href.split('watch?v=')[1]
-    content.webContent.hanime1 = webContent.body
+    context.num.hanime1 = searchResult.href.split('watch?v=')[1]
+    context.webContent.hanime1 = webContent.body
 
     loggerHanime1.success(`获取到网页内容`)
 }
@@ -91,7 +91,7 @@ export async function getWebContentHanime1(
  */
 export async function getPosterHanime1(
     searchTitle: string,
-    _content: IHanimeContent
+    _context: IHanimeContext
 ): Promise<string | null> {
     const searchResult = await searchVideoHanime1(searchTitle)
     if (!searchResult?.poster) {
