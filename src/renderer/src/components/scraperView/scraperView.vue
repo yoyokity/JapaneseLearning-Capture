@@ -9,28 +9,33 @@ import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
+import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import { computed, ref } from 'vue'
-
-const settings = settingsStore()
-const globalStates = globalStatesStore()
-const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
-const scraperMenu = ref()
-const currentMenuItem = ref<IFileItem | null>(null)
-const fileItemSize = 78
 
 interface IFileItem {
     /** 文件路径 */
     file: Path
+    /** 文件类型颜色 */
+    extColor: string
     /** 刮削器名称 */
     scraper: string
+    /** 进度 */
+    progress: number
 }
 
-const { scraperRun, progressValue } = useBatchScraper()
-const totalProgress = ref(0)
+const settings = settingsStore()
+const globalStates = globalStatesStore()
+const { scraperRun } = useBatchScraper()
 
-const fileList = ref<IFileItem[]>([])
+const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
+const scraperMenu = ref()
+const currentMenuItem = ref<IFileItem | null>(null)
 const isDragging = ref(false)
+
+const fileItemSize = 78
+const fileList = ref<IFileItem[]>([])
+const totalProgress = ref(0)
 
 /**
  * 刮削器菜单项
@@ -104,7 +109,9 @@ async function handleDrop(e: DragEvent) {
 
         nextFiles.push({
             file: path,
-            scraper: settings.currentScraper
+            extColor: getFileExtColor(path),
+            scraper: settings.currentScraper,
+            progress: 0
         })
     }
 
@@ -147,6 +154,10 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
  * 开始刮削
  */
 async function handleStart() {
+    if (!fileList.value.length) return
+
+    totalProgress.value = 0
+
     for (const file of fileList.value) {
         await TaskHelper.queueWithInterval('scraper-all', 0, true, async () => {
             await scraperRun(
@@ -154,8 +165,13 @@ async function handleStart() {
                     title: file.file.basename
                 },
                 file.file,
-                file.scraper
+                file.scraper,
+                (progress) => {
+                    file.progress = progress
+                }
             )
+
+            totalProgress.value += 100 / fileList.value.length
         })
     }
 }
@@ -229,7 +245,7 @@ async function handleStart() {
                         <div class="file-main">
                             <span
                                 class="file-ext-icon"
-                                :style="{ backgroundColor: getFileExtColor(fileList[index].file) }"
+                                :style="{ backgroundColor: fileList[index].extColor }"
                             >
                                 {{ fileList[index].file.extname.replace('.', '').toUpperCase() }}
                             </span>
@@ -254,6 +270,12 @@ async function handleStart() {
                                 @click="removeFile(fileList[index].file)"
                             />
                         </div>
+                        <ProgressBar
+                            :value="fileList[index].progress"
+                            :show-value="false"
+                            class="file-progress"
+                            :style="{ '--file-progress-color': fileList[index].extColor }"
+                        />
                     </div>
                 </div>
             </template>
@@ -318,9 +340,11 @@ $transition: all 0.4s var(--animation-type);
 }
 
 .file-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    overflow: hidden;
     height: 100%;
     gap: 1rem;
     padding: 0.75rem 1rem;
@@ -387,5 +411,23 @@ $transition: all 0.4s var(--animation-type);
 .remove-button:hover,
 .remove-button:active {
     color: var(--p-primary-color) !important;
+}
+
+.file-progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 0;
+    background: transparent;
+}
+
+.file-progress:deep(.p-progressbar-value) {
+    background: var(--file-progress-color);
+}
+
+.file-progress:deep(.p-progressbar-label) {
+    display: none;
 }
 </style>

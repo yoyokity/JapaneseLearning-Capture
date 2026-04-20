@@ -6,16 +6,12 @@ import { LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { parseFuncs } from '@renderer/scraper/hooks/type'
 import { settingsStore } from '@renderer/stores'
-import { ref, toRaw } from 'vue'
+import { toRaw } from 'vue'
 
 /**
  * 批量刮削界面的刮削Hook
  */
 export function useBatchScraper() {
-    const progressValue = ref(0)
-
-    const _scraperWarnText = ref('')
-
     /**
      * 获取刮削上下文
      */
@@ -35,11 +31,13 @@ export function useBatchScraper() {
     async function scraperRun(
         search: { title: string; num?: Record<string, string> },
         sourceVideoPath: Path,
-        scraperName: string
+        scraperName: string,
+        onProgress: (progress: number) => void
     ): Promise<{ scraperState: ScraperState; scraperStateText?: string }> {
+        let scraperWarnText = ''
+
         // 进度条重置
-        progressValue.value = 5
-        _scraperWarnText.value = ''
+        onProgress(5)
 
         const context = getScraperContext(scraperName)
         if (!context) {
@@ -96,15 +94,15 @@ export function useBatchScraper() {
         })
 
         if (!hasContent) {
-            progressValue.value = 100
+            onProgress(100)
             return { scraperState: 'error', scraperStateText: '获取网页内容失败！' }
         }
 
-        progressValue.value = 10
+        onProgress(10)
 
         // 依次刮削其余信息
         const failed: string[] = []
-        for (const { name, label } of parseFuncs) {
+        for (const [index, { name, label }] of parseFuncs.entries()) {
             const re = await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
                 try {
                     context.logger.log(`解析${label}...`)
@@ -131,7 +129,7 @@ export function useBatchScraper() {
             })
 
             // 进度条增加
-            progressValue.value += 85 / parseFuncs.length
+            onProgress(10 + ((index + 1) * 85) / parseFuncs.length)
 
             // 解析失败，则跳过解析下一个
             if (re === false) {
@@ -140,10 +138,10 @@ export function useBatchScraper() {
         }
 
         if (failed.length > 0) {
-            _scraperWarnText.value = `以下字段解析失败：${failed.join('、')}`
+            scraperWarnText = `以下字段解析失败：${failed.join('、')}`
         } else if (failed.length === parseFuncs.length) {
             context.logger.warn('全部信息解析失败！')
-            progressValue.value = 100
+            onProgress(100)
             return { scraperState: 'error', scraperStateText: '全部信息解析失败！' }
         } else {
             context.logger.success('全部信息解析成功！')
@@ -182,13 +180,13 @@ export function useBatchScraper() {
             }
         )
 
-        progressValue.value = 100
+        onProgress(100)
 
         if (videoDir.hasError) {
             context.logger.warn(`保存失败：`, videoDir.error)
             return {
                 scraperState: 'error',
-                scraperStateText: `${_scraperWarnText}\n${videoDir.error}`
+                scraperStateText: `${scraperWarnText}\n${videoDir.error}`
             }
         }
 
@@ -197,20 +195,15 @@ export function useBatchScraper() {
         context.logger.success(`保存路径：${videoDir.result.parent}`)
 
         // 有warn
-        if (_scraperWarnText.value) {
-            context.logger.warn(_scraperWarnText.value)
-            return { scraperState: 'warn', scraperStateText: _scraperWarnText.value }
+        if (scraperWarnText) {
+            context.logger.warn(scraperWarnText)
+            return { scraperState: 'warn', scraperStateText: scraperWarnText }
         }
 
         return { scraperState: 'success' }
     }
 
     return {
-        /**
-         * 刮削进度
-         * @remarks 0-100
-         */
-        progressValue,
         /**
          * 刮削一个完整的视频，同时自动保存
          */
