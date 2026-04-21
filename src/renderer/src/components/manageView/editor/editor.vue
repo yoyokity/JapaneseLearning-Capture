@@ -233,7 +233,7 @@ onMounted(async () => {
                 class="active-indicator"
             />
         </div>
-        <Scroll style="height: calc(90vh - var(--header-height) - var(--header-height))">
+        <Scroll style="height: calc(90vh - 0.75rem - var(--header-height) - var(--header-height))">
             <div class="content">
                 <!-- 信息编辑部分 -->
                 <div v-show="activeTab === 'info'" class="form-container">
@@ -267,7 +267,7 @@ onMounted(async () => {
                         )"
                         :key="value"
                         v-tooltip.top="
-                            '作品在刮削网站的编号。刮削搜索时，如果有编号则直接使用编号，否则使用原标题。'
+                            '作品在刮削网站的编号。\n获取作品页面时，有编号就直接进入该页面，否则会先用原标题进行搜索。'
                         "
                         variant="on"
                         style="display: flex"
@@ -766,7 +766,7 @@ onMounted(async () => {
         </Scroll>
 
         <!-- 底部 -->
-        <div class="manage-view-editor-footer">
+        <div class="footer">
             <Button
                 icon="pi pi-times"
                 label="取消"
@@ -942,19 +942,6 @@ onMounted(async () => {
 
     .content {
         padding: 1rem;
-    }
-
-    .manage-view-editor-footer {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        gap: 1rem;
-        padding: 1rem 0;
-        margin-left: auto;
-        width: 100%;
-        height: var(--header-height);
-        padding-right: 1rem;
-        border-top: var(--separator);
     }
 }
 

@@ -3,6 +3,15 @@ input {
     width: 200px;
 }
 
+.button,
+button {
+    transition: all 0.3s var(--animation-type) !important;
+
+    &:active {
+        transform: translateY(2px);
+    }
+}
+
 .p-tooltip,
 .p-button-link {
     font-size: calc(1rem - 2px) !important;
@@ -37,6 +46,8 @@ input {
     // overflow: hidden;
 
     .p-dialog-content {
+        padding: 0 2rem;
+
         //自定义的header
         .header {
             height: var(--header-height);
@@ -46,19 +57,26 @@ input {
 
             h1 {
                 font-size: 1.25rem;
+                margin-bottom: 0;
             }
+        }
+
+        //自定义的content
+        .content {
+            padding: 2rem 0;
         }
 
         //自定义的footer
         .footer {
             display: flex;
+            flex-direction: row;
             justify-content: flex-end;
-            margin-top: 2rem;
-            gap: 8px;
-
-            button {
-                width: 6rem;
-            }
+            gap: 1rem;
+            padding: 1rem 0 1.75rem 0;
+            margin-left: auto;
+            width: 100%;
+            height: calc(var(--header-height) + 0.75rem);
+            border-top: var(--separator);
         }
     }
 }

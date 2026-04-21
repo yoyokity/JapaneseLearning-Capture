@@ -2,7 +2,9 @@
 import type { Path } from '@renderer/helper'
 import type { MenuItem } from 'primevue/menuitem'
 
+import TextButton from '@renderer/components/control/button/textButton.vue'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
+import FileItemEditor from '@renderer/components/scraperView/fileItemEditor.vue'
 import { PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
@@ -11,11 +13,18 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
+import { useDialog } from 'primevue/usedialog'
 import { computed, ref } from 'vue'
 
 interface IFileItem {
     /** 文件路径 */
     file: Path
+    /** 标题 */
+    title: string
+    /** 编号 */
+    num: Record<string, string>
+    /** 是否参与刮削 */
+    checked: boolean
     /** 文件类型颜色 */
     extColor: string
     /** 刮削器名称 */
@@ -27,6 +36,7 @@ interface IFileItem {
 const settings = settingsStore()
 const globalStates = globalStatesStore()
 const { scraperRun } = useBatchScraper()
+const dialog = useDialog()
 
 const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
 const scraperMenu = ref()
@@ -36,6 +46,10 @@ const isDragging = ref(false)
 const fileItemSize = 78
 const fileList = ref<IFileItem[]>([])
 const totalProgress = ref(0)
+const isAllChecked = computed(
+    () => fileList.value.length > 0 && fileList.value.every((item) => item.checked)
+)
+const checkedFileList = computed(() => fileList.value.filter((item) => item.checked))
 
 /**
  * 刮削器菜单项
@@ -67,6 +81,16 @@ function isVideoFile(filePath: Path) {
 function getFileExtColor(filePath: Path) {
     const ext = filePath.extname.toLowerCase()
     return videoExtensions[ext] || 'var(--p-text-muted-color)'
+}
+
+/**
+ * 获取编号展示文本
+ * @param item 文件项
+ */
+function getNumText(item: IFileItem) {
+    return Object.entries(item.num)
+        .map(([key, value]) => `${key}:${value}`)
+        .join(',  ')
 }
 
 /**
@@ -109,6 +133,9 @@ async function handleDrop(e: DragEvent) {
 
         nextFiles.push({
             file: path,
+            title: path.basename,
+            num: {},
+            checked: true,
             extColor: getFileExtColor(path),
             scraper: settings.currentScraper,
             progress: 0
@@ -141,6 +168,24 @@ function clearFiles() {
 }
 
 /**
+ * 切换文件选中状态
+ * @param item 文件项
+ */
+function toggleFileChecked(item: IFileItem) {
+    item.checked = !item.checked
+}
+
+/**
+ * 切换全部文件选中状态
+ */
+function toggleAllFilesChecked() {
+    const nextChecked = !isAllChecked.value
+    fileList.value.forEach((item) => {
+        item.checked = nextChecked
+    })
+}
+
+/**
  * 打开刮削器选择菜单
  * @param event 鼠标事件
  * @param item 当前文件项
@@ -151,18 +196,50 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
 }
 
 /**
+ * 打开文件信息编辑窗口
+ * @param item 文件项
+ */
+function showFileEditor(item: IFileItem) {
+    dialog.open(FileItemEditor, {
+        props: {
+            modal: true,
+            draggable: false,
+            showHeader: false,
+            style: {
+                width: 'fit-content',
+                maxWidth: '90vw'
+            },
+            header: '信息编辑'
+        },
+        data: {
+            scraperName: item.scraper,
+            title: item.title,
+            num: { ...item.num }
+        },
+        onClose: (options) => {
+            const data = options?.data
+            if (!data) return
+
+            item.title = data.title || item.file.basename
+            item.num = data.num || {}
+        }
+    })
+}
+
+/**
  * 开始刮削
  */
 async function handleStart() {
-    if (!fileList.value.length) return
+    if (!checkedFileList.value.length) return
 
     totalProgress.value = 0
 
-    for (const file of fileList.value) {
+    for (const file of checkedFileList.value) {
         await TaskHelper.queueWithInterval('scraper-all', 0, true, async () => {
             await scraperRun(
                 {
-                    title: file.file.basename
+                    title: file.title,
+                    num: file.num
                 },
                 file.file,
                 file.scraper,
@@ -171,7 +248,7 @@ async function handleStart() {
                 }
             )
 
-            totalProgress.value += 100 / fileList.value.length
+            totalProgress.value += 100 / checkedFileList.value.length
         })
     }
 }
@@ -185,11 +262,14 @@ async function handleStart() {
 
             <!-- 控制台 -->
             <div v-else style="margin-right: auto">
-                <Button
+                <TextButton
+                    v-tooltip.right="isAllChecked ? '全部不选' : '全部选中'"
+                    :icon="isAllChecked ? 'pi pi-check-circle' : 'pi pi-circle'"
+                    @click="toggleAllFilesChecked"
+                />
+                <TextButton
                     v-tooltip.right="'清空所有文件'"
                     icon="pi pi-trash"
-                    severity="secondary"
-                    text
                     @click="clearFiles"
                 />
             </div>
@@ -242,6 +322,16 @@ async function handleStart() {
             <template #default="{ index }">
                 <div class="file-item-shell">
                     <div class="file-item">
+                        <i
+                            class="check-icon pi"
+                            :class="[fileList[index].checked ? 'pi-check-circle' : 'pi-circle']"
+                            :style="{ '--check-icon-color': fileList[index].extColor }"
+                            role="button"
+                            tabindex="0"
+                            @click="toggleFileChecked(fileList[index])"
+                            @keydown.enter="toggleFileChecked(fileList[index])"
+                            @keydown.space.prevent="toggleFileChecked(fileList[index])"
+                        />
                         <div class="file-main">
                             <span
                                 class="file-ext-icon"
@@ -249,10 +339,25 @@ async function handleStart() {
                             >
                                 {{ fileList[index].file.extname.replace('.', '').toUpperCase() }}
                             </span>
-                            <span class="file-name">{{ fileList[index].file.basename }}</span>
+                            <div class="file-info">
+                                <TextButton
+                                    v-tooltip.top="'点击修改标题或编号'"
+                                    :label="fileList[index].title"
+                                    class="file-name-button"
+                                    @click="showFileEditor(fileList[index])"
+                                />
+                                <div
+                                    v-if="Object.keys(fileList[index].num).length"
+                                    class="file-num"
+                                >
+                                    {{ getNumText(fileList[index]) }}
+                                </div>
+                            </div>
                         </div>
                         <div class="file-actions">
+                            <!-- 单项选择刮削器按钮 -->
                             <Button
+                                v-tooltip.top="'修改当前视频的刮削器'"
                                 :label="fileList[index].scraper"
                                 class="scraper-button"
                                 severity="secondary"
@@ -260,13 +365,9 @@ async function handleStart() {
                                 text
                                 @click="showScraperMenu($event, fileList[index])"
                             />
-                            <Button
+                            <!-- 删除按钮 -->
+                            <TextButton
                                 icon="pi pi-times"
-                                class="remove-button"
-                                severity="secondary"
-                                text
-                                rounded
-                                size="small"
                                 @click="removeFile(fileList[index].file)"
                             />
                         </div>
@@ -362,11 +463,59 @@ $transition: all 0.4s var(--animation-type);
     min-width: 0;
 }
 
+.file-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 0;
+}
+
+.file-name-button {
+    justify-content: flex-start !important;
+    padding: 0 !important;
+    color: var(--p-text-color) !important;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.file-name-button:deep(.p-button-label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.file-num {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .file-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex-shrink: 0;
+}
+
+.check-icon {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    color: var(--check-icon-color);
+    cursor: pointer;
+    transition: $transition;
+}
+
+.check-icon:hover,
+.check-icon:active,
+.check-icon:focus-visible {
+    color: var(--p-primary-color);
+}
+
+.check-icon:focus-visible {
+    outline: none;
 }
 
 .scraper-button {
@@ -397,20 +546,6 @@ $transition: all 0.4s var(--animation-type);
     line-height: 1;
     color: #fff;
     text-transform: uppercase;
-}
-
-.file-name {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--p-text-color);
-}
-
-.remove-button:hover,
-.remove-button:active {
-    color: var(--p-primary-color) !important;
 }
 
 .file-progress {
