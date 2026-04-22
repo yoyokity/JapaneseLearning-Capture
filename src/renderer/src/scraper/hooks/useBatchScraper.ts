@@ -48,11 +48,11 @@ export function useBatchScraper() {
         // 创建新的video对象
         const video: IVideo = {
             scraperName,
-            title: search.title,
-            originaltitle: search.title,
-            sorttitle: search.title,
+            title: toRaw(search.title),
+            originaltitle: toRaw(search.title),
+            sorttitle: toRaw(search.title),
             tagline: '',
-            num: search.num || {},
+            num: toRaw(search.num) || {},
             mpaa: '',
             rating: '',
             director: '',
@@ -78,20 +78,25 @@ export function useBatchScraper() {
         const _context = context.scraper.createContext()
 
         // 先确保有网页内容
-        const hasContent = await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-            try {
-                context.logger.log(`获取网页内容中...`)
-                if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, _context))) {
-                    context.logger.error(`获取网页内容失败！`)
+        const hasContent = await TaskHelper.queueWithInterval(
+            'scraper-batch-single',
+            0,
+            true,
+            async () => {
+                try {
+                    context.logger.log(`获取网页内容中...`)
+                    if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, _context))) {
+                        context.logger.error(`获取网页内容失败！`)
+                        return false
+                    }
+
+                    return true
+                } catch (error) {
+                    context.logger.error(`获取网页内容出错！`, error)
                     return false
                 }
-
-                return true
-            } catch (error) {
-                context.logger.error(`获取网页内容出错！`, error)
-                return false
             }
-        })
+        )
 
         if (!hasContent) {
             onProgress(100)
@@ -103,30 +108,35 @@ export function useBatchScraper() {
         // 依次刮削其余信息
         const failed: string[] = []
         for (const [index, { name, label }] of parseFuncs.entries()) {
-            const re = await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-                try {
-                    context.logger.log(`解析${label}...`)
+            const re = await TaskHelper.queueWithInterval(
+                'scraper-batch-single',
+                0,
+                true,
+                async () => {
+                    try {
+                        context.logger.log(`解析${label}...`)
 
-                    const func = context.scraper.scraperVideoFuncs[name] as (
-                        video: IVideo,
-                        content: unknown
-                    ) => Promise<boolean | null>
-                    const _re = await func(video, _context)
+                        const func = context.scraper.scraperVideoFuncs[name] as (
+                            video: IVideo,
+                            content: unknown
+                        ) => Promise<boolean | null>
+                        const _re = await func(video, _context)
 
-                    if (_re === false) {
-                        context.logger.warn(`解析${label}失败！`)
+                        if (_re === false) {
+                            context.logger.warn(`解析${label}失败！`)
+                        }
+
+                        if (_re === null) {
+                            context.logger.log(`解析${label}跳过。`)
+                        }
+
+                        return _re
+                    } catch (error) {
+                        context.logger.error(`解析${label}出错！`, error)
+                        return false
                     }
-
-                    if (_re === null) {
-                        context.logger.log(`解析${label}跳过。`)
-                    }
-
-                    return _re
-                } catch (error) {
-                    context.logger.error(`解析${label}出错！`, error)
-                    return false
                 }
-            })
+            )
 
             // 进度条增加
             onProgress(10 + ((index + 1) * 85) / parseFuncs.length)
@@ -151,7 +161,7 @@ export function useBatchScraper() {
         const settings = settingsStore()
 
         const videoDir: IResultWithError<Path> = await TaskHelper.queueWithInterval(
-            'scraper',
+            'scraper-batch-single',
             0,
             true,
             async () => {

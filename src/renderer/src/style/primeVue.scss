@@ -120,3 +120,38 @@ a.p-button {
         opacity: 0;
     }
 }
+
+// toast动画效果
+.p-toast-message-enter-active {
+    animation: p-toast-message-in 0.3s var(--animation-type) !important;
+    animation-fill-mode: both;
+}
+
+.p-toast-message-leave-active {
+    animation: p-toast-message-out 0.3s var(--animation-type) !important;
+    animation-fill-mode: both;
+}
+
+@keyframes p-toast-message-in {
+    from {
+        opacity: 0;
+        transform: translateY(-2rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes p-toast-message-out {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-2rem);
+    }
+}

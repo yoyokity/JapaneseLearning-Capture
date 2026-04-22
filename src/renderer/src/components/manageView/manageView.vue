@@ -63,7 +63,7 @@ const menuItems = ref([
     }
 ])
 
-//重新选择目录后，清除文件列表
+// 重新选择目录后，清除文件列表
 function clearFiles(e: SelectChangeEvent) {
     if (e.value !== settings.currentScraper) {
         globalStates.manageViewFiles = []
@@ -71,7 +71,7 @@ function clearFiles(e: SelectChangeEvent) {
     }
 }
 
-//重新排序
+// 重新排序
 function handleSortChange(e: SelectChangeEvent) {
     settings.manageViewSort = e.value
 }

@@ -13,6 +13,7 @@ export default antfu(
         },
         rules: {
             'vue/html-self-closing': 'off',
+            'vue/padding-line-between-blocks': ['error', 'always'], // 关键规则：确保顶级标签之间有且仅有一个空行
             'vue/multiline-html-element-content-newline': 'off', // 禁用多行标签内容必须换行的规则
             'vue/singleline-html-element-content-newline': 'off', // 禁用单行标签内容必须换行的规则
             'ts/ban-ts-comment': 'off', // 允许使用 @ts-ignore
@@ -20,6 +21,23 @@ export default antfu(
             'no-console': 'off', // 允许使用 console
             'vue/html-indent': 'off', // Vue HTML 模板交给 Prettier 处理
             'vue/html-closing-bracket-newline': 'off', // 允许闭合标签前换行
+
+            // 注释格式规则 - 注释符号后必须空一格
+            'spaced-comment': [
+                'error',
+                'always',
+                {
+                    line: {
+                        markers: ['/'], // 允许 /// 这种三斜线注释
+                        exceptions: ['-', '+', '*'] // 允许注释分隔符如 //----
+                    },
+                    block: {
+                        markers: ['!'], // 允许 /*! */ 这种注释
+                        exceptions: ['*'], // 允许 /***** */ 这种注释
+                        balanced: true // 要求块注释前后都有空格
+                    }
+                }
+            ],
 
             // Import 路径优化 - 自动移除不必要的 /index.ts
             'import-x/no-useless-path-segments': [
@@ -59,6 +77,6 @@ export default antfu(
         }
     },
     {
-        ignores: ['pnpm-workspace.yaml', 'pnpm-lock.yaml']
+        ignores: ['**/*.yaml', '**/*.yml', '**/*.md']
     }
 )

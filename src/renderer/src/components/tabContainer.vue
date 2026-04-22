@@ -63,7 +63,7 @@ const currentComponent = () => {
 }
 
 .tab {
-    width: 6rem;
+    width: var(--main-tab-width);
     height: 100%;
     display: flex;
     flex-direction: column;

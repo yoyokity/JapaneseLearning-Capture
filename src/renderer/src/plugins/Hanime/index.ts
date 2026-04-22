@@ -53,7 +53,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             context.num.getchu = video.num.getchu ?? ''
             context.num.dlsite = video.num.dlsite ?? ''
 
-            //获取webContent
+            // 获取webContent
             await Promise.all([
                 getWebContentHanime1(searchTitle, context),
                 getWebContentGetchu(searchTitle, context),
@@ -107,7 +107,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return true
         },
         parseRating: async (video: IVideo, context: IHanimeContext) => {
-            //dlsite
+            // dlsite
             if (context.num.dlsite) {
                 loggerDlsite.log(`搜索评分...`)
 
@@ -132,7 +132,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return false
         },
         parseDirector: async (video: IVideo, context: IHanimeContext) => {
-            //dlsite
+            // dlsite
             if (context.webContent.dlsite) {
                 loggerDlsite.log(`搜索导演...`)
 
@@ -156,7 +156,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 loggerDlsite.warn(`没有找到导演`)
             }
 
-            //getchu
+            // getchu
             if (context.webContent.getchu) {
                 loggerGetchu.log(`搜索导演...`)
 
@@ -170,7 +170,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                     return true
                 }
 
-                //没有監督用制片人
+                // 没有監督用制片人
                 regex = /プロデューサー([^：]*)：(?<name>.*)[\n ]/
                 match = text.match(regex)
                 if (match && match.groups) {
@@ -257,7 +257,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 plot = plot.split('[中文字幕]')[1].trim()
             }
 
-            //翻译一下
+            // 翻译一下
             const re = await TransHelper.translate(plot)
             if (re.ok) {
                 plot = TransHelper.translateSC(re.text.trim())
@@ -306,7 +306,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 context.封面 = await getPosterGetchu(context)
             }
 
-            //没有则从hanime上获取
+            // 没有则从hanime上获取
             if (!context.封面) {
                 context.封面 = await getPosterHanime1(
                     video.originaltitle || video.title || video.sorttitle,

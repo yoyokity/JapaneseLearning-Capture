@@ -52,7 +52,7 @@ export const settingsStore = defineStore(
             delay: 3000
         })
 
-        //翻译
+        // 翻译
         const translate = reactive<ITranslateSettings>({
             enable: false,
             retryWithGoogle: true,

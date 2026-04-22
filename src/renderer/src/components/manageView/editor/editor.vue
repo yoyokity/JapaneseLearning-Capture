@@ -39,7 +39,7 @@ const video = dialogRef.value.data.video as IVideoFile
 const newVideo = ref<IVideoFile>(createVideoFile(''))
 const isSaving = ref(false)
 
-//tab部分
+// tab部分
 const tabs = [
     { id: 'info', name: '信息', icon: 'pi pi-info-circle' },
     { id: 'image', name: '图片', icon: 'pi pi-image' }
@@ -50,7 +50,7 @@ function switchTab(tabId: string) {
     activeTab.value = tabId
 }
 
-//变量
+// 变量
 const addActorValue = ref<IActor>({
     name: '',
     role: '',
@@ -59,7 +59,7 @@ const addActorValue = ref<IActor>({
 const addTagValue = ref('')
 const addGenreValue = ref('')
 
-//预览图片
+// 预览图片
 const previewImage = ref<string | null>(null)
 
 /**
@@ -97,7 +97,7 @@ function normalizeTagGenre() {
     newVideo.value.genre = normalizeTextList(newVideo.value.genre)
 }
 
-//快捷键退出
+// 快捷键退出
 useKeyPress(['esc'], () => {
     if (previewImage.value) {
         previewImage.value = null
@@ -119,7 +119,7 @@ async function onSave() {
     normalizeTagGenre()
 
     TaskHelper.queueWithInterval('scraper', 0, true, async () => {
-        //如果视频没有修改，则不保存
+        // 如果视频没有修改，则不保存
         if (isEqual(newVideo.value, sourceVideoFile)) {
             toast.success('未修改，无需保存')
             dialogRef.value.close()
@@ -129,7 +129,7 @@ async function onSave() {
         if (isSaving.value) return
         isSaving.value = true
 
-        //保存
+        // 保存
         const re = await scraperSave(newVideo.value, sourceVideoFile)
         if (re.hasError) {
             toast.error(`保存失败！${re.error}`)
@@ -137,7 +137,7 @@ async function onSave() {
             return
         }
 
-        //重新扫描文件
+        // 重新扫描文件
         await scanFiles(toast)
 
         // 先关闭弹窗并清空预览，释放旧图片文件引用
@@ -204,7 +204,7 @@ onMounted(async () => {
             newVideo.value.scraperName = settings.currentScraper
         }
 
-        //读取extrafanart
+        // 读取extrafanart
         readExtrafanart(video.dir, newVideo.value, video)
     })
 })

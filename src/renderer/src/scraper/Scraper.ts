@@ -285,39 +285,39 @@ export class Scraper {
         fileName: string
     ): Promise<IResultWithError<Path>> {
         try {
-            //最终目录
+            // 最终目录
             const videoDir = scraperPath.join(dir)
 
-            //原视频path
+            // 原视频path
             const _sourceVideoPath = sourceVideoFile.path
-            //视频path
+            // 视频path
             const _videoPath = videoDir.join(fileName + sourceVideoFile.extname)
-            //nfo path
+            // nfo path
             const _nfoPath = videoDir.join(`${fileName}.nfo`)
 
-            //不同目录
+            // 不同目录
             const dirDiff = sourceVideoFile.dir.toString() !== videoDir.toString()
 
-            //如果最终目录和原视频目录不同，则创建最终目录
+            // 如果最终目录和原视频目录不同，则创建最终目录
             if (dirDiff) {
                 if (!(await PathHelper.createDirectory(videoDir))) {
                     return { error: '创建新目录失败！', hasError: true }
                 }
             }
 
-            //将视频文件移动到新目录或改名
+            // 将视频文件移动到新目录或改名
             if (_sourceVideoPath.toString() !== _videoPath.toString()) {
                 if (!(await PathHelper.move(_sourceVideoPath, _videoPath, false))) {
                     return { error: '存在同名视频文件！', hasError: true }
                 }
             }
 
-            //创建nfo文件
+            // 创建nfo文件
             const nfo = Nfo.create(video)
             await nfo.save(_nfoPath)
             LogHelper.success(`- 保存nfo成功！:${_nfoPath}`)
 
-            //如果有两个nfo，则删除原来的
+            // 如果有两个nfo，则删除原来的
             if (
                 !sourceVideoFile.nfoPath.toString().match(/[\\/]/) &&
                 (await sourceVideoFile.nfoPath.isExist())
@@ -329,7 +329,7 @@ export class Scraper {
                 }
             }
 
-            //保存图片
+            // 保存图片
             const imagePromises: Promise<void>[] = []
 
             if (video.poster && (!isEqual(sourceVideoFile.poster, video.poster) || dirDiff)) {
@@ -359,12 +359,12 @@ export class Scraper {
                 )
             }
 
-            //保存extrafanart
+            // 保存extrafanart
             if (
                 video.extrafanart &&
                 (!isEqual(sourceVideoFile.extrafanart, video.extrafanart) || dirDiff)
             ) {
-                //清空剧照文件夹
+                // 清空剧照文件夹
                 const result = await PathHelper.clearFolder(videoDir.join('extrafanart'))
                 if (result) {
                     const extrafanartPromises: Promise<boolean>[] = []

@@ -63,13 +63,13 @@ ipcMain.handle('image:read', (_, path: string) => {
     })
 })
 
-//超分图片
+// 超分图片
 ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: boolean = false) => {
     return tryExecute(async () => {
-        //保存图片到temp
+        // 保存图片到temp
         const tempPath = app.getPath('temp')
 
-        //如果没有temp则创建
+        // 如果没有temp则创建
         const tempFileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
         const tempImageBefore = join(tempPath, `realesrgan_before_${tempFileId}.png`)
         const tempImageAfter = join(tempPath, `realesrgan_after_${tempFileId}.png`)
@@ -79,7 +79,7 @@ ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: bool
         const inputImage = await resizeByMaxSide(sharp(sourceImageData), 1080)
         await inputImage.toFile(tempImageBefore)
 
-        //超分
+        // 超分
         const ars = [
             '-i',
             tempImageBefore,
@@ -99,7 +99,7 @@ ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: bool
             const cmd = realesrgan.run(ars)
             cmd.onExit(async (code, text) => {
                 if (code === 0) {
-                    //使用sharp转换为jpg，质量92，返回temp路径
+                    // 使用sharp转换为jpg，质量92，返回temp路径
                     const outputImage = await resizeByMaxSide(sharp(tempImageAfter), 3840)
                     await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
                     resolve(tempResultPath)

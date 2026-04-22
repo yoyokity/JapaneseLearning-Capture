@@ -3,6 +3,7 @@ import type { Path } from '@renderer/helper'
 import type { MenuItem } from 'primevue/menuitem'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
+import { useMessage } from '@renderer/components/control/message'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
 import FileItemEditor from '@renderer/components/scraperView/fileItemEditor.vue'
 import { PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
@@ -35,8 +36,9 @@ interface IFileItem {
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
-const { scraperRun } = useBatchScraper()
 const dialog = useDialog()
+const message = useMessage()
+const { scraperRun } = useBatchScraper()
 
 const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
 const scraperMenu = ref()
@@ -45,11 +47,17 @@ const isDragging = ref(false)
 
 const fileItemSize = 78
 const fileList = ref<IFileItem[]>([])
-const totalProgress = ref(0)
+
 const isAllChecked = computed(
     () => fileList.value.length > 0 && fileList.value.every((item) => item.checked)
 )
-const checkedFileList = computed(() => fileList.value.filter((item) => item.checked))
+
+/**
+ * 需要刮削的文件列表
+ */
+const checkedFileList = computed(() =>
+    fileList.value.filter((item) => item.checked && item.progress <= 0)
+)
 
 /**
  * 刮削器菜单项
@@ -230,12 +238,17 @@ function showFileEditor(item: IFileItem) {
  * 开始刮削
  */
 async function handleStart() {
-    if (!checkedFileList.value.length) return
+    if (!checkedFileList.value.length) {
+        message.toast.info('没有需要刮削的文件')
+        return
+    }
 
-    totalProgress.value = 0
+    globalStates.batchRunning = true
+    globalStates.batchScrapedCount = 0
+    globalStates.batchTotalCount = checkedFileList.value.length
 
     for (const file of checkedFileList.value) {
-        await TaskHelper.queueWithInterval('scraper-all', 0, true, async () => {
+        await TaskHelper.queueWithInterval('scraper-batch-all', 0, true, async () => {
             await scraperRun(
                 {
                     title: file.title,
@@ -248,9 +261,12 @@ async function handleStart() {
                 }
             )
 
-            totalProgress.value += 100 / checkedFileList.value.length
+            // 更新批量刮削进度
+            globalStates.batchScrapedCount += 1
         })
     }
+
+    globalStates.batchRunning = false
 }
 </script>
 

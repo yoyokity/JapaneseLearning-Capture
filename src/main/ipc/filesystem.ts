@@ -242,7 +242,7 @@ ipcMain.handle('filesystem:clearFolder', async (_, folderPath: string) => {
     })
 })
 
-//通过fast-glob，从最深的文件夹遍历到最浅的文件夹，如果文件夹内没有视频文件，则删除该文件夹
+// 通过fast-glob，从最深的文件夹遍历到最浅的文件夹，如果文件夹内没有视频文件，则删除该文件夹
 ipcMain.handle('filesystem:removeEmptyFolders', async (_, rootPath: string) => {
     return await tryExecute(async () => {
         rootPath = path.normalize(rootPath)

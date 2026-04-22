@@ -72,20 +72,52 @@ export const globalStatesStore = defineStore('globalStates', () => {
         }
     })
 
+    //
+
+    /**
+     * 已刮削数量
+     */
+    const batchScrapedCount = ref(0)
+
+    /**
+     * 批量刮削总数
+     */
+    const batchTotalCount = ref(0)
+
+    /**
+     * 批量刮削的运行状态
+     */
+    const batchRunning = ref(false)
+
     return {
         manageViewFiles,
         setManageViewFiles,
         manageViewFilesFilter,
         manageViewFilesFilterValue,
 
-        //loading状态
+        // loading状态
 
         /**
          * 是否正在进行文件扫描
          */
         scanFilesLoading: ref(false),
         imageCacheVersion,
-        refreshImageCacheVersion
+        refreshImageCacheVersion,
+
+        // 批量刮削部分
+
+        /**
+         * 已刮削数量
+         */
+        batchScrapedCount,
+        /**
+         * 批量刮削总数
+         */
+        batchTotalCount,
+        /**
+         * 批量刮削的运行状态
+         */
+        batchRunning
     }
 })
 

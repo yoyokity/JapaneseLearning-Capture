@@ -93,7 +93,7 @@ export function createWindow(): void {
     // 开发环境下加载远程 URL，生产环境下加载本地 HTML 文件。
     if (is.dev && (process.env as any).ELECTRON_RENDERER_URL) {
         mainWindow.loadURL((process.env as any).ELECTRON_RENDERER_URL)
-        //开发环境中自动打开DevTools
+        // 开发环境中自动打开DevTools
         mainWindow.webContents.openDevTools({ mode: 'undocked' })
     } else {
         mainWindow.loadFile(join(__dirname, '../renderer/index.html'))

@@ -39,8 +39,8 @@ export const theme = definePreset(Theme, {
                     activeColor: '{primary.500}'
                 },
                 formField: {
-                    shadow: 'initial', //去除控件阴影
-                    borderRadius: 'var(--border-radius)' //控件圆角
+                    shadow: 'initial', // 去除控件阴影
+                    borderRadius: 'var(--border-radius)' // 控件圆角
                 },
                 text: {
                     // 次要文字颜色

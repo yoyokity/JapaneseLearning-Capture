@@ -49,7 +49,7 @@ const translators = {
                 rpcids: 'MkEWBc'
             }
 
-            //url
+            // url
             const searchParams = new URLSearchParams({
                 rpcids: translateOptions.rpcids,
                 'source-path': '/',
@@ -60,14 +60,14 @@ const translators = {
             })
             const url = `https://translate.google.${translateOptions.tld}/_/TranslateWebserverUi/data/batchexecute?${searchParams}`
 
-            //body
+            // body
             const normalizedText = escapeSpecialSymbols(s_text)
             const encodedData = EncodeHelper.encodeUrl(
                 `[[["${translateOptions.rpcids}","[[\\"${normalizedText}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
             )
             const body = `f.req=${encodedData}&`
 
-            //headers
+            // headers
             const headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Content-Length': String(body.length)
@@ -136,16 +136,16 @@ const translators = {
         func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            //url
+            // url
             const url = `${settings.translate.openai.baseURL.replace(/\/$/, '')}/chat/completions`
 
-            //headers
+            // headers
             const headers = {
                 Authorization: `Bearer ${settings.translate.openai.apiKey}`,
                 'Content-Type': 'application/json'
             }
 
-            //body
+            // body
             const body = {
                 model: settings.translate.openai.model,
                 messages: [
@@ -190,16 +190,16 @@ const translators = {
         func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            //url
+            // url
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.translate.gemini.model}:generateContent`
 
-            //headers
+            // headers
             const headers = {
                 'x-goog-api-key': settings.translate.gemini.apiKey,
                 'Content-Type': 'application/json'
             }
 
-            //body
+            // body
             const body = {
                 system_instruction: {
                     parts: [
@@ -257,15 +257,15 @@ const translators = {
 
             const settings = settingsStore()
 
-            //url
+            // url
             const url = `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1/chat/completions`
 
-            //headers
+            // headers
             const headers = {
                 'Content-Type': 'application/json'
             }
 
-            //body
+            // body
             const body = {
                 model: settings.translate.localLLM.model,
                 messages: [
@@ -394,7 +394,7 @@ export class TransHelper {
     }
 }
 
-//转义特殊符号
+// 转义特殊符号
 function escapeSpecialSymbols(inputString: string): string {
     const escapedString = inputString.trim().replace(/"/g, '\\\\\\$&')
     return escapedString.replace(/\r\n|\r|\n/g, '\\\\n')

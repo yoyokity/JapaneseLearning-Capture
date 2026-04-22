@@ -48,7 +48,7 @@ export async function scanFiles(toast: any) {
             videoFiles.push(await read(file))
         }
 
-        //更新文件列表状态
+        // 更新文件列表状态
         globalStates.setManageViewFiles(videoFiles)
         // 扫描完成后刷新图片缓存状态，确保同路径图片重新加载
         globalStates.refreshImageCacheVersion()
@@ -71,7 +71,7 @@ export async function scanFiles(toast: any) {
 async function read(path: string): Promise<IVideoFile> {
     const video = createVideoFile(path)
 
-    //打开文件
+    // 打开文件
     const re = await TaskHelper.tryExecute(
         Ipc.filesystem.readFile,
         video.nfoPath.toString(),
@@ -140,7 +140,7 @@ async function read(path: string): Promise<IVideoFile> {
         video.genre = genres.map((genre) => normalizeTextValue(genre)).filter(Boolean)
     }
 
-    //处理图片
+    // 处理图片
     if (movie.poster) {
         const posterPath = PathHelper.newPath(movie.poster)
         const normalizedPosterPath = posterPath.isAbsolute
@@ -198,7 +198,7 @@ export async function readExtrafanart(
         const filePath = PathHelper.newPath(file)
         const ext = filePath.extname.toLowerCase()
         if (ext === '.jpg' || ext === '.png' || ext === '.jpeg' || ext === '.webp') {
-            //因为是拷贝之后的异步执行，所以两个都要有
+            // 因为是拷贝之后的异步执行，所以两个都要有
             video.extrafanart.push(filePath.toString())
             sourceVideo.extrafanart.push(filePath.toString())
         }

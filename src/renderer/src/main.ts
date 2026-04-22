@@ -40,7 +40,7 @@ async function initApp() {
 
     app.mount('#app')
 
-    //刮削器初始化
+    // 刮削器初始化
     const settings = settingsStore()
     Scraper.instances.forEach((scraper) => {
         LogHelper.success(`刮削器已加载：${scraper.scraperName}`)

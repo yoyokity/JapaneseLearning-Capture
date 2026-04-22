@@ -38,16 +38,16 @@ export class Actor implements IActor {
      * @param {string|null} javDB_url 演员的javdb链接，忽略则根据名字搜索
      */
     async search(javDB_url: string | null = null): Promise<void> {
-        //检查数据库中是否已有演员信息
+        // 检查数据库中是否已有演员信息
         if (await this.get()) {
             return
         }
 
-        //在javdb中获取头像
+        // 在javdb中获取头像
         if (javDB_url) {
             this.imgUrl = (await getImgFromJavDB(javDB_url)) || ''
         } else {
-            //没有url搜索
+            // 没有url搜索
             const response = await NetHelper.get(
                 NetHelper.joinUrl(
                     'https://javdb.com/',

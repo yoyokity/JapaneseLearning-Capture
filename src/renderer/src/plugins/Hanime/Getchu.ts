@@ -30,7 +30,7 @@ export async function getWebContentGetchu(
         return EncodeHelper.decodeEucJp(res.body)
     }
 
-    //先使用编号搜索
+    // 先使用编号搜索
     if (context.num.getchu) {
         const url = `https://www.getchu.com/item/${context.num.getchu}/?gc=gc`
         loggerGetchu.log(`使用编号搜索：${context.num.getchu}`)
@@ -49,7 +49,7 @@ export async function getWebContentGetchu(
         loggerGetchu.log(`使用编号搜索失败，使用原标题搜索`, url)
     }
 
-    //如果编号搜索失败，则使用原标题搜索
+    // 如果编号搜索失败，则使用原标题搜索
     const searchKeyword = await EncodeHelper.encodeUrlEucJp(searchTitle)
     const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
 
@@ -59,7 +59,7 @@ export async function getWebContentGetchu(
         return
     }
 
-    //在视频列表中找到符合条件的第一个
+    // 在视频列表中找到符合条件的第一个
     const $ = cheerioLoad(searchBody)
     const videoList = $('td > a.blueb[href*="/soft.phtml?id="]')
 
@@ -81,7 +81,7 @@ export async function getWebContentGetchu(
     const fullUrl = NetHelper.joinUrl('https://www.getchu.com/item', id, '?gc=gc')
     loggerGetchu.log(`找到匹配的番剧：【${target.text().trim()}】 ${fullUrl}`)
 
-    //根据href获取webContent
+    // 根据href获取webContent
     const body = await fetchPage(fullUrl)
     if (!body) {
         loggerGetchu.warn(`获取网页内容失败`, fullUrl)
@@ -93,7 +93,7 @@ export async function getWebContentGetchu(
         return
     }
 
-    //记录num
+    // 记录num
     context.num.getchu = id
     context.webContent.getchu = body
 
