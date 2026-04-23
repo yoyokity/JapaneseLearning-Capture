@@ -8,7 +8,7 @@ export default defineConfig({
     main: {
         build: {
             rollupOptions: {
-                external: ['sharp', /^@img\/.*/],
+                external: ['electron', 'sharp', /^@img\/.*/],
                 output: {
                     format: 'es'
                 }
@@ -18,6 +18,7 @@ export default defineConfig({
     preload: {
         build: {
             rollupOptions: {
+                external: ['electron'],
                 output: {
                     format: 'es'
                 }
@@ -42,6 +43,9 @@ export default defineConfig({
                 }
             },
             rollupOptions: {
+                input: {
+                    index: resolve('src/renderer/index.html')
+                },
                 output: {
                     manualChunks: (id) => {
                         if (id.includes('node_modules')) {

@@ -319,7 +319,7 @@ export class Scraper {
 
             // 如果有两个nfo，则删除原来的
             if (
-                !sourceVideoFile.nfoPath.toString().match(/[\\/]/) &&
+                !/[\\/]/.test(sourceVideoFile.nfoPath.toString()) &&
                 (await sourceVideoFile.nfoPath.isExist())
             ) {
                 if (sourceVideoFile.nfoPath.toString() !== _nfoPath.toString()) {

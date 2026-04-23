@@ -61,7 +61,7 @@ export function createWindow(): void {
         minHeight: 500,
         icon: iconPath, // 为所有平台添加图标
         webPreferences: {
-            preload: join(__dirname, '../preload/index.mjs'),
+            preload: join(__dirname, '../preload/index.js'),
             sandbox: false,
             webSecurity: true // web安全性
         }
