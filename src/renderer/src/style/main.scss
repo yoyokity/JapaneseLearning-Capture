@@ -10,6 +10,12 @@
     --main-tab-width: 6rem; //左侧主标签栏宽度
 }
 
+:root {
+    --error-color: #ff4544;
+    --warning-color: var(--p-amber-500);
+    --success-color: var(--p-green-500);
+}
+
 @font-face {
     font-family: 'PingFang SC';
     src: url('../assets/pingfang.ttf') format('truetype');

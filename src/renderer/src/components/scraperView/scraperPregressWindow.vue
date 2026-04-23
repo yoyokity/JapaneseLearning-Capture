@@ -74,17 +74,23 @@ onBeforeUnmount(() => {
 <template>
     <Toast :group="toastGroup" position="top-center" style="--p-toast-blur: 10px">
         <template #container="{ message }">
+            <!-- 刮削进度提示容器 -->
             <section class="scraper-pregress-window">
+                <!-- 头部：图标与标题 -->
                 <div class="scraper-pregress-window-header">
                     <i class="pi pi-sync scraper-pregress-window-icon" />
                     <span class="scraper-pregress-window-title">{{ message.summary }}</span>
                 </div>
+
+                <!-- 内容区：进度条与进度信息 -->
                 <div class="scraper-pregress-window-body">
+                    <!-- 总进度条 -->
                     <ProgressBar
                         :value="batchProgress"
                         :show-value="false"
                         class="scraper-pregress-window-progress"
                     />
+                    <!-- 已完成数量与百分比 -->
                     <div class="scraper-pregress-window-info">
                         <label>
                             {{ globalStates.batchScrapedCount }}/{{ globalStates.batchTotalCount }}

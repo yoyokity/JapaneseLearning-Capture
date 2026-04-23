@@ -4,6 +4,8 @@ import Button from 'primevue/button'
 interface IProps {
     /** 按钮文本 */
     label?: string
+    /** 是否禁用 */
+    disabled?: boolean
     /** hover、active时的背景色 */
     hoverBackground?: string
     /** 图标类名 */
@@ -24,18 +26,29 @@ withDefaults(defineProps<IProps>(), {
 
 <template>
     <Button
+        :disabled="disabled"
         :icon="icon"
         :label="label"
         :rounded="rounded"
         :size="size"
-        :style="{ '--hover-background': hoverBackground || 'transparent' }"
+        :style="{
+            '--hover-background': hoverBackground || 'transparent'
+        }"
         class="text-button"
+        :class="{
+            'text-button-disabled': disabled
+        }"
         severity="secondary"
         text
     />
 </template>
 
 <style lang="scss" scoped>
+.text-button-disabled {
+    pointer-events: none !important;
+    color: var(--p-surface-400) !important;
+}
+
 .text-button:hover,
 .text-button:active {
     background: var(--hover-background) !important;

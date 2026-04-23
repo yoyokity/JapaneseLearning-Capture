@@ -34,6 +34,13 @@ export function useBatchScraper() {
         scraperName: string,
         onProgress: (progress: number) => void
     ): Promise<{ scraperState: ScraperState; scraperStateText?: string }> {
+        // 确认文件是否存在
+        if (!(await sourceVideoPath.isExist())) {
+            onProgress(100)
+            LogHelper.warn(`找不到本地视频文件：${sourceVideoPath}`)
+            return { scraperState: 'error', scraperStateText: '找不到本地视频文件！' }
+        }
+
         let scraperWarnText = ''
 
         // 进度条重置
@@ -48,11 +55,11 @@ export function useBatchScraper() {
         // 创建新的video对象
         const video: IVideo = {
             scraperName,
-            title: toRaw(search.title),
-            originaltitle: toRaw(search.title),
-            sorttitle: toRaw(search.title),
+            title: search.title,
+            originaltitle: search.title,
+            sorttitle: search.title,
             tagline: '',
-            num: toRaw(search.num) || {},
+            num: search.num || {},
             mpaa: '',
             rating: '',
             director: '',

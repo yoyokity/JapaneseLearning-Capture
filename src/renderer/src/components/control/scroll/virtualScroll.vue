@@ -165,6 +165,13 @@ const shouldShowVirtualScrollbar = computed(() => {
 })
 
 /**
+ * 当前是否存在可滚动空间
+ */
+const canScroll = computed(() => {
+    return totalSize.value > viewportSize.value
+})
+
+/**
  * 是否需要为滚动条预留空间
  */
 const shouldOccupyScrollbarSpace = computed(() => {
@@ -460,6 +467,13 @@ function syncScrollLayout() {
 
     if (lastScrollPosition.value > maxScroll) {
         setScrollPosition(maxScroll)
+    }
+
+    if (canScroll.value) {
+        lenisInstance.value?.start()
+    } else {
+        lenisInstance.value?.stop()
+        setScrollPosition(0)
     }
 
     lenisInstance.value?.resize()
