@@ -8,11 +8,14 @@ export default antfu(
         stylistic: false // 禁用代码格式化规则
     },
     {
+        linterOptions: {
+            reportUnusedDisableDirectives: 'off' // 保留文件顶部的 eslint-disable 注释，不自动移除
+        },
         plugins: {
             'import-x': importX
         },
         rules: {
-            'vue/html-self-closing': 'off',
+            'vue/html-self-closing': 'off', // 允许自闭合标签
             'vue/padding-line-between-blocks': ['error', 'always'], // 关键规则：确保顶级标签之间有且仅有一个空行
             'vue/multiline-html-element-content-newline': 'off', // 禁用多行标签内容必须换行的规则
             'vue/singleline-html-element-content-newline': 'off', // 禁用单行标签内容必须换行的规则
@@ -21,6 +24,7 @@ export default antfu(
             'no-console': 'off', // 允许使用 console
             'vue/html-indent': 'off', // Vue HTML 模板交给 Prettier 处理
             'vue/html-closing-bracket-newline': 'off', // 允许闭合标签前换行
+            'e18e/prefer-static-regex': 'off', // 优先使用静态正则表达式
 
             // 注释格式规则 - 注释符号后必须空一格
             'spaced-comment': [
