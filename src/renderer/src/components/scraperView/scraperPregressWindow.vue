@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { globalStatesStore } from '@renderer/stores'
 import ProgressBar from 'primevue/progressbar'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
+import { computed, onBeforeUnmount, watch } from 'vue'
 
 const globalStates = globalStatesStore()
-const visible = ref(globalStates.batchRunning)
+const toast = useToast()
 let hideTimer: ReturnType<typeof setTimeout> | null = null
+const toastGroup = 'scraper-progress'
+const toastSummary = '批量刮削中'
 
 /**
  * 批量刮削总进度百分比
@@ -13,8 +17,28 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null
 const batchProgress = computed(() => {
     if (globalStates.batchTotalCount === 0) return 0
 
-    return (globalStates.batchScrapedCount / globalStates.batchTotalCount) * 100
+    return Math.round((globalStates.batchScrapedCount / globalStates.batchTotalCount) * 100)
 })
+
+/**
+ * 显示进度提示
+ */
+function showToast() {
+    toast.removeGroup(toastGroup)
+    toast.add({
+        severity: 'secondary',
+        summary: toastSummary,
+        group: toastGroup,
+        life: 0
+    })
+}
+
+/**
+ * 关闭进度提示
+ */
+function hideToast() {
+    toast.removeGroup(toastGroup)
+}
 
 watch(
     () => globalStates.batchRunning,
@@ -25,15 +49,16 @@ watch(
         }
 
         if (batchRunning) {
-            visible.value = true
+            showToast()
             return
         }
 
         hideTimer = setTimeout(() => {
-            visible.value = false
+            hideToast()
             hideTimer = null
         }, 1000)
-    }
+    },
+    { immediate: true }
 )
 
 onBeforeUnmount(() => {
@@ -41,83 +66,88 @@ onBeforeUnmount(() => {
         clearTimeout(hideTimer)
         hideTimer = null
     }
+
+    hideToast()
 })
 </script>
 
 <template>
-    <Teleport to="body">
-        <Transition name="scraper-pregress-window-transition">
-            <div v-if="visible" class="scraper-pregress-window">
-                <div class="scraper-pregress-window-content">
-                    <span class="scraper-pregress-window-label">批量刮削中：</span>
-                    <ProgressBar :value="batchProgress" class="scraper-pregress-window-progress" />
-                    <span class="scraper-pregress-window-count">
-                        {{ globalStates.batchScrapedCount }}/{{ globalStates.batchTotalCount }}
-                    </span>
+    <Toast :group="toastGroup" position="top-center" style="--p-toast-blur: 10px">
+        <template #container="{ message }">
+            <section class="scraper-pregress-window">
+                <div class="scraper-pregress-window-header">
+                    <i class="pi pi-sync scraper-pregress-window-icon" />
+                    <span class="scraper-pregress-window-title">{{ message.summary }}</span>
                 </div>
-            </div>
-        </Transition>
-    </Teleport>
+                <div class="scraper-pregress-window-body">
+                    <ProgressBar
+                        :value="batchProgress"
+                        :show-value="false"
+                        class="scraper-pregress-window-progress"
+                    />
+                    <div class="scraper-pregress-window-info">
+                        <label>
+                            {{ globalStates.batchScrapedCount }}/{{ globalStates.batchTotalCount }}
+                            已完成
+                        </label>
+                        <label>{{ batchProgress }}%</label>
+                    </div>
+                </div>
+            </section>
+        </template>
+    </Toast>
 </template>
 
 <style lang="scss" scoped>
 .scraper-pregress-window {
-    z-index: 5555;
-    position: fixed;
-    height: calc(var(--header-height) - 1rem);
-    width: calc(100% - var(--main-tab-width));
-    left: var(--main-tab-width);
-    top: 0px;
-    pointer-events: none;
-
-    .scraper-pregress-window-content {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-left: 5rem;
-        width: 50%;
-        height: 100%;
-        padding: 0 2rem;
-        box-sizing: border-box;
-        background-color: var(--p-surface-0);
-        border: 1px solid var(--p-pink-300);
-        border-top: none;
-        border-bottom-left-radius: calc(var(--border-radius) * 2);
-        border-bottom-right-radius: calc(var(--border-radius) * 2);
-        box-shadow: 0px 0px 10px 2px rgb(0 0 0 / 10%);
-        pointer-events: auto;
-    }
-
-    .scraper-pregress-window-label,
-    .scraper-pregress-window-count {
-        flex-shrink: 0;
-        font-size: 0.875rem;
-        color: var(--p-text-color);
-    }
-
-    .scraper-pregress-window-progress {
-        flex: 1;
-        height: 1rem;
-        --p-progressbar-border-radius: 5rem;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
 }
 
-.scraper-pregress-window-transition-enter-active,
-.scraper-pregress-window-transition-leave-active {
-    transition:
-        transform 0.3s var(--animation-type),
-        opacity 0.3s var(--animation-type);
+.scraper-pregress-window-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
-.scraper-pregress-window-transition-enter-from,
-.scraper-pregress-window-transition-leave-to {
-    opacity: 0;
-    transform: translateY(-100%);
+.scraper-pregress-window-icon {
+    font-size: 1rem;
+    animation: scraper-pregress-window-rotate 1.2s linear infinite;
 }
 
-.scraper-pregress-window-transition-enter-to,
-.scraper-pregress-window-transition-leave-from {
-    opacity: 1;
-    transform: translateY(0);
+.scraper-pregress-window-title {
+    font-size: 1rem;
+    line-height: 1.5rem;
+}
+
+.scraper-pregress-window-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.scraper-pregress-window-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    line-height: 1.25rem;
+    font-size: 0.875rem;
+}
+
+.scraper-pregress-window-progress {
+    height: 4px;
+}
+
+@keyframes scraper-pregress-window-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>

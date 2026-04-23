@@ -65,6 +65,20 @@ export const theme = definePreset(Theme, {
         }
     },
     components: {
+        // toast窗口
+        toast: {
+            root: {
+                borderRadius: 'calc(var(--border-radius) * 2)'
+            },
+            colorScheme: {
+                light: {
+                    secondary: {
+                        background: 'color-mix(in srgb, {surface.0} 80%, transparent)',
+                        shadow: '0 0 10px 2px rgba(0, 0, 0, .1)'
+                    }
+                }
+            }
+        },
         // 滚动页面
         scrollpanel: {
             colorScheme: {
