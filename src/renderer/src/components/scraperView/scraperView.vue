@@ -597,7 +597,8 @@ $remove-button-width: 3rem;
 .file-item-shell {
     box-sizing: border-box;
     height: fit-content;
-    margin-bottom: 0.75em;
+    height: 100%;
+    padding-bottom: 0.75em;
 }
 
 .file-item {
@@ -605,10 +606,12 @@ $remove-button-width: 3rem;
     overflow: hidden;
     border: 1px solid var(--p-content-border-color);
     border-radius: calc(var(--border-radius) * 2);
+    height: 100%;
     transition: $transition;
 
     .file-item-container {
         width: 100%;
+        height: 100%;
         position: relative;
         display: flex;
         align-items: center;
