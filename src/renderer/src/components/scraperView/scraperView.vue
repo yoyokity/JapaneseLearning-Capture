@@ -7,7 +7,7 @@ import TextButton from '@renderer/components/control/button/textButton.vue'
 import { useMessage } from '@renderer/components/control/message'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
 import FileItemEditor from '@renderer/components/scraperView/fileItemEditor.vue'
-import { PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
+import { LogHelper, PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
@@ -60,9 +60,11 @@ const fileItemStateColorMap: Record<ScraperState, string> = {
     success: 'var(--success-color)'
 }
 
-const isAllChecked = computed(
-    () => fileList.value.length > 0 && fileList.value.every((item) => item.checked)
-)
+const isAllChecked = computed(() => {
+    const enableFileList = fileList.value.filter((item) => !getFileDisable(item))
+
+    return enableFileList.length > 0 && enableFileList.every((item) => item.checked)
+})
 
 /**
  * 需要刮削的文件列表
@@ -270,6 +272,8 @@ function toggleFileChecked(item: IFileItem) {
 function toggleAllFilesChecked() {
     const nextChecked = !isAllChecked.value
     fileList.value.forEach((item) => {
+        if (getFileDisable(item)) return
+
         item.checked = nextChecked
     })
 }
@@ -330,7 +334,7 @@ async function handleStart() {
 
     // 遍历所有需要刮削的文件
     for (const file of checkedFileList.value) {
-        await TaskHelper.queueWithInterval('scraper-batch-all', 0, true, async () => {
+        TaskHelper.queueWithCancel({ taskName: 'scraper-batch-all' }, async () => {
             // 刮削单个文件
             const { scraperState, scraperStateText } = await scraperRun(
                 cloneDeep({
@@ -353,7 +357,20 @@ async function handleStart() {
         })
     }
 
+    TaskHelper.queueWithCancel({ taskName: 'scraper-batch-all' }, () => {
+        globalStates.batchRunning = false
+    })
+}
+
+/**
+ * 取消刮削
+ */
+function handleCancel() {
+    TaskHelper.queueClear('scraper-batch-single')
+    TaskHelper.queueClear('scraper-batch-all')
+
     globalStates.batchRunning = false
+    LogHelper.warn('刮削已取消！')
 }
 </script>
 
@@ -401,13 +418,15 @@ async function handleStart() {
                 style="width: 8rem"
                 :disabled="globalStates.batchRunning"
             />
+
+            <!-- 开始/取消按钮 -->
             <Button
-                :loading="globalStates.scanFilesLoading"
-                icon="pi pi-search"
-                label="开始刮削"
+                :loading="globalStates.scanFilesLoading && !globalStates.batchRunning"
+                :icon="globalStates.batchRunning ? 'pi pi-times' : 'pi pi-search'"
+                :label="globalStates.batchRunning ? '取消' : '开始刮削'"
                 size="small"
                 style="width: 7rem"
-                @click="handleStart"
+                @click="globalStates.batchRunning ? handleCancel() : handleStart()"
             />
         </div>
 

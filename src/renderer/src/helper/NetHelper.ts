@@ -142,8 +142,13 @@ export class NetHelper {
 
             if (retry > 0) {
                 const hostName = new URL(url).hostname
-                re = await TaskHelper.queueWithInterval(hostName, delay, false, async () =>
-                    TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
+                re = await TaskHelper.queueWithCancel(
+                    {
+                        taskName: hostName,
+                        intervalMs: delay,
+                        updateTimeAfterExecution: false
+                    },
+                    async () => TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
                 )
             } else {
                 re = await TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
@@ -238,8 +243,14 @@ export class NetHelper {
 
             if (retry > 0) {
                 const hostName = new URL(url).hostname
-                re = await TaskHelper.queueWithInterval(hostName, delay, false, async () =>
-                    TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
+                re = await TaskHelper.queueWithCancel(
+                    {
+                        taskName: hostName,
+                        intervalMs: delay,
+                        updateTimeAfterExecution: false
+                    },
+                    async () =>
+                        TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
                 )
             } else {
                 re = await TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))

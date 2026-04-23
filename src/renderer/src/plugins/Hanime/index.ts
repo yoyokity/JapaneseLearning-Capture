@@ -94,7 +94,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return true
         },
         parseTagline: async (_video: IVideo, _context: IHanimeContext) => {
-            return true
+            return null
         },
         parseNum: async (video: IVideo, context: IHanimeContext) => {
             if (context.num.hanime1) video.num.hanime1 = context.num.hanime1
@@ -184,7 +184,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return false
         },
         parseActor: async (_video: IVideo, _context: IHanimeContext) => {
-            return true
+            return null
         },
         parseStudio: async (video: IVideo, context: IHanimeContext) => {
             const $ = cheerioLoad(context.webContent.hanime1)
@@ -228,7 +228,8 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                     .filter((_, node) => node.type === 'text')
                     .text()
                     .trim()
-                if (text) {
+
+                if (text && text !== '中文字幕') {
                     tags.push(text)
                 }
             })

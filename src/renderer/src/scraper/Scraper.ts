@@ -17,56 +17,56 @@ interface IModuleType {
 
 export interface IScraperVideoFuncs<TContext = unknown> {
     /**
-     * 获取网页上下文
+     * 0. 获取网页上下文
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false
      */
     getWebContext: (video: IVideo, context: TContext) => Promise<boolean>
     /**
-     * 解析大标题
+     * 1. 解析大标题
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseTitle: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析原始标题
+     * 2. 解析原始标题
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseOriginaltitle: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析排序标题
+     * 3. 解析排序标题
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseSorttitle: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析宣传词
+     * 4. 解析宣传词
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseTagline: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析编号
+     * 5. 解析编号
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseNum: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析分级
+     * 6. 解析分级
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseMpaa: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析评分
+     * 7. 解析评分
      * @description 以10分为满分
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
@@ -74,105 +74,105 @@ export interface IScraperVideoFuncs<TContext = unknown> {
      */
     parseRating: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析导演
+     * 8.解析导演
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseDirector: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析演员
+     * 9. 解析演员
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseActor: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析发行商
+     * 10. 解析发行商
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseStudio: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析制片商
+     * 11. 解析制片商
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseMaker: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析影片系列
+     * 12. 解析影片系列
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseSet: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析影片标签
+     * 13. 解析影片标签
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseTag: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析影片类型
+     * 14. 解析影片类型
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseGenre: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析简介
+     * 15. 解析简介
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parsePlot: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析发行年份
+     * 16. 解析发行年份
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseYear: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析首映日期
+     * 17. 解析首映日期
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parsePremiered: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析上映日期
+     * 18. 解析上映日期
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseReleasedate: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析视频封面
+     * 19. 解析视频封面
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parsePoster: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析视频缩略图
+     * 20. 解析视频缩略图
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseThumb: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析视频背景图
+     * 21. 解析视频背景图
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null
      */
     parseFanart: (video: IVideo, context: TContext) => Promise<boolean | null>
     /**
-     * 解析视频额外背景图
+     * 22. 解析视频额外背景图
      * @param video 视频对象，解析结果直接写入 video
      * @param context 刮削上下文，用于缓存信息
      * @returns 解析成功返回true，解析失败返回false，解析跳过返回null

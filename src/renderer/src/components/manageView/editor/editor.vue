@@ -118,7 +118,7 @@ async function onSave() {
 
     normalizeTagGenre()
 
-    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
+    TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
         // 如果视频没有修改，则不保存
         if (isEqual(newVideo.value, sourceVideoFile)) {
             toast.success('未修改，无需保存')
@@ -192,7 +192,7 @@ function getNumLink(sourceName: string) {
 }
 
 onMounted(async () => {
-    TaskHelper.queueWithInterval('scraper', 0, true, async () => {
+    TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
         newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
         normalizeTagGenre()
 

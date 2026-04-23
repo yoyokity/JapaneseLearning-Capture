@@ -121,7 +121,7 @@ export function useEditeScraper() {
         context.logger.separator()
         context.logger.log(`开始刮削：`, toRaw(video))
 
-        TaskHelper.queueWithInterval('scraper', 0, true, async () => {
+        TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
             // 先确保有网页内容
             if (!(await ensureContent(context, video))) {
                 return
@@ -180,7 +180,7 @@ export function useEditeScraper() {
         context.logger.log(`开始刮削：`, toRaw(video))
 
         // 先确保有网页内容
-        const hasContent = await TaskHelper.queueWithInterval('scraper', 0, true, async () =>
+        const hasContent = await TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () =>
             ensureContent(context, video)
         )
         if (!hasContent) {
@@ -189,7 +189,7 @@ export function useEditeScraper() {
 
         const failed: string[] = []
         for (const { name, label } of parseFuncs) {
-            await TaskHelper.queueWithInterval('scraper', 0, true, async () => {
+            await TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
                 if (!(await parseField(context, video, name, label))) {
                     failed.push(label)
                 }

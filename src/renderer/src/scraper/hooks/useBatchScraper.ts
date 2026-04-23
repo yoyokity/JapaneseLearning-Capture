@@ -12,6 +12,8 @@ import { toRaw } from 'vue'
  * 批量刮削界面的刮削Hook
  */
 export function useBatchScraper() {
+    const batchSingleTaskName = 'scraper-batch-single'
+
     /**
      * 获取刮削上下文
      */
@@ -85,10 +87,8 @@ export function useBatchScraper() {
         const _context = context.scraper.createContext()
 
         // 先确保有网页内容
-        const hasContent = await TaskHelper.queueWithInterval(
-            'scraper-batch-single',
-            0,
-            true,
+        const hasContentResult = await TaskHelper.queueWithCancel(
+            { taskName: batchSingleTaskName },
             async () => {
                 try {
                     context.logger.log(`获取网页内容中...`)
@@ -105,7 +105,12 @@ export function useBatchScraper() {
             }
         )
 
-        if (!hasContent) {
+        if (hasContentResult.cancel) {
+            onProgress(100)
+            return { scraperState: 'error', scraperStateText: '刮削已取消！' }
+        }
+
+        if (!hasContentResult.result) {
             onProgress(100)
             return { scraperState: 'error', scraperStateText: '获取网页内容失败！' }
         }
@@ -115,10 +120,8 @@ export function useBatchScraper() {
         // 依次刮削其余信息
         const failed: string[] = []
         for (const [index, { name, label }] of parseFuncs.entries()) {
-            const re = await TaskHelper.queueWithInterval(
-                'scraper-batch-single',
-                0,
-                true,
+            const re = await TaskHelper.queueWithCancel(
+                { taskName: batchSingleTaskName },
                 async () => {
                     try {
                         context.logger.log(`解析${label}...`)
@@ -145,21 +148,29 @@ export function useBatchScraper() {
                 }
             )
 
+            if (re.cancel) {
+                onProgress(100)
+                return { scraperState: 'error', scraperStateText: '刮削已取消！' }
+            }
+
             // 进度条增加
             onProgress(10 + ((index + 1) * 85) / parseFuncs.length)
 
             // 解析失败，则跳过解析下一个
-            if (re === false) {
+            if (re.result === false) {
                 failed.push(label)
             }
         }
 
-        if (failed.length > 0) {
-            scraperWarnText = `以下字段解析失败：${failed.join('、')}`
-        } else if (failed.length === parseFuncs.length) {
+        if (failed.length === parseFuncs.length) {
             context.logger.warn('全部信息解析失败！')
             onProgress(100)
-            return { scraperState: 'error', scraperStateText: '全部信息解析失败！' }
+            return {
+                scraperState: 'error',
+                scraperStateText: '全部信息解析失败！'
+            }
+        } else if (failed.length > 0) {
+            scraperWarnText = `以下字段解析失败：${failed.join('、')}`
         } else {
             context.logger.success('全部信息解析成功！')
         }
@@ -167,10 +178,8 @@ export function useBatchScraper() {
         // 保存
         const settings = settingsStore()
 
-        const videoDir: IResultWithError<Path> = await TaskHelper.queueWithInterval(
-            'scraper-batch-single',
-            0,
-            true,
+        const videoDir = await TaskHelper.queueWithCancel<IResultWithError<Path>>(
+            { taskName: batchSingleTaskName },
             async () => {
                 const sourceVideoFile: IVideoFile = {
                     path: sourceVideoPath,
@@ -197,19 +206,24 @@ export function useBatchScraper() {
             }
         )
 
+        if (videoDir.cancel) {
+            onProgress(100)
+            return { scraperState: 'error', scraperStateText: '刮削已取消！' }
+        }
+
         onProgress(100)
 
-        if (videoDir.hasError) {
-            context.logger.warn(`保存失败：`, videoDir.error)
+        if (videoDir.result.hasError) {
+            context.logger.warn(`保存失败：`, videoDir.result.error)
             return {
                 scraperState: 'error',
-                scraperStateText: `${scraperWarnText}\n${videoDir.error}`
+                scraperStateText: `${scraperWarnText}\n${videoDir.result.error}`
             }
         }
 
         // 完成
         context.logger.success(`刮削完成！`, toRaw(video))
-        context.logger.success(`保存路径：${videoDir.result.parent}`)
+        context.logger.success(`保存路径：${videoDir.result.result.parent}`)
 
         // 有warn
         if (scraperWarnText) {
