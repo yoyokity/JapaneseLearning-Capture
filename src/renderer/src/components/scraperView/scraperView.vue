@@ -13,6 +13,7 @@ import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import { cloneDeep } from 'es-toolkit'
 import Button from 'primevue/button'
+import ContextMenu from 'primevue/contextmenu'
 import Menu from 'primevue/menu'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
@@ -47,8 +48,10 @@ const message = useMessage()
 const { scraperRun } = useBatchScraper()
 
 const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
+const fileItemContextMenu = ref()
 const scraperMenu = ref()
 const currentMenuItem = ref<IFileItem | null>(null)
+const currentContextMenuItem = ref<IFileItem | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 
@@ -86,6 +89,20 @@ const scraperMenuItems = computed<MenuItem[]>(() =>
         }
     }))
 )
+
+/**
+ * 文件项右键菜单项
+ */
+const fileItemContextMenuItems = ref<MenuItem[]>([
+    {
+        label: '编辑刮削数据',
+        command: () => {
+            if (!currentContextMenuItem.value) return
+
+            handleEditScraperData(currentContextMenuItem.value)
+        }
+    }
+])
 
 /**
  * 判断文件是否为支持的视频格式
@@ -152,6 +169,14 @@ function getFileDisable(item: IFileItem) {
 
     // 刮削完成的文件禁用
     return true
+}
+
+/**
+ * 判断文件项是否支持右键菜单
+ * @param item 文件项
+ */
+function getFileItemCanContextmenu(item: IFileItem) {
+    return item.scraperState === 'warn' || item.scraperState === 'success'
 }
 
 /**
@@ -289,6 +314,27 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
 }
 
 /**
+ * 打开文件项右键菜单
+ * @param event 鼠标事件
+ * @param item 当前文件项
+ */
+function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
+    if (!getFileItemCanContextmenu(item)) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    currentContextMenuItem.value = item
+    fileItemContextMenu.value?.show?.(event)
+}
+
+/**
+ * 编辑刮削数据
+ * @param item 文件项
+ */
+function handleEditScraperData(item: IFileItem) {}
+
+/**
  * 打开文件信息编辑窗口
  * @param item 文件项
  */
@@ -384,6 +430,7 @@ function handleCancel() {
             :accept="Object.keys(videoExtensions).join(',')"
             @change="handleFileSelect"
         />
+        <ContextMenu ref="fileItemContextMenu" :model="fileItemContextMenuItems" />
         <Menu ref="scraperMenu" :model="scraperMenuItems" popup />
         <div class="tab-header">
             <!-- 控制台 -->
@@ -483,6 +530,7 @@ function handleCancel() {
                     :style="{
                         cursor: getFileTooltipText(fileList[index]) ? 'pointer' : 'default'
                     }"
+                    @contextmenu="(event) => showFileItemContextMenu(event, fileList[index])"
                 >
                     <div class="file-item">
                         <div
@@ -657,7 +705,7 @@ $remove-button-width: 3rem;
             content: '';
             position: absolute;
             inset: 0;
-            background-color: hsl(0deg 0 95% / 60%);
+            background-color: hsl(0deg 0% 95% / 60%);
         }
     }
 }
