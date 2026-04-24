@@ -397,7 +397,7 @@ export class Scraper {
 
             await Promise.all(imagePromises)
 
-            return { result: videoDir, hasError: false }
+            return { result: _videoPath, hasError: false }
         } catch (error) {
             // 统一处理保存过程中的异常
             const errorMessage = error instanceof Error ? error.message : String(error)

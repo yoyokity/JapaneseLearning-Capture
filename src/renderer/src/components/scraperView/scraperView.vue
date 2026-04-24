@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { IFileItem } from './scraperView.hook/type'
+import type { IFileItem } from './hook'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
@@ -20,7 +20,7 @@ import {
     useFileContextMenu,
     useScraperStartCancel,
     useScraperViewMenu
-} from './scraperView.hook'
+} from './hook'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
@@ -42,10 +42,14 @@ const {
 const { getFileDisable, isAllChecked, checkedFileList, toggleFileChecked, toggleAllFilesChecked } =
     useFileChecked(fileList)
 
-const { fileItemContextMenuItems, showFileItemContextMenu } = useFileContextMenu()
+// @ts-ignore
+const { fileItemContextMenu, fileItemContextMenuItems, showFileItemContextMenu } =
+    useFileContextMenu()
 
 const {
     scraperOptions,
+    // @ts-ignore
+    scraperMenu,
     scraperMenuItems,
     showScraperMenu,
     showFileEditor,

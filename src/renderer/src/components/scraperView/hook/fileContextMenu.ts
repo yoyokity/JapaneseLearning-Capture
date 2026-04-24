@@ -1,29 +1,48 @@
 import type { MenuItem } from 'primevue/menuitem'
 import type { IFileItem } from './type'
 
+import Editor from '@renderer/components/manageView/editor/editor.vue'
+import { useDialog } from 'primevue/usedialog'
 import { ref } from 'vue'
 
 /**
  * 右键菜单Hook
  */
 export function useFileContextMenu() {
+    const dialog = useDialog()
     const fileItemContextMenu = ref()
     const currentContextMenuItem = ref<IFileItem | null>(null)
-
-    /**
-     * 判断文件项是否支持右键菜单
-     * @param item 文件项
-     */
-    function getFileItemCanContextmenu(item: IFileItem) {
-        return item.scraperState === 'warn' || item.scraperState === 'success'
-    }
 
     /**
      * 编辑刮削数据
      * @param item 文件项
      */
     function handleEditScraperData(item: IFileItem) {
-        const video: IVideoFile = {}
+        if (item.videoFile === undefined) return
+
+        dialog.open(Editor, {
+            props: {
+                modal: true,
+                draggable: false,
+                showHeader: false,
+                style: {
+                    width: 'fit-content',
+                    maxWidth: '90vw'
+                },
+                contentStyle: {
+                    overflow: 'initial'
+                }
+            },
+            data: {
+                video: item.videoFile
+            },
+            onClose: (options) => {
+                const data = options?.data
+                if (!data) return
+
+                item.videoFile = data
+            }
+        })
     }
 
     /**
@@ -46,7 +65,8 @@ export function useFileContextMenu() {
      * @param item 当前文件项
      */
     function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
-        if (!getFileItemCanContextmenu(item)) return
+        // 判断有右键菜单时的条件
+        if (item.videoFile === undefined) return
 
         event.preventDefault()
         event.stopPropagation()

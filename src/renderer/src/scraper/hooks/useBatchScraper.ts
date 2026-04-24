@@ -225,10 +225,6 @@ export function useBatchScraper() {
             }
         }
 
-        // 完成
-        context.logger.success(`刮削完成！`, toRaw(video))
-        context.logger.success(`保存路径：${videoDir.result.result.parent}`)
-
         // 生成videoFile
         const videoFile: IVideoFile = {
             path: videoDir.result.result,
@@ -238,6 +234,10 @@ export function useBatchScraper() {
             nfoPath: videoDir.result.result.parent.join(`${videoDir.result.result.basename}.nfo`),
             ...video
         }
+
+        // 完成
+        context.logger.success(`刮削完成！`, videoFile)
+        context.logger.success(`保存路径：${videoDir.result.result.parent}`)
 
         // 有warn
         if (scraperWarnText) {
