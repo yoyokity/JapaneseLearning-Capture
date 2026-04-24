@@ -41,7 +41,6 @@
         "chinese-simple2traditional": "^2.3.2",
         "cssnano": "^7.1.7",
         "electron": "^41.3.0",
-        "electron-fetch": "^1.9.1",
         "electron-icon-builder": "^2.0.1",
         "electron-log": "^5.4.2",
         "electron-store": "^11.0.2",

@@ -260,10 +260,10 @@ const hanimeScraper: IScraper<IHanimeContext> = {
 
             // 翻译一下
             const re = await TransHelper.translate(plot)
-            if (re.ok) {
-                plot = TransHelper.translateSC(re.text.trim())
-                plot = EncodeHelper.normalizePlotLineBreak(plot)
-            }
+
+            // 繁化简，转义优化
+            plot = TransHelper.translateSC(re.text.trim())
+            plot = EncodeHelper.normalizePlotLineBreak(plot)
 
             if (!plot) return false
 

@@ -6,6 +6,7 @@ import type {
     IVerifyCookies,
     ParseResultType
 } from '@renderer/ipc/net.ts'
+import type { IResultWithError } from './TaskHelper.ts'
 
 import { Ipc } from '@renderer/ipc'
 import { settingsStore } from '@renderer/stores'
@@ -16,6 +17,52 @@ import { LogHelper, TaskHelper } from '.'
  * 网络相关
  */
 export class NetHelper {
+    /**
+     * 判断是否为任务取消错误
+     * @param error 错误信息
+     */
+    private static _isTaskCanceled(error: unknown): boolean {
+        return error === '任务已取消'
+    }
+
+    /**
+     * 执行网络请求任务，并统一返回错误结果结构
+     * @param url 请求地址
+     * @param retry 重试次数
+     * @param delay 请求间隔
+     * @param task 执行任务
+     */
+    private static async _executeNetTask<T>(
+        url: string,
+        retry: number,
+        delay: number,
+        task: () => Promise<T>
+    ): Promise<IResultWithError<T>> {
+        if (retry <= 0) {
+            return await TaskHelper.tryExecute(task)
+        }
+
+        const hostName = new URL(url).hostname
+        const queueResult = await TaskHelper.queueWithCancel(
+            {
+                taskName: hostName,
+                intervalMs: delay,
+                updateTimeAfterExecution: false
+            },
+            async () => await TaskHelper.tryExecute(task)
+        )
+
+        if (queueResult.cancel) {
+            return {
+                result: null,
+                hasError: true,
+                error: '任务已取消'
+            }
+        }
+
+        return queueResult.result
+    }
+
     /**
      * 安全地拼接多个路径片段到基础URL上。
      * @param baseUrl 基础 URL，例如 'https://api.example.com'。
@@ -125,13 +172,13 @@ export class NetHelper {
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         }
 
-        const config: IFetchOptions = {
+        const config: IFetchOptions & { parse?: P } = {
             headers: { ...defaultHeaders, ...headers },
             timeout,
             parse: parse as P
         }
 
-        let re
+        let re: IResultWithError<IResult<ParseResultType<P>>>
         let retryCount = 0
 
         // 失败则重试
@@ -140,26 +187,22 @@ export class NetHelper {
                 LogHelper.warn(`GET请求重试第${retryCount}次：${url}`)
             }
 
-            if (retry > 0) {
-                const hostName = new URL(url).hostname
-                re = await TaskHelper.queueWithCancel(
-                    {
-                        taskName: hostName,
-                        intervalMs: delay,
-                        updateTimeAfterExecution: false
-                    },
-                    async () => TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
-                )
-            } else {
-                re = await TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
-            }
+            re = await this._executeNetTask(
+                url,
+                retry,
+                delay,
+                async () => await Ipc.net.get<P>(url, config)
+            )
 
             if (!re.hasError) {
-                const result = re.result as IResult<ParseResultType<P>>
+                const result = re.result
                 if (result.ok || result.status === 403) {
                     return result
                 }
             } else {
+                if (this._isTaskCanceled(re.error)) {
+                    break
+                }
                 LogHelper.error(`GET请求失败：${url}`, re.error)
             }
 
@@ -226,13 +269,13 @@ export class NetHelper {
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         }
 
-        const config: IFetchOptions = {
+        const config: IFetchOptions & { parse?: P } = {
             headers: { ...defaultHeaders, ...headers },
             timeout,
             parse: parse as P
         }
 
-        let re
+        let re: IResultWithError<IResult<ParseResultType<P>>>
         let retryCount = 0
 
         // 失败则重试
@@ -241,29 +284,24 @@ export class NetHelper {
                 LogHelper.warn(`POST请求重试第${retryCount}次：${url}`)
             }
 
-            if (retry > 0) {
-                const hostName = new URL(url).hostname
-                re = await TaskHelper.queueWithCancel(
-                    {
-                        taskName: hostName,
-                        intervalMs: delay,
-                        updateTimeAfterExecution: false
-                    },
-                    async () =>
-                        TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
-                )
-            } else {
-                re = await TaskHelper.tryExecute(async () => await Ipc.net.post(url, data, config))
-            }
+            re = await this._executeNetTask(
+                url,
+                retry,
+                delay,
+                async () => await Ipc.net.post<P>(url, data, config)
+            )
 
             if (!re.hasError) {
-                const result = re.result as IResult<ParseResultType<P>>
+                const result = re.result
                 if (result.ok || result.status === 403) {
                     return result
                 } else {
                     LogHelper.warn(`POST请求失败：${url}`, re.result)
                 }
             } else {
+                if (this._isTaskCanceled(re.error)) {
+                    break
+                }
                 LogHelper.error(`POST请求失败：${url}`, re.error)
             }
 
@@ -307,13 +345,13 @@ export class NetHelper {
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         }
 
-        const config: IFetchOptions = {
+        const config: IFetchOptions & { parse: 'arrayBuffer' } = {
             headers: { ...defaultHeaders, ...headers },
             timeout,
             parse: 'arrayBuffer'
         }
 
-        let re
+        let re: IResultWithError<IResult<ArrayBuffer>>
         let retryCount = 0
 
         // 失败则重试
@@ -322,14 +360,22 @@ export class NetHelper {
                 LogHelper.warn(`GET请求重试第${retryCount}次：${url}`)
             }
 
-            re = await TaskHelper.tryExecute(async () => await Ipc.net.get(url, config))
+            re = await this._executeNetTask(
+                url,
+                retry,
+                0,
+                async () => await Ipc.net.get<'arrayBuffer'>(url, config)
+            )
 
             if (!re.hasError) {
-                const result = re.result as IResult<ArrayBuffer>
+                const result = re.result
                 if (result.ok || result.status === 403) {
                     return result
                 }
             } else {
+                if (this._isTaskCanceled(re.error)) {
+                    break
+                }
                 LogHelper.error(`GET请求失败：${url}`, re.error)
             }
 

@@ -1,5 +1,4 @@
-import { ipcMain, session } from 'electron'
-import fetch from 'electron-fetch'
+import { ipcMain, net, session } from 'electron'
 import iconv from 'iconv-lite'
 
 import { tryExecute } from './func'
@@ -8,7 +7,7 @@ import { tryExecute } from './func'
 interface IFetchOptions {
     headers?: Record<string, string>
     timeout?: number
-    parse?: 'arrayBuffer' | 'blob' | 'formData' | 'json' | 'text' | 'buffer'
+    parse?: 'arrayBuffer' | 'blob' | 'formData' | 'json' | 'text'
 }
 
 interface IResult<T> {
@@ -20,34 +19,70 @@ interface IResult<T> {
 }
 
 /**
+ * 发送请求并兼容超时控制
+ * @param url 请求地址
+ * @param init 请求配置
+ * @param timeout 超时时间
+ */
+async function request(url: string, init: RequestInit, timeout: number = 7000) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    try {
+        return await net.fetch(url, {
+            ...init,
+            signal: controller.signal
+        })
+    } finally {
+        clearTimeout(timeoutId)
+    }
+}
+
+/**
+ * 解析响应体
+ * @param response 响应对象
+ * @param parse 解析方式
+ */
+async function parseResponseBody(response: Response, parse?: IFetchOptions['parse']) {
+    if (parse === 'arrayBuffer') {
+        return await response.arrayBuffer()
+    }
+
+    if (parse === 'blob') {
+        return await response.blob()
+    }
+
+    if (parse === 'formData') {
+        return await response.formData()
+    }
+
+    if (parse === 'json') {
+        return await response.json()
+    }
+
+    return await response.text()
+}
+
+/**
  * 发送 GET 请求
  */
 ipcMain.handle('net:get', async (_, url: string, options?: IFetchOptions) => {
     return await tryExecute(async () => {
-        const response = await fetch(url, {
-            method: 'GET',
-            timeout: 7000, // 默认超时7秒
-            ...(options || {})
-        })
+        const response = await request(
+            url,
+            {
+                method: 'GET',
+                ...(options?.headers ? { headers: options.headers } : {})
+            },
+            options?.timeout
+        )
 
         const result: IResult<any> = {
             ok: response.ok,
             status: response.status,
             statusText: response.statusText,
             headers: Object.fromEntries(response.headers.entries()),
-            body: null
-        }
-
-        if (options?.parse === 'arrayBuffer') {
-            result.body = await response.arrayBuffer()
-        } else if (options?.parse === 'blob') {
-            result.body = await response.blob()
-        } else if (options?.parse === 'formData') {
-            result.body = await response.formData()
-        } else if (options?.parse === 'json') {
-            result.body = await response.json()
-        } else {
-            result.body = await response.text()
+            body: await parseResponseBody(response, options?.parse)
         }
 
         return result
@@ -76,34 +111,22 @@ ipcMain.handle('net:post', async (_, url: string, body: any, options?: IFetchOpt
             }
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            body: _body,
-            headers,
-            timeout: 7000, // 默认超时7秒
-            ...(options || {})
-        })
+        const response = await request(
+            url,
+            {
+                method: 'POST',
+                body: _body,
+                headers
+            },
+            options?.timeout
+        )
 
         const result: IResult<any> = {
             ok: response.ok,
             status: response.status,
             statusText: response.statusText,
             headers: Object.fromEntries(response.headers.entries()),
-            body: null
-        }
-
-        if (options?.parse === 'arrayBuffer') {
-            result.body = await response.arrayBuffer()
-        } else if (options?.parse === 'blob') {
-            result.body = await response.blob()
-        } else if (options?.parse === 'formData') {
-            result.body = await response.formData()
-        } else if (options?.parse === 'json') {
-            result.body = await response.json()
-        } else if (options?.parse === 'buffer') {
-            result.body = await response.buffer()
-        } else {
-            result.body = await response.text()
+            body: await parseResponseBody(response, options?.parse)
         }
 
         return result
@@ -158,7 +181,7 @@ ipcMain.handle('net:ping', async (_, host: string, timeout: number = 3000) => {
 
         try {
             const startTime = Date.now()
-            const response = await fetch(`http://${host}`, {
+            const response = await net.fetch(`http://${host}`, {
                 method: 'HEAD',
                 signal: controller.signal
             })

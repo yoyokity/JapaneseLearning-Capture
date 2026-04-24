@@ -69,8 +69,7 @@ const translators = {
 
             // headers
             const headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': String(body.length)
+                'Content-Type': 'application/x-www-form-urlencoded'
             }
 
             const re = await NetHelper.post(url, body, {
