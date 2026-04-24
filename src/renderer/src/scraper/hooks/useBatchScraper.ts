@@ -29,13 +29,17 @@ export function useBatchScraper() {
 
     /**
      * 刮削一个完整的视频，同时自动保存
+     * @returns 返回刮削结果
+     * scraperState 为 error 时，scraperStateText 表示失败原因，videoFile 不存在
+     * scraperState 为 success 时，videoFile 表示生成后的文件信息，scraperStateText 不存在
+     * scraperState 为 warn 时，videoFile 表示生成后的文件信息，scraperStateText 表示警告内容
      */
     async function scraperRun(
         search: { title: string; num?: Record<string, string> },
         sourceVideoPath: Path,
         scraperName: string,
         onProgress: (progress: number) => void
-    ): Promise<{ scraperState: ScraperState; scraperStateText?: string }> {
+    ): Promise<{ scraperState: ScraperState; scraperStateText?: string; videoFile?: IVideoFile }> {
         // 确认文件是否存在
         if (!(await sourceVideoPath.isExist())) {
             onProgress(100)
@@ -225,13 +229,23 @@ export function useBatchScraper() {
         context.logger.success(`刮削完成！`, toRaw(video))
         context.logger.success(`保存路径：${videoDir.result.result.parent}`)
 
+        // 生成videoFile
+        const videoFile: IVideoFile = {
+            path: videoDir.result.result,
+            dir: videoDir.result.result.parent,
+            fileName: videoDir.result.result.basename,
+            extname: videoDir.result.result.extname,
+            nfoPath: videoDir.result.result.parent.join(`${videoDir.result.result.basename}.nfo`),
+            ...video
+        }
+
         // 有warn
         if (scraperWarnText) {
             context.logger.warn(scraperWarnText)
-            return { scraperState: 'warn', scraperStateText: scraperWarnText }
+            return { scraperState: 'warn', scraperStateText: scraperWarnText, videoFile }
         }
 
-        return { scraperState: 'success' }
+        return { scraperState: 'success', videoFile }
     }
 
     return {

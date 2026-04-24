@@ -1,423 +1,60 @@
 <script lang="ts" setup>
-import type { Path } from '@renderer/helper'
-import type { ScraperState } from '@renderer/scraper/hooks/type'
-import type { MenuItem } from 'primevue/menuitem'
+import type { IFileItem } from './scraperView.hook/type'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
-import { useMessage } from '@renderer/components/control/message'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
-import FileItemEditor from '@renderer/components/scraperView/fileItemEditor.vue'
-import { LogHelper, PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
-import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
+import { videoExtensions } from '@renderer/helper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
-import { cloneDeep } from 'es-toolkit'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
 import Menu from 'primevue/menu'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import { useDialog } from 'primevue/usedialog'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
-interface IFileItem {
-    /** 文件路径 */
-    file: Path
-    /** 标题 */
-    title: string
-    /** 编号 */
-    num: Record<string, string>
-    /** 是否参与刮削 */
-    checked: boolean
-    /** 文件类型颜色 */
-    extColor: string
-    /** 刮削器名称 */
-    scraper: string
-    /** 进度 */
-    progress: number
-    /** 刮削状态 */
-    scraperState: ScraperState | null
-    /** 刮削状态文本 */
-    scraperStateText?: string
-}
+import {
+    fileItemSize,
+    useFileAppendRemove,
+    useFileChecked,
+    useFileContextMenu,
+    useScraperStartCancel,
+    useScraperViewMenu
+} from './scraperView.hook'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
 const dialog = useDialog()
-const message = useMessage()
-const { scraperRun } = useBatchScraper()
-
-const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
-const fileItemContextMenu = ref()
-const scraperMenu = ref()
-const currentMenuItem = ref<IFileItem | null>(null)
-const currentContextMenuItem = ref<IFileItem | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const isDragging = ref(false)
-
-const fileItemSize = 78
 const fileList = ref<IFileItem[]>([])
-const fileItemStateColorMap: Record<ScraperState, string> = {
-    error: 'var(--error-color)',
-    warn: 'var(--warning-color)',
-    success: 'var(--success-color)'
-}
 
-const isAllChecked = computed(() => {
-    const enableFileList = fileList.value.filter((item) => !getFileDisable(item))
+const {
+    isDragging,
+    openFileSelect,
+    handleFileSelect,
+    handleDrop,
+    handleDragEnter,
+    handleDragLeave,
+    removeFile,
+    clearFiles
+} = useFileAppendRemove(fileList, fileInputRef)
 
-    return enableFileList.length > 0 && enableFileList.every((item) => item.checked)
-})
+const { getFileDisable, isAllChecked, checkedFileList, toggleFileChecked, toggleAllFilesChecked } =
+    useFileChecked(fileList)
 
-/**
- * 需要刮削的文件列表
- */
-const checkedFileList = computed(() =>
-    fileList.value.filter((item) => item.checked && item.progress <= 0)
-)
+const { fileItemContextMenuItems, showFileItemContextMenu } = useFileContextMenu()
 
-/**
- * 刮削器菜单项
- */
-const scraperMenuItems = computed<MenuItem[]>(() =>
-    scraperOptions.map((scraperName) => ({
-        label: scraperName,
-        command: () => {
-            if (currentMenuItem.value) {
-                currentMenuItem.value.scraper = scraperName
-            }
-        }
-    }))
-)
+const {
+    scraperOptions,
+    scraperMenuItems,
+    showScraperMenu,
+    showFileEditor,
+    getNumText,
+    getFileProgressColor,
+    getFileTooltipText
+} = useScraperViewMenu(dialog)
 
-/**
- * 文件项右键菜单项
- */
-const fileItemContextMenuItems = ref<MenuItem[]>([
-    {
-        label: '编辑刮削数据',
-        command: () => {
-            if (!currentContextMenuItem.value) return
-
-            handleEditScraperData(currentContextMenuItem.value)
-        }
-    }
-])
-
-/**
- * 判断文件是否为支持的视频格式
- * @param filePath 文件路径
- */
-function isVideoFile(filePath: Path) {
-    const ext = filePath.extname.toLowerCase()
-    return Object.keys(videoExtensions).includes(ext)
-}
-
-/**
- * 获取文件类型图标背景色
- * @param filePath 文件路径
- */
-function getFileExtColor(filePath: Path) {
-    const ext = filePath.extname.toLowerCase()
-    return videoExtensions[ext] || 'var(--p-text-muted-color)'
-}
-
-/**
- * 获取编号展示文本
- * @param item 文件项
- */
-function getNumText(item: IFileItem) {
-    return Object.entries(item.num)
-        .map(([key, value]) => `${key}:${value}`)
-        .join(',  ')
-}
-
-/**
- * 获取进度条颜色
- * @param item 文件项
- */
-function getFileProgressColor(item: IFileItem) {
-    return item.scraperState ? fileItemStateColorMap[item.scraperState] : item.extColor
-}
-
-/**
- * 获取文件提示文本
- * @param item 文件项
- */
-function getFileTooltipText(item: IFileItem) {
-    if (item.scraperState === null || item.scraperState === 'success') {
-        return undefined
-    }
-
-    return `${item.scraperState === 'error' ? '失败' : '提示'}：\n ${item.scraperStateText}`
-}
-
-/**
- * 获取文件item禁用状态
- * @description 开始刮削后，所有文件都禁用；刮削完成的文件禁用
- * @param item 文件项
- */
-function getFileDisable(item: IFileItem) {
-    // 开始刮削后，所有文件都禁用
-    if (globalStates.batchRunning) {
-        return true
-    }
-
-    if (item.scraperState === null && item.progress <= 0) {
-        return false
-    }
-
-    // 刮削完成的文件禁用
-    return true
-}
-
-/**
- * 判断文件项是否支持右键菜单
- * @param item 文件项
- */
-function getFileItemCanContextmenu(item: IFileItem) {
-    return item.scraperState === 'warn' || item.scraperState === 'success'
-}
-
-/**
- * 处理拖拽进入和悬停状态
- */
-function handleDragEnter() {
-    isDragging.value = true
-}
-
-/**
- * 处理拖拽离开状态
- * @param e 拖拽事件
- */
-function handleDragLeave(e: DragEvent) {
-    if (!(e.currentTarget instanceof HTMLElement)) return
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return
-
-    isDragging.value = false
-}
-
-/**
- * 添加文件到列表
- * @param files 文件列表
- */
-async function appendFiles(files: File[]) {
-    if (!files.length) return
-
-    const nextFiles: IFileItem[] = []
-
-    for (const file of files) {
-        const filePath = await PathHelper.getPathForFile(file)
-        if (!filePath) continue
-
-        const path = PathHelper.newPath(filePath)
-        if (!isVideoFile(path)) continue
-
-        nextFiles.push({
-            file: path,
-            title: path.basename,
-            num: {},
-            checked: true,
-            extColor: getFileExtColor(path),
-            scraper: settings.currentScraper,
-            progress: 0,
-            scraperState: null
-        })
-    }
-
-    if (!nextFiles.length) return
-
-    const fileMap = new Map(fileList.value.map((item) => [item.file.toString(), item]))
-    for (const item of nextFiles) {
-        fileMap.set(item.file.toString(), item)
-    }
-
-    fileList.value = Array.from(fileMap.values())
-}
-
-/**
- * 打开文件选择窗口
- */
-function openFileSelect() {
-    fileInputRef.value?.click()
-}
-
-/**
- * 处理文件选择
- * @param e 选择事件
- */
-async function handleFileSelect(e: Event) {
-    const input = e.target as HTMLInputElement
-    const files = Array.from(input.files || [])
-
-    await appendFiles(files)
-
-    input.value = ''
-}
-
-/**
- * 处理文件拖入
- * @param e 拖放事件
- */
-async function handleDrop(e: DragEvent) {
-    e.preventDefault()
-    isDragging.value = false
-
-    const files = Array.from(e.dataTransfer?.files || [])
-
-    await appendFiles(files)
-}
-
-/**
- * 删除文件项
- * @param path 文件路径
- */
-function removeFile(path: Path) {
-    fileList.value = fileList.value.filter((item) => item.file.toString() !== path.toString())
-}
-
-/**
- * 清空文件列表
- */
-function clearFiles() {
-    fileList.value = []
-}
-
-/**
- * 切换文件选中状态
- * @param item 文件项
- */
-function toggleFileChecked(item: IFileItem) {
-    item.checked = !item.checked
-}
-
-/**
- * 切换全部文件选中状态
- */
-function toggleAllFilesChecked() {
-    const nextChecked = !isAllChecked.value
-    fileList.value.forEach((item) => {
-        if (getFileDisable(item)) return
-
-        item.checked = nextChecked
-    })
-}
-
-/**
- * 打开刮削器选择菜单
- * @param event 鼠标事件
- * @param item 当前文件项
- */
-function showScraperMenu(event: MouseEvent, item: IFileItem) {
-    currentMenuItem.value = item
-    scraperMenu.value?.toggle?.(event)
-}
-
-/**
- * 打开文件项右键菜单
- * @param event 鼠标事件
- * @param item 当前文件项
- */
-function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
-    if (!getFileItemCanContextmenu(item)) return
-
-    event.preventDefault()
-    event.stopPropagation()
-
-    currentContextMenuItem.value = item
-    fileItemContextMenu.value?.show?.(event)
-}
-
-/**
- * 编辑刮削数据
- * @param item 文件项
- */
-function handleEditScraperData(item: IFileItem) {}
-
-/**
- * 打开文件信息编辑窗口
- * @param item 文件项
- */
-function showFileEditor(item: IFileItem) {
-    dialog.open(FileItemEditor, {
-        props: {
-            modal: true,
-            draggable: false,
-            showHeader: false,
-            style: {
-                width: 'fit-content',
-                maxWidth: '90vw'
-            },
-            header: '信息编辑'
-        },
-        data: {
-            scraperName: item.scraper,
-            title: item.title,
-            num: { ...item.num }
-        },
-        onClose: (options) => {
-            const data = options?.data
-            if (!data) return
-
-            item.title = data.title || item.file.basename
-            item.num = data.num || {}
-        }
-    })
-}
-
-/**
- * 开始刮削
- */
-async function handleStart() {
-    if (!checkedFileList.value.length) {
-        message.toast.info('没有需要刮削的文件')
-        return
-    }
-
-    globalStates.batchRunning = true
-    globalStates.batchScrapedCount = 0
-    globalStates.batchTotalCount = checkedFileList.value.length
-
-    // 遍历所有需要刮削的文件
-    for (const file of checkedFileList.value) {
-        TaskHelper.queueWithCancel({ taskName: 'scraper-batch-all' }, async () => {
-            // 刮削单个文件
-            const { scraperState, scraperStateText } = await scraperRun(
-                cloneDeep({
-                    title: file.title,
-                    num: file.num
-                }),
-                file.file,
-                file.scraper,
-                (progress) => {
-                    file.progress = progress
-                }
-            )
-
-            // 更新文件状态
-            file.scraperState = scraperState
-            file.scraperStateText = scraperStateText
-
-            // 更新批量刮削进度
-            globalStates.batchScrapedCount += 1
-        })
-    }
-
-    TaskHelper.queueWithCancel({ taskName: 'scraper-batch-all' }, () => {
-        globalStates.batchRunning = false
-    })
-}
-
-/**
- * 取消刮削
- */
-function handleCancel() {
-    TaskHelper.queueClear('scraper-batch-single')
-    TaskHelper.queueClear('scraper-batch-all')
-
-    globalStates.batchRunning = false
-    LogHelper.warn('刮削已取消！')
-}
+const { handleStart, handleCancel } = useScraperStartCancel(checkedFileList)
 </script>
 
 <template>
