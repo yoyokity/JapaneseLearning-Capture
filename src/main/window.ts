@@ -3,7 +3,7 @@ import { is } from '@electron-toolkit/utils'
 import { BrowserWindow, shell } from 'electron'
 import ElectronStore from 'electron-store'
 
-const iconPath = resolve(__dirname, '../../resources/icon.png')
+const iconPath = resolve(__dirname, '../../resources/mainIcon.png')
 
 interface IBrowserWindowConfig {
     width: number

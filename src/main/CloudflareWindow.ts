@@ -3,7 +3,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 
 import { tryExecute } from './ipc/func'
 
-const iconPath = resolve(__dirname, '../../resources/icon.png')
+const iconPath = resolve(__dirname, '../../resources/mainIcon.png')
 
 /** Cloudflare 验证结果 */
 export interface ICloudflareCookies {

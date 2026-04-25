@@ -1,8 +1,8 @@
 {
     "name": "japanese-learning-capture",
     "type": "module",
-    "version": "1.0.0",
-    "description": "An Electron application with Vue and TypeScript",
+    "version": "2.0.0",
+    "description": "日语学习资料的刮削、管理工具🤪",
     "author": "yoyokity",
     "main": "./dist/main/index.js",
     "scripts": {
@@ -11,7 +11,7 @@
         "dev": "chcp 65001 && electron-vite dev --outDir=dist",
         "build": "npm run build:icons && npm run build:vite",
         "build:vite": "electron-vite build --outDir=dist",
-        "build:icons": "electron-icon-builder --input=./resources/icon.png --output=./build -f",
+        "build:icons": "electron-icon-builder --input=./resources/mainIcon.png --output=./build -f",
         "package": "npm run build && electron-forge package",
         "make ": "npm run build && electron-forge make"
     },

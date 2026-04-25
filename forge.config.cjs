@@ -4,7 +4,9 @@ module.exports = {
         appCopyright: 'Copyright © 2080 yoyokity',
         icon: 'build/icons/icon.ico',
         overwrite: true,
-        asar: false, // 不使用asar
+        asar: {
+            unpack: '{**/node_modules/@img/**,**/node_modules/sharp/**}'
+        },
         win32metadata: {
             ProductName: 'Japanese Learning Capture'
         },
@@ -27,10 +29,15 @@ module.exports = {
             'pnpm-lock.yaml',
             'forge.config.cjs',
             'electron.vite.config.js',
+            'electron.vite.config.ts',
             'README.md',
             'tsconfig.json',
             'tsconfig.node.json',
-            'tsconfig.web.json'
+            'tsconfig.web.json',
+            '.VSCodeCounter',
+            'eslint.config.js',
+            'pnpm-workspace.yaml',
+            'postcss.config.ts'
         ]
     },
     rebuildConfig: {},
