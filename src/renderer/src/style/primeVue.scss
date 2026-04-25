@@ -1,0 +1,157 @@
+.p-select,
+input {
+    width: 200px;
+}
+
+.button,
+button {
+    transition: all 0.3s var(--animation-type) !important;
+
+    &:not(:disabled):active {
+        transform: translateY(2px);
+    }
+}
+
+.p-tooltip,
+.p-button-link {
+    font-size: calc(1rem - 2px) !important;
+}
+
+//隐藏tooltip箭头
+.p-tooltip-arrow {
+    display: none !important;
+}
+
+.p-scrolltop.p-button {
+    inset-block-end: 1rem !important;
+    inset-inline-end: 1rem !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: var(--p-surface-200) !important;
+    opacity: 0.8;
+
+    &:hover {
+        opacity: 1 !important;
+        box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2) !important;
+        background: var(--p-surface-0) !important;
+        color: var(--p-primary-color) !important;
+    }
+}
+
+.p-toast {
+    z-index: 9999 !important;
+}
+
+.p-dialog {
+    // overflow: hidden;
+
+    .p-dialog-content {
+        padding: 0 2rem;
+
+        //自定义的header
+        .header {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            border-bottom: var(--separator);
+
+            h1 {
+                font-size: 1.25rem;
+                margin-bottom: 0;
+            }
+        }
+
+        //自定义的content
+        .content {
+            padding: 2rem 0;
+        }
+
+        //自定义的footer
+        .footer {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+            gap: 1rem;
+            padding: 1rem 0 1.75rem 0;
+            margin-left: auto;
+            width: 100%;
+            height: calc(var(--header-height) + 0.75rem);
+            border-top: var(--separator);
+        }
+    }
+}
+
+// 去除超链接button默认的下划线
+a.p-button {
+    text-decoration: none !important;
+}
+
+// 修复部分 Dialog 首次打开时遮罩层无渐变动画的问题
+.p-dialog-mask.p-overlay-mask {
+    animation-duration: 0.3s;
+    animation-timing-function: ease;
+    animation-fill-mode: both;
+}
+
+.p-dialog-mask.p-overlay-mask-enter-active {
+    animation-name: dialog-mask-fade-in;
+}
+
+.p-dialog-mask.p-overlay-mask-leave-active {
+    animation-name: dialog-mask-fade-out;
+}
+
+@keyframes dialog-mask-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes dialog-mask-fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+// toast动画效果
+.p-toast-message-enter-active {
+    animation: p-toast-message-in 0.3s var(--animation-type) !important;
+    animation-fill-mode: both;
+}
+
+.p-toast-message-leave-active {
+    animation: p-toast-message-out 0.3s var(--animation-type) !important;
+    animation-fill-mode: both;
+}
+
+@keyframes p-toast-message-in {
+    from {
+        opacity: 0;
+        transform: translateY(-2rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes p-toast-message-out {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-2rem);
+    }
+}

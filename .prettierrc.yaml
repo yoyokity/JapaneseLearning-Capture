@@ -1,0 +1,19 @@
+# printWidth: 单行代码字符数限制，超过会换行
+printWidth: 100
+# tabWidth: 缩进的空格数
+tabWidth: 4
+useTabs: false
+# semi: 代码结尾不加分号
+semi: false
+# singleQuote: 使用单引号
+singleQuote: true
+# jsxSingleQuote: JSX 中也使用单引号
+jsxSingleQuote: true
+# trailingComma: 对象、数组结尾不加逗号
+trailingComma: none
+# vueIndentScriptAndStyle: Vue 文件中的 script 和 style 标签不缩进
+vueIndentScriptAndStyle: false
+# bracketSpacing: 对象字面量的大括号之间加空格
+bracketSpacing: true
+# bracketSameLine: JSX 标签的 > 放在最后一行的结尾
+bracketSameLine: false
