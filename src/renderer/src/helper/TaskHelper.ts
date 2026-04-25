@@ -188,17 +188,21 @@ export class TaskHelper {
 
     /**
      * 清除指定任务队列，取消所有待执行的任务
-     * @param taskName 任务名称，如果不传则清除所有队列
+     * @param taskName 任务名称，可以传单个或多个，不传则清除所有队列
      */
-    static queueClear(taskName?: string): void {
+    static queueClear(taskName?: string | string[]): void {
         if (taskName) {
-            const queue = this._taskQueues.get(taskName)
-            if (queue) {
-                queue.clear()
-                this._lastExecutionTimes.set(taskName, 0)
-            }
+            const taskNames = Array.isArray(taskName) ? taskName : [taskName]
 
-            this._queueClearVersions.set(taskName, this.getQueueClearVersion(taskName) + 1)
+            for (const item of taskNames) {
+                const queue = this._taskQueues.get(item)
+                if (queue) {
+                    queue.clear()
+                    this._lastExecutionTimes.set(item, 0)
+                }
+
+                this._queueClearVersions.set(item, this.getQueueClearVersion(item) + 1)
+            }
         } else {
             // 清除所有队列
             for (const [taskName, queue] of this._taskQueues.entries()) {

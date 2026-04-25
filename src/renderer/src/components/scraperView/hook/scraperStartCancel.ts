@@ -63,8 +63,7 @@ export function useScraperStartCancel(checkedFileList: Ref<IFileItem[]>) {
      * 取消刮削
      */
     function handleCancel() {
-        TaskHelper.queueClear('scraper-batch-single')
-        TaskHelper.queueClear('scraper-batch-all')
+        TaskHelper.queueClear(['scraper-batch-single', 'scraper-batch-all'])
 
         globalStates.batchRunning = false
         LogHelper.warn('刮削已取消！')

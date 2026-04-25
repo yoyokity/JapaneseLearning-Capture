@@ -143,24 +143,11 @@ export interface IVideoFile extends IVideo {
 }
 
 /**
- * 创建视频文件信息
- * @param path 视频文件路径
+ * 创建视频信息
+ * @param params 视频信息，可只传入部分字段
  */
-export function createVideoFile(path: string): IVideoFile {
-    const _path = PathHelper.newPath(path)
-    const nfoPath = _path.parent.join(`${_path.basename}.nfo`)
-
-    const video: IVideoFile = {
-        path: _path,
-        dir: _path.parent,
-        fileName: _path.basename,
-        extname: _path.extname,
-        nfoPath,
-        poster: null,
-        thumb: null,
-        fanart: null,
-        extrafanart: [],
-        //
+export function createVideo(params: Partial<IVideo> = {}): IVideo {
+    const video: IVideo = {
         scraperName: '',
         title: '',
         originaltitle: '',
@@ -179,7 +166,32 @@ export function createVideoFile(path: string): IVideoFile {
         genre: [],
         year: '',
         premiered: '',
-        releasedate: ''
+        releasedate: '',
+        poster: null,
+        thumb: null,
+        fanart: null,
+        extrafanart: [],
+        ...params
+    }
+
+    return video
+}
+
+/**
+ * 创建视频文件信息
+ * @param path 视频文件路径
+ */
+export function createVideoFile(path: string): IVideoFile {
+    const _path = PathHelper.newPath(path)
+    const nfoPath = _path.parent.join(`${_path.basename}.nfo`)
+
+    const video: IVideoFile = {
+        ...createVideo(),
+        path: _path,
+        dir: _path.parent,
+        fileName: _path.basename,
+        extname: _path.extname,
+        nfoPath
     }
 
     return video

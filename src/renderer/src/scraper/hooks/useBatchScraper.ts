@@ -3,7 +3,7 @@ import type { IVideo, IVideoFile } from '@renderer/scraper'
 import type { IScraperContext, ScraperState } from '@renderer/scraper/hooks/type'
 
 import { LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
+import { createVideo, Scraper } from '@renderer/scraper'
 import { parseFuncs } from '@renderer/scraper/hooks/type'
 import { settingsStore } from '@renderer/stores'
 import { toRaw } from 'vue'
@@ -59,31 +59,13 @@ export function useBatchScraper() {
         }
 
         // 创建新的video对象
-        const video: IVideo = {
+        const video: IVideo = createVideo({
             scraperName,
             title: search.title,
             originaltitle: search.title,
             sorttitle: search.title,
-            tagline: '',
-            num: search.num || {},
-            mpaa: '',
-            rating: '',
-            director: '',
-            actor: [],
-            studio: '',
-            maker: '',
-            set: '',
-            tag: [],
-            genre: [],
-            plot: '',
-            year: '',
-            premiered: '',
-            releasedate: '',
-            poster: null,
-            thumb: null,
-            fanart: null,
-            extrafanart: []
-        }
+            num: search.num || {}
+        })
 
         context.logger.separator()
         context.logger.log(`开始刮削：`, toRaw(video))

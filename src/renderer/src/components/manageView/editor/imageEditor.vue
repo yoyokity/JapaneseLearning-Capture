@@ -152,6 +152,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     </h2>
                     <Button
                         v-tooltip="'搜索'"
+                        :disabled="globalStates.batchRunning"
                         icon="pi pi-search"
                         variant="outlined"
                         style="height: fit-content"
@@ -193,6 +194,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                 <h2 style="margin-right: 1rem; margin-bottom: 1rem; text-align: center">剧照</h2>
                 <Button
                     v-tooltip="'搜索'"
+                    :disabled="globalStates.batchRunning"
                     icon="pi pi-search"
                     variant="outlined"
                     style="height: fit-content"

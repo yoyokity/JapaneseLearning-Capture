@@ -18,7 +18,7 @@ import {
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
-import { settingsStore } from '@renderer/stores'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
 import Button from 'primevue/button'
@@ -34,6 +34,7 @@ import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
 const { scraperAll, scraperField, scraperSave } = useEditeScraper()
+const globalStates = globalStatesStore()
 const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
@@ -195,6 +196,17 @@ function getNumLink(sourceName: string) {
 }
 
 /**
+ * 打开编号对应的外部链接
+ * @param sourceName 编号源名称
+ */
+function openNumLink(sourceName: string) {
+    const link = getNumLink(sourceName)
+    if (!link) return
+
+    window.open(link, '_blank')
+}
+
+/**
  * 翻译剧情
  */
 async function transPlot() {
@@ -276,6 +288,7 @@ onMounted(async () => {
                         />
                         <Button
                             v-tooltip="'刮削全部信息'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
@@ -302,13 +315,11 @@ onMounted(async () => {
                         <label for="title_num">{{ value }}</label>
                         <Button
                             v-tooltip="'打开链接'"
-                            :disabled="!getNumLink(value)"
-                            :href="getNumLink(value)"
-                            as="a"
+                            :disabled="globalStates.batchRunning || !getNumLink(value)"
                             icon="pi pi-external-link"
                             style="margin-left: 0.5rem"
-                            target="_blank"
                             variant="outlined"
+                            @click="openNumLink(value)"
                         />
                     </FloatLabel>
 
@@ -321,6 +332,7 @@ onMounted(async () => {
                         <label for="title_label">标题</label>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
@@ -340,6 +352,7 @@ onMounted(async () => {
                         <label for="original_title_label">原标题</label>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
@@ -356,6 +369,7 @@ onMounted(async () => {
                         <label for="sort_title_label">排序标题</label>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
@@ -368,6 +382,7 @@ onMounted(async () => {
                         <label for="sort_title_label">影片系列</label>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
@@ -391,6 +406,7 @@ onMounted(async () => {
                         <div style="display: flex; flex-direction: column; gap: 0.5rem">
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -398,6 +414,7 @@ onMounted(async () => {
                             />
                             <Button
                                 v-tooltip="'对当前文本进行翻译'"
+                                :disabled="globalStates.batchRunning"
                                 :loading="isTranslatingPlot"
                                 icon="pi pi-language"
                                 variant="outlined"
@@ -412,6 +429,7 @@ onMounted(async () => {
                         <label for="tagline_label">宣传词</label>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
@@ -428,6 +446,7 @@ onMounted(async () => {
                         <label for="director_label">导演</label>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
@@ -523,6 +542,7 @@ onMounted(async () => {
                         </div>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
@@ -586,6 +606,7 @@ onMounted(async () => {
                         </div>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
@@ -653,6 +674,7 @@ onMounted(async () => {
                         </div>
                         <Button
                             v-tooltip="'搜索'"
+                            :disabled="globalStates.batchRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
@@ -674,6 +696,7 @@ onMounted(async () => {
                             <label for="mpaa_label">分级</label>
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -695,6 +718,7 @@ onMounted(async () => {
                             <label for="rating_label">评分</label>
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -717,6 +741,7 @@ onMounted(async () => {
                             <label for="mpaa_label">发行商</label>
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -733,6 +758,7 @@ onMounted(async () => {
                             <label for="rating_label">制片商</label>
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -752,6 +778,7 @@ onMounted(async () => {
                             <label for="year_label">发行年份</label>
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -782,6 +809,7 @@ onMounted(async () => {
                             <label for="mpaa_label">上映日期</label>
                             <Button
                                 v-tooltip="'搜索'"
+                                :disabled="globalStates.batchRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
@@ -869,7 +897,7 @@ onMounted(async () => {
             margin: initial;
             margin-top: var(--spacing);
             padding-left: 0.5rem;
-            color: var(--p-primary-color);
+            color: var(--p-pink-600);
             margin-right: auto;
             display: flex;
             align-items: center;
