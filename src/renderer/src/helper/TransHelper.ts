@@ -150,7 +150,7 @@ const translators = {
                 apiKey: settings.translate.openai.apiKey,
                 model: settings.translate.openai.model,
                 baseURL: settings.translate.openai.baseURL,
-                system: getNSFWPrompt(targetLanguage),
+                system: getGptPrompt(targetLanguage),
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback
             })
@@ -184,7 +184,7 @@ const translators = {
                 provider: 'gemini',
                 apiKey: settings.translate.gemini.apiKey,
                 model: settings.translate.gemini.model,
-                system: getAIPrompt(targetLanguage),
+                system: getGeminiPrompt(targetLanguage),
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback
             })
@@ -219,7 +219,7 @@ const translators = {
                 apiKey: 'local-llm',
                 model: settings.translate.localLLM.model,
                 baseURL: `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1`,
-                system: getNSFWPrompt(targetLanguage),
+                system: getLLMPrompt(targetLanguage),
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback,
                 timeout: 30 * 1000 // 预留充分时间，方便llm加载
@@ -385,28 +385,38 @@ function parseLLM(inputString: string) {
     return inputString
 }
 
-/**
- * 获取 AI 翻译提示词
- */
-function getAIPrompt(targetLanguage: string) {
+function getPrompt(targetLanguage: string) {
     return `
     - 你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。
     - 不要返回md格式，返回纯文本给我。
     - 标点符号之类的转为${targetLanguage}语言的标点。
     - 注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语。
-    - 自行优化排版，段落之间空一行，段首顶格。
+    - 自行优化排版，段落之间空一行，段首顶格。`
+}
+
+/**
+ * gemini的提示词
+ */
+function getGeminiPrompt(targetLanguage: string) {
+    return `${getPrompt(targetLanguage)}
     - 淫秽词汇自行使用更加全年龄的表达。`
 }
 
 /**
- * 获取 AI 翻译提示词
+ * gpt的提示词
  */
-function getNSFWPrompt(targetLanguage: string) {
-    return `
-    - 你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。
-    - 不要返回md格式，返回纯文本给我。
-    - 标点符号之类的转为${targetLanguage}语言的标点。
-    - 注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语。
-    - 自行优化排版，段落之间空一行，段首顶格。
+function getGptPrompt(targetLanguage: string) {
+    return `${getPrompt(targetLanguage)}
     - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。`
+}
+
+/**
+ * llm的提示词
+ */
+function getLLMPrompt(targetLanguage: string) {
+    return `${getPrompt(targetLanguage)}
+    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。
+    - 让语句更加色情化。
+    - 男性生殖器请使用"肉棒"表达，女性生殖器请使用"小穴"表达，女性胸部请使用"欧派"表达。
+    - "性侵"一类的词使用"凌辱"或"调教"表达。`
 }
