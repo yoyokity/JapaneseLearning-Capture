@@ -416,7 +416,5 @@ function getGptPrompt(targetLanguage: string) {
 function getLLMPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
     - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。
-    - 让语句更加色情化。
-    - 男性生殖器请使用"肉棒"表达，女性生殖器请使用"小穴"表达，女性胸部请使用"欧派"表达。
-    - "性侵"一类的词使用"凌辱"或"调教"表达。`
+    - 让语句表达更加NSFW。`
 }
