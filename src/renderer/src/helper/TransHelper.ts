@@ -40,7 +40,11 @@ export interface ITranslateResult {
 const translators = {
     google: {
         description: '谷歌机器翻译不需要额外配置',
-        func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
+        func: async (
+            s_text: string,
+            targetLanguage = 'zh-CN',
+            streamCallback?: (data: string) => void
+        ): Promise<ITranslateResult> => {
             const translateOptions = {
                 from: 'auto',
                 to: targetLanguage,
@@ -80,6 +84,7 @@ const translators = {
             if (re.ok) {
                 try {
                     const text = normaliseResponse(re.body).text.trim()
+                    streamCallback?.(text)
                     return {
                         ok: true,
                         text
@@ -90,6 +95,7 @@ const translators = {
             }
 
             // 翻译失败则原文返回
+            streamCallback?.(s_text)
             return { ok: false, text: s_text }
 
             function parseData(data: string) {
@@ -257,8 +263,8 @@ export class TransHelper {
     /**
      * 翻译
      * @param text 要翻译的文本
-     * @param format 是否格式化
-     * @param streamCallback 翻译过程中每一次流传输的回调
+     * @param format 是否格式化，默认为 true
+     * @param streamCallback 翻译过程中每一次流传输的回调，不会对data进行格式化处理
      * @return 如果翻译失败，则返回原文
      */
     static async translate(
@@ -278,12 +284,18 @@ export class TransHelper {
         // 如果AI翻译失败，则调用谷歌翻译
         if (!re.ok && settings.translate.retryWithGoogle) {
             LogHelper.warn('AI翻译失败，调用谷歌翻译...')
-            const googleRe = await translators.google.func(text, settings.translate.targetLanguage)
+            const googleRe = await translators.google.func(
+                text,
+                settings.translate.targetLanguage,
+                streamCallback
+            )
 
-            return format ? { ...googleRe, text: formatTranslateText(googleRe.text) } : googleRe
+            return format
+                ? { ...googleRe, text: TransHelper.formatTranslateText(googleRe.text) }
+                : googleRe
         }
 
-        return format ? { ...re, text: formatTranslateText(re.text) } : re
+        return format ? { ...re, text: TransHelper.formatTranslateText(re.text) } : re
     }
 
     /**
@@ -329,6 +341,28 @@ export class TransHelper {
     static translateTC(text: string) {
         return toTraditional(text, true)
     }
+
+    /**
+     * 格式化翻译文本
+     * @param text 翻译文本
+     * @description 每一句话之间隔一行，同时句首顶格，全部翻译为简体中文，最后将文本中的转义换行符转为普通换行
+     */
+    static formatTranslateText(text: string) {
+        text = TransHelper.translateSC(text)
+        text = EncodeHelper.normalizePlotLineBreak(text)
+
+        return text
+            .split(/\n+/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .flatMap((line) =>
+                line
+                    .split(/(?<=[。！？!?])/)
+                    .map((sentence) => sentence.trim())
+                    .filter(Boolean)
+            )
+            .join('\n\n')
+    }
 }
 
 // 转义特殊符号
@@ -349,27 +383,6 @@ function parseLLM(inputString: string) {
 
     // 如果没有匹配到<think>标签，则返回原文
     return inputString
-}
-
-/**
- * 格式化翻译文本
- * @param text 翻译文本
- * @description 每一句话之间隔一行，同时句首顶格
- */
-function formatTranslateText(text: string) {
-    return text
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .split(/\n+/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .flatMap((line) =>
-            line
-                .split(/(?<=[。！？!?])/)
-                .map((sentence) => sentence.trim())
-                .filter(Boolean)
-        )
-        .join('\n\n')
 }
 
 /**

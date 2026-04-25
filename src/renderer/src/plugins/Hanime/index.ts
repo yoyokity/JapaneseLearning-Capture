@@ -1,7 +1,7 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 import type { IHanimeContext } from './temp'
 
-import { EncodeHelper, ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
 import { dlsiteOptions, getWebContentDlsite } from '@renderer/plugins/Hanime/Dlsite'
 import {
     getExtrafanartGetchu,
@@ -260,10 +260,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
 
             // 翻译一下
             const re = await TransHelper.translate(plot)
-
-            // 繁化简，转义优化
-            plot = TransHelper.translateSC(re.text.trim())
-            plot = EncodeHelper.normalizePlotLineBreak(plot)
+            plot = re.text
 
             if (!plot) return false
 

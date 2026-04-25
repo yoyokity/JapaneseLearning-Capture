@@ -11,8 +11,10 @@ import {
     isNumeric,
     isUrl,
     isValidDate,
+    LogHelper,
     PathHelper,
-    TaskHelper
+    TaskHelper,
+    TransHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
@@ -38,6 +40,7 @@ const video = dialogRef.value.data.video as IVideoFile
 
 const newVideo = ref<IVideoFile>(createVideoFile(''))
 const isSaving = ref(false)
+const isTranslatingPlot = ref(false)
 
 // tab部分
 const tabs = [
@@ -189,6 +192,29 @@ function getNumLink(sourceName: string) {
     if (!template || !num) return undefined
 
     return template.replace('{num}', EncodeHelper.encodeUrl(num))
+}
+
+/**
+ * 翻译剧情
+ */
+async function transPlot() {
+    if (isTranslatingPlot.value) return
+
+    LogHelper.log('翻译剧情...')
+
+    isTranslatingPlot.value = true
+
+    try {
+        let text = ''
+        await TransHelper.translate(newVideo.value.plot, true, (data) => {
+            text = text + data
+            newVideo.value.plot = TransHelper.formatTranslateText(text)
+        })
+
+        LogHelper.log('翻译完成')
+    } finally {
+        isTranslatingPlot.value = false
+    }
 }
 
 onMounted(async () => {
@@ -362,13 +388,23 @@ onMounted(async () => {
                             style="width: 100%"
                         />
                         <label for="plot_label">内容简介</label>
-                        <Button
-                            v-tooltip="'搜索'"
-                            icon="pi pi-search"
-                            variant="outlined"
-                            style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperField(newVideo, 'parsePlot', '内容简介')"
-                        />
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem">
+                            <Button
+                                v-tooltip="'搜索'"
+                                icon="pi pi-search"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="scraperField(newVideo, 'parsePlot', '内容简介')"
+                            />
+                            <Button
+                                v-tooltip="'对当前文本进行翻译'"
+                                :loading="isTranslatingPlot"
+                                icon="pi pi-language"
+                                variant="outlined"
+                                style="margin-left: 0.5rem; height: fit-content"
+                                @click="transPlot"
+                            />
+                        </div>
                     </FloatLabel>
 
                     <FloatLabel variant="on" style="display: flex">
