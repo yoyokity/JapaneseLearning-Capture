@@ -27,6 +27,108 @@ export const net = {
     ): Promise<IResult<ParseResultType<P>>> => invoke('net:post', url, body, options),
 
     /**
+     * 发送AI流式请求
+     * @param options AI选项
+     */
+    ai: async (options: IAiOptions): Promise<IAiTask> => {
+        const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+        const ipcRenderer = window.electron.ipcRenderer
+
+        let closed = false
+        let isCancelled = false
+        let text = ''
+        let removeDataListener = () => {}
+        let removeEndListener = () => {}
+        let removeErrorListener = () => {}
+
+        /**
+         * 清理事件监听
+         */
+        function cleanup() {
+            if (closed) return
+
+            closed = true
+            removeDataListener()
+            removeEndListener()
+            removeErrorListener()
+        }
+
+        /**
+         * 处理流数据事件
+         */
+        function handleData(_: unknown, payload: IAiDataPayload) {
+            if (payload.requestId !== requestId) return
+
+            text += payload.data
+            options.callback?.(payload.data)
+        }
+
+        let resolveTask!: (value: string) => void
+        let rejectTask!: (reason?: any) => void
+
+        /**
+         * 处理结束事件
+         */
+        function handleEnd(_: unknown, payload: IAiEndPayload) {
+            if (payload.requestId !== requestId) return
+
+            cleanup()
+            resolveTask(payload.text)
+        }
+
+        /**
+         * 处理异常事件
+         */
+        function handleError(_: unknown, payload: IAiErrorPayload) {
+            if (payload.requestId !== requestId) return
+
+            cleanup()
+            if (isCancelled) {
+                rejectTask(new Error('AI流已取消'))
+                return
+            }
+
+            rejectTask(new Error(payload.error))
+        }
+
+        removeDataListener = ipcRenderer.on('net:ai:data', handleData)
+        removeEndListener = ipcRenderer.on('net:ai:end', handleEnd)
+        removeErrorListener = ipcRenderer.on('net:ai:error', handleError)
+
+        const completed = new Promise<string>((resolve, reject) => {
+            resolveTask = resolve
+            rejectTask = reject
+        })
+
+        try {
+            await invoke('net:ai', requestId, {
+                provider: options.provider,
+                apiKey: options.apiKey,
+                model: options.model,
+                baseURL: options.baseURL,
+                system: options.system,
+                prompt: options.prompt,
+                timeout: options.timeout
+            })
+        } catch (error) {
+            cleanup()
+            rejectTask(error)
+        }
+
+        return {
+            requestId,
+            completed,
+            cancel: async () => {
+                isCancelled = true
+                cleanup()
+                await invoke('net:aiCancel', requestId)
+                rejectTask(new Error('AI流已取消'))
+            },
+            getText: () => text
+        }
+    },
+
+    /**
      * 设置默认会话的代理
      * @param config 代理配置
      * @param config.proxyRules 代理规则字符串，例如 "http=foopy:80;https=foopy:80;"
@@ -93,6 +195,48 @@ export interface IFetchOptions {
     parse?: IFetchParse
 }
 
+export interface IAiOptions {
+    /**
+     * AI提供商
+     */
+    provider: 'openai' | 'gemini'
+
+    /**
+     * API Key
+     */
+    apiKey: string
+
+    /**
+     * 模型名称
+     */
+    model: string
+
+    /**
+     * OpenAI兼容接口地址
+     */
+    baseURL?: string
+
+    /**
+     * 系统提示词
+     */
+    system?: string
+
+    /**
+     * 用户输入
+     */
+    prompt: string
+
+    /**
+     * 超时时间（毫秒）
+     */
+    timeout?: number
+
+    /**
+     * 流式回调
+     */
+    callback?: (data: string) => void
+}
+
 export type IFetchParse = 'arrayBuffer' | 'blob' | 'formData' | 'json' | 'text'
 
 export interface IResult<T> {
@@ -101,6 +245,28 @@ export interface IResult<T> {
     statusText: string
     headers: Record<string, string>
     body: T
+}
+
+export interface IAiDataPayload {
+    requestId: string
+    data: string
+}
+
+export interface IAiEndPayload {
+    requestId: string
+    text: string
+}
+
+export interface IAiErrorPayload {
+    requestId: string
+    error: string
+}
+
+export interface IAiTask {
+    requestId: string
+    completed: Promise<string>
+    cancel: () => Promise<void>
+    getText: () => string
 }
 
 /**

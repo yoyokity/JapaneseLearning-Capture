@@ -1,3 +1,6 @@
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
+import { streamText } from 'ai'
 import { ipcMain, net, session } from 'electron'
 import iconv from 'iconv-lite'
 
@@ -16,6 +19,67 @@ interface IResult<T> {
     statusText: string
     headers: Record<string, string>
     body: T
+}
+
+interface IAiStartOptions {
+    provider: 'openai' | 'gemini'
+    apiKey: string
+    model: string
+    baseURL?: string
+    system?: string
+    prompt: string
+    timeout?: number
+}
+
+interface IAiDataPayload {
+    requestId: string
+    data: string
+}
+
+interface IAiEndPayload {
+    requestId: string
+    text: string
+}
+
+interface IAiErrorPayload {
+    requestId: string
+    error: string
+}
+
+const streamControllerMap = new Map<string, AbortController>()
+const streamTimeoutMessageMap = new Map<string, string>()
+
+/**
+ * 适配AI SDK要求的fetch签名
+ * @param input 请求地址
+ * @param init 请求配置
+ */
+function aiFetch(input: RequestInfo | URL, init?: RequestInit) {
+    const requestInput = input instanceof URL ? input.toString() : input
+    return net.fetch(requestInput, init)
+}
+
+/**
+ * 获取AI模型实例
+ * @param options AI配置
+ */
+function getAiModel(options: IAiStartOptions) {
+    if (options.provider === 'openai') {
+        const provider = createOpenAI({
+            apiKey: options.apiKey,
+            fetch: aiFetch,
+            ...(options.baseURL ? { baseURL: options.baseURL } : {})
+        })
+
+        return provider(options.model)
+    }
+
+    const provider = createGoogleGenerativeAI({
+        apiKey: options.apiKey,
+        fetch: aiFetch
+    })
+
+    return provider(options.model)
 }
 
 /**
@@ -130,6 +194,102 @@ ipcMain.handle('net:post', async (_, url: string, body: any, options?: IFetchOpt
         }
 
         return result
+    })
+})
+
+/**
+ * 发送AI流式请求
+ */
+ipcMain.handle('net:ai', async (event, requestId: string, options: IAiStartOptions) => {
+    return await tryExecute(async () => {
+        const controller = new AbortController()
+        const timeout = options.timeout || 7000
+        let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+        /**
+         * 重置流超时计时器
+         * @param errorMessage 超时错误信息
+         */
+        function resetStreamTimeout(errorMessage: string) {
+            if (timeoutId) {
+                clearTimeout(timeoutId)
+            }
+
+            streamTimeoutMessageMap.set(requestId, errorMessage)
+            timeoutId = setTimeout(() => {
+                controller.abort()
+            }, timeout)
+        }
+
+        streamControllerMap.set(requestId, controller)
+        resetStreamTimeout('AI流请求超时：未连接成功或未收到首个数据块')
+
+        void (async () => {
+            try {
+                const result = streamText({
+                    model: getAiModel(options),
+                    prompt: options.prompt,
+                    abortSignal: controller.signal,
+                    ...(options.system ? { system: options.system } : {})
+                })
+                let hasFirstChunk = false
+                let fullText = ''
+
+                for await (const textPart of result.textStream) {
+                    if (!hasFirstChunk) {
+                        hasFirstChunk = true
+                    }
+
+                    resetStreamTimeout(
+                        hasFirstChunk
+                            ? 'AI流请求超时：连续一段时间未收到新的数据块'
+                            : 'AI流请求超时：未连接成功或未收到首个数据块'
+                    )
+
+                    fullText += textPart
+
+                    const dataPayload: IAiDataPayload = {
+                        requestId,
+                        data: textPart
+                    }
+                    event.sender.send('net:ai:data', dataPayload)
+                }
+
+                const endPayload: IAiEndPayload = {
+                    requestId,
+                    text: fullText
+                }
+                event.sender.send('net:ai:end', endPayload)
+            } catch (error) {
+                const errorPayload: IAiErrorPayload = {
+                    requestId,
+                    error: controller.signal.aborted
+                        ? (streamTimeoutMessageMap.get(requestId) ?? 'AI流请求已取消')
+                        : (error as Error).message
+                }
+                event.sender.send('net:ai:error', errorPayload)
+            } finally {
+                if (timeoutId) {
+                    clearTimeout(timeoutId)
+                }
+                streamControllerMap.delete(requestId)
+                streamTimeoutMessageMap.delete(requestId)
+            }
+        })()
+
+        return { requestId }
+    })
+})
+
+/**
+ * 取消AI流式请求
+ */
+ipcMain.handle('net:aiCancel', async (_, requestId: string) => {
+    return await tryExecute(async () => {
+        streamTimeoutMessageMap.set(requestId, 'AI流请求已取消')
+
+        streamControllerMap.get(requestId)?.abort()
+        streamControllerMap.delete(requestId)
     })
 })
 

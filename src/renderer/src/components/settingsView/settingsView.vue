@@ -3,7 +3,7 @@ import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
 import SettingsLineItem from '@renderer/components/settingsView/settingsLineItem.vue'
-import { TransHelper } from '@renderer/helper'
+import { LogHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
@@ -21,6 +21,7 @@ const translateEngineConfigRef = ref()
 const llmModels = ref<string[]>([])
 const testDefaultText = 'こんにちは世界'
 const testText = ref(testDefaultText)
+const testTranslateLoading = ref(false)
 const toast = useToast()
 const dialog = useDialog()
 
@@ -42,21 +43,31 @@ async function fetchLLMModels() {
 }
 
 async function testTranslate() {
-    const result = await TransHelper.translate(testText.value)
-    if (result.ok) {
-        toast.add({
-            severity: 'success',
-            summary: '翻译成功',
-            detail: result.text,
-            life: 3000
-        })
-    } else {
-        toast.add({
-            severity: 'error',
-            summary: '翻译失败',
-            detail: '翻译服务异常',
-            life: 3000
-        })
+    if (testTranslateLoading.value) return
+
+    testTranslateLoading.value = true
+
+    try {
+        const result = await TransHelper.translate(testText.value)
+        if (result.ok) {
+            LogHelper.debug('翻译成功：', result.text)
+            toast.add({
+                severity: 'success',
+                summary: '翻译成功',
+                detail: result.text,
+                life: 3000
+            })
+        } else {
+            LogHelper.debug('翻译失败：', result.text)
+            toast.add({
+                severity: 'error',
+                summary: '翻译失败',
+                detail: '翻译服务异常',
+                life: 3000
+            })
+        }
+    } finally {
+        testTranslateLoading.value = false
     }
 }
 
@@ -344,7 +355,11 @@ function openLlmInfo() {
                         title="测试当前引擎"
                     >
                         <template #right>
-                            <Button @click="testTranslate"> 测试翻译 </Button>
+                            <Button
+                                label="测试翻译"
+                                :loading="testTranslateLoading"
+                                @click="testTranslate"
+                            />
                             <InputText
                                 v-model.trim="testText"
                                 :placeholder="testDefaultText"

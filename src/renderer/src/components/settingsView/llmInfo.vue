@@ -33,9 +33,8 @@ import Message from 'primevue/message'
                             style="padding: 0; font-size: 1rem !important"
                             target="_blank"
                             variant="link"
-                        >
-                            下载并安装 LM Studio
-                        </Button>
+                            label="下载并安装 LM Studio"
+                        />
                     </li>
                     <li>
                         跳过新手指导后，在左下角选择 Power User 模式。<br /><Image

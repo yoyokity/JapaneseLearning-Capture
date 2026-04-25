@@ -39,7 +39,7 @@ export interface ITranslateResult {
 
 const translators = {
     google: {
-        description: '谷歌翻译不需要额外配置',
+        description: '谷歌机器翻译不需要额外配置',
         func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
             const translateOptions = {
                 from: 'auto',
@@ -132,50 +132,31 @@ const translators = {
 
     openai: {
         description: 'OpenAI翻译，适合接入官方接口或兼容OpenAI格式的中转服务',
-        func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
+        func: async (
+            s_text: string,
+            targetLanguage = 'zh-CN',
+            streamCallback?: (data: string) => void
+        ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            // url
-            const url = `${settings.translate.openai.baseURL.replace(/\/$/, '')}/chat/completions`
-
-            // headers
-            const headers = {
-                Authorization: `Bearer ${settings.translate.openai.apiKey}`,
-                'Content-Type': 'application/json'
-            }
-
-            // body
-            const body = {
+            const text = await NetHelper.ai({
+                provider: 'openai',
+                apiKey: settings.translate.openai.apiKey,
                 model: settings.translate.openai.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: getAITranslatePrompt(targetLanguage)
-                    },
-                    {
-                        role: 'user',
-                        content: escapeSpecialSymbols(s_text)
-                    }
-                ],
-                temperature: 0.3,
-                stream: false
-            }
-
-            const re = await NetHelper.post(url, body, {
-                parse: 'json',
-                headers,
-                delay: 500
+                baseURL: settings.translate.openai.baseURL,
+                system: getNSFWPrompt(targetLanguage),
+                prompt: escapeSpecialSymbols(s_text),
+                callback: streamCallback
             })
 
-            if (re.ok) {
+            if (text.trim()) {
                 try {
-                    const text = parseLLM(re.body.choices[0].message.content).trim()
                     return {
                         ok: true,
-                        text
+                        text: parseLLM(text).trim()
                     }
                 } catch (e) {
-                    LogHelper.error(`openai翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`openai翻译返回内容解析失败：`, text, e)
                 }
             }
 
@@ -186,57 +167,30 @@ const translators = {
 
     gemini: {
         description: 'AI效果好但是很多敏感的部分不给翻译，不给翻译的部分会调用谷歌翻译',
-        func: async (s_text: string, targetLanguage = 'zh-CN'): Promise<ITranslateResult> => {
+        func: async (
+            s_text: string,
+            targetLanguage = 'zh-CN',
+            streamCallback?: (data: string) => void
+        ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            // url
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.translate.gemini.model}:generateContent`
-
-            // headers
-            const headers = {
-                'x-goog-api-key': settings.translate.gemini.apiKey,
-                'Content-Type': 'application/json'
-            }
-
-            // body
-            const body = {
-                system_instruction: {
-                    parts: [
-                        {
-                            text: getAITranslatePrompt(targetLanguage)
-                        }
-                    ]
-                },
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: escapeSpecialSymbols(s_text)
-                            }
-                        ]
-                    }
-                ]
-            }
-
-            const re = await NetHelper.post(url, body, {
-                parse: 'json',
-                headers,
-                delay: 500
+            const text = await NetHelper.ai({
+                provider: 'gemini',
+                apiKey: settings.translate.gemini.apiKey,
+                model: settings.translate.gemini.model,
+                system: getAIPrompt(targetLanguage),
+                prompt: escapeSpecialSymbols(s_text),
+                callback: streamCallback
             })
 
-            if (re.ok) {
+            if (text.trim()) {
                 try {
-                    if (JSON.stringify(re.body.candidates).includes('PROHIBITED_CONTENT')) {
-                        throw new Error('布豪！翻译结果包含违禁词，傻逼谷歌不给返回力！')
-                    }
-
-                    const text = parseLLM(re.body.candidates[0].content.parts[0].text).trim()
                     return {
                         ok: true,
-                        text
+                        text: parseLLM(text).trim()
                     }
                 } catch (e) {
-                    LogHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`gemini翻译返回内容解析失败：`, text, e)
                 }
             }
 
@@ -247,59 +201,32 @@ const translators = {
 
     localLLM: {
         description: '本地AI大模型，效果好且不用担心敏感内容被屏蔽，需要按照说明安装本地模型',
-        func: async (s_text: string, targetLanguage = '简体中文'): Promise<ITranslateResult> => {
-            // 先用getLLMModels()测试下本地llm有没有启动
-            const models = await TransHelper.getLLMModels()
-            if (models.length === 0) {
-                return { ok: false, text: s_text }
-            }
-
+        func: async (
+            s_text: string,
+            targetLanguage = '简体中文',
+            streamCallback?: (data: string) => void
+        ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            // url
-            const url = `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1/chat/completions`
-
-            // headers
-            const headers = {
-                'Content-Type': 'application/json'
-            }
-
-            // body
-            const body = {
+            const text = await NetHelper.ai({
+                provider: 'openai',
+                apiKey: 'local-llm',
                 model: settings.translate.localLLM.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: getAITranslatePrompt(targetLanguage)
-                    },
-                    {
-                        role: 'user',
-                        content: escapeSpecialSymbols(s_text)
-                    }
-                ],
-                temperature: 0.3,
-                top_p: 0.8,
-                max_tokens: -1,
-                stream: false
-            }
-
-            const re = await NetHelper.post(url, body, {
-                parse: 'json',
-                headers,
-                delay: 0,
-                retry: 0,
-                timeout: 30 * 1000
+                baseURL: `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1`,
+                system: getNSFWPrompt(targetLanguage),
+                prompt: escapeSpecialSymbols(s_text),
+                callback: streamCallback,
+                timeout: 30 * 1000 // 预留充分时间，方便llm加载
             })
 
-            if (re.ok) {
+            if (text.trim()) {
                 try {
-                    const text = parseLLM(re.body.choices[0].message.content).trim()
                     return {
                         ok: true,
-                        text
+                        text: parseLLM(text).trim()
                     }
                 } catch (e) {
-                    LogHelper.error(`gemini翻译返回内容解析失败：`, re.body, e)
+                    LogHelper.error(`localLLM翻译返回内容解析失败：`, text, e)
                 }
             }
 
@@ -329,23 +256,34 @@ export class TransHelper {
 
     /**
      * 翻译
+     * @param text 要翻译的文本
+     * @param format 是否格式化
+     * @param streamCallback 翻译过程中每一次流传输的回调
      * @return 如果翻译失败，则返回原文
      */
-    static async translate(text: string): Promise<ITranslateResult> {
+    static async translate(
+        text: string,
+        format: boolean = true,
+        streamCallback?: (data: string) => void
+    ): Promise<ITranslateResult> {
         const settings = settingsStore()
         if (!settings.translate.enable) return { ok: false, text }
 
         const re = await translators[settings.translate.translateEngine].func(
             text,
-            settings.translate.targetLanguage
+            settings.translate.targetLanguage,
+            streamCallback
         )
 
         // 如果AI翻译失败，则调用谷歌翻译
         if (!re.ok && settings.translate.retryWithGoogle) {
-            return await translators.google.func(text, settings.translate.targetLanguage)
+            LogHelper.warn('AI翻译失败，调用谷歌翻译...')
+            const googleRe = await translators.google.func(text, settings.translate.targetLanguage)
+
+            return format ? { ...googleRe, text: formatTranslateText(googleRe.text) } : googleRe
         }
 
-        return re
+        return format ? { ...re, text: formatTranslateText(re.text) } : re
     }
 
     /**
@@ -414,8 +352,48 @@ function parseLLM(inputString: string) {
 }
 
 /**
+ * 格式化翻译文本
+ * @param text 翻译文本
+ * @description 每一句话之间隔一行，同时句首顶格
+ */
+function formatTranslateText(text: string) {
+    return text
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .flatMap((line) =>
+            line
+                .split(/(?<=[。！？!?])/)
+                .map((sentence) => sentence.trim())
+                .filter(Boolean)
+        )
+        .join('\n\n')
+}
+
+/**
  * 获取 AI 翻译提示词
  */
-function getAITranslatePrompt(targetLanguage: string) {
-    return `你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。同时不要返回md格式，按照原文的排版格式，返回纯文本给我。标点符号之类的转为${targetLanguage}的标点。注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的特殊符号，也不要擅自增加或减少换行。如果遇到屏蔽字符比如○之类的，请自行联想色情词汇。`
+function getAIPrompt(targetLanguage: string) {
+    return `
+    - 你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。
+    - 不要返回md格式，返回纯文本给我。
+    - 标点符号之类的转为${targetLanguage}语言的标点。
+    - 注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语。
+    - 自行优化排版，段落之间空一行，段首顶格。
+    - 淫秽词汇自行使用更加全年龄的表达。`
+}
+
+/**
+ * 获取 AI 翻译提示词
+ */
+function getNSFWPrompt(targetLanguage: string) {
+    return `
+    - 你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。
+    - 不要返回md格式，返回纯文本给我。
+    - 标点符号之类的转为${targetLanguage}语言的标点。
+    - 注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语。
+    - 自行优化排版，段落之间空一行，段首顶格。
+    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。`
 }

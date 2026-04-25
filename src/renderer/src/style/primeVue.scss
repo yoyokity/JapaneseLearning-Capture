@@ -7,7 +7,7 @@ input {
 button {
     transition: all 0.3s var(--animation-type) !important;
 
-    &:active {
+    &:not(:disabled):active {
         transform: translateY(2px);
     }
 }
