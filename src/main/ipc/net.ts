@@ -89,17 +89,10 @@ function getAiModel(options: IAiStartOptions) {
  * @param timeout 超时时间
  */
 async function request(url: string, init: RequestInit, timeout: number = 7000) {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-    try {
-        return await net.fetch(url, {
-            ...init,
-            signal: controller.signal
-        })
-    } finally {
-        clearTimeout(timeoutId)
-    }
+    return await net.fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(timeout)
+    })
 }
 
 /**
@@ -336,18 +329,13 @@ ipcMain.handle('net:clearCache', async () => {
  */
 ipcMain.handle('net:ping', async (_, host: string, timeout: number = 3000) => {
     return await tryExecute(async () => {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), timeout)
-
         try {
             const startTime = Date.now()
             const response = await net.fetch(`http://${host}`, {
                 method: 'HEAD',
-                signal: controller.signal
+                signal: AbortSignal.timeout(timeout)
             })
             const endTime = Date.now()
-
-            clearTimeout(timeoutId)
 
             return {
                 success: response.ok,
@@ -355,7 +343,6 @@ ipcMain.handle('net:ping', async (_, host: string, timeout: number = 3000) => {
                 status: response.status
             }
         } catch (error) {
-            clearTimeout(timeoutId)
             return {
                 success: false,
                 time: -1,
