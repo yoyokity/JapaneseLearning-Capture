@@ -10,7 +10,8 @@ import { Waterfall } from 'vue-waterfall-plugin-next'
 
 interface IProps {
     video: IVideoFile
-    scraperField: (video: IVideoFile, funcName: keyof IScraperVideoFuncs, logName: string) => void
+    scraperField: (funcName: keyof IScraperVideoFuncs) => void
+    buttondisable: boolean
     previewImage: string | null
 }
 
@@ -134,9 +135,7 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
  */
 function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
     props.scraperField(
-        video.value,
-        `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs,
-        imageLabels[label]
+        `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs
     )
 }
 </script>
@@ -152,7 +151,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     </h2>
                     <Button
                         v-tooltip="'搜索'"
-                        :disabled="globalStates.batchRunning"
+                        :disabled="buttondisable"
                         icon="pi pi-search"
                         variant="outlined"
                         style="height: fit-content"
@@ -170,7 +169,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     @dragleave.prevent="(e) => handleDrag(e, 'leave')"
                 >
                     <VideoImage
-                        :img-data="video[label as 'poster' | 'fanart' | 'thumb']"
+                        :src="video[label as 'poster' | 'fanart' | 'thumb']"
                         image-loading="eager"
                         image-decoding="async"
                         :style="{
@@ -194,12 +193,12 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                 <h2 style="margin-right: 1rem; margin-bottom: 1rem; text-align: center">剧照</h2>
                 <Button
                     v-tooltip="'搜索'"
-                    :disabled="globalStates.batchRunning"
+                    :disabled="buttondisable"
                     icon="pi pi-search"
                     variant="outlined"
                     style="height: fit-content"
                     size="small"
-                    @click="props.scraperField(video, 'parseExtrafanart', '剧照')"
+                    @click="props.scraperField('parseExtrafanart')"
                 />
             </div>
 
@@ -245,7 +244,7 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
             <Transition mode="out-in" name="fade">
                 <div v-if="previewImage" class="preview-image-modal" @click="setPreviewImage(null)">
                     <VideoImage
-                        :img-data="previewImage"
+                        :src="previewImage"
                         image-loading="eager"
                         image-decoding="sync"
                         :image-style="{

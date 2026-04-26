@@ -13,28 +13,28 @@ import {
     isValidDate,
     LogHelper,
     PathHelper,
-    TaskHelper,
     TransHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
-import { globalStatesStore, settingsStore } from '@renderer/stores'
+import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
 import Button from 'primevue/button'
 import Chip from 'primevue/chip'
 import FloatLabel from 'primevue/floatlabel'
 import InputText from 'primevue/inputtext'
+import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
-import { inject, nextTick, onMounted, ref } from 'vue'
+import { inject, nextTick, onMounted, ref, watch } from 'vue'
 import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
-const { scraperAll, scraperField, scraperSave } = useEditeScraper()
-const globalStates = globalStatesStore()
+const { scraperAll, scraperField, scraperSave, isScraperRunning, isEditeScraperRunning } =
+    useEditeScraper()
 const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
@@ -42,6 +42,9 @@ const video = dialogRef.value.data.video as IVideoFile
 const newVideo = ref<IVideoFile>(createVideoFile(''))
 const isSaving = ref(false)
 const isTranslatingPlot = ref(false)
+const isCanceling = ref(false)
+const scraperProgress = ref(0)
+const currentScraperController = ref<AbortController | null>(null)
 
 // tab部分
 const tabs = [
@@ -101,13 +104,62 @@ function normalizeTagGenre() {
     newVideo.value.genre = normalizeTextList(newVideo.value.genre)
 }
 
-// 快捷键退出
-useKeyPress(['esc'], () => {
-    if (previewImage.value) {
-        previewImage.value = null
-    } else {
-        TaskHelper.queueClear('scraper')
-        dialogRef.value.close()
+/**
+ * 创建刮削控制器
+ */
+function createScraperController() {
+    const controller = new AbortController()
+    currentScraperController.value = controller
+    return controller
+}
+
+/**
+ * 刮削单个字段
+ * @param funcName 刮削函数名称
+ */
+async function runScraperField(funcName: Parameters<typeof scraperField>[1]) {
+    const controller = createScraperController()
+
+    try {
+        await scraperField(newVideo.value, funcName, controller.signal, (progress) => {
+            scraperProgress.value = progress
+        })
+    } finally {
+        if (currentScraperController.value === controller) {
+            currentScraperController.value = null
+        }
+    }
+}
+
+/**
+ * 刮削全部字段
+ */
+async function runScraperAll() {
+    const controller = createScraperController()
+
+    try {
+        await scraperAll(newVideo.value, controller.signal, (progress) => {
+            scraperProgress.value = progress
+        })
+    } finally {
+        if (currentScraperController.value === controller) {
+            currentScraperController.value = null
+        }
+    }
+}
+
+/**
+ * 取消当前刮削
+ */
+function cancelScraperTask() {
+    isCanceling.value = true
+    currentScraperController.value?.abort()
+}
+
+watch(isEditeScraperRunning, (running) => {
+    if (!running) {
+        isCanceling.value = false
+        scraperProgress.value = 0
     }
 })
 
@@ -118,45 +170,51 @@ async function onSave() {
     const sourceVideoFile = video
     const scraper = Scraper.getCurrentScraperInstance()
 
-    if (!scraper) return
+    if (!scraper || isEditeScraperRunning.value) return
 
     normalizeTagGenre()
 
-    TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
-        // 如果视频没有修改，则不保存
-        if (isEqual(newVideo.value, sourceVideoFile)) {
-            toast.success('未修改，无需保存')
-            dialogRef.value.close()
-            return
-        }
+    // 如果视频没有修改，则不保存
+    if (isEqual(newVideo.value, sourceVideoFile)) {
+        toast.success('未修改，无需保存')
+        dialogRef.value.close()
+        return
+    }
 
-        if (isSaving.value) return
-        isSaving.value = true
+    if (isSaving.value) return
+    isSaving.value = true
 
-        // 保存
-        const re = await scraperSave(newVideo.value, sourceVideoFile)
-        if (re.hasError) {
-            toast.error(`保存失败！${re.error}`)
-            isSaving.value = false
-            return
-        }
-
-        // 重新扫描文件
-        await scanFiles(toast)
-
-        // 先关闭弹窗并清空预览，释放旧图片文件引用
-        previewImage.value = null
+    // 保存
+    const re = await scraperSave(newVideo.value, sourceVideoFile)
+    if (re.hasError) {
+        toast.error(`保存失败！${re.error}`)
         isSaving.value = false
-        toast.success('保存成功！')
-        dialogRef.value.close(newVideo.value)
+        return
+    }
 
-        // 等待界面完成更新后，再删除旧的空文件夹，避免 Windows 判定文件占用
-        await nextTick()
-        await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
+    // 重新扫描文件
+    await scanFiles(toast)
 
-        TaskHelper.queueClear('scraper')
-    })
+    // 先关闭弹窗并清空预览，释放旧图片文件引用
+    previewImage.value = null
+    isSaving.value = false
+    toast.success('保存成功！')
+    dialogRef.value.close(newVideo.value)
+
+    // 等待界面完成更新后，再删除旧的空文件夹，避免 Windows 判定文件占用
+    await nextTick()
+    await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
 }
+
+// 快捷键退出
+useKeyPress(['esc'], () => {
+    if (previewImage.value) {
+        previewImage.value = null
+    } else {
+        currentScraperController.value?.abort()
+        dialogRef.value.close()
+    }
+})
 
 /**
  * 创建菜单项数组
@@ -230,26 +288,33 @@ async function transPlot() {
 }
 
 onMounted(async () => {
-    TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
-        newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
-        normalizeTagGenre()
+    newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
+    normalizeTagGenre()
 
-        // 如果未设置刮削器，或当前刮削器已不在列表中，则默认使用当前选择的刮削器
-        if (
-            !newVideo.value.scraperName ||
-            !Scraper.instances.some((scraper) => scraper.scraperName === newVideo.value.scraperName)
-        ) {
-            newVideo.value.scraperName = settings.currentScraper
-        }
+    // 如果未设置刮削器，或当前刮削器已不在列表中，则默认使用当前选择的刮削器
+    if (
+        !newVideo.value.scraperName ||
+        !Scraper.instances.some((scraper) => scraper.scraperName === newVideo.value.scraperName)
+    ) {
+        newVideo.value.scraperName = settings.currentScraper
+    }
 
-        // 读取extrafanart
-        readExtrafanart(video.dir, newVideo.value, video)
-    })
+    // 读取extrafanart
+    readExtrafanart(video.dir, newVideo.value, video)
 })
 </script>
 
 <template>
     <div class="manage-view-editor">
+        <!-- 进度条 -->
+        <ProgressBar
+            :show-value="false"
+            :value="scraperProgress"
+            class="scraper-progress"
+            :style="{
+                opacity: isEditeScraperRunning ? 1 : 0
+            }"
+        />
         <!-- 顶部标签部分 -->
         <div class="header">
             <div
@@ -270,6 +335,16 @@ onMounted(async () => {
                 }"
                 class="active-indicator"
             />
+
+            <!-- 取消按钮 -->
+            <div v-if="isEditeScraperRunning" style="margin-left: auto; margin-right: 2rem">
+                <Button
+                    :loading="isCanceling"
+                    label="取消"
+                    size="small"
+                    @click="cancelScraperTask"
+                />
+            </div>
         </div>
         <Scroll style="height: calc(90vh - 0.75rem - var(--header-height) - var(--header-height))">
             <div class="content">
@@ -288,11 +363,11 @@ onMounted(async () => {
                         />
                         <Button
                             v-tooltip="'刮削全部信息'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperAll(newVideo)"
+                            @click="runScraperAll"
                         />
                     </div>
 
@@ -315,7 +390,7 @@ onMounted(async () => {
                         <label for="title_num">{{ value }}</label>
                         <Button
                             v-tooltip="'打开链接'"
-                            :disabled="globalStates.batchRunning || !getNumLink(value)"
+                            :disabled="isScraperRunning || !getNumLink(value)"
                             icon="pi pi-external-link"
                             style="margin-left: 0.5rem"
                             variant="outlined"
@@ -332,11 +407,11 @@ onMounted(async () => {
                         <label for="title_label">标题</label>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraperField(newVideo, 'parseTitle', '标题')"
+                            @click="runScraperField('parseTitle')"
                         />
                     </FloatLabel>
 
@@ -352,11 +427,11 @@ onMounted(async () => {
                         <label for="original_title_label">原标题</label>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraperField(newVideo, 'parseOriginaltitle', '原标题')"
+                            @click="runScraperField('parseOriginaltitle')"
                         />
                     </FloatLabel>
 
@@ -369,11 +444,11 @@ onMounted(async () => {
                         <label for="sort_title_label">排序标题</label>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraperField(newVideo, 'parseSorttitle', '排序标题')"
+                            @click="runScraperField('parseSorttitle')"
                         />
                     </FloatLabel>
 
@@ -382,11 +457,11 @@ onMounted(async () => {
                         <label for="sort_title_label">影片系列</label>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraperField(newVideo, 'parseSet', '影片系列')"
+                            @click="runScraperField('parseSet')"
                         />
                     </FloatLabel>
 
@@ -406,15 +481,15 @@ onMounted(async () => {
                         <div style="display: flex; flex-direction: column; gap: 0.5rem">
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parsePlot', '内容简介')"
+                                @click="runScraperField('parsePlot')"
                             />
                             <Button
                                 v-tooltip="'对当前文本进行翻译'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 :loading="isTranslatingPlot"
                                 icon="pi pi-language"
                                 variant="outlined"
@@ -429,11 +504,11 @@ onMounted(async () => {
                         <label for="tagline_label">宣传词</label>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperField(newVideo, 'parseTagline', '宣传词')"
+                            @click="runScraperField('parseTagline')"
                         />
                     </FloatLabel>
 
@@ -446,11 +521,11 @@ onMounted(async () => {
                         <label for="director_label">导演</label>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem"
-                            @click="scraperField(newVideo, 'parseDirector', '导演')"
+                            @click="runScraperField('parseDirector')"
                         />
                     </FloatLabel>
 
@@ -542,11 +617,11 @@ onMounted(async () => {
                         </div>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperField(newVideo, 'parseActor', '演员')"
+                            @click="runScraperField('parseActor')"
                         />
                     </div>
 
@@ -606,11 +681,11 @@ onMounted(async () => {
                         </div>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperField(newVideo, 'parseTag', '标签')"
+                            @click="runScraperField('parseTag')"
                         />
                     </div>
 
@@ -674,11 +749,11 @@ onMounted(async () => {
                         </div>
                         <Button
                             v-tooltip="'搜索'"
-                            :disabled="globalStates.batchRunning"
+                            :disabled="isScraperRunning"
                             icon="pi pi-search"
                             variant="outlined"
                             style="margin-left: 0.5rem; height: fit-content"
-                            @click="scraperField(newVideo, 'parseGenre', '类型')"
+                            @click="runScraperField('parseGenre')"
                         />
                     </div>
 
@@ -696,11 +771,11 @@ onMounted(async () => {
                             <label for="mpaa_label">分级</label>
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parseMpaa', '分级')"
+                                @click="runScraperField('parseMpaa')"
                             />
                         </FloatLabel>
 
@@ -718,11 +793,11 @@ onMounted(async () => {
                             <label for="rating_label">评分</label>
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parseRating', '评分')"
+                                @click="runScraperField('parseRating')"
                             />
                         </FloatLabel>
                     </div>
@@ -741,11 +816,11 @@ onMounted(async () => {
                             <label for="mpaa_label">发行商</label>
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parseStudio', '发行商')"
+                                @click="runScraperField('parseStudio')"
                             />
                         </FloatLabel>
 
@@ -758,11 +833,11 @@ onMounted(async () => {
                             <label for="rating_label">制片商</label>
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parseMaker', '制片商')"
+                                @click="runScraperField('parseMaker')"
                             />
                         </FloatLabel>
                     </div>
@@ -778,11 +853,11 @@ onMounted(async () => {
                             <label for="year_label">发行年份</label>
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parseYear', '发行年份')"
+                                @click="runScraperField('parseYear')"
                             />
                         </FloatLabel>
 
@@ -809,11 +884,11 @@ onMounted(async () => {
                             <label for="mpaa_label">上映日期</label>
                             <Button
                                 v-tooltip="'搜索'"
-                                :disabled="globalStates.batchRunning"
+                                :disabled="isScraperRunning"
                                 icon="pi pi-search"
                                 variant="outlined"
                                 style="margin-left: 0.5rem; height: fit-content"
-                                @click="scraperField(newVideo, 'parseReleasedate', '上映日期')"
+                                @click="runScraperField('parseReleasedate')"
                             />
                         </FloatLabel>
                     </div>
@@ -824,7 +899,8 @@ onMounted(async () => {
                     v-show="activeTab === 'image'"
                     v-model:video="newVideo"
                     v-model:preview-image="previewImage"
-                    :scraper-field="scraperField"
+                    :buttondisable="isScraperRunning"
+                    :scraper-field="runScraperField"
                 />
             </div>
         </Scroll>
@@ -840,6 +916,7 @@ onMounted(async () => {
             />
             <Button
                 :loading="isSaving"
+                :disabled="isEditeScraperRunning"
                 icon="pi pi-save"
                 label="保存"
                 size="small"
@@ -856,6 +933,20 @@ onMounted(async () => {
     max-width: 70rem;
     display: flex;
     flex-direction: column;
+
+    .scraper-progress {
+        height: 4px;
+        border-radius: 0;
+        position: absolute;
+        top: -1px;
+        left: 0;
+        width: 100%;
+        background-color: transparent;
+
+        :deep(.p-progressbar-value) {
+            background: var(--p-primary-color);
+        }
+    }
 
     .form-container {
         --spacing: 1.25rem;

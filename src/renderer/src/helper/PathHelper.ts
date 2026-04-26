@@ -440,7 +440,7 @@ export class PathHelper {
      * @param rootPath 根路径
      */
     static async removeEmptyFolders(rootPath: Path | string) {
-        LogHelper.log(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
+        LogHelper.debug(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
         const re = await TaskHelper.tryExecute(
             Ipc.filesystem.removeEmptyFolders,
             rootPath.toString()

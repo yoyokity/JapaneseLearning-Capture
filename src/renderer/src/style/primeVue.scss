@@ -12,6 +12,10 @@ button {
     }
 }
 
+.p-button-outlined:disabled {
+    background-color: var(--p-surface-100);
+}
+
 .p-tooltip,
 .p-button-link {
     font-size: calc(1rem - 2px) !important;
@@ -78,6 +82,11 @@ button {
             height: calc(var(--header-height) + 0.75rem);
             border-top: var(--separator);
         }
+    }
+
+    &.p-component {
+        overflow: hidden;
+        border: initial !important;
     }
 }
 

@@ -3,11 +3,11 @@ import type { IScraper, IVideo, IVideoFile } from '@renderer/scraper'
 import type { IScraperContext, ScraperFuncName } from '@renderer/scraper/hooks/type'
 
 import { useMessage } from '@renderer/components/control/message'
-import { LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
+import { LogHelper, PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { parseFuncs } from '@renderer/scraper/hooks/type'
-import { settingsStore } from '@renderer/stores'
-import { toRaw } from 'vue'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
+import { computed, ref, toRaw } from 'vue'
 
 /**
  * 管理编辑界面的刮削Hook
@@ -15,6 +15,15 @@ import { toRaw } from 'vue'
 export function useEditeScraper() {
     const { toast } = useMessage()
     const contentCache = new Map<string, unknown>()
+    const globalStates = globalStatesStore()
+    const scraperFieldRunning = ref(false)
+    const scraperAllRunning = ref(false)
+    const isEditeScraperRunning = computed(
+        () => scraperFieldRunning.value || scraperAllRunning.value
+    )
+    const isScraperRunning = computed(
+        () => globalStates.batchRunning || scraperFieldRunning.value || scraperAllRunning.value
+    )
 
     /**
      * 获取内容缓存键
@@ -107,107 +116,167 @@ export function useEditeScraper() {
     }
 
     /**
+     * 获取取消结果
+     * @param signal 取消信号
+     * @param onProgress 进度回调
+     */
+    function getAbortResult(signal: AbortSignal, onProgress: (progress: number) => void) {
+        if (!signal.aborted) {
+            return false
+        }
+
+        onProgress(100)
+        toast.warn('刮削已取消！')
+        return true
+    }
+
+    /**
      * 通用刮削函数，刮削单个字段
      * @param video 视频对象
      * @param funcName 刮削函数名称
-     * @param logName 日志显示名称
      */
-    function scraperField(video: IVideo, funcName: ScraperFuncName, logName: string) {
-        const context = getScraperContext(video)
-        if (!context) {
+    async function scraperField(
+        video: IVideo,
+        funcName: ScraperFuncName,
+        signal: AbortSignal,
+        onProgress: (progress: number) => void
+    ) {
+        const scraperContext = getScraperContext(video)
+        if (!scraperContext) {
             return
         }
 
-        context.logger.separator()
-        context.logger.log(`开始刮削：`, toRaw(video))
+        const funcConfig = parseFuncs.find((item) => item.name === funcName)
+        const logName = funcConfig?.label || funcName
 
-        TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
+        scraperContext.logger.separator()
+        scraperContext.logger.log(`开始刮削：`, toRaw(video))
+        scraperFieldRunning.value = true
+
+        try {
+            onProgress(5)
+            if (getAbortResult(signal, onProgress)) return
+
             // 先确保有网页内容
-            if (!(await ensureContent(context, video))) {
+            if (!(await ensureContent(scraperContext, video))) {
+                onProgress(100)
                 return
             }
 
+            if (getAbortResult(signal, onProgress)) return
+
+            onProgress(60)
+
             // 执行解析
-            const success = await parseField(context, video, funcName, logName)
+            const success = await parseField(scraperContext, video, funcName, logName)
+            if (getAbortResult(signal, onProgress)) return
+
             if (!success) {
-                context.logger.warn(`${logName}解析出错！`)
+                scraperContext.logger.warn(`${logName}解析出错！`)
                 toast.warn(`${logName}解析出错！`)
             } else {
-                context.logger.success(`${logName}解析成功！`)
+                scraperContext.logger.success(`${logName}解析成功！`)
                 toast.success(`${logName}获取成功！`)
             }
+
+            onProgress(80)
 
             // 更新编号
             let numSuccess = false
             let numHasError = false
 
             try {
-                const content = getContent(context.scraper, video)
+                const content = getContent(scraperContext.scraper, video)
                 numSuccess =
-                    (await context.scraper.scraperVideoFuncs.parseNum(video, content)) ?? false
+                    (await scraperContext.scraper.scraperVideoFuncs.parseNum(video, content)) ??
+                    false
             } catch (error) {
                 numHasError = true
-                context.logger.error(`更新编号出错！`, error)
+                scraperContext.logger.error(`更新编号出错！`, error)
             }
 
+            if (getAbortResult(signal, onProgress)) return
+
             if (numSuccess) {
-                context.logger.success(`更新编号成功！`)
+                scraperContext.logger.success(`更新编号成功！`)
             } else if (!numHasError) {
-                context.logger.warn(`更新编号出错！`)
+                scraperContext.logger.warn(`更新编号出错！`)
                 toast.warn(`更新编号出错！`)
             }
 
+            onProgress(100)
+
             // 结束
             if (success) {
-                context.logger.success(`刮削结束：`, toRaw(video))
+                scraperContext.logger.success(`刮削结束：`, toRaw(video))
             } else {
-                context.logger.warn(`刮削结束：`, toRaw(video))
+                scraperContext.logger.warn(`刮削结束：`, toRaw(video))
             }
-        })
+        } finally {
+            scraperFieldRunning.value = false
+        }
     }
 
     /**
      * 刮削全部信息
      * @param video 视频对象
      */
-    async function scraperAll(video: IVideo) {
-        const context = getScraperContext(video)
-        if (!context) {
+    async function scraperAll(
+        video: IVideo,
+        signal: AbortSignal,
+        onProgress: (progress: number) => void
+    ) {
+        const scraperContext = getScraperContext(video)
+        if (!scraperContext) {
             return
         }
 
-        context.logger.separator()
-        context.logger.log(`开始刮削：`, toRaw(video))
+        scraperContext.logger.separator()
+        scraperContext.logger.log(`开始刮削：`, toRaw(video))
+        scraperAllRunning.value = true
 
-        // 先确保有网页内容
-        const hasContent = await TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () =>
-            ensureContent(context, video)
-        )
-        if (!hasContent) {
-            return
-        }
+        try {
+            onProgress(5)
+            if (getAbortResult(signal, onProgress)) return
 
-        const failed: string[] = []
-        for (const { name, label } of parseFuncs) {
-            await TaskHelper.queueWithCancel({ taskName: 'scraper' }, async () => {
-                if (!(await parseField(context, video, name, label))) {
+            // 先确保有网页内容
+            if (!(await ensureContent(scraperContext, video))) {
+                onProgress(100)
+                return
+            }
+
+            if (getAbortResult(signal, onProgress)) return
+
+            onProgress(10)
+
+            const failed: string[] = []
+            for (const [index, { name, label }] of parseFuncs.entries()) {
+                if (getAbortResult(signal, onProgress)) return
+
+                if (!(await parseField(scraperContext, video, name, label))) {
                     failed.push(label)
                 }
-            })
-        }
 
-        if (failed.length > 0) {
-            context.logger.warn(`以下字段解析失败：${failed.join('、')}`)
-            toast.warn(`以下字段解析失败：${failed.join('、')}`)
-        } else if (failed.length === parseFuncs.length) {
-            context.logger.warn('全部解析失败！')
-            toast.warn('全部信息获取失败！')
-        } else {
-            context.logger.success('全部解析成功！')
-            toast.success('全部信息获取成功！')
-        }
+                if (getAbortResult(signal, onProgress)) return
 
-        context.logger.success(`刮削结束：`, toRaw(video))
+                onProgress(10 + ((index + 1) * 90) / parseFuncs.length)
+            }
+
+            if (failed.length === parseFuncs.length) {
+                scraperContext.logger.warn('全部解析失败！')
+                toast.warn('全部信息获取失败！')
+            } else if (failed.length > 0) {
+                scraperContext.logger.warn(`以下字段解析失败：${failed.join('、')}`)
+                toast.warn(`以下字段解析失败：${failed.join('、')}`)
+            } else {
+                scraperContext.logger.success('全部解析成功！')
+                toast.success('全部信息获取成功！')
+            }
+
+            scraperContext.logger.success(`刮削结束：`, toRaw(video))
+        } finally {
+            scraperAllRunning.value = false
+        }
     }
 
     /**
@@ -252,12 +321,15 @@ export function useEditeScraper() {
          * 通用刮削函数，刮削单个字段
          * @param video 视频对象
          * @param funcName 刮削函数名称
-         * @param logName 日志显示名称
+         * @param signal 取消信号
+         * @param onProgress 进度回调
          */
         scraperField,
         /**
          * 刮削全部信息
          * @param video 视频对象
+         * @param signal 取消信号
+         * @param onProgress 进度回调
          */
         scraperAll,
         /**
@@ -265,6 +337,14 @@ export function useEditeScraper() {
          * @param video 视频对象
          * @param sourceVideoFile 原始视频文件
          */
-        scraperSave
+        scraperSave,
+        /**
+         * 是否全部刮削器都在运行中
+         */
+        isScraperRunning,
+        /**
+         * 编辑器的刮削器是不是都在运行中
+         */
+        isEditeScraperRunning
     }
 }

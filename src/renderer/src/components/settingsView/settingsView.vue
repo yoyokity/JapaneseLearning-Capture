@@ -79,8 +79,7 @@ function openLlmInfo() {
             header: '本地LLM大模型使用说明',
             style: {
                 width: 'fit-content',
-                maxWidth: '60rem',
-                overflow: 'hidden'
+                maxWidth: '60rem'
             },
             contentStyle: {
                 padding: '0'

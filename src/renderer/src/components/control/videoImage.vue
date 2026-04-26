@@ -7,7 +7,7 @@ import { globalStatesStore } from '@renderer/stores'
 import { onMounted, ref, watch } from 'vue'
 
 interface ImageProps {
-    imgData?: string | null
+    src?: string | null
     imageLoading?: 'eager' | 'lazy'
     imageDecoding?: 'sync' | 'async' | 'auto'
     /**
@@ -22,7 +22,7 @@ interface ImageProps {
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
-    imgData: null,
+    src: null,
     imageLoading: 'lazy',
     imageDecoding: 'async',
     imageStyle: () => ({}),
@@ -38,13 +38,13 @@ const imageData = ref<string>()
  * 加载图片
  */
 function loadImage() {
-    if (!props.imgData) {
+    if (!props.src) {
         imageData.value = ''
         isImgError.value = true
         return
     }
 
-    imageData.value = ImageHelper.toLocalFileUrl(props.imgData, globalStates.imageCacheVersion)
+    imageData.value = ImageHelper.toLocalFileUrl(props.src, globalStates.imageCacheVersion)
     isImgError.value = false
 }
 
@@ -52,14 +52,10 @@ function loadImage() {
  * 处理图片加载失败
  */
 function handleImageError() {
-    console.error('local-file 图片加载失败', {
-        originalPath: props.imgData,
-        imageUrl: imageData.value
-    })
     isImgError.value = true
 }
 
-watch(() => props.imgData, loadImage)
+watch(() => props.src, loadImage)
 watch(() => globalStates.imageCacheVersion, loadImage)
 
 onMounted(loadImage)

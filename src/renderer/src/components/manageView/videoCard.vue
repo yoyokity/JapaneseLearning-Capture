@@ -57,7 +57,7 @@ function handleClick(event: MouseEvent) {
 <template>
     <div class="video-card" @click="handleClick">
         <VideoImage
-            :img-data="image"
+            :src="image"
             image-loading="lazy"
             image-decoding="async"
             style="aspect-ratio: 379 / 538"
