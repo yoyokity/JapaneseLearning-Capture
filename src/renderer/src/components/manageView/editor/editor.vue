@@ -28,8 +28,7 @@ import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
-import { inject, nextTick, onMounted, ref, watch } from 'vue'
-import useKeyPress from 'vue-hooks-plus/es/useKeyPress'
+import { inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
@@ -206,16 +205,6 @@ async function onSave() {
     await PathHelper.removeEmptyFolders(Scraper.getCurrentScraperPath())
 }
 
-// 快捷键退出
-useKeyPress(['esc'], () => {
-    if (previewImage.value) {
-        previewImage.value = null
-    } else {
-        currentScraperController.value?.abort()
-        dialogRef.value.close()
-    }
-})
-
 /**
  * 创建菜单项数组
  * @param inputRef 输入框的响应式引用
@@ -286,6 +275,25 @@ async function transPlot() {
         isTranslatingPlot.value = false
     }
 }
+
+/**
+ * 处理鼠标返回
+ */
+function handleMouseBackAction(event: MouseEvent) {
+    // 鼠标侧键返回
+    if (event.button === 3) {
+        event.preventDefault()
+        dialogRef.value.close()
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('mouseup', handleMouseBackAction)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('mouseup', handleMouseBackAction)
+})
 
 onMounted(async () => {
     newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题

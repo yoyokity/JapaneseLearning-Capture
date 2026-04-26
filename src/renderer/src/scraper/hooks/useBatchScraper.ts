@@ -138,13 +138,16 @@ export function useBatchScraper() {
         const hasContentResult = await (async () => {
             try {
                 scraperContext.logger.log(`获取网页内容中...`)
-                if (
-                    !(await scraperContext.scraper.scraperVideoFuncs.getWebContext(
-                        video,
-                        videoContext,
-                        signal
-                    ))
-                ) {
+                const re = await scraperContext.scraper.scraperVideoFuncs.getWebContext(
+                    video,
+                    videoContext,
+                    signal
+                )
+
+                const contentAbortResult = getAbortResult(signal)
+                if (contentAbortResult) return false
+
+                if (!re) {
                     scraperContext.logger.warn(`获取网页内容失败！`)
                     return false
                 }

@@ -190,33 +190,14 @@ function backToHomeView() {
 }
 
 /**
- * 处理鼠标和键盘返回
+ * 处理鼠标返回
  */
-function handleBackAction(event: MouseEvent | KeyboardEvent) {
+function handleMouseBackAction(event: MouseEvent) {
+    if (document.querySelector('.p-dialog-mask')) return
     if (!isSetView.value) return
 
-    if (event instanceof MouseEvent) {
-        // 鼠标侧键返回
-        if (event.button === 3) {
-            event.preventDefault()
-            backToHomeView()
-        }
-        return
-    }
-
-    // Alt + 左方向键 / Backspace 视为返回
-    if (
-        (event.key === 'ArrowLeft' && event.altKey) ||
-        event.key === 'BrowserBack' ||
-        event.key === 'Backspace'
-    ) {
-        const target = event.target as HTMLElement | null
-        const tagName = target?.tagName?.toUpperCase()
-        const isEditable =
-            !!target && (target.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA')
-
-        if (isEditable && event.key === 'Backspace') return
-
+    // 鼠标侧键返回
+    if (event.button === 3) {
         event.preventDefault()
         backToHomeView()
     }
@@ -257,13 +238,11 @@ watch(
 )
 
 onMounted(() => {
-    window.addEventListener('mouseup', handleBackAction)
-    window.addEventListener('keydown', handleBackAction)
+    window.addEventListener('mouseup', handleMouseBackAction)
 })
 
 onUnmounted(() => {
-    window.removeEventListener('mouseup', handleBackAction)
-    window.removeEventListener('keydown', handleBackAction)
+    window.removeEventListener('mouseup', handleMouseBackAction)
 })
 </script>
 
