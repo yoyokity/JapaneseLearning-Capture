@@ -18,6 +18,9 @@ import { LogHelper, TaskHelper } from '.'
  * 网络相关
  */
 export class NetHelper {
+    private static readonly defaultUserAgent =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+
     /**
      * 判断是否为任务取消错误
      * @param error 错误信息
@@ -27,20 +30,159 @@ export class NetHelper {
     }
 
     /**
+     * 创建取消结果
+     */
+    private static _createCanceledResult<T>(): IResultWithError<T> {
+        return {
+            result: null,
+            hasError: true,
+            error: '任务已取消'
+        }
+    }
+
+    /**
+     * 创建失败请求结果
+     */
+    private static _createFailedResult<T>(): IResult<T> {
+        return {
+            ok: false,
+            status: -1,
+            statusText: '',
+            headers: {},
+            body: undefined as T
+        }
+    }
+
+    /**
+     * 创建默认请求头
+     */
+    private static _createDefaultHeaders() {
+        return {
+            'User-Agent': NetHelper.defaultUserAgent
+        }
+    }
+
+    /**
+     * 解析请求选项
+     */
+    private static _resolveRequestOptions<P extends IFetchParse = 'text'>(
+        options?: IRequestOptions<P>
+    ) {
+        const settings = settingsStore()
+        let timeout: number = settings.net.timeout * 1000
+        let delay: number = settings.net.delay
+        let retry: number = settings.net.retry
+        let parse: IFetchParse = 'text'
+        let headers: Record<string, string> = {}
+        let signal: AbortSignal | undefined
+
+        if (options) {
+            timeout = options.timeout ?? timeout
+            delay = options.delay ?? delay
+            retry = options.retry ?? retry
+            parse = options.parse ?? parse
+            headers = options.headers ?? headers
+            signal = options.signal
+
+            if (options.cookie) {
+                const cookieStr = this._cookieToString(options.cookie)
+                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
+            }
+        }
+
+        return {
+            timeout,
+            delay,
+            retry,
+            parse: parse as P,
+            headers,
+            signal
+        }
+    }
+
+    /**
+     * 执行带重试的请求
+     */
+    private static async _requestWithRetry<T>(
+        method: 'GET' | 'POST',
+        url: string,
+        retry: number,
+        delay: number,
+        signal: AbortSignal | undefined,
+        task: () => Promise<IResult<T>>
+    ): Promise<IResult<T>> {
+        let re: IResultWithError<IResult<T>>
+        let retryCount = 0
+
+        do {
+            if (retryCount > 0) {
+                LogHelper.warn(`${method}请求重试第${retryCount}次：${url}`)
+            }
+
+            re = await this._executeNetTask(url, retry, delay, signal, task)
+
+            if (!re.hasError) {
+                const result = re.result
+                if (result.ok || result.status === 403) {
+                    return result
+                }
+
+                if (method === 'POST') {
+                    LogHelper.warn(`${method}请求失败：${url}`, result)
+                }
+            } else {
+                if (this._isTaskCanceled(re.error)) {
+                    break
+                }
+                LogHelper.error(`${method}请求失败：${url}`, re.error)
+            }
+
+            retryCount++
+        } while (retryCount <= retry)
+
+        return this._createFailedResult<T>()
+    }
+
+    /**
      * 执行网络请求任务，并统一返回错误结果结构
      * @param url 请求地址
      * @param retry 重试次数
      * @param delay 请求间隔
+     * @param signal 取消信号
      * @param task 执行任务
      */
     private static async _executeNetTask<T>(
         url: string,
         retry: number,
         delay: number,
+        signal: AbortSignal | undefined,
         task: () => Promise<T>
     ): Promise<IResultWithError<T>> {
+        if (signal?.aborted) {
+            return this._createCanceledResult<T>()
+        }
+
+        const runTask = async () => {
+            if (!signal) {
+                return await TaskHelper.tryExecute(task)
+            }
+
+            return await Promise.race([
+                TaskHelper.tryExecute(task),
+                new Promise<IResultWithError<T>>((resolve) => {
+                    signal.addEventListener(
+                        'abort',
+                        () => {
+                            resolve(this._createCanceledResult<T>())
+                        },
+                        { once: true }
+                    )
+                })
+            ])
+        }
+
         if (retry <= 0) {
-            return await TaskHelper.tryExecute(task)
+            return await runTask()
         }
 
         const hostName = new URL(url).hostname
@@ -50,15 +192,11 @@ export class NetHelper {
                 intervalMs: delay,
                 updateTimeAfterExecution: false
             },
-            async () => await TaskHelper.tryExecute(task)
+            async () => await runTask()
         )
 
         if (queueResult.cancel) {
-            return {
-                result: null,
-                hasError: true,
-                error: '任务已取消'
-            }
+            return this._createCanceledResult<T>()
         }
 
         return queueResult.result
@@ -147,76 +285,23 @@ export class NetHelper {
         url: string,
         options?: IRequestOptions<P>
     ): Promise<IResult<ParseResultType<P>>> {
-        const settings = settingsStore()
-        let timeout: number = settings.net.timeout * 1000
-        let delay: number = settings.net.delay
-        let retry: number = settings.net.retry
-        let parse: IFetchParse = 'text'
-        let headers: Record<string, string> = {}
-
-        if (options) {
-            timeout = options.timeout ?? timeout
-            delay = options.delay ?? delay
-            retry = options.retry ?? retry
-            parse = options.parse ?? parse
-            headers = options.headers ?? headers
-
-            // 处理cookie
-            if (options.cookie) {
-                const cookieStr = this._cookieToString(options.cookie)
-                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
-            }
-        }
-
-        const defaultHeaders = {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-        }
+        const { timeout, delay, retry, parse, headers, signal } =
+            this._resolveRequestOptions(options)
 
         const config: IFetchOptions & { parse?: P } = {
-            headers: { ...defaultHeaders, ...headers },
+            headers: { ...this._createDefaultHeaders(), ...headers },
             timeout,
             parse: parse as P
         }
 
-        let re: IResultWithError<IResult<ParseResultType<P>>>
-        let retryCount = 0
-
-        // 失败则重试
-        do {
-            if (retryCount > 0) {
-                LogHelper.warn(`GET请求重试第${retryCount}次：${url}`)
-            }
-
-            re = await this._executeNetTask(
-                url,
-                retry,
-                delay,
-                async () => await Ipc.net.get<P>(url, config)
-            )
-
-            if (!re.hasError) {
-                const result = re.result
-                if (result.ok || result.status === 403) {
-                    return result
-                }
-            } else {
-                if (this._isTaskCanceled(re.error)) {
-                    break
-                }
-                LogHelper.error(`GET请求失败：${url}`, re.error)
-            }
-
-            retryCount++
-        } while (retryCount <= retry)
-
-        return {
-            ok: false,
-            status: -1,
-            statusText: '',
-            headers: {},
-            body: undefined as any
-        }
+        return await this._requestWithRetry<ParseResultType<P>>(
+            'GET',
+            url,
+            retry,
+            delay,
+            signal,
+            async () => await Ipc.net.get<P>(url, config)
+        )
     }
 
     /**
@@ -244,78 +329,23 @@ export class NetHelper {
         data: any,
         options?: IRequestOptions<P>
     ): Promise<IResult<ParseResultType<P>>> {
-        const settings = settingsStore()
-        let timeout: number = settings.net.timeout * 1000
-        let delay: number = settings.net.delay
-        let retry: number = settings.net.retry
-        let parse: IFetchParse = 'text'
-        let headers: Record<string, string> = {}
-
-        if (options) {
-            timeout = options.timeout ?? timeout
-            delay = options.delay ?? delay
-            retry = options.retry ?? retry
-            parse = options.parse ?? parse
-            headers = options.headers ?? headers
-
-            // 处理cookie
-            if (options.cookie) {
-                const cookieStr = this._cookieToString(options.cookie)
-                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
-            }
-        }
-
-        const defaultHeaders = {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-        }
+        const { timeout, delay, retry, parse, headers, signal } =
+            this._resolveRequestOptions(options)
 
         const config: IFetchOptions & { parse?: P } = {
-            headers: { ...defaultHeaders, ...headers },
+            headers: { ...this._createDefaultHeaders(), ...headers },
             timeout,
             parse: parse as P
         }
 
-        let re: IResultWithError<IResult<ParseResultType<P>>>
-        let retryCount = 0
-
-        // 失败则重试
-        do {
-            if (retryCount > 0) {
-                LogHelper.warn(`POST请求重试第${retryCount}次：${url}`)
-            }
-
-            re = await this._executeNetTask(
-                url,
-                retry,
-                delay,
-                async () => await Ipc.net.post<P>(url, data, config)
-            )
-
-            if (!re.hasError) {
-                const result = re.result
-                if (result.ok || result.status === 403) {
-                    return result
-                } else {
-                    LogHelper.warn(`POST请求失败：${url}`, re.result)
-                }
-            } else {
-                if (this._isTaskCanceled(re.error)) {
-                    break
-                }
-                LogHelper.error(`POST请求失败：${url}`, re.error)
-            }
-
-            retryCount++
-        } while (retryCount <= retry)
-
-        return {
-            ok: false,
-            status: -1,
-            statusText: '',
-            headers: {},
-            body: undefined as any
-        }
+        return await this._requestWithRetry<ParseResultType<P>>(
+            'POST',
+            url,
+            retry,
+            delay,
+            signal,
+            async () => await Ipc.net.post<P>(url, data, config)
+        )
     }
 
     /**
@@ -324,72 +354,22 @@ export class NetHelper {
      * @param options 请求选项（parse字段会被忽略，固定为arrayBuffer）
      */
     static async getImage(url: string, options?: Omit<IRequestOptions, 'parse' | 'delay'>) {
-        const settings = settingsStore()
-        let timeout: number = settings.net.timeout * 1000
-        let retry: number = settings.net.retry
-        let headers: Record<string, string> = {}
-
-        if (options) {
-            timeout = options.timeout ?? timeout
-            retry = options.retry ?? retry
-            headers = options.headers ?? headers
-
-            // 处理cookie
-            if (options.cookie) {
-                const cookieStr = this._cookieToString(options.cookie)
-                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
-            }
-        }
-
-        const defaultHeaders = {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-        }
+        const { timeout, retry, headers, signal } = this._resolveRequestOptions(options)
 
         const config: IFetchOptions & { parse: 'arrayBuffer' } = {
-            headers: { ...defaultHeaders, ...headers },
+            headers: { ...this._createDefaultHeaders(), ...headers },
             timeout,
             parse: 'arrayBuffer'
         }
 
-        let re: IResultWithError<IResult<ArrayBuffer>>
-        let retryCount = 0
-
-        // 失败则重试
-        do {
-            if (retryCount > 0) {
-                LogHelper.warn(`GET请求重试第${retryCount}次：${url}`)
-            }
-
-            re = await this._executeNetTask(
-                url,
-                retry,
-                0,
-                async () => await Ipc.net.get<'arrayBuffer'>(url, config)
-            )
-
-            if (!re.hasError) {
-                const result = re.result
-                if (result.ok || result.status === 403) {
-                    return result
-                }
-            } else {
-                if (this._isTaskCanceled(re.error)) {
-                    break
-                }
-                LogHelper.error(`GET请求失败：${url}`, re.error)
-            }
-
-            retryCount++
-        } while (retryCount <= retry)
-
-        return {
-            ok: false,
-            status: -1,
-            statusText: '',
-            headers: {},
-            body: undefined as any
-        }
+        return await this._requestWithRetry<ArrayBuffer>(
+            'GET',
+            url,
+            retry,
+            0,
+            signal,
+            async () => await Ipc.net.get<'arrayBuffer'>(url, config)
+        )
     }
 
     /**
@@ -511,6 +491,10 @@ export interface IRequestOptions<P extends IFetchParse = 'text'> {
      * 每次相同网站的请求间隔（毫秒）
      */
     delay?: number
+    /**
+     * 取消信号
+     */
+    signal?: AbortSignal
 }
 
 export interface IAiRequestOptions {

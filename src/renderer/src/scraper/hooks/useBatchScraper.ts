@@ -141,10 +141,11 @@ export function useBatchScraper() {
                 if (
                     !(await scraperContext.scraper.scraperVideoFuncs.getWebContext(
                         video,
-                        videoContext
+                        videoContext,
+                        signal
                     ))
                 ) {
-                    scraperContext.logger.error(`获取网页内容失败！`)
+                    scraperContext.logger.warn(`获取网页内容失败！`)
                     return false
                 }
 
@@ -177,9 +178,10 @@ export function useBatchScraper() {
 
                     const func = scraperContext.scraper.scraperVideoFuncs[name] as (
                         video: IVideo,
-                        content: unknown
+                        content: unknown,
+                        signal: AbortSignal
                     ) => Promise<boolean | null>
-                    const _re = await func(video, videoContext)
+                    const _re = await func(video, videoContext, signal)
 
                     if (_re === false) {
                         scraperContext.logger.warn(`解析${label}失败！`)

@@ -42,7 +42,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
         tag: []
     }),
     scraperVideoFuncs: {
-        getWebContext: async (video: IVideo, context: IHanimeContext) => {
+        getWebContext: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (context.webContent.hanime1) {
                 LogHelper.title(scraperName).log('网页内容已获取过，跳过')
                 return true
@@ -55,9 +55,9 @@ const hanimeScraper: IScraper<IHanimeContext> = {
 
             // 获取webContent
             await Promise.all([
-                getWebContentHanime1(searchTitle, context),
-                getWebContentGetchu(searchTitle, context),
-                getWebContentDlsite(searchTitle, context)
+                getWebContentHanime1(searchTitle, context, signal),
+                getWebContentGetchu(searchTitle, context, signal),
+                getWebContentDlsite(searchTitle, context, signal)
             ])
 
             return Boolean(context.webContent.hanime1)
@@ -83,9 +83,15 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             context.originaltitle = video.originaltitle
             return true
         },
-        parseSorttitle: async (video: IVideo, context: IHanimeContext) => {
+        parseSorttitle: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (!context.originaltitle) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseOriginaltitle(video, context))) {
+                if (
+                    !(await hanimeScraper.scraperVideoFuncs.parseOriginaltitle(
+                        video,
+                        context,
+                        signal
+                    ))
+                ) {
                     return false
                 }
             }
@@ -106,13 +112,14 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             video.mpaa = 'JP-18+'
             return true
         },
-        parseRating: async (video: IVideo, context: IHanimeContext) => {
+        parseRating: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             // dlsite
             if (context.num.dlsite) {
                 loggerDlsite.log(`搜索评分...`)
 
                 const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${context.num.dlsite}&cdn_cache_min=1`
-                const webContent = await NetHelper.get(url, dlsiteOptions)
+                const webContent = await NetHelper.get(url, { ...dlsiteOptions, signal })
+                if (signal.aborted) return false
                 if (webContent.ok) {
                     const a = JSON.parse(webContent.body)[context.num.dlsite]
                     if (a) {
@@ -199,9 +206,9 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             context.maker = maker
             return true
         },
-        parseMaker: async (video: IVideo, context: IHanimeContext) => {
+        parseMaker: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (!context.maker) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseStudio(video, context))) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parseStudio(video, context, signal))) {
                     return false
                 }
             }
@@ -240,9 +247,9 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             context.tag = tags
             return true
         },
-        parseGenre: async (video: IVideo, context: IHanimeContext) => {
+        parseGenre: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (!context.tag.length) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseTag(video, context))) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parseTag(video, context, signal))) {
                     return false
                 }
             }
@@ -299,16 +306,17 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             video.releasedate = releasedate
             return true
         },
-        parsePoster: async (video: IVideo, context: IHanimeContext) => {
+        parsePoster: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (context.webContent.getchu) {
-                context.封面 = await getPosterGetchu(context)
+                context.封面 = await getPosterGetchu(context, signal)
             }
 
             // 没有则从hanime上获取
             if (!context.封面) {
                 context.封面 = await getPosterHanime1(
                     video.originaltitle || video.title || video.sorttitle,
-                    context
+                    context,
+                    signal
                 )
             }
 
@@ -319,9 +327,9 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             video.poster = context.封面
             return true
         },
-        parseThumb: async (video: IVideo, context: IHanimeContext) => {
+        parseThumb: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (!video.poster) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, context))) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, context, signal))) {
                     return false
                 }
             }
@@ -337,9 +345,9 @@ const hanimeScraper: IScraper<IHanimeContext> = {
 
             return true
         },
-        parseFanart: async (video: IVideo, context: IHanimeContext) => {
+        parseFanart: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
             if (!video.poster) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, context))) {
+                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, context, signal))) {
                     return false
                 }
             }
@@ -354,11 +362,11 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             video.fanart = context.超分封面
             return true
         },
-        parseExtrafanart: async (video: IVideo, _context: IHanimeContext) => {
-            video.extrafanart = await getExtrafanartGetchu(_context)
+        parseExtrafanart: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
+            video.extrafanart = await getExtrafanartGetchu(context, signal)
             return true
         },
-        parseOutput: async (video: IVideo, _context: IHanimeContext) => {
+        parseOutput: async (video: IVideo) => {
             const dir = `${video.set}/${video.originaltitle}`
             return { dir, fileName: video.originaltitle }
         }

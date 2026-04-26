@@ -15,7 +15,8 @@ export const getchuOptions = {
  */
 export async function getWebContentGetchu(
     searchTitle: string,
-    context: IHanimeContext
+    context: IHanimeContext,
+    signal: AbortSignal
 ): Promise<void> {
     loggerGetchu.log(`开始获取网页内容`)
 
@@ -23,7 +24,7 @@ export async function getWebContentGetchu(
      * 获取 Getchu 页面内容
      */
     async function fetchPage(url: string): Promise<string | null> {
-        const res = await NetHelper.get(url, { ...getchuOptions, parse: 'arrayBuffer' })
+        const res = await NetHelper.get(url, { ...getchuOptions, parse: 'arrayBuffer', signal })
         if (!res.ok) {
             return null
         }
@@ -36,6 +37,7 @@ export async function getWebContentGetchu(
         loggerGetchu.log(`使用编号搜索：${context.num.getchu}`)
 
         const body = await fetchPage(url)
+        if (signal.aborted) return
         if (body) {
             if (body.includes('年齢認証')) {
                 loggerGetchu.warn(`成人验证失败，无法获取网页内容`, url)
@@ -46,6 +48,7 @@ export async function getWebContentGetchu(
             loggerGetchu.success(`获取到网页内容`)
             return
         }
+
         loggerGetchu.log(`使用编号搜索失败，使用原标题搜索`, url)
     }
 
@@ -54,6 +57,7 @@ export async function getWebContentGetchu(
     const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
 
     const searchBody = await fetchPage(searchUrl)
+    if (signal.aborted) return
     if (!searchBody) {
         loggerGetchu.warn(`获取搜索结果失败`, searchUrl)
         return
@@ -83,6 +87,7 @@ export async function getWebContentGetchu(
 
     // 根据href获取webContent
     const body = await fetchPage(fullUrl)
+    if (signal.aborted) return
     if (!body) {
         loggerGetchu.warn(`获取网页内容失败`, fullUrl)
         return
@@ -103,7 +108,10 @@ export async function getWebContentGetchu(
 /**
  * 获取 Getchu 剧照
  */
-export async function getExtrafanartGetchu(context: IHanimeContext): Promise<string[]> {
+export async function getExtrafanartGetchu(
+    context: IHanimeContext,
+    signal: AbortSignal
+): Promise<string[]> {
     if (!context.webContent.getchu) {
         loggerGetchu.log(`- 没有getchu，无法获取剧照`)
         return []
@@ -121,7 +129,8 @@ export async function getExtrafanartGetchu(context: IHanimeContext): Promise<str
     const successUrls: string[] = []
     const failedUrls: string[] = []
     for (const url of urls) {
-        const re = await NetHelper.getImage(url, getchuOptions)
+        const re = await NetHelper.getImage(url, { ...getchuOptions, signal })
+        if (signal.aborted) break
         if (re.ok) {
             successUrls.push(url)
             const tempPath = await ImageHelper.saveTempImage(
@@ -148,7 +157,10 @@ export async function getExtrafanartGetchu(context: IHanimeContext): Promise<str
 /**
  * 获取 Getchu 封面
  */
-export async function getPosterGetchu(context: IHanimeContext): Promise<string | null> {
+export async function getPosterGetchu(
+    context: IHanimeContext,
+    signal: AbortSignal
+): Promise<string | null> {
     if (!context.webContent.getchu) {
         return null
     }
@@ -165,7 +177,8 @@ export async function getPosterGetchu(context: IHanimeContext): Promise<string |
     }
 
     const posterUrl = NetHelper.joinUrl('https://www.getchu.com/', url)
-    const re = await NetHelper.getImage(posterUrl, getchuOptions)
+    const re = await NetHelper.getImage(posterUrl, { ...getchuOptions, signal })
+    if (signal.aborted) return null
     if (!re.ok) {
         loggerGetchu.warn(`获取封面失败！:${posterUrl}`)
         return null

@@ -339,6 +339,7 @@ onMounted(async () => {
             <!-- 取消按钮 -->
             <div v-if="isEditeScraperRunning" style="margin-left: auto; margin-right: 2rem">
                 <Button
+                    style="height: 1.75rem"
                     :loading="isCanceling"
                     label="取消"
                     size="small"

@@ -71,11 +71,11 @@ export function useEditeScraper() {
      * @param context 刮削上下文
      * @param video 视频对象
      */
-    async function ensureContent(context: IScraperContext, video: IVideo) {
+    async function ensureContent(context: IScraperContext, video: IVideo, signal: AbortSignal) {
         try {
             const content = getContent(context.scraper, video)
             context.logger.log(`获取网页内容中...`)
-            if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, content))) {
+            if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, content, signal))) {
                 context.logger.error(`获取网页内容失败！`)
                 toast.error(`获取网页内容失败！`)
                 return false
@@ -99,16 +99,18 @@ export function useEditeScraper() {
         context: IScraperContext,
         video: IVideo,
         funcName: ScraperFuncName,
-        label: string
+        label: string,
+        signal: AbortSignal
     ) {
         try {
             context.logger.log(`解析${label}...`)
             const content = getContent(context.scraper, video)
             const func = context.scraper.scraperVideoFuncs[funcName] as (
                 video: IVideo,
-                content: unknown
+                content: unknown,
+                signal: AbortSignal
             ) => Promise<boolean>
-            return await func(video, content)
+            return await func(video, content, signal)
         } catch (error) {
             context.logger.error(`解析${label}出错！`, error)
             return false
@@ -127,6 +129,7 @@ export function useEditeScraper() {
 
         onProgress(100)
         toast.warn('刮削已取消！')
+        LogHelper.warn('刮削已取消！')
         return true
     }
 
@@ -158,7 +161,7 @@ export function useEditeScraper() {
             if (getAbortResult(signal, onProgress)) return
 
             // 先确保有网页内容
-            if (!(await ensureContent(scraperContext, video))) {
+            if (!(await ensureContent(scraperContext, video, signal))) {
                 onProgress(100)
                 return
             }
@@ -168,7 +171,7 @@ export function useEditeScraper() {
             onProgress(60)
 
             // 执行解析
-            const success = await parseField(scraperContext, video, funcName, logName)
+            const success = await parseField(scraperContext, video, funcName, logName, signal)
             if (getAbortResult(signal, onProgress)) return
 
             if (!success) {
@@ -188,8 +191,11 @@ export function useEditeScraper() {
             try {
                 const content = getContent(scraperContext.scraper, video)
                 numSuccess =
-                    (await scraperContext.scraper.scraperVideoFuncs.parseNum(video, content)) ??
-                    false
+                    (await scraperContext.scraper.scraperVideoFuncs.parseNum(
+                        video,
+                        content,
+                        signal
+                    )) ?? false
             } catch (error) {
                 numHasError = true
                 scraperContext.logger.error(`更新编号出错！`, error)
@@ -240,7 +246,7 @@ export function useEditeScraper() {
             if (getAbortResult(signal, onProgress)) return
 
             // 先确保有网页内容
-            if (!(await ensureContent(scraperContext, video))) {
+            if (!(await ensureContent(scraperContext, video, signal))) {
                 onProgress(100)
                 return
             }
@@ -253,7 +259,7 @@ export function useEditeScraper() {
             for (const [index, { name, label }] of parseFuncs.entries()) {
                 if (getAbortResult(signal, onProgress)) return
 
-                if (!(await parseField(scraperContext, video, name, label))) {
+                if (!(await parseField(scraperContext, video, name, label, signal))) {
                     failed.push(label)
                 }
 
