@@ -146,18 +146,64 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 const $ = cheerioLoad(context.webContent.dlsite)
                 const text = $('#work_right_inner').text()
 
-                const ROLE_PRIORITY = ['監督', '演出', '脚本']
-                const ROLE_REGEX_TEMPLATE = /(?<name>[^\s（]+?)\s*[（(]\{\{role\}\}/
+                // 匹配字段中的人名和可选职务
+                interface IDlsiteStaff {
+                    name: string
+                    role?: string
+                }
 
-                for (const role of ROLE_PRIORITY) {
-                    const dynamicRegex = new RegExp(
-                        ROLE_REGEX_TEMPLATE.source.replace('{{role}}', role)
+                const dlsiteStaffCategories = ['シナリオ', 'イラスト', '声優', 'その他'] as const
+                const dlsiteStaffSectionEndCategories = [
+                    ...dlsiteStaffCategories,
+                    '年齢指定',
+                    '作品形式',
+                    'ジャンル'
+                ]
+                const dlsiteStaffRegex = /(?<name>[^/\s()]+)(?:\((?<role>[^)]+)\))?/g
+
+                const staffs: IDlsiteStaff[] = dlsiteStaffCategories.flatMap((category) => {
+                    const categoryIndex = text.indexOf(category)
+                    if (categoryIndex === -1) return []
+
+                    const peopleStartIndex = categoryIndex + category.length
+                    const peopleEndIndex =
+                        dlsiteStaffSectionEndCategories
+                            .filter((item) => item !== category)
+                            .map((item) => text.indexOf(item, peopleStartIndex))
+                            .filter((index) => index !== -1)
+                            .sort((a, b) => a - b)[0] ?? text.length
+                    const peopleText = text.slice(peopleStartIndex, peopleEndIndex)
+
+                    return Array.from(peopleText.matchAll(dlsiteStaffRegex)).flatMap(
+                        (peopleMatch) => {
+                            const name = peopleMatch.groups?.name?.trim()
+                            if (!name) return []
+
+                            const role = peopleMatch.groups?.role?.trim()
+                            return [
+                                {
+                                    name,
+                                    role: role || undefined
+                                }
+                            ]
+                        }
                     )
-                    const match = text.match(dynamicRegex)
-                    if (match?.groups?.name) {
-                        video.director = match.groups.name.trim()
-                        return true
-                    }
+                })
+
+                const director = staffs.find((item) => {
+                    const role = item.role ?? ''
+                    return (
+                        role === '監督' ||
+                        role === '演出' ||
+                        role.startsWith('監督') ||
+                        role.includes('監督') ||
+                        role.includes('演出')
+                    )
+                })
+
+                if (director) {
+                    video.director = director.name
+                    return true
                 }
 
                 loggerDlsite.warn(`没有找到导演`)
@@ -257,13 +303,47 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             video.genre = context.tag
             return true
         },
-        parsePlot: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            let plot = $('div.video-caption-text').text()
+        parsePlot: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
+            let plot = (() => {
+                // 先看getchu能不能获取
+                if (context.webContent.getchu) {
+                    const $ = cheerioLoad(context.webContent.getchu)
+                    const plot = $('h3')
+                        .filter((_i, el) => $(el).text().trim() === 'ストーリー') // 找到标题为"ストーリー"的元素
+                        .next()
+                        .find('span')
+                        .clone() // 克隆，避免修改原始DOM
+                        .find('.navyb') // 找到所有navyb类元素
+                        .remove() // 移除它们
+                        .end() // 回到克隆的span
+                        .text()
+                        .trim()
 
-            if (plot.includes('[中文字幕]')) {
-                plot = plot.split('[中文字幕]')[1].trim()
-            }
+                    if (plot) return plot
+                }
+
+                // getchu没有的话，用dlsite
+                if (context.webContent.dlsite) {
+                    const $ = cheerioLoad(context.webContent.dlsite)
+                    const plot = $('div')
+                        .filter((_i, el) => $(el).text().trim() === '作品内容')
+                        .next()
+                        .text()
+                        .trim()
+
+                    if (plot) return plot
+                }
+
+                // dlsite也没有的话，用hanime
+                const $ = cheerioLoad(context.webContent.hanime1)
+                let plot = $('div.video-caption-text').text().trim()
+
+                plot = plot.split('[中文字幕]')?.pop()?.split('·')?.pop() ?? ''
+
+                return plot
+            })()
+
+            if (signal.aborted) return false
 
             // 翻译一下
             const re = await TransHelper.translate(plot)
