@@ -3,7 +3,7 @@ import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
 import SettingsLineItem from '@renderer/components/settingsView/settingsLineItem.vue'
-import { LogHelper, TransHelper } from '@renderer/helper'
+import { DeepseekReasoningEffortArray, LogHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
@@ -242,6 +242,7 @@ function openLlmInfo() {
                         :title="`${settings.translate.translateEngine}配置`"
                         @open="fetchLLMModels"
                     >
+                        <!-- #region openai配置  -->
                         <div v-if="settings.translate.translateEngine === 'openai'">
                             <SettingsLineItem title="API Key">
                                 <Button
@@ -278,6 +279,9 @@ function openLlmInfo() {
                                 />
                             </SettingsLineItem>
                         </div>
+                        <!-- #endregion openai配置 -->
+
+                        <!-- #region deepseek配置  -->
                         <div v-if="settings.translate.translateEngine === 'deepseek'">
                             <SettingsLineItem title="API Key">
                                 <Button
@@ -307,7 +311,19 @@ function openLlmInfo() {
                                     type="text"
                                 />
                             </SettingsLineItem>
+                            <SettingsLineItem title="思考模式">
+                                <ToggleSwitch v-model="settings.translate.deepseek.thinking" />
+                            </SettingsLineItem>
+                            <SettingsLineItem title="思考强度">
+                                <Select
+                                    v-model="settings.translate.deepseek.reasoningEffort"
+                                    :options="DeepseekReasoningEffortArray as any"
+                                />
+                            </SettingsLineItem>
                         </div>
+                        <!-- #endregion deepseek配置 -->
+
+                        <!-- #region gemini配置  -->
                         <div v-if="settings.translate.translateEngine === 'gemini'">
                             <SettingsLineItem title="API Key">
                                 <Button
@@ -341,6 +357,9 @@ function openLlmInfo() {
                                 />
                             </SettingsLineItem>
                         </div>
+                        <!-- #endregion gemini配置 -->
+
+                        <!-- #region LLM配置  -->
                         <div v-if="settings.translate.translateEngine === 'localLLM'">
                             <SettingsLineItem title="主机">
                                 <InputText
@@ -377,6 +396,7 @@ function openLlmInfo() {
                                 <Button @click="openLlmInfo"> 使用说明 </Button>
                             </SettingsLineItem>
                         </div>
+                        <!-- #endregion LLM配置 -->
                     </SettingsLine>
 
                     <SettingsLine

@@ -376,7 +376,7 @@ export class NetHelper {
      * AI流式请求
      * @param options AI请求选项
      */
-    static async ai(options: IAiRequestOptions): Promise<string> {
+    static async ai(options: IAiOptions): Promise<string> {
         const settings = settingsStore()
         let timeout: number = settings.net.timeout * 1000
         timeout = options.timeout ?? timeout
@@ -386,6 +386,7 @@ export class NetHelper {
             apiKey: options.apiKey,
             model: options.model,
             baseURL: options.baseURL,
+            providerOptions: options.providerOptions,
             system: options.system,
             prompt: options.prompt,
             timeout,
@@ -495,47 +496,4 @@ export interface IRequestOptions<P extends IFetchParse = 'text'> {
      * 取消信号
      */
     signal?: AbortSignal
-}
-
-export interface IAiRequestOptions {
-    /**
-     * AI提供商
-     */
-    provider: 'openai' | 'deepseek' | 'gemini'
-
-    /**
-     * API Key
-     */
-    apiKey: string
-
-    /**
-     * 模型名称
-     */
-    model: string
-
-    /**
-     * OpenAI兼容接口地址
-     */
-    baseURL?: string
-
-    /**
-     * 系统提示词
-     */
-    system?: string
-
-    /**
-     * 用户输入
-     */
-    prompt: string
-
-    /**
-     * 请求超时时间（毫秒），默认使用设置中的超时时间
-     * @remarks 首包等待、chunk 空闲的超时判断
-     */
-    timeout?: number
-
-    /**
-     * 流式回调
-     */
-    callback?: (data: string) => void
 }

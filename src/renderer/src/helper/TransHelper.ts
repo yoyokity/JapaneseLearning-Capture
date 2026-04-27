@@ -11,6 +11,7 @@ setupEnhance()
 
 export type TranslateEngine = keyof typeof translators
 export type TranslateTargetLanguage = 'zh-CN' | 'zh-TW'
+export const DeepseekReasoningEffortArray = ['high', 'max'] as const
 export interface ITranslateSettings {
     enable: boolean
     retryWithGoogle: boolean
@@ -24,6 +25,8 @@ export interface ITranslateSettings {
     deepseek: {
         apiKey: string
         model: string
+        thinking: boolean
+        reasoningEffort: (typeof DeepseekReasoningEffortArray)[number]
     }
     gemini: {
         apiKey: string
@@ -190,6 +193,16 @@ const translators = {
                 model: settings.translate.deepseek.model,
                 system: getDeepSeekPrompt(targetLanguage),
                 prompt: escapeSpecialSymbols(s_text),
+                providerOptions: {
+                    deepseek: settings.translate.deepseek.thinking
+                        ? {
+                              thinking: { type: 'enabled' },
+                              reasoning_effort: settings.translate.deepseek.reasoningEffort
+                          }
+                        : {
+                              thinking: { type: 'disabled' }
+                          }
+                },
                 callback: streamCallback
             })
 
@@ -410,6 +423,8 @@ function escapeSpecialSymbols(inputString: string): string {
 }
 
 function parseLLM(inputString: string) {
+    console.log(inputString)
+
     // 检查文本是否包含<think>标签
     const thinkRegex = /<think>([\s\S]*?)<\/think>\n?([\s\S]*)/
     const match = inputString.match(thinkRegex)

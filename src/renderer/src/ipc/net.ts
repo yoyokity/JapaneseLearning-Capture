@@ -106,6 +106,7 @@ export const net = {
                 apiKey: options.apiKey,
                 model: options.model,
                 baseURL: options.baseURL,
+                providerOptions: options.providerOptions,
                 system: options.system,
                 prompt: options.prompt,
                 timeout: options.timeout
@@ -215,6 +216,11 @@ export interface IAiOptions {
      * OpenAI兼容接口地址
      */
     baseURL?: string
+
+    /**
+     * 其他特定于提供商的选项。他们通过 从 AI SDK 发送给提供商并启用特定于提供商的 可以完全封装在提供者中的功能。
+     */
+    providerOptions?: Record<string, any>
 
     /**
      * 系统提示词

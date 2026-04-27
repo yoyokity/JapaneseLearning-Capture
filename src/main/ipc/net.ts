@@ -27,6 +27,7 @@ interface IAiStartOptions {
     apiKey: string
     model: string
     baseURL?: string
+    providerOptions?: Record<string, any>
     system?: string
     prompt: string
     timeout?: number
@@ -236,6 +237,9 @@ ipcMain.handle('net:ai', async (event, requestId: string, options: IAiStartOptio
                     model: getAiModel(options),
                     prompt: options.prompt,
                     abortSignal: controller.signal,
+                    ...(options.providerOptions
+                        ? { providerOptions: options.providerOptions }
+                        : {}),
                     ...(options.system ? { system: options.system } : {})
                 })
                 let hasFirstChunk = false
@@ -260,6 +264,9 @@ ipcMain.handle('net:ai', async (event, requestId: string, options: IAiStartOptio
                     }
                     event.sender.send('net:ai:data', dataPayload)
                 }
+
+                // 打印thinking内容
+                console.log(`thinking: ${(await result.reasoningText) ?? 'none'}`)
 
                 const endPayload: IAiEndPayload = {
                     requestId,

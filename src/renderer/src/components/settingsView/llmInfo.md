@@ -2,16 +2,15 @@
 
 ## 模型推荐：
 
-- #### qwen3-vl-8b-nsfw-caption-v4.5-heretic-i1
+- #### qwen3-vl-8b-instruct-uncensored-v2-i1
 
-    > 用i1-Q4_K_S，效果巨好
+    > 用Q4_K_S，效果巨好
 
-- #### galtransl-v4-4b-2601
-    > （只能日翻简中，不过刮削器也不会刮英文，所以没影响哦~）
+- #### murasaki-8b-v0.2
+
+    > 6G+显存用 IQ4_XS
     >
-    > 4G显存用GalTransl-v4-4B-2601-Q5_K_S.gguf
-    >
-    > 6G显存用GalTransl-v4-4B-2601.gguf（Q6K量化）
+    > 8G+显存用 Q6_K
 
 ## 安装步骤：
 

@@ -65,7 +65,9 @@ export const settingsStore = defineStore(
             },
             deepseek: {
                 apiKey: '',
-                model: 'deepseek-v4-flash'
+                model: 'deepseek-v4-flash',
+                thinking: true,
+                reasoningEffort: 'max'
             },
             gemini: {
                 apiKey: '',
@@ -85,6 +87,9 @@ export const settingsStore = defineStore(
         return {
             proxy,
             net,
+            /**
+             * 翻译设置
+             */
             translate,
             /**
              * 刮削器路径设置
