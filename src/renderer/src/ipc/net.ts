@@ -37,6 +37,7 @@ export const net = {
         let closed = false
         let isCancelled = false
         let text = ''
+        let reasoningText = ''
         let removeDataListener = () => {}
         let removeEndListener = () => {}
         let removeErrorListener = () => {}
@@ -60,10 +61,11 @@ export const net = {
             if (payload.requestId !== requestId) return
 
             text += payload.data
-            options.callback?.(payload.data)
+            reasoningText += payload.reasoningData ?? ''
+            options.callback?.(payload.data, payload.reasoningData ?? '')
         }
 
-        let resolveTask!: (value: string) => void
+        let resolveTask!: (value: IAiResult) => void
         let rejectTask!: (reason?: any) => void
 
         /**
@@ -73,7 +75,12 @@ export const net = {
             if (payload.requestId !== requestId) return
 
             cleanup()
-            resolveTask(payload.text)
+            text = payload.text
+            reasoningText = payload.reasoningText ?? reasoningText
+            resolveTask({
+                text: payload.text,
+                ...(reasoningText ? { reasoningText } : {})
+            })
         }
 
         /**
@@ -95,7 +102,7 @@ export const net = {
         removeEndListener = ipcRenderer.on('net:ai:end', handleEnd)
         removeErrorListener = ipcRenderer.on('net:ai:error', handleError)
 
-        const completed = new Promise<string>((resolve, reject) => {
+        const completed = new Promise<IAiResult>((resolve, reject) => {
             resolveTask = resolve
             rejectTask = reject
         })
@@ -125,7 +132,10 @@ export const net = {
                 await invoke('net:aiCancel', requestId)
                 rejectTask(new Error('AI流已取消'))
             },
-            getText: () => text
+            getText: () => ({
+                text,
+                ...(reasoningText ? { reasoningText } : {})
+            })
         }
     },
 
@@ -240,7 +250,12 @@ export interface IAiOptions {
     /**
      * 流式回调
      */
-    callback?: (data: string) => void
+    callback?: (data: string, reasoningData: string) => void
+}
+
+export interface IAiResult {
+    text: string
+    reasoningText?: string
 }
 
 export type IFetchParse = 'arrayBuffer' | 'blob' | 'formData' | 'json' | 'text'
@@ -256,11 +271,13 @@ export interface IResult<T> {
 export interface IAiDataPayload {
     requestId: string
     data: string
+    reasoningData?: string
 }
 
 export interface IAiEndPayload {
     requestId: string
     text: string
+    reasoningText?: string
 }
 
 export interface IAiErrorPayload {
@@ -270,9 +287,9 @@ export interface IAiErrorPayload {
 
 export interface IAiTask {
     requestId: string
-    completed: Promise<string>
+    completed: Promise<IAiResult>
     cancel: () => Promise<void>
-    getText: () => string
+    getText: () => IAiResult
 }
 
 /**

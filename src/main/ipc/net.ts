@@ -36,11 +36,13 @@ interface IAiStartOptions {
 interface IAiDataPayload {
     requestId: string
     data: string
+    reasoningData?: string
 }
 
 interface IAiEndPayload {
     requestId: string
     text: string
+    reasoningText?: string
 }
 
 interface IAiErrorPayload {
@@ -244,8 +246,13 @@ ipcMain.handle('net:ai', async (event, requestId: string, options: IAiStartOptio
                 })
                 let hasFirstChunk = false
                 let fullText = ''
+                let fullReasoningText = ''
 
-                for await (const textPart of result.textStream) {
+                for await (const part of result.fullStream) {
+                    if (part.type !== 'text-delta' && part.type !== 'reasoning-delta') {
+                        continue
+                    }
+
                     if (!hasFirstChunk) {
                         hasFirstChunk = true
                     }
@@ -256,21 +263,33 @@ ipcMain.handle('net:ai', async (event, requestId: string, options: IAiStartOptio
                             : 'AI流请求超时：未连接成功或未收到首个数据块'
                     )
 
-                    fullText += textPart
+                    if (part.type === 'text-delta') {
+                        fullText += part.text
+
+                        const dataPayload: IAiDataPayload = {
+                            requestId,
+                            data: part.text
+                        }
+                        event.sender.send('net:ai:data', dataPayload)
+                        continue
+                    }
+
+                    fullReasoningText += part.text
 
                     const dataPayload: IAiDataPayload = {
                         requestId,
-                        data: textPart
+                        data: '',
+                        reasoningData: part.text
                     }
                     event.sender.send('net:ai:data', dataPayload)
                 }
 
-                // 打印thinking内容
-                console.log(`thinking: ${(await result.reasoningText) ?? 'none'}`)
+                fullReasoningText = (await result.reasoningText) ?? ''
 
                 const endPayload: IAiEndPayload = {
                     requestId,
-                    text: fullText
+                    text: fullText,
+                    ...(fullReasoningText ? { reasoningText: fullReasoningText } : {})
                 }
                 event.sender.send('net:ai:end', endPayload)
             } catch (error) {

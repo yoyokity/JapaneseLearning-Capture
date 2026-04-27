@@ -1,5 +1,6 @@
 import type {
     IAiOptions,
+    IAiResult,
     IFetchOptions,
     IFetchParse,
     IPingResult,
@@ -376,7 +377,7 @@ export class NetHelper {
      * AI流式请求
      * @param options AI请求选项
      */
-    static async ai(options: IAiOptions): Promise<string> {
+    static async ai(options: IAiOptions): Promise<IAiResult> {
         const settings = settingsStore()
         let timeout: number = settings.net.timeout * 1000
         timeout = options.timeout ?? timeout
@@ -397,7 +398,7 @@ export class NetHelper {
 
         if (re.hasError) {
             LogHelper.error(`AI流请求失败：${options.provider}:${options.model}`, re.error)
-            return ''
+            return { text: '' }
         }
 
         try {

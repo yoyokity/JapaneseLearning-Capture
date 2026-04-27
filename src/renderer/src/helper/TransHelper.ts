@@ -44,13 +44,15 @@ export interface ITranslateResult {
     text: string
 }
 
+export type TStreamCallback = (data: string, reasoningData: string) => void
+
 const translators = {
     google: {
         description: '谷歌机器翻译不需要额外配置',
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
-            streamCallback?: (data: string) => void
+            streamCallback?: TStreamCallback
         ): Promise<ITranslateResult> => {
             const translateOptions = {
                 from: 'auto',
@@ -91,7 +93,7 @@ const translators = {
             if (re.ok) {
                 try {
                     const text = normaliseResponse(re.body).text.trim()
-                    streamCallback?.(text)
+                    streamCallback?.(text, '')
                     return {
                         ok: true,
                         text
@@ -102,7 +104,7 @@ const translators = {
             }
 
             // 翻译失败则原文返回
-            streamCallback?.(s_text)
+            streamCallback?.(s_text, '')
             return { ok: false, text: s_text }
 
             function parseData(data: string) {
@@ -148,11 +150,11 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
-            streamCallback?: (data: string) => void
+            streamCallback?: TStreamCallback
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            const text = await NetHelper.ai({
+            const result = await NetHelper.ai({
                 provider: 'openai',
                 apiKey: settings.translate.openai.apiKey,
                 model: settings.translate.openai.model,
@@ -161,6 +163,7 @@ const translators = {
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback
             })
+            const text = result.text
 
             if (text.trim()) {
                 try {
@@ -183,11 +186,11 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
-            streamCallback?: (data: string) => void
+            streamCallback?: TStreamCallback
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            const text = await NetHelper.ai({
+            const result = await NetHelper.ai({
                 provider: 'deepseek',
                 apiKey: settings.translate.deepseek.apiKey,
                 model: settings.translate.deepseek.model,
@@ -205,6 +208,7 @@ const translators = {
                 },
                 callback: streamCallback
             })
+            const text = result.text
 
             if (text.trim()) {
                 try {
@@ -227,11 +231,11 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
-            streamCallback?: (data: string) => void
+            streamCallback?: TStreamCallback
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            const text = await NetHelper.ai({
+            const result = await NetHelper.ai({
                 provider: 'gemini',
                 apiKey: settings.translate.gemini.apiKey,
                 model: settings.translate.gemini.model,
@@ -239,6 +243,7 @@ const translators = {
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback
             })
+            const text = result.text
 
             if (text.trim()) {
                 try {
@@ -261,11 +266,11 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = '简体中文',
-            streamCallback?: (data: string) => void
+            streamCallback?: TStreamCallback
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            const text = await NetHelper.ai({
+            const result = await NetHelper.ai({
                 provider: 'openai',
                 apiKey: 'local-llm',
                 model: settings.translate.localLLM.model,
@@ -275,6 +280,7 @@ const translators = {
                 callback: streamCallback,
                 timeout: 30 * 1000 // 预留充分时间，方便llm加载
             })
+            const text = result.text
 
             if (text.trim()) {
                 try {
@@ -321,7 +327,7 @@ export class TransHelper {
     static async translate(
         text: string,
         format: boolean = true,
-        streamCallback?: (data: string) => void
+        streamCallback?: TStreamCallback
     ): Promise<ITranslateResult> {
         const settings = settingsStore()
         if (!settings.translate.enable) return { ok: false, text }
@@ -423,8 +429,6 @@ function escapeSpecialSymbols(inputString: string): string {
 }
 
 function parseLLM(inputString: string) {
-    console.log(inputString)
-
     // 检查文本是否包含<think>标签
     const thinkRegex = /<think>([\s\S]*?)<\/think>\n?([\s\S]*)/
     const match = inputString.match(thinkRegex)
@@ -475,6 +479,6 @@ function getDeepSeekPrompt(targetLanguage: string) {
  */
 function getLLMPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
-    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。
-    - 让语句表达更加NSFW。`
+    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW色情词汇。
+    - 让语句表达更加NSFW色情。`
 }

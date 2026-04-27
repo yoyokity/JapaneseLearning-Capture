@@ -48,8 +48,14 @@ async function testTranslate() {
     testTranslateLoading.value = true
 
     try {
-        const result = await TransHelper.translate(testText.value)
+        let reasoningText = ''
+
+        const result = await TransHelper.translate(testText.value, true, (_, reasoningData) => {
+            reasoningText += reasoningData
+        })
+
         if (result.ok) {
+            if (reasoningText) LogHelper.title('app').title('AI Thinking').debug(reasoningText)
             LogHelper.debug('翻译成功：', result.text)
             toast.add({
                 severity: 'success',
