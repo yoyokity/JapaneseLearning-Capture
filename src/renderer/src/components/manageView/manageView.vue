@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { IVideoFile } from '@renderer/scraper'
+import type { PageState } from 'primevue/paginator'
 import type { SelectChangeEvent } from 'primevue/select'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
@@ -11,6 +12,7 @@ import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/s
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
+import Paginator from 'primevue/paginator'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -22,6 +24,8 @@ const toast = useToast()
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
 const currentSet = ref<string | null>(null)
+const manageViewPage = ref(0)
+const manageViewRows = 100
 
 const isSortActive = ref(false)
 const isSearchActive = ref(false)
@@ -74,6 +78,13 @@ function clearFiles(e: SelectChangeEvent) {
 // 重新排序
 function handleSortChange(e: SelectChangeEvent) {
     settings.manageViewSort = e.value
+}
+
+/**
+ * 切换分页
+ */
+function handlePageChange(e: PageState) {
+    manageViewPage.value = e.page
 }
 
 /**
@@ -169,6 +180,31 @@ const displayItems = computed<ManageCardItem[]>(() => {
 })
 
 /**
+ * 当前页展示列表
+ */
+const pagedDisplayItems = computed(() => {
+    const first = manageViewPage.value * manageViewRows
+    return displayItems.value.slice(first, first + manageViewRows)
+})
+
+/**
+ * 是否显示分页器
+ */
+const isShowPaginator = computed(() => displayItems.value.length > manageViewRows)
+
+/**
+ * 当前页元素区间
+ */
+const paginatorRangeText = computed(() => {
+    const total = displayItems.value.length
+    if (total === 0) return '0-0'
+
+    const start = manageViewPage.value * manageViewRows + 1
+    const end = Math.min(start + manageViewRows - 1, total)
+    return `${start}-${end}`
+})
+
+/**
  * 是否在系列详情视角
  */
 const isSetView = computed(() => currentSet.value !== null)
@@ -237,6 +273,17 @@ watch(
     { deep: true }
 )
 
+watch(
+    displayItems,
+    () => {
+        const maxPage = Math.max(Math.ceil(displayItems.value.length / manageViewRows) - 1, 0)
+        if (manageViewPage.value > maxPage) {
+            manageViewPage.value = 0
+        }
+    },
+    { immediate: true }
+)
+
 onMounted(() => {
     window.addEventListener('mouseup', handleMouseBackAction)
 })
@@ -249,31 +296,50 @@ onUnmounted(() => {
 <template>
     <div class="manage-view">
         <div class="tab-header">
-            <h3 v-if="!isSetView">管理</h3>
-            <div v-else class="manage-view-back-wrapper">
-                <i
-                    v-tooltip.left="'返回'"
-                    class="pi pi-arrow-left manage-view-back"
-                    @click="backToHomeView"
-                />
-                <h3 style="transform: translate(0.5rem, -1px)">{{ currentSet }}</h3>
+            <!-- 左侧标题 -->
+            <div class="tab-header-side">
+                <h3 v-if="!isSetView">管理</h3>
+                <div v-else class="manage-view-back-wrapper">
+                    <i
+                        v-tooltip.left="'返回'"
+                        class="pi pi-arrow-left manage-view-back"
+                        @click="backToHomeView"
+                    />
+                    <h3 style="transform: translate(0.5rem, -1px)">{{ currentSet }}</h3>
+                </div>
             </div>
-            <Select
-                v-model="settings.currentScraper"
-                v-tooltip.left="'选择目录'"
-                :options="Scraper.instances.map((scraper) => scraper.scraperName)"
-                size="small"
-                style="width: 8rem"
-                @change="clearFiles"
-            />
-            <Button
-                :loading="globalStates.scanFilesLoading"
-                icon="pi pi-refresh"
-                label="开始扫描"
-                size="small"
-                style="width: 7rem"
-                @click="scanFiles(toast)"
-            />
+            <!-- 中间分页 -->
+            <div class="tab-header-center">
+                <span v-if="isShowPaginator" class="paginator-range">{{ paginatorRangeText }}</span>
+                <Paginator
+                    v-if="isShowPaginator"
+                    :first="manageViewPage * manageViewRows"
+                    :rows="manageViewRows"
+                    :total-records="displayItems.length"
+                    current-page-report-template="{currentPage}/{totalPages}"
+                    template="PrevPageLink CurrentPageReport NextPageLink"
+                    @page="handlePageChange"
+                />
+            </div>
+            <!-- 右侧操作 -->
+            <div class="tab-header-side tab-header-actions">
+                <Select
+                    v-model="settings.currentScraper"
+                    v-tooltip.left="'选择目录'"
+                    :options="Scraper.instances.map((scraper) => scraper.scraperName)"
+                    size="small"
+                    style="width: 8rem"
+                    @change="clearFiles"
+                />
+                <Button
+                    :loading="globalStates.scanFilesLoading"
+                    icon="pi pi-refresh"
+                    label="开始扫描"
+                    size="small"
+                    style="width: 7rem"
+                    @click="scanFiles(toast)"
+                />
+            </div>
         </div>
         <Scroll
             style="height: calc(100% - var(--header-height))"
@@ -285,7 +351,7 @@ onUnmounted(() => {
                 <div :key="currentSet || 'home'" class="manage-view-content">
                     <!-- 卡片视图 -->
                     <template
-                        v-for="item in displayItems"
+                        v-for="item in pagedDisplayItems"
                         :key="
                             item.type === 'series'
                                 ? `series-${item.name}`
@@ -368,6 +434,37 @@ onUnmounted(() => {
     width: 100%;
     height: 100%;
     position: relative;
+}
+
+.tab-header-side {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.tab-header-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    :deep(.p-paginator) {
+        padding: 0;
+        border: none;
+        background: transparent;
+    }
+}
+
+.paginator-range {
+    width: 5rem;
+    color: var(--p-text-muted-color);
+    white-space: nowrap;
+}
+
+.tab-header-actions {
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 .manage-view-back-wrapper {
