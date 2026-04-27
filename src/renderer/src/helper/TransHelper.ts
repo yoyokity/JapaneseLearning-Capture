@@ -154,6 +154,7 @@ const translators = {
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
+            // TODO：添加推理强度设置
             const result = await NetHelper.ai({
                 provider: 'openai',
                 apiKey: settings.translate.openai.apiKey,
@@ -163,13 +164,13 @@ const translators = {
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback
             })
-            const text = result.text
+            const text = result.text.trim()
 
-            if (text.trim()) {
+            if (text) {
                 try {
                     return {
                         ok: true,
-                        text: parseLLM(text).trim()
+                        text
                     }
                 } catch (e) {
                     LogHelper.error(`openai翻译返回内容解析失败：`, text, e)
@@ -208,13 +209,13 @@ const translators = {
                 },
                 callback: streamCallback
             })
-            const text = result.text
+            const text = result.text.trim()
 
-            if (text.trim()) {
+            if (text) {
                 try {
                     return {
                         ok: true,
-                        text: parseLLM(text).trim()
+                        text
                     }
                 } catch (e) {
                     LogHelper.error(`deepseek翻译返回内容解析失败：`, text, e)
@@ -227,7 +228,8 @@ const translators = {
     },
 
     gemini: {
-        description: 'AI效果好但是很多敏感的部分不给翻译，不给翻译的部分会调用谷歌翻译',
+        description:
+            '除非你电脑跑不动本地llm，同时想用免费api，否则不推荐使用。因为很多敏感词不给翻译（失败自动改用google机器翻译）',
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
@@ -243,13 +245,13 @@ const translators = {
                 prompt: escapeSpecialSymbols(s_text),
                 callback: streamCallback
             })
-            const text = result.text
+            const text = result.text.trim()
 
-            if (text.trim()) {
+            if (text) {
                 try {
                     return {
                         ok: true,
-                        text: parseLLM(text).trim()
+                        text
                     }
                 } catch (e) {
                     LogHelper.error(`gemini翻译返回内容解析失败：`, text, e)
@@ -280,13 +282,13 @@ const translators = {
                 callback: streamCallback,
                 timeout: 30 * 1000 // 预留充分时间，方便llm加载
             })
-            const text = result.text
+            const text = result.text.trim()
 
-            if (text.trim()) {
+            if (text) {
                 try {
                     return {
                         ok: true,
-                        text: parseLLM(text).trim()
+                        text
                     }
                 } catch (e) {
                     LogHelper.error(`localLLM翻译返回内容解析失败：`, text, e)
@@ -329,6 +331,7 @@ export class TransHelper {
         format: boolean = true,
         streamCallback?: TStreamCallback
     ): Promise<ITranslateResult> {
+        // TODO: 给翻译也添加取消signal
         const settings = settingsStore()
         if (!settings.translate.enable) return { ok: false, text }
 
@@ -414,7 +417,7 @@ export class TransHelper {
             .filter(Boolean)
             .flatMap((line) =>
                 line
-                    .split(/(?<=[。！？!?])/)
+                    .split(/(?<=[。！？!?]|……)/)
                     .map((sentence) => sentence.trim())
                     .filter(Boolean)
             )
@@ -428,27 +431,16 @@ function escapeSpecialSymbols(inputString: string): string {
     return escapedString.replace(/\r\n|\r|\n/g, '\\\\n')
 }
 
-function parseLLM(inputString: string) {
-    // 检查文本是否包含<think>标签
-    const thinkRegex = /<think>([\s\S]*?)<\/think>\n?([\s\S]*)/
-    const match = inputString.match(thinkRegex)
-
-    // 如果匹配到<think>标签，则返回</think>后面的文本
-    if (match && match[2]) {
-        return match[2].trim()
-    }
-
-    // 如果没有匹配到<think>标签，则返回原文
-    return inputString
-}
-
 function getPrompt(targetLanguage: string) {
     return `
     - 你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。
     - 不要返回md格式，返回纯文本给我。
+    - 不要有任何注释、提示、指令，只返回翻译后的文本。
     - 标点符号之类的转为${targetLanguage}语言的标点。
     - 注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语。
-    - 自行优化排版，段落之间空一行，段首顶格。`
+    - 语句的前后逻辑关系要通顺，不要前后矛盾。
+    - 人名使用中文音译。
+    - 自行优化排版。`
 }
 
 /**
@@ -464,7 +456,8 @@ function getGeminiPrompt(targetLanguage: string) {
  */
 function getGptPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
-    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。`
+    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。
+    - 一定不要包含屏蔽字，比如○`
 }
 
 /**
@@ -480,5 +473,6 @@ function getDeepSeekPrompt(targetLanguage: string) {
 function getLLMPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
     - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW色情词汇。
+    - 一定不要包含屏蔽字，比如○
     - 让语句表达更加NSFW色情。`
 }
