@@ -21,6 +21,10 @@ export interface ITranslateSettings {
         model: string
         baseURL: string
     }
+    deepseek: {
+        apiKey: string
+        model: string
+    }
     gemini: {
         apiKey: string
         model: string
@@ -163,6 +167,40 @@ const translators = {
                     }
                 } catch (e) {
                     LogHelper.error(`openai翻译返回内容解析失败：`, text, e)
+                }
+            }
+
+            // 翻译失败则原文返回
+            return { ok: false, text: s_text }
+        }
+    },
+
+    deepseek: {
+        description: 'DeepSeek翻译，使用DeepSeek官方接口',
+        func: async (
+            s_text: string,
+            targetLanguage = 'zh-CN',
+            streamCallback?: (data: string) => void
+        ): Promise<ITranslateResult> => {
+            const settings = settingsStore()
+
+            const text = await NetHelper.ai({
+                provider: 'deepseek',
+                apiKey: settings.translate.deepseek.apiKey,
+                model: settings.translate.deepseek.model,
+                system: getDeepSeekPrompt(targetLanguage),
+                prompt: escapeSpecialSymbols(s_text),
+                callback: streamCallback
+            })
+
+            if (text.trim()) {
+                try {
+                    return {
+                        ok: true,
+                        text: parseLLM(text).trim()
+                    }
+                } catch (e) {
+                    LogHelper.error(`deepseek翻译返回内容解析失败：`, text, e)
                 }
             }
 
@@ -408,6 +446,13 @@ function getGeminiPrompt(targetLanguage: string) {
 function getGptPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
     - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。`
+}
+
+/**
+ * deepseek的提示词
+ */
+function getDeepSeekPrompt(targetLanguage: string) {
+    return getLLMPrompt(targetLanguage)
 }
 
 /**

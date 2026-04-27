@@ -501,7 +501,7 @@ export interface IAiRequestOptions {
     /**
      * AI提供商
      */
-    provider: 'openai' | 'gemini'
+    provider: 'openai' | 'deepseek' | 'gemini'
 
     /**
      * API Key

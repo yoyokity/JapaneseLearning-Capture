@@ -96,7 +96,6 @@ export const globalStatesStore = defineStore('globalStates', () => {
         manageViewFilesFilterValue,
 
         // loading状态
-
         /**
          * 是否正在进行文件扫描
          */
@@ -105,7 +104,6 @@ export const globalStatesStore = defineStore('globalStates', () => {
         refreshImageCacheVersion,
 
         // 批量刮削部分
-
         /**
          * 已刮削数量
          */

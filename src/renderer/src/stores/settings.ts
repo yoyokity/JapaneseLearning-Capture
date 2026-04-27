@@ -63,6 +63,10 @@ export const settingsStore = defineStore(
                 model: 'gpt-5.4',
                 baseURL: 'https://api.openai.com/v1'
             },
+            deepseek: {
+                apiKey: '',
+                model: 'deepseek-v4-flash'
+            },
             gemini: {
                 apiKey: '',
                 model: 'gemini-2.5-flash-lite'

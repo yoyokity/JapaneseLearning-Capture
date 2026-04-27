@@ -46,6 +46,7 @@ export async function scanFiles(toast: any) {
             return Object.keys(videoExtensions).includes(ext)
         })) {
             videoFiles.push(await read(file))
+            // TODO: 按分页分量加载
         }
 
         // 更新文件列表状态

@@ -1,3 +1,4 @@
+import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { streamText } from 'ai'
@@ -22,7 +23,7 @@ interface IResult<T> {
 }
 
 interface IAiStartOptions {
-    provider: 'openai' | 'gemini'
+    provider: 'openai' | 'deepseek' | 'gemini'
     apiKey: string
     model: string
     baseURL?: string
@@ -64,6 +65,7 @@ function aiFetch(input: RequestInfo | URL, init?: RequestInit) {
  * @param options AI配置
  */
 function getAiModel(options: IAiStartOptions) {
+    // openai
     if (options.provider === 'openai') {
         const provider = createOpenAI({
             apiKey: options.apiKey,
@@ -74,6 +76,17 @@ function getAiModel(options: IAiStartOptions) {
         return provider(options.model)
     }
 
+    // deepseek
+    if (options.provider === 'deepseek') {
+        const provider = createDeepSeek({
+            apiKey: options.apiKey,
+            fetch: aiFetch
+        })
+
+        return provider(options.model)
+    }
+
+    // gemini
     const provider = createGoogleGenerativeAI({
         apiKey: options.apiKey,
         fetch: aiFetch

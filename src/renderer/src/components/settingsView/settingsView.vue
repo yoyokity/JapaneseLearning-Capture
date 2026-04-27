@@ -278,6 +278,36 @@ function openLlmInfo() {
                                 />
                             </SettingsLineItem>
                         </div>
+                        <div v-if="settings.translate.translateEngine === 'deepseek'">
+                            <SettingsLineItem title="API Key">
+                                <Button
+                                    as="a"
+                                    href="https://platform.deepseek.com/api_keys"
+                                    target="_blank"
+                                    variant="link"
+                                >
+                                    获取API Key
+                                </Button>
+                                <InputText
+                                    v-model.trim="settings.translate.deepseek.apiKey"
+                                    type="text"
+                                />
+                            </SettingsLineItem>
+                            <SettingsLineItem title="模型">
+                                <Button
+                                    as="a"
+                                    href="https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
+                                    target="_blank"
+                                    variant="link"
+                                >
+                                    查看全部模型
+                                </Button>
+                                <InputText
+                                    v-model.trim="settings.translate.deepseek.model"
+                                    type="text"
+                                />
+                            </SettingsLineItem>
+                        </div>
                         <div v-if="settings.translate.translateEngine === 'gemini'">
                             <SettingsLineItem title="API Key">
                                 <Button

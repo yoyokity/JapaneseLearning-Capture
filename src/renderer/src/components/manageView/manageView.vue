@@ -316,6 +316,7 @@ onUnmounted(() => {
                     :first="manageViewPage * manageViewRows"
                     :rows="manageViewRows"
                     :total-records="displayItems.length"
+                    style="margin-right: 4rem"
                     current-page-report-template="{currentPage}/{totalPages}"
                     template="PrevPageLink CurrentPageReport NextPageLink"
                     @page="handlePageChange"
@@ -457,9 +458,10 @@ onUnmounted(() => {
 }
 
 .paginator-range {
-    width: 5rem;
+    width: 6rem;
     color: var(--p-text-muted-color);
     white-space: nowrap;
+    text-align: end;
 }
 
 .tab-header-actions {
