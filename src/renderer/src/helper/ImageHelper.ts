@@ -2,6 +2,7 @@ import type { Path } from '@renderer/helper/PathHelper'
 import type { ImageData } from '@renderer/ipc'
 
 import { Ipc } from '@renderer/ipc'
+import { v7 } from 'uuid'
 
 import { EncodeHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
@@ -54,14 +55,11 @@ export class ImageHelper {
     /**
      * 保存图片到临时目录并返回本地路径
      * @param imageData 图片数据
-     * @param name 临时文件名
+     * @param name 临时文件名，默认为随机uuid。如果传入，会自动加上uuid
      * @returns 临时图片路径
      */
-    static async saveTempImage(
-        imageData: ImageData,
-        name: string = `image_${Date.now()}`
-    ): Promise<string | null> {
-        const uniqueName = `${name}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    static async saveTempImage(imageData: ImageData, name: string = v7()): Promise<string | null> {
+        const uniqueName = `${name}_${v7()}`
         const tempImagePath = PathHelper.tempPath.join(`${uniqueName}.jpg`)
         const result = await TaskHelper.tryExecute(
             Ipc.image.saveImage,

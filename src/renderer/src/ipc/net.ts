@@ -1,4 +1,5 @@
 import { invoke } from '@renderer/ipc/func.ts'
+import { v7 } from 'uuid'
 
 /**
  * 网络相关接口
@@ -31,7 +32,7 @@ export const net = {
      * @param options AI选项
      */
     ai: async (options: IAiOptions): Promise<IAiTask> => {
-        const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+        const requestId = v7()
         const ipcRenderer = window.electron.ipcRenderer
 
         let closed = false

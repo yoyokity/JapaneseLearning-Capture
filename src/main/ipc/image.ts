@@ -4,6 +4,7 @@ import * as fs from 'node:fs'
 import { join } from 'node:path'
 import { app, ipcMain } from 'electron'
 import sharp from 'sharp'
+import { v7 } from 'uuid'
 
 import { Cmd } from '../helper/shell'
 import { appPath } from './app'
@@ -70,7 +71,7 @@ ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: bool
         const tempPath = app.getPath('temp')
 
         // 如果没有temp则创建
-        const tempFileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        const tempFileId = v7()
         const tempImageBefore = join(tempPath, `realesrgan_before_${tempFileId}.png`)
         const tempImageAfter = join(tempPath, `realesrgan_after_${tempFileId}.png`)
         const tempResultPath = join(tempPath, `super_resolution_${tempFileId}.jpg`)
