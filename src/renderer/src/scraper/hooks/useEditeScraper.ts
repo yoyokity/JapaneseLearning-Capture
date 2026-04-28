@@ -14,7 +14,7 @@ import { computed, ref, toRaw } from 'vue'
  */
 export function useEditeScraper() {
     const { toast } = useMessage()
-    const contentCache = new Map<string, unknown>()
+    let contentCache: unknown
     const globalStates = globalStatesStore()
     const scraperFieldRunning = ref(false)
     const scraperAllRunning = ref(false)
@@ -24,15 +24,6 @@ export function useEditeScraper() {
     const isScraperRunning = computed(
         () => globalStates.batchRunning || scraperFieldRunning.value || scraperAllRunning.value
     )
-
-    /**
-     * 获取内容缓存键
-     * @param video 视频对象
-     */
-    function getContentCacheKey(video: IVideo) {
-        const originaltitle = video.originaltitle?.trim() || ''
-        return [video.scraperName, originaltitle].join('__')
-    }
 
     /**
      * 获取刮削上下文
@@ -52,67 +43,75 @@ export function useEditeScraper() {
     /**
      * 获取内容缓存
      * @param scraper 刮削器
-     * @param video 视频对象
      */
-    function getContent<TContent>(scraper: IScraper<TContent>, video: IVideo): TContent {
-        const cacheKey = getContentCacheKey(video)
-        const cachedContent = contentCache.get(cacheKey)
-        if (cachedContent) {
-            return cachedContent as TContent
+    function getContext<TContext>(scraper: IScraper<TContext>): TContext {
+        if (contentCache) {
+            return contentCache as TContext
         }
 
-        const content = scraper.createContext()
-        contentCache.set(cacheKey, content)
-        return content
+        const context = scraper.createContext()
+        contentCache = context
+        return context
     }
 
     /**
      * 确保内容已获取
-     * @param context 刮削上下文
+     * @param scraperContext 刮削上下文
      * @param video 视频对象
      */
-    async function ensureContent(context: IScraperContext, video: IVideo, signal: AbortSignal) {
+    async function ensureContent(
+        scraperContext: IScraperContext,
+        video: IVideo,
+        signal: AbortSignal
+    ) {
         try {
-            const content = getContent(context.scraper, video)
-            context.logger.log(`获取网页内容中...`)
-            if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, content, signal))) {
-                context.logger.warn(`获取网页内容失败！`)
+            const context = getContext(scraperContext.scraper)
+            scraperContext.logger.log(`获取网页内容中...`)
+            if (
+                !(await scraperContext.scraper.scraperVideoFuncs.getWebContext(
+                    video,
+                    context,
+                    signal
+                ))
+            ) {
+                scraperContext.logger.warn(`获取网页内容失败！`)
                 toast.warn(`获取网页内容失败！`)
                 return false
             }
 
             return true
         } catch (error) {
-            context.logger.error(`获取网页内容出错！`, error)
+            scraperContext.logger.error(`获取网页内容出错！`, error)
             return false
         }
     }
 
     /**
      * 执行单个字段解析
-     * @param context 刮削上下文
+     * @param scraperContext 刮削上下文
      * @param video 视频对象
      * @param funcName 解析函数名称
      * @param label 字段名称
      */
     async function parseField(
-        context: IScraperContext,
+        scraperContext: IScraperContext,
         video: IVideo,
         funcName: ScraperFuncName,
         label: string,
         signal: AbortSignal
     ) {
         try {
-            context.logger.log(`解析${label}...`)
-            const content = getContent(context.scraper, video)
-            const func = context.scraper.scraperVideoFuncs[funcName] as (
+            scraperContext.logger.log(`解析${label}...`)
+            const context = getContext(scraperContext.scraper)
+
+            const func = scraperContext.scraper.scraperVideoFuncs[funcName] as (
                 video: IVideo,
                 content: unknown,
                 signal: AbortSignal
             ) => Promise<boolean>
-            return await func(video, content, signal)
+            return await func(video, context, signal)
         } catch (error) {
-            context.logger.error(`解析${label}出错！`, error)
+            scraperContext.logger.error(`解析${label}出错！`, error)
             return false
         }
     }
@@ -189,11 +188,11 @@ export function useEditeScraper() {
             let numHasError = false
 
             try {
-                const content = getContent(scraperContext.scraper, video)
+                const context = getContext(scraperContext.scraper)
                 numSuccess =
                     (await scraperContext.scraper.scraperVideoFuncs.parseNum(
                         video,
-                        content,
+                        context,
                         signal
                     )) ?? false
             } catch (error) {
@@ -300,9 +299,9 @@ export function useEditeScraper() {
         }
 
         const settings = settingsStore()
-        const content = getContent(scraper, video)
+        const context = getContext(scraper)
 
-        const { dir, fileName } = await scraper.scraperVideoFuncs.parseOutput(video, content)
+        const { dir, fileName } = await scraper.scraperVideoFuncs.parseOutput(video, context)
         const scraperPath = settings.scraperPath[video.scraperName]
 
         const videoDir = await Scraper.createDirectory(

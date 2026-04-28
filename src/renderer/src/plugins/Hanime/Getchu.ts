@@ -70,7 +70,13 @@ export async function getWebContentGetchu(
     loggerGetchu.log(`搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
     videoList.each((_, el) => loggerGetchu.log(`【${$(el).text().trim()}】`))
 
-    const target = videoList.filter((_, el) => $(el).text().trim().includes(searchTitle)).first()
+    const target = videoList
+        .filter((_, el) =>
+            EncodeHelper.fullToHalf($(el).text().trim()).includes(
+                EncodeHelper.fullToHalf(searchTitle)
+            )
+        )
+        .first()
     const href = target.attr('href')
     if (!href) {
         loggerGetchu.warn(`没有找到匹配的番剧`)

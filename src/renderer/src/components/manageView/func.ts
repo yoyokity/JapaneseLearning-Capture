@@ -114,7 +114,11 @@ async function read(path: string): Promise<IVideoFile> {
 
         try {
             for (const num of nums) {
-                video.num[num.source] = num.value
+                const source = normalizeTextValue(num.source).trim()
+                const value = normalizeTextValue(num.value).trim()
+                if (!source || !value) continue
+
+                video.num[source] = value
             }
         } catch {}
     }

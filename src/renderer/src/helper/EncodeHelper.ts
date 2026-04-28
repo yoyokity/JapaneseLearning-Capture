@@ -35,4 +35,25 @@ export class EncodeHelper {
             .replace(/\\r/g, '\n')
             .replace(/\\/, '')
     }
+
+    /**
+     * 全角转半角
+     */
+    static fullToHalf(str: string) {
+        return str
+            .replace(/[\uFF01-\uFF5E]/g, (ch) =>
+                String.fromCharCode(ch.charCodeAt(0) - Number('0xFEE0'))
+            )
+            .replace(/\u3000/g, ' ') // 全角空格单独处理
+    }
+
+    /**
+     * 将 HTML 实体转为实际字符
+     * @param text 原始文本
+     */
+    static decodeHtmlEntity(text: string) {
+        const textarea = document.createElement('textarea')
+        textarea.innerHTML = text
+        return textarea.value
+    }
 }

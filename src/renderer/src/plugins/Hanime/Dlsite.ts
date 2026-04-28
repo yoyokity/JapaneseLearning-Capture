@@ -40,6 +40,7 @@ export async function getWebContentDlsite(
     }
 
     // 如果编号搜索失败，则使用原标题搜索
+    searchTitle = EncodeHelper.fullToHalf(searchTitle)
     const keyword = EncodeHelper.encodeUrl(searchTitle).replace(/%20/g, '+')
     const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
     const webContent = await NetHelper.get(searchUrl, { ...dlsiteOptions, signal })
@@ -56,7 +57,9 @@ export async function getWebContentDlsite(
     loggerDlsite.log(`搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
     videoList.each((_, el) => loggerDlsite.log(`【${$(el).text().trim()}】`))
 
-    const target = videoList.filter((_, el) => $(el).text().trim().includes(searchTitle)).first()
+    const target = videoList
+        .filter((_, el) => EncodeHelper.fullToHalf($(el).text().trim()).includes(searchTitle))
+        .first()
     const href = target.attr('href')
     if (!href) {
         loggerDlsite.warn(`没有找到匹配的番剧`)

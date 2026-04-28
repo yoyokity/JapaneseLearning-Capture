@@ -9,6 +9,7 @@ export async function searchVideoHanime1(
     searchTitle: string,
     signal: AbortSignal
 ): Promise<{ href: string; poster: string | undefined } | null> {
+    searchTitle = EncodeHelper.fullToHalf(searchTitle)
     const url = `https://hanime1.me/search?query=${EncodeHelper.encodeUrl(searchTitle)}&genre=${EncodeHelper.encodeUrl('裏番')}`
     const webContent = await NetHelper.get(url, { signal })
     if (signal.aborted) return null

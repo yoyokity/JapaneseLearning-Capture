@@ -1,7 +1,7 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 import type { IHanimeContext } from './temp'
 
-import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { EncodeHelper, ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
 import {
     dlsiteOptions,
     getExtrafanartDlsite,
@@ -68,8 +68,9 @@ const hanimeScraper: IScraper<IHanimeContext> = {
         },
         parseTitle: async (video: IVideo, context: IHanimeContext) => {
             const $ = cheerioLoad(context.webContent.hanime1)
-            let title = $('.video-description-panel').children().eq(1).text()
-            title = TransHelper.translateSC(title.trim())
+            let title = $('.video-description-panel').children().eq(1).text().trim()
+            title = EncodeHelper.decodeHtmlEntity(title)
+            title = TransHelper.translateSC(title)
 
             if (!title) return false
 
