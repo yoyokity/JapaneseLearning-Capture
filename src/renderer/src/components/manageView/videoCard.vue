@@ -9,6 +9,7 @@ import { computed } from 'vue'
 const props = defineProps<{
     video: IVideoFile
     title?: string
+    imageBorder?: string
     onClick?: (video: IVideoFile, event: MouseEvent) => void
 }>()
 
@@ -58,6 +59,7 @@ function handleClick(event: MouseEvent) {
     <div class="video-card" @click="handleClick">
         <VideoImage
             :src="image"
+            :border="imageBorder"
             image-loading="lazy"
             image-decoding="async"
             style="aspect-ratio: 379 / 538"

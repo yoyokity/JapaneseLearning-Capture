@@ -18,6 +18,7 @@ interface ImageProps {
      * 错误状态下的图片样式
      */
     errorImageStyle?: StyleValue
+    border?: string
     borderRadius?: string
 }
 
@@ -27,6 +28,7 @@ const props = withDefaults(defineProps<ImageProps>(), {
     imageDecoding: 'async',
     imageStyle: () => ({}),
     errorImageStyle: () => ({}),
+    border: 'initial',
     borderRadius: 'calc(var(--border-radius) * 2)'
 })
 const globalStates = globalStatesStore()
@@ -81,6 +83,8 @@ onMounted(loadImage)
     overflow: hidden;
     border-radius: v-bind(borderRadius);
     transition: transform 0.3s var(--animation-type);
+    box-sizing: border-box;
+    border: v-bind(border);
 
     &.error {
         display: flex;

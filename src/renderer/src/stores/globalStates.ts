@@ -50,6 +50,7 @@ export const globalStatesStore = defineStore('globalStates', () => {
             const dateB = parseDateString(b.releasedate)
             return dateB.getTime() - dateA.getTime()
         }
+        // TODO 按照加入时间排序（文件夹的创建时间）
         return 0
     }
     /**
@@ -90,20 +91,7 @@ export const globalStatesStore = defineStore('globalStates', () => {
     const batchRunning = ref(false)
 
     return {
-        manageViewFiles,
-        setManageViewFiles,
-        manageViewFilesFilter,
-        manageViewFilesFilterValue,
-
-        // loading状态
-        /**
-         * 是否正在进行文件扫描
-         */
-        scanFilesLoading: ref(false),
-        imageCacheVersion,
-        refreshImageCacheVersion,
-
-        // 批量刮削部分
+        // #region 批量刮削部分
         /**
          * 已刮削数量
          */
@@ -115,7 +103,40 @@ export const globalStatesStore = defineStore('globalStates', () => {
         /**
          * 批量刮削的运行状态
          */
-        batchRunning
+        batchRunning,
+        // #endregion 批量刮削部分
+
+        // #region 管理tab的文件列表部分
+        /**
+         * 管理视图文件列表
+         */
+        manageViewFiles,
+        /**
+         * 设置管理视图文件列表文件
+         */
+        setManageViewFiles,
+        /**
+         * 管理视图文件列表过滤后的，筛选+排序 后的文件列表
+         */
+        manageViewFilesFilter,
+        /**
+         * 管理视图文件列表过滤值
+         */
+        manageViewFilesFilterValue,
+        /**
+         * 是否正在进行文件扫描
+         */
+        scanFilesLoading: ref(false),
+        /**
+         * 图片缓存版本
+         * @description 用于刷新同路径图片的显示缓存
+         */
+        imageCacheVersion,
+        /**
+         * 刷新图片缓存版本
+         */
+        refreshImageCacheVersion
+        // #endregion 管理tab的文件列表部分
     }
 })
 

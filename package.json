@@ -73,7 +73,6 @@
         "vite-plugin-vue-devtools": "^8.1.1",
         "vite-svg-loader": "^5.1.1",
         "vue": "^3.5.33",
-        "vue-hooks-plus": "^2.4.3",
         "vue-tsc": "^3.2.7",
         "vue-waterfall-plugin-next": "^3.0.1",
         "xmlbuilder2": "^4.0.3"

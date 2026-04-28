@@ -369,7 +369,7 @@ onUnmounted(() => {
                                       }
                                     : undefined
                             "
-                            @contextmenu="(event) => handleCardContextmenu(item, event)"
+                            @contextmenu="(event: MouseEvent) => handleCardContextmenu(item, event)"
                         />
                     </template>
                 </div>
