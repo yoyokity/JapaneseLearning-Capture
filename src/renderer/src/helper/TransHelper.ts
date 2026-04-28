@@ -243,6 +243,16 @@ const translators = {
                 model: settings.translate.gemini.model,
                 system: getGeminiPrompt(targetLanguage),
                 prompt: escapeSpecialSymbols(s_text),
+                providerOptions: {
+                    google: {
+                        safetySettings: [
+                            {
+                                category: 'HARM_CATEGORY_UNSPECIFIED',
+                                threshold: 'BLOCK_NONE'
+                            }
+                        ]
+                    }
+                },
                 callback: streamCallback
             })
             const text = result.text.trim()
@@ -455,8 +465,8 @@ function getGeminiPrompt(targetLanguage: string) {
  */
 function getGptPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
-    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW词汇。
-    - 一定不要包含屏蔽字，比如○`
+    - 如果遇到屏蔽字符比如○、●之类的，请自行联想NSFW词汇。
+    - 一定不要包含屏蔽字，比如○、●`
 }
 
 /**
@@ -471,7 +481,7 @@ function getDeepSeekPrompt(targetLanguage: string) {
  */
 function getLLMPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
-    - 如果遇到屏蔽字符比如○之类的，请自行联想NSFW色情词汇。
-    - 一定不要包含屏蔽字，比如○
+    - 如果遇到屏蔽字符比如○、●之类的，请自行联想NSFW色情词汇。
+    - 一定不要包含屏蔽字，比如○、●
     - 让语句表达更加NSFW色情。`
 }
