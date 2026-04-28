@@ -55,6 +55,16 @@ function getSeriesCoverVideo(files: IVideoFile[]) {
     )[0]
 }
 
+/**
+ * 判断视频是否存在编号
+ * @param video 视频
+ */
+function hasVideoNum(video: IVideoFile) {
+    return Object.values(video.num || {}).some(
+        (value) => typeof value === 'string' && value.trim() !== ''
+    )
+}
+
 // 右键菜单项
 const menuItems = ref([
     {
@@ -372,6 +382,12 @@ onUnmounted(() => {
                         <VideoCard
                             :video="item.type === 'series' ? item.coverVideo : item.video"
                             :title="item.type === 'series' ? item.name : undefined"
+                            :file-num="item.type === 'series' ? item.files.length : undefined"
+                            :has-video-num="
+                                item.type === 'series'
+                                    ? item.files.every((video) => hasVideoNum(video))
+                                    : hasVideoNum(item.video)
+                            "
                             :on-click="
                                 item.type === 'series'
                                     ? (_, event) => {

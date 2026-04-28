@@ -20,6 +20,10 @@ interface ImageProps {
     errorImageStyle?: StyleValue
     border?: string
     borderRadius?: string
+    /**
+     * 是否在右上角显示数字
+     */
+    num?: number
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
@@ -65,6 +69,7 @@ onMounted(loadImage)
 
 <template>
     <div :class="{ error: isImgError }" class="image">
+        <!-- 图片 -->
         <img
             v-if="!isImgError"
             :src="imageData"
@@ -75,11 +80,16 @@ onMounted(loadImage)
             @error="handleImageError"
         />
         <img v-else :src="imgFall" :style="errorImageStyle" class="video-card-img error" />
+        <!-- 右上角数字角标 -->
+        <div v-if="num && num > 0" class="image-num">
+            <span>{{ num }}</span>
+        </div>
     </div>
 </template>
 
 <style lang="scss" scoped>
 .image {
+    position: relative;
     overflow: hidden;
     border-radius: v-bind(borderRadius);
     transition: transform 0.3s var(--animation-type);
@@ -103,6 +113,31 @@ onMounted(loadImage)
         &.error {
             width: initial;
             height: initial;
+        }
+    }
+
+    .image-num {
+        $wdith: 2.75rem;
+
+        position: absolute;
+        top: 0;
+        right: 0;
+        min-width: $wdith;
+        height: $wdith;
+
+        color: #fff;
+        font-size: calc(1rem - 3px);
+        font-weight: bold;
+        background: rgba(0, 0, 0, 0.8);
+        clip-path: polygon(100% 0, 100% 100%, 0 0);
+        pointer-events: none;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        span {
+            transform: translate(0.5rem, -0.5rem);
         }
     }
 }

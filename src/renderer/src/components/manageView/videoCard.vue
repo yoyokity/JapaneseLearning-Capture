@@ -9,6 +9,8 @@ import { computed } from 'vue'
 const props = defineProps<{
     video: IVideoFile
     title?: string
+    fileNum?: number
+    hasVideoNum?: boolean
     imageBorder?: string
     onClick?: (video: IVideoFile, event: MouseEvent) => void
 }>()
@@ -57,13 +59,24 @@ function handleClick(event: MouseEvent) {
 
 <template>
     <div class="video-card" @click="handleClick">
+        <!-- 视频编号缺失提示 -->
+        <div
+            v-if="hasVideoNum !== true"
+            v-tooltip.top="'视频编号缺失，需要刮削'"
+            class="video-num-missing"
+        >
+            ?
+        </div>
+        <!-- 图片 -->
         <VideoImage
             :src="image"
+            :num="fileNum"
             :border="imageBorder"
             image-loading="lazy"
             image-decoding="async"
             style="aspect-ratio: 379 / 538"
         />
+        <!-- 标题 -->
         <div v-tooltip.bottom="name" class="video-card-title">
             {{ name }}
         </div>
@@ -75,6 +88,23 @@ function handleClick(event: MouseEvent) {
     user-select: none;
     cursor: pointer;
     position: relative;
+
+    .video-num-missing {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        width: 1.4rem;
+        height: 1.4rem;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: bold;
+        z-index: 1;
+    }
 
     .video-card-title {
         text-align: center;
