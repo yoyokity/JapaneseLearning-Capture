@@ -73,7 +73,7 @@ export async function getWebContentHanime1(
         const re = await NetHelper.getImage(searchResult.poster, { signal })
         if (signal.aborted) return
         if (re.ok) {
-            context.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
+            context.封面 = await ImageHelper.saveTempImage(re.body, `hanime1_poster`)
         }
     }
 
@@ -114,5 +114,5 @@ export async function getPosterHanime1(
     }
 
     loggerHanime1.log(`获取封面成功！:${searchResult.poster}`)
-    return ImageHelper.saveTempImage(re.body, `hanime1_poster_${Date.now()}`)
+    return ImageHelper.saveTempImage(re.body, `hanime1_poster`)
 }

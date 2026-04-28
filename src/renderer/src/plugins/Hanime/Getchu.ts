@@ -133,10 +133,7 @@ export async function getExtrafanartGetchu(
         if (signal.aborted) break
         if (re.ok) {
             successUrls.push(url)
-            const tempPath = await ImageHelper.saveTempImage(
-                re.body,
-                `getchu_extrafanart_${Date.now()}`
-            )
+            const tempPath = await ImageHelper.saveTempImage(re.body, `getchu_extrafanart`)
             if (tempPath) extrafanart.push(tempPath)
         } else {
             failedUrls.push(url)
@@ -185,5 +182,5 @@ export async function getPosterGetchu(
     }
 
     loggerGetchu.log(`获取封面成功！:${posterUrl}`)
-    return ImageHelper.saveTempImage(re.body, `getchu_poster_${Date.now()}`)
+    return ImageHelper.saveTempImage(re.body, `getchu_poster`)
 }

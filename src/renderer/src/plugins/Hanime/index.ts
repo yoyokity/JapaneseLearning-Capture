@@ -2,7 +2,11 @@ import type { IScraper, IVideo } from '@renderer/scraper'
 import type { IHanimeContext } from './temp'
 
 import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
-import { dlsiteOptions, getWebContentDlsite } from '@renderer/plugins/Hanime/Dlsite'
+import {
+    dlsiteOptions,
+    getExtrafanartDlsite,
+    getWebContentDlsite
+} from '@renderer/plugins/Hanime/Dlsite'
 import {
     getExtrafanartGetchu,
     getPosterGetchu,
@@ -308,8 +312,14 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 // 先看getchu能不能获取
                 if (context.webContent.getchu) {
                     const $ = cheerioLoad(context.webContent.getchu)
-                    const plot = $('h3')
-                        .filter((_i, el) => $(el).text().trim() === 'ストーリー') // 找到标题为"ストーリー"的元素
+                    const title =
+                        $('h3')
+                            .toArray()
+                            .find((el) => $(el).text().trim() === 'ストーリー') ||
+                        $('h3')
+                            .toArray()
+                            .find((el) => $(el).text().trim() === '商品紹介')
+                    const plot = $(title)
                         .next()
                         .find('span')
                         .clone() // 克隆，避免修改原始DOM
@@ -443,7 +453,17 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return true
         },
         parseExtrafanart: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            video.extrafanart = await getExtrafanartGetchu(context, signal)
+            let extrafanarts = await getExtrafanartGetchu(context, signal)
+            if (extrafanarts.length === 0) {
+                LogHelper.title(scraperName).log('getchu没有获取到剧照，尝试从dlsite获取...')
+                extrafanarts = await getExtrafanartDlsite(context, signal)
+            }
+
+            if (extrafanarts.length === 0) {
+                return false
+            }
+
+            video.extrafanart = extrafanarts
             return true
         },
         parseOutput: async (video: IVideo) => {
