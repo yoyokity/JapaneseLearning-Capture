@@ -416,8 +416,7 @@ export class TransHelper {
             .map((line) => line.trim())
             .filter(Boolean)
             .flatMap((line) =>
-                line
-                    .split(/(?<=[。！？!?]|……)/)
+                (line.match(/[^。！？!?…”\n]*(?:(?:[。！？!?]|……)+”*|$)/g) || [])
                     .map((sentence) => sentence.trim())
                     .filter(Boolean)
             )

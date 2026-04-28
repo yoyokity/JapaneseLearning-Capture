@@ -90,6 +90,17 @@ button {
     }
 }
 
+// 确认对话框
+.p-confirmdialog {
+    .p-dialog-header {
+        padding: var(--p-dialog-header-padding) 0 0 0;
+    }
+
+    .p-dialog-content {
+        padding-bottom: 1rem;
+    }
+}
+
 // 去除超链接button默认的下划线
 a.p-button {
     text-decoration: none !important;

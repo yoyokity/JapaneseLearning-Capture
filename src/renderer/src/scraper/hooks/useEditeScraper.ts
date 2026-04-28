@@ -76,8 +76,8 @@ export function useEditeScraper() {
             const content = getContent(context.scraper, video)
             context.logger.log(`获取网页内容中...`)
             if (!(await context.scraper.scraperVideoFuncs.getWebContext(video, content, signal))) {
-                context.logger.error(`获取网页内容失败！`)
-                toast.error(`获取网页内容失败！`)
+                context.logger.warn(`获取网页内容失败！`)
+                toast.warn(`获取网页内容失败！`)
                 return false
             }
 

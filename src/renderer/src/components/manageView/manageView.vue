@@ -45,6 +45,16 @@ interface IVideoCardItem {
 
 type ManageCardItem = ISeriesCardItem | IVideoCardItem
 
+/**
+ * 获取系列封面视频
+ * @param files 系列文件列表
+ */
+function getSeriesCoverVideo(files: IVideoFile[]) {
+    return [...files].sort((a, b) =>
+        a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
+    )[0]
+}
+
 // 右键菜单项
 const menuItems = ref([
     {
@@ -171,7 +181,7 @@ const displayItems = computed<ManageCardItem[]>(() => {
         items.push({
             type: 'series',
             name: setName,
-            coverVideo: allSetFiles[0],
+            coverVideo: getSeriesCoverVideo(allSetFiles),
             files: setFiles
         })
     }

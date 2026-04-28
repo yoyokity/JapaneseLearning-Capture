@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import type { IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
 
+import { useMessage } from '@renderer/components/control/message'
 import VideoImage from '@renderer/components/control/videoImage.vue'
-import { ImageHelper, PathHelper } from '@renderer/helper'
+import { ImageHelper, isUrl, NetHelper, PathHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import Button from 'primevue/button'
+import ContextMenu from 'primevue/contextmenu'
 import { computed, ref } from 'vue'
 import { Waterfall } from 'vue-waterfall-plugin-next'
 
@@ -23,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const globalStates = globalStatesStore()
+const message = useMessage()
 
 const imageLabels: Record<'poster' | 'fanart' | 'thumb', string> = {
     poster: '封面',
@@ -45,6 +48,18 @@ const previewImage = computed({
 })
 
 const waterfallRef = ref<{ renderer: () => void } | null>(null)
+const extrafanartContextMenu = ref()
+const currentExtrafanart = ref<string | null>(null)
+
+const extrafanartContextMenuItems = [
+    {
+        label: '删除当前剧照',
+        icon: 'pi pi-trash',
+        command: () => {
+            removeCurrentExtrafanart()
+        }
+    }
+]
 
 /**
  * 剧照瀑布流数据
@@ -138,6 +153,149 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
         `parse${label.charAt(0).toUpperCase()}${label.slice(1)}` as keyof IScraperVideoFuncs
     )
 }
+
+/**
+ * 更新video中的图片字段
+ * @param imageType 图片类型
+ * @param imagePath 图片路径
+ */
+function updateVideoImage(
+    imageType: 'poster' | 'fanart' | 'thumb' | 'extrafanart',
+    imagePath: string
+) {
+    if (imageType === 'extrafanart') {
+        video.value = {
+            ...video.value,
+            extrafanart: [...(video.value.extrafanart || []), imagePath]
+        }
+        return
+    }
+
+    video.value = {
+        ...video.value,
+        [imageType]: imagePath
+    }
+}
+
+/**
+ * 从剪切板中读取图片并添加
+ * @param imageType 图片类型
+ */
+async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 'extrafanart') {
+    try {
+        const clipboardText = (await navigator.clipboard.readText()).trim()
+        // 优先处理URL
+        if (clipboardText && isUrl(clipboardText)) {
+            const url = new URL(clipboardText)
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+                const re = await NetHelper.getImage(clipboardText)
+                if (re.ok) {
+                    const imagePath = await ImageHelper.saveTempImage(
+                        re.body,
+                        `${video.value.title}_${imageType}`
+                    )
+                    if (!imagePath) return
+
+                    updateVideoImage(imageType, imagePath)
+                    return
+                }
+            }
+        }
+
+        // 然后处理本地文件
+        const path = PathHelper.newPath(clipboardText)
+        if (clipboardText && (await path.isFile()) && (await path.isExist())) {
+            updateVideoImage(imageType, clipboardText)
+            return
+        }
+
+        // 最后处理图像数据
+        const clipboardItems = await navigator.clipboard.read()
+        for (const item of clipboardItems) {
+            const imageTypeName = item.types.find((type) => type.startsWith('image/'))
+            if (!imageTypeName) continue
+
+            const blob = await item.getType(imageTypeName)
+            if (blob instanceof File) {
+                const filePath = await PathHelper.getPathForFile(blob)
+                if (filePath) {
+                    updateVideoImage(imageType, filePath)
+                    return
+                }
+            }
+
+            const imagePath = await ImageHelper.saveTempImage(
+                await blob.arrayBuffer(),
+                `${video.value.title}_${imageType}`
+            )
+            if (!imagePath) return
+
+            updateVideoImage(imageType, imagePath)
+            return
+        }
+
+        message.toast.warn('无法从剪切板中读取图片！')
+    } catch {
+        message.toast.error('无法从剪切板中读取图片！')
+    }
+}
+
+/**
+ * 超分当前图片并更新
+ * @param imageType 图片类型
+ */
+async function handleSuperResolutionImage(imageType: 'poster' | 'fanart' | 'thumb') {
+    message.confirmDialog.yesOrNo('是否超分当前图片?', async () => {
+        const imagePath = video.value[imageType]
+        if (!imagePath) return
+
+        const tempImagePath = await ImageHelper.superResolutionImage(imagePath, true)
+        if (!tempImagePath) return
+
+        video.value = {
+            ...video.value,
+            [imageType]: tempImagePath
+        }
+    })
+}
+
+/**
+ * 显示剧照右键菜单
+ * @param event 鼠标事件
+ * @param imagePath 剧照路径
+ */
+function showExtrafanartContextMenu(event: MouseEvent, imagePath: string) {
+    currentExtrafanart.value = imagePath
+    extrafanartContextMenu.value.show(event)
+}
+
+/**
+ * 删除当前剧照
+ */
+function removeCurrentExtrafanart() {
+    if (!currentExtrafanart.value) return
+
+    video.value = {
+        ...video.value,
+        extrafanart: (video.value.extrafanart || []).filter(
+            (item) => item !== currentExtrafanart.value
+        )
+    }
+    currentExtrafanart.value = null
+}
+
+/**
+ * 清空所有剧照
+ */
+function clearAllExtrafanart() {
+    message.confirmDialog.yesOrNo('是否清空所有剧照?', () => {
+        video.value = {
+            ...video.value,
+            extrafanart: []
+        }
+        currentExtrafanart.value = null
+    })
+}
 </script>
 
 <template>
@@ -149,6 +307,18 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     <h2 style="margin-bottom: 1rem; text-align: center">
                         {{ imageLabels[label as 'poster' | 'fanart' | 'thumb'] }}
                     </h2>
+                    <Button
+                        v-tooltip="'1、左键点击从剪切板中读取并添加\n2、右键点击超分当前图片'"
+                        class="add-button"
+                        icon="pi pi-plus"
+                        variant="outlined"
+                        style="height: fit-content"
+                        size="small"
+                        @click="addImageFromClipboard(label as 'poster' | 'fanart' | 'thumb')"
+                        @contextmenu.prevent="
+                            handleSuperResolutionImage(label as 'poster' | 'fanart' | 'thumb')
+                        "
+                    />
                     <Button
                         v-tooltip="'搜索'"
                         :disabled="buttondisable"
@@ -192,6 +362,15 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
             <div style="display: flex; align-items: center; margin-top: var(--spacing)">
                 <h2 style="margin-right: 1rem; margin-bottom: 1rem; text-align: center">剧照</h2>
                 <Button
+                    v-tooltip="'从剪切板中读取并添加'"
+                    class="add-button"
+                    icon="pi pi-plus"
+                    variant="outlined"
+                    style="height: fit-content"
+                    size="small"
+                    @click="addImageFromClipboard('extrafanart')"
+                />
+                <Button
                     v-tooltip="'搜索'"
                     :disabled="buttondisable"
                     icon="pi pi-search"
@@ -199,6 +378,14 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     style="height: fit-content"
                     size="small"
                     @click="props.scraperField('parseExtrafanart')"
+                />
+                <Button
+                    v-tooltip="'清空所有剧照'"
+                    icon="pi pi-trash"
+                    variant="outlined"
+                    style="height: fit-content; margin-left: auto; margin-right: 0.5rem"
+                    size="small"
+                    @click="clearAllExtrafanart"
                 />
             </div>
 
@@ -226,7 +413,13 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                 }"
             >
                 <template #default="{ item, url }">
-                    <div class="waterfall-image-item" @click="setPreviewImage(item.imgData)">
+                    <div
+                        class="waterfall-image-item"
+                        @click="setPreviewImage(item.imgData)"
+                        @contextmenu.prevent="
+                            showExtrafanartContextMenu($event as MouseEvent, item.imgData)
+                        "
+                    >
                         <img
                             :src="url"
                             loading="lazy"
@@ -237,6 +430,8 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
                     </div>
                 </template>
             </Waterfall>
+
+            <ContextMenu ref="extrafanartContextMenu" :model="extrafanartContextMenuItems" />
         </div>
 
         <!-- 预览图 -->
@@ -279,8 +474,6 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
     h2 {
         font-size: 1.2rem;
         font-weight: bold;
-        margin: initial;
-        margin-top: var(--spacing);
         padding-left: 0.5rem;
         color: var(--p-primary-color);
         margin-right: auto;
@@ -332,6 +525,10 @@ function onScrapeImage(label: 'poster' | 'fanart' | 'thumb') {
     &.dragover {
         --border-color: var(--p-primary-color);
     }
+}
+
+.add-button {
+    margin-right: 0.5rem;
 }
 
 .waterfall-image-item {
