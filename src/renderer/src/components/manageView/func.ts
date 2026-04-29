@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper'
 import type { IVideoFile } from '@renderer/scraper'
 
-import { LogHelper, PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
+import { EncodeHelper, LogHelper, PathHelper, TaskHelper, videoExtensions } from '@renderer/helper'
 import { Ipc } from '@renderer/ipc'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { globalStatesStore } from '@renderer/stores'
@@ -92,11 +92,11 @@ async function read(path: string): Promise<IVideoFile> {
     const movie = obj.movie
     //
     video.scraperName = movie.scraperName || ''
-    video.title = movie.title || ''
-    video.originaltitle = movie.originaltitle || ''
-    video.sorttitle = movie.sorttitle || ''
-    video.tagline = movie.tagline || ''
-    video.plot = movie.plot || ''
+    video.title = EncodeHelper.decodeHtmlEntity(movie.title) || ''
+    video.originaltitle = EncodeHelper.decodeHtmlEntity(movie.originaltitle) || ''
+    video.sorttitle = EncodeHelper.decodeHtmlEntity(movie.sorttitle) || ''
+    video.tagline = EncodeHelper.decodeHtmlEntity(movie.tagline) || ''
+    video.plot = EncodeHelper.decodeHtmlEntity(movie.plot) || ''
     video.mpaa = movie.mpaa || ''
     video.rating = movie.rating || ''
     video.director = movie.director || ''

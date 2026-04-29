@@ -108,7 +108,7 @@ export function useEditeScraper() {
                 video: IVideo,
                 content: unknown,
                 signal: AbortSignal
-            ) => Promise<boolean>
+            ) => Promise<boolean | null>
             return await func(video, context, signal)
         } catch (error) {
             scraperContext.logger.error(`解析${label}出错！`, error)
@@ -258,7 +258,7 @@ export function useEditeScraper() {
             for (const [index, { name, label }] of parseFuncs.entries()) {
                 if (getAbortResult(signal, onProgress)) return
 
-                if (!(await parseField(scraperContext, video, name, label, signal))) {
+                if ((await parseField(scraperContext, video, name, label, signal)) === false) {
                     failed.push(label)
                 }
 

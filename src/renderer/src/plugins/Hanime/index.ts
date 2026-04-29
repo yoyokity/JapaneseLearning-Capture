@@ -1,12 +1,17 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 import type { IHanimeContext } from './temp'
 
-import { EncodeHelper, ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
 import {
     dlsiteOptions,
     getExtrafanartDlsite,
     getWebContentDlsite
 } from '@renderer/plugins/Hanime/Dlsite'
+import {
+    getExtrafanartFanza,
+    getPosterFanza,
+    getWebContentFanza
+} from '@renderer/plugins/Hanime/Fanza'
 import {
     getExtrafanartGetchu,
     getPosterGetchu,
@@ -26,7 +31,8 @@ const hanimeScraper: IScraper<IHanimeContext> = {
     numSource: {
         hanime1: 'https://hanime1.me/watch?v={num}',
         getchu: 'https://www.getchu.com/soft.phtml?id={num}&gc=gc',
-        dlsite: 'https://www.dlsite.com/pro/work/=/product_id/{num}.html?locale=ja_JP'
+        dlsite: 'https://www.dlsite.com/pro/work/=/product_id/{num}.html?locale=ja_JP',
+        fanza: 'https://www.dmm.co.jp/mono/anime/-/detail/=/cid={num}/'
     },
     createContext: () => ({
         封面: null,
@@ -34,12 +40,14 @@ const hanimeScraper: IScraper<IHanimeContext> = {
         num: {
             hanime1: '',
             getchu: '',
-            dlsite: ''
+            dlsite: '',
+            fanza: ''
         },
         webContent: {
             hanime1: '',
             getchu: '',
-            dlsite: ''
+            dlsite: '',
+            fanza: ''
         },
         originaltitle: '',
         maker: '',
@@ -56,12 +64,14 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             context.num.hanime1 = video.num.hanime1 ?? ''
             context.num.getchu = video.num.getchu ?? ''
             context.num.dlsite = video.num.dlsite ?? ''
+            context.num.fanza = video.num.fanza ?? ''
 
             // 获取webContent
             await Promise.all([
                 getWebContentHanime1(searchTitle, context, signal),
                 getWebContentGetchu(searchTitle, context, signal),
-                getWebContentDlsite(searchTitle, context, signal)
+                getWebContentDlsite(searchTitle, context, signal),
+                getWebContentFanza(searchTitle, context, signal)
             ])
 
             return Boolean(context.webContent.hanime1)
@@ -69,7 +79,6 @@ const hanimeScraper: IScraper<IHanimeContext> = {
         parseTitle: async (video: IVideo, context: IHanimeContext) => {
             const $ = cheerioLoad(context.webContent.hanime1)
             let title = $('.video-description-panel').children().eq(1).text().trim()
-            title = EncodeHelper.decodeHtmlEntity(title)
             title = TransHelper.translateSC(title)
 
             if (!title) return false
@@ -104,13 +113,14 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             video.sorttitle = context.originaltitle
             return true
         },
-        parseTagline: async (_video: IVideo, _context: IHanimeContext) => {
+        parseTagline: async () => {
             return null
         },
         parseNum: async (video: IVideo, context: IHanimeContext) => {
             if (context.num.hanime1) video.num.hanime1 = context.num.hanime1
             if (context.num.getchu) video.num.getchu = context.num.getchu
             if (context.num.dlsite) video.num.dlsite = context.num.dlsite
+            if (context.num.fanza) video.num.fanza = context.num.fanza
             return true
         },
         parseMpaa: async (video: IVideo, _context: IHanimeContext) => {
@@ -241,7 +251,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
 
             return false
         },
-        parseActor: async (_video: IVideo, _context: IHanimeContext) => {
+        parseActor: async () => {
             return null
         },
         parseStudio: async (video: IVideo, context: IHanimeContext) => {
@@ -333,7 +343,15 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                     if (plot) return plot
                 }
 
-                // getchu没有的话，用dlsite
+                // 用fanza
+                if (context.webContent.fanza) {
+                    const $ = cheerioLoad(context.webContent.fanza)
+                    const plot = $('.wrapper-detailContents').next().next().find('p').text().trim()
+
+                    if (plot) return plot
+                }
+
+                // 用dlsite
                 if (context.webContent.dlsite) {
                     const $ = cheerioLoad(context.webContent.dlsite)
                     const plot = $('div')
@@ -402,6 +420,11 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 context.封面 = await getPosterGetchu(context, signal)
             }
 
+            // 从fanza获取
+            if (!context.封面 && context.webContent.fanza) {
+                context.封面 = await getPosterFanza(context, signal)
+            }
+
             // 没有则从hanime上获取
             if (!context.封面) {
                 context.封面 = await getPosterHanime1(
@@ -454,9 +477,16 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return true
         },
         parseExtrafanart: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            let extrafanarts = await getExtrafanartGetchu(context, signal)
+            // 从fanza获取
+            let extrafanarts = await getExtrafanartFanza(context, signal)
+
+            // 从getchu获取
             if (extrafanarts.length === 0) {
-                LogHelper.title(scraperName).log('getchu没有获取到剧照，尝试从dlsite获取...')
+                extrafanarts = await getExtrafanartGetchu(context, signal)
+            }
+
+            // 从dlsite获取
+            if (extrafanarts.length === 0) {
                 extrafanarts = await getExtrafanartDlsite(context, signal)
             }
 

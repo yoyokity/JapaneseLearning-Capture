@@ -9,11 +9,13 @@ export interface IHanimeContext {
         hanime1: string
         getchu: string
         dlsite: string
+        fanza: string
     }
     webContent: {
         hanime1: string
         getchu: string
         dlsite: string
+        fanza: string
     }
     originaltitle: string
     maker: string
@@ -25,3 +27,5 @@ export const loggerDlsite = LogHelper.title(scraperName).title('Dlsite')
 export const loggerGetchu = LogHelper.title(scraperName).title('Getchu')
 
 export const loggerHanime1 = LogHelper.title(scraperName).title('Hanime1')
+
+export const loggerFanza = LogHelper.title(scraperName).title('Fanza')

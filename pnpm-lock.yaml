@@ -69,6 +69,9 @@ importers:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      '@types/string-similarity':
+        specifier: ^4.0.2
+        version: 4.0.2
       '@vitejs/plugin-vue':
         specifier: ^6.0.6
         version: 6.0.6(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
@@ -156,6 +159,9 @@ importers:
       sass:
         specifier: ^1.99.0
         version: 1.99.0
+      string-similarity:
+        specifier: ^4.0.4
+        version: 4.0.4
       terser:
         specifier: ^5.46.2
         version: 5.46.2
@@ -1819,6 +1825,9 @@ packages:
 
   '@types/responselike@1.0.3':
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
+
+  '@types/string-similarity@4.0.2':
+    resolution: {integrity: sha512-LkJQ/jsXtCVMK+sKYAmX/8zEq+/46f1PTQw7YtmQwb74jemS1SlNLmARM2Zml9DgdDTWKAtc5L13WorpHPDjDA==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
@@ -5358,6 +5367,10 @@ packages:
     resolution: {integrity: sha512-o3yWv49B/o4QZk5ZcsALc6t0+eCelPc44zZsLtCQnZPDwFpDYSWcDnrv2TtMmMbQ7uKo3J0HTURCqckw23czNQ==}
     engines: {node: '>=12.0.0'}
 
+  string-similarity@4.0.4:
+    resolution: {integrity: sha512-/q/8Q4Bl4ZKAPjj8WerIBJWALKkaPRfrvhfF8k/B23i4nzrlRj2/go1m90In7nG/3XDSbOo0+pu6RvCTM9RGMQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
   string-width@1.0.2:
     resolution: {integrity: sha512-0XsVpQLnVCXHJfyEs8tC0zpTVIr5PKKsQtkT29IwupnPTjtPmQ3xT/4yCREF9hYkV/3M3kzcUTSAZT6a6h81tw==}
     engines: {node: '>=0.10.0'}
@@ -7798,6 +7811,8 @@ snapshots:
   '@types/responselike@1.0.3':
     dependencies:
       '@types/node': 25.6.0
+
+  '@types/string-similarity@4.0.2': {}
 
   '@types/unist@3.0.3': {}
 
@@ -11799,6 +11814,8 @@ snapshots:
       minipass: 3.3.6
 
   stable-hash-x@0.2.0: {}
+
+  string-similarity@4.0.4: {}
 
   string-width@1.0.2:
     dependencies:

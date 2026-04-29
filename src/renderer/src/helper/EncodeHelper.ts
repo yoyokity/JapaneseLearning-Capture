@@ -1,4 +1,5 @@
 import { Ipc } from '@renderer/ipc'
+import stringSimilarity from 'string-similarity'
 
 /** 编码相关 */
 export class EncodeHelper {
@@ -52,8 +53,45 @@ export class EncodeHelper {
      * @param text 原始文本
      */
     static decodeHtmlEntity(text: string) {
+        if (!text) return ''
         const textarea = document.createElement('textarea')
         textarea.innerHTML = text
+        if (!textarea.value) return ''
         return textarea.value
+    }
+
+    /**
+     * 获取最佳匹配结果
+     * @param target 目标文本
+     * @param candidates 候选文本列表
+     * @remarks 忽略字符全角半角的不同
+     */
+    static bestMatch(target: string, candidates: string[]) {
+        if (candidates.length === 0) {
+            return null
+        }
+
+        const normalizedTarget = EncodeHelper.fullToHalf(target)
+        const normalizedCandidates = candidates.map((candidate) =>
+            EncodeHelper.fullToHalf(candidate)
+        )
+        const bestMatch = stringSimilarity.findBestMatch(
+            normalizedTarget,
+            normalizedCandidates
+        ).bestMatch
+        if (bestMatch.rating < 0.5) {
+            return null
+        }
+
+        const index = normalizedCandidates.indexOf(bestMatch.target)
+
+        return index === -1 ? null : candidates[index]
+    }
+
+    /**
+     * 将标点符号替换为空格
+     */
+    static punctuationsToSpace(str: string) {
+        return str.replace(/[\p{P}\p{S}]/gu, ' ').trim()
     }
 }
