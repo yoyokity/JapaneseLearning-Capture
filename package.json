@@ -68,6 +68,7 @@
         "primeicons": "^7.0.0",
         "primevue": "^4.5.5",
         "sass": "^1.99.0",
+        "sentence-splitter": "^5.0.1",
         "string-similarity": "^4.0.4",
         "terser": "^5.46.2",
         "typescript": "^6.0.3",
