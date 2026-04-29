@@ -339,7 +339,7 @@ function clearAllExtrafanart() {
                     @dragleave.prevent="(e) => handleDrag(e, 'leave')"
                 >
                     <VideoImage
-                        :src="video[label as 'poster' | 'fanart' | 'thumb']"
+                        :path="video[label as 'poster' | 'fanart' | 'thumb']"
                         image-loading="eager"
                         image-decoding="async"
                         :style="{
@@ -439,7 +439,7 @@ function clearAllExtrafanart() {
             <Transition mode="out-in" name="fade">
                 <div v-if="previewImage" class="preview-image-modal" @click="setPreviewImage(null)">
                     <VideoImage
-                        :src="previewImage"
+                        :path="previewImage"
                         image-loading="eager"
                         image-decoding="sync"
                         :image-style="{

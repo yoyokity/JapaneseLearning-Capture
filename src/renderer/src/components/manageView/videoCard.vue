@@ -69,7 +69,7 @@ function handleClick(event: MouseEvent) {
         </div>
         <!-- 图片 -->
         <VideoImage
-            :src="image"
+            :path="image"
             :num="fileNum"
             :border="imageBorder"
             image-loading="lazy"
