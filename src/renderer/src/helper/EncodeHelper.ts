@@ -26,18 +26,6 @@ export class EncodeHelper {
     }
 
     /**
-     * 将文本中的转义换行符转为普通换行
-     * @param text 原始文本
-     */
-    static normalizePlotLineBreak(text: string) {
-        return text
-            .replace(/\\r\\n/g, '\n')
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '\n')
-            .replace(/\\/, '')
-    }
-
-    /**
      * 全角转半角
      */
     static fullToHalf(str: string) {

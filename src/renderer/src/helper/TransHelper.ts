@@ -420,7 +420,6 @@ export class TransHelper {
      */
     static formatTranslateText(text: string) {
         text = TransHelper.translateSC(text)
-        text = EncodeHelper.normalizePlotLineBreak(text)
 
         return splitSentence(text)
             .filter((node) => node.type === 'Sentence')
@@ -432,8 +431,7 @@ export class TransHelper {
 
 // 转义特殊符号
 function escapeSpecialSymbols(inputString: string): string {
-    const escapedString = inputString.trim().replace(/"/g, '\\\\\\$&')
-    return escapedString.replace(/\r\n|\r|\n/g, '\\\\n')
+    return JSON.stringify(inputString.trim()).slice(1, -1)
 }
 
 function getPrompt(targetLanguage: string) {
