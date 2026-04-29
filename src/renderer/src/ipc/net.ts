@@ -1,5 +1,26 @@
-import { invoke } from '@renderer/ipc/func.ts'
+import type {
+    IAiOptions,
+    IAiResult,
+    IFetchOptions,
+    IPingResult,
+    IResult,
+    IVerifyCookies,
+    ParseResultType
+} from '@shared'
+
+import { trpcClient } from '@renderer/ipc/func.ts'
 import { v7 } from 'uuid'
+
+export type {
+    IAiOptions,
+    IAiResult,
+    IFetchOptions,
+    IFetchParse,
+    IPingResult,
+    IResult,
+    IVerifyCookies,
+    ParseResultType
+} from '@shared'
 
 /**
  * 网络相关接口
@@ -16,7 +37,11 @@ export const net = {
     get: <P extends IFetchOptions['parse'] | undefined = undefined>(
         url: string,
         options?: IFetchOptions & { parse?: P }
-    ): Promise<IResult<ParseResultType<P>>> => invoke('net:get', url, options),
+    ): Promise<IResult<ParseResultType<P>>> =>
+        trpcClient.net.get.query({
+            url,
+            options
+        }) as Promise<IResult<ParseResultType<P>>>,
 
     /**
      * 发送 POST 请求
@@ -25,7 +50,12 @@ export const net = {
         url: string,
         body: any,
         options?: IFetchOptions & { parse?: P }
-    ): Promise<IResult<ParseResultType<P>>> => invoke('net:post', url, body, options),
+    ): Promise<IResult<ParseResultType<P>>> =>
+        trpcClient.net.post.mutate({
+            url,
+            body,
+            options
+        }) as Promise<IResult<ParseResultType<P>>>,
 
     /**
      * 发送AI流式请求
@@ -33,83 +63,23 @@ export const net = {
      */
     ai: async (options: IAiOptions): Promise<IAiTask> => {
         const requestId = v7()
-        const ipcRenderer = window.electron.ipcRenderer
 
         let closed = false
         let isCancelled = false
+        let isResolved = false
         let text = ''
         let reasoningText = ''
-        let removeDataListener = () => {}
-        let removeEndListener = () => {}
-        let removeErrorListener = () => {}
-
-        /**
-         * 清理事件监听
-         */
-        function cleanup() {
-            if (closed) return
-
-            closed = true
-            removeDataListener()
-            removeEndListener()
-            removeErrorListener()
-        }
-
-        /**
-         * 处理流数据事件
-         */
-        function handleData(_: unknown, payload: IAiDataPayload) {
-            if (payload.requestId !== requestId) return
-
-            text += payload.data
-            reasoningText += payload.reasoningData ?? ''
-            options.callback?.(payload.data, payload.reasoningData ?? '')
-        }
 
         let resolveTask!: (value: IAiResult) => void
         let rejectTask!: (reason?: any) => void
-
-        /**
-         * 处理结束事件
-         */
-        function handleEnd(_: unknown, payload: IAiEndPayload) {
-            if (payload.requestId !== requestId) return
-
-            cleanup()
-            text = payload.text
-            reasoningText = payload.reasoningText ?? reasoningText
-            resolveTask({
-                text: payload.text,
-                ...(reasoningText ? { reasoningText } : {})
-            })
-        }
-
-        /**
-         * 处理异常事件
-         */
-        function handleError(_: unknown, payload: IAiErrorPayload) {
-            if (payload.requestId !== requestId) return
-
-            cleanup()
-            if (isCancelled) {
-                rejectTask(new Error('AI流已取消'))
-                return
-            }
-
-            rejectTask(new Error(payload.error))
-        }
-
-        removeDataListener = ipcRenderer.on('net:ai:data', handleData)
-        removeEndListener = ipcRenderer.on('net:ai:end', handleEnd)
-        removeErrorListener = ipcRenderer.on('net:ai:error', handleError)
 
         const completed = new Promise<IAiResult>((resolve, reject) => {
             resolveTask = resolve
             rejectTask = reject
         })
 
-        try {
-            await invoke('net:ai', requestId, {
+        const subscription = trpcClient.net.ai.subscribe(
+            {
                 provider: options.provider,
                 apiKey: options.apiKey,
                 model: options.model,
@@ -118,19 +88,61 @@ export const net = {
                 system: options.system,
                 prompt: options.prompt,
                 timeout: options.timeout
-            })
-        } catch (error) {
-            cleanup()
-            rejectTask(error)
-        }
+            },
+            {
+                onData(payload) {
+                    if (payload.type === 'data') {
+                        text += payload.data
+                        reasoningText += payload.reasoningData ?? ''
+                        options.callback?.(payload.data, payload.reasoningData ?? '')
+                        return
+                    }
+
+                    text = payload.text
+                    reasoningText = payload.reasoningText ?? reasoningText
+                    if (isResolved) return
+
+                    isResolved = true
+                    resolveTask({
+                        text,
+                        ...(reasoningText ? { reasoningText } : {})
+                    })
+                },
+                onError(error) {
+                    if (closed) return
+
+                    closed = true
+                    if (isCancelled) {
+                        rejectTask(new Error('AI流已取消'))
+                        return
+                    }
+
+                    rejectTask(error)
+                },
+                onComplete() {
+                    if (closed) return
+
+                    closed = true
+                    if (isCancelled || isResolved) {
+                        return
+                    }
+
+                    isResolved = true
+                    resolveTask({
+                        text,
+                        ...(reasoningText ? { reasoningText } : {})
+                    })
+                }
+            }
+        )
 
         return {
             requestId,
             completed,
             cancel: async () => {
                 isCancelled = true
-                cleanup()
-                await invoke('net:aiCancel', requestId)
+                closed = true
+                subscription.unsubscribe()
                 rejectTask(new Error('AI流已取消'))
             },
             getText: () => ({
@@ -147,17 +159,17 @@ export const net = {
      * @param config.proxyBypassRules 可选的代理绕过规则，例如 "*.example.com,internal.local"
      */
     setProxy: (config: { proxyRules: string; proxyBypassRules?: string }): Promise<void> =>
-        invoke('net:setProxy', config),
+        trpcClient.net.setProxy.mutate(config),
 
     /**
      * 取消默认会话的代理设置
      */
-    clearProxy: (): Promise<void> => invoke('net:clearProxy'),
+    clearProxy: (): Promise<void> => trpcClient.net.clearProxy.mutate(),
 
     /**
      * 清除默认会话的缓存
      */
-    clearCache: (): Promise<void> => invoke('net:clearCache'),
+    clearCache: (): Promise<void> => trpcClient.net.clearCache.mutate(),
 
     /**
      * Ping检测网络连通性
@@ -166,7 +178,10 @@ export const net = {
      * @returns 返回ping结果，包含是否成功、响应时间和状态码
      */
     ping: (host: string, timeout?: number): Promise<IPingResult> =>
-        invoke('net:ping', host, timeout),
+        trpcClient.net.ping.query({
+            host,
+            timeout
+        }),
 
     /**
      * 打开 Cloudflare 验证窗口
@@ -175,7 +190,10 @@ export const net = {
      * @returns 返回验证结果，包含 Cookie 信息
      */
     cloudflareVerify: (url: string, targetCookies?: string[]): Promise<IVerifyCookies> =>
-        invoke('cloudflare:verify', url, targetCookies),
+        trpcClient.net.cloudflareVerify.mutate({
+            url,
+            targetCookies
+        }),
 
     /**
      * 按指定编码输出字节数组
@@ -183,107 +201,10 @@ export const net = {
      * @param encoding 字符编码，默认为 utf-8
      */
     encode: (value: string, encoding: string = 'utf-8'): Promise<number[]> =>
-        invoke('net:encode', value, encoding)
-}
-
-/**
- * 请求选项接口
- */
-export interface IFetchOptions {
-    /**
-     * 请求头
-     */
-    headers?: Record<string, string>
-
-    /**
-     * 请求超时时间（毫秒）
-     */
-    timeout?: number
-
-    /**
-     * 要把返回的数据解析成什么
-     * @default text
-     */
-    parse?: IFetchParse
-}
-
-export interface IAiOptions {
-    /**
-     * AI提供商
-     */
-    provider: 'openai' | 'deepseek' | 'gemini'
-
-    /**
-     * API Key
-     */
-    apiKey: string
-
-    /**
-     * 模型名称
-     */
-    model: string
-
-    /**
-     * OpenAI兼容接口地址
-     */
-    baseURL?: string
-
-    /**
-     * 其他特定于提供商的选项。他们通过 从 AI SDK 发送给提供商并启用特定于提供商的 可以完全封装在提供者中的功能。
-     */
-    providerOptions?: Record<string, any>
-
-    /**
-     * 系统提示词
-     */
-    system?: string
-
-    /**
-     * 用户输入
-     */
-    prompt: string
-
-    /**
-     * 超时时间（毫秒）
-     */
-    timeout?: number
-
-    /**
-     * 流式回调
-     */
-    callback?: (data: string, reasoningData: string) => void
-}
-
-export interface IAiResult {
-    text: string
-    reasoningText?: string
-}
-
-export type IFetchParse = 'arrayBuffer' | 'blob' | 'formData' | 'json' | 'text'
-
-export interface IResult<T> {
-    ok: boolean
-    status: number
-    statusText: string
-    headers: Record<string, string>
-    body: T
-}
-
-export interface IAiDataPayload {
-    requestId: string
-    data: string
-    reasoningData?: string
-}
-
-export interface IAiEndPayload {
-    requestId: string
-    text: string
-    reasoningText?: string
-}
-
-export interface IAiErrorPayload {
-    requestId: string
-    error: string
+        trpcClient.net.encode.query({
+            value,
+            encoding
+        })
 }
 
 export interface IAiTask {
@@ -291,71 +212,4 @@ export interface IAiTask {
     completed: Promise<IAiResult>
     cancel: () => Promise<void>
     getText: () => IAiResult
-}
-
-/**
- * 根据解析类型返回对应的数据类型
- */
-export type ParseResultType<P extends IFetchParse | undefined> = P extends 'arrayBuffer'
-    ? ArrayBuffer
-    : P extends 'blob'
-      ? Blob
-      : P extends 'formData'
-        ? FormData
-        : P extends 'json'
-          ? Record<string, any>
-          : P extends 'text'
-            ? string
-            : P extends undefined
-              ? string
-              : string
-
-/**
- * Ping结果接口
- */
-export interface IPingResult {
-    /**
-     * 是否成功
-     */
-    success: boolean
-
-    /**
-     * 响应时间（毫秒），失败时为-1
-     */
-    time: number
-
-    /**
-     * HTTP状态码，失败时为-1
-     */
-    status: number
-
-    /**
-     * 错误信息，成功时不存在
-     */
-    error?: string
-}
-
-/**
- * Cloudflare 验证结果接口
- */
-export interface IVerifyCookies {
-    /**
-     * 是否验证成功
-     */
-    success: boolean
-
-    /**
-     * Cookie 字符串
-     */
-    cookies: string
-
-    /**
-     * 获取到的目标 Cookie 键值对
-     */
-    targetCookies: Record<string, string>
-
-    /**
-     * 错误信息
-     */
-    error?: string
 }

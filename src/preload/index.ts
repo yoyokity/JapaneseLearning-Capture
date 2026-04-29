@@ -1,5 +1,5 @@
-import { electronAPI } from '@electron-toolkit/preload'
 import { contextBridge, webUtils } from 'electron'
+import { exposeElectronTRPC } from 'electron-trpc/main'
 
 // 为渲染进程提供的自定义API
 const api = {
@@ -11,14 +11,12 @@ const api = {
 // 直接添加到DOM全局对象中。
 if (process.contextIsolated) {
     try {
-        contextBridge.exposeInMainWorld('electron', electronAPI)
+        exposeElectronTRPC()
         contextBridge.exposeInMainWorld('api', api)
     } catch (error) {
         console.error(error)
     }
 } else {
-    // @ts-ignore (在dts中定义)
-    window.electron = electronAPI
     // @ts-ignore (在dts中定义)
     window.api = api
 }

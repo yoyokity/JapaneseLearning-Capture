@@ -6,16 +6,17 @@
         "ignoreDeprecations": "6.0",
         "moduleResolution": "bundler",
         "paths": {
-            "@renderer/*": ["src/renderer/src/*"]
+            "@renderer/*": ["src/renderer/src/*"],
+            "@shared": ["src/main/shared/index.ts"]
         },
         "allowImportingTsExtensions": true,
         "emitDeclarationOnly": true
     },
     "include": [
+        "src/main/**/*",
         "src/renderer/src/env.d.ts",
         "src/renderer/src/**/*",
         "src/renderer/src/**/*.vue",
-        "src/preload/*.d.ts",
         "src/renderer/src/plugins"
     ]
 }

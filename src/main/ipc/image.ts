@@ -1,17 +1,16 @@
-import type { Buffer } from 'node:buffer'
-
 import * as fs from 'node:fs'
 import { join } from 'node:path'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
 import sharp from 'sharp'
 import { v7 } from 'uuid'
 
+import { appPath } from '../globalStates'
 import { Cmd } from '../helper/shell'
-import { appPath } from './app'
-import { tryExecute, tryExecuteSync } from './func'
 
-type ImageData =
-    | Buffer
+/**
+ * 图像数据类型
+ */
+export type ImageData =
     | ArrayBuffer
     | Uint8Array
     | Uint8ClampedArray
@@ -49,65 +48,63 @@ const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
     })
 }
 
-// 保存图片
-ipcMain.handle('image:save', (_, imageData: ImageData, path: string) => {
-    return tryExecute(async () => {
-        await sharp(imageData).jpeg({ quality: 92 }).toFile(path)
-    })
-})
+/**
+ * 保存图片
+ */
+export async function saveImage(imageData: ImageData, path: string) {
+    await sharp(imageData).jpeg({ quality: 92 }).toFile(path)
+}
 
-// 读取图片
-ipcMain.handle('image:read', (_, path: string) => {
-    return tryExecuteSync(() => {
-        const data = fs.readFileSync(path)
-        return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
-    })
-})
+/**
+ * 读取图片
+ */
+export function readImage(path: string) {
+    const data = fs.readFileSync(path)
+    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+}
 
-// 超分图片
-ipcMain.handle('image:superResolution', async (_, imagePath: string, anime: boolean = false) => {
-    return tryExecute(async () => {
-        // 保存图片到temp
-        const tempPath = app.getPath('temp')
+/**
+ * 超分图片
+ */
+export async function superResolutionImage(imagePath: string, anime: boolean = false) {
+    // 保存图片到 temp
+    const tempPath = app.getPath('temp')
 
-        // 如果没有temp则创建
-        const tempFileId = v7()
-        const tempImageBefore = join(tempPath, `realesrgan_before_${tempFileId}.png`)
-        const tempImageAfter = join(tempPath, `realesrgan_after_${tempFileId}.png`)
-        const tempResultPath = join(tempPath, `super_resolution_${tempFileId}.jpg`)
-        const sourceImageData = await fs.promises.readFile(imagePath)
+    const tempFileId = v7()
+    const tempImageBefore = join(tempPath, `${tempFileId}_realesrgan_before.png`)
+    const tempImageAfter = join(tempPath, `${tempFileId}_realesrgan_after.png`)
+    const tempResultPath = join(tempPath, `${tempFileId}_super_resolution.jpg`)
+    const sourceImageData = await fs.promises.readFile(imagePath)
 
-        const inputImage = await resizeByMaxSide(sharp(sourceImageData), 1080)
-        await inputImage.toFile(tempImageBefore)
+    const inputImage = await resizeByMaxSide(sharp(sourceImageData), 1080)
+    await inputImage.toFile(tempImageBefore)
 
-        // 超分
-        const ars = [
-            '-i',
-            tempImageBefore,
-            '-o',
-            tempImageAfter,
-            '-n',
-            anime ? 'realesrgan-x4plus-anime' : 'realesrgan-x4plus'
-        ]
+    const ars = [
+        '-i',
+        tempImageBefore,
+        '-o',
+        tempImageAfter,
+        '-n',
+        anime ? 'realesrgan-x4plus-anime' : 'realesrgan-x4plus'
+    ]
 
-        const realesrganPath = join(
-            appPath.extraResource,
-            'tools/realesrgan/realesrgan-ncnn-vulkan.exe'
-        )
+    const realesrganPath = join(
+        appPath.extraResource,
+        'tools/realesrgan/realesrgan-ncnn-vulkan.exe'
+    )
 
-        return new Promise<string>((resolve, reject) => {
-            const realesrgan = new Cmd(realesrganPath)
-            const cmd = realesrgan.run(ars)
-            cmd.onExit(async (code, text) => {
-                if (code === 0) {
-                    // 使用sharp转换为jpg，质量92，返回temp路径
-                    const outputImage = await resizeByMaxSide(sharp(tempImageAfter), 3840)
-                    await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
-                    resolve(tempResultPath)
-                } else {
-                    reject(new Error(text))
-                }
-            })
+    return await new Promise<string>((resolve, reject) => {
+        const realesrgan = new Cmd(realesrganPath)
+        const cmd = realesrgan.run(ars)
+        cmd.onExit(async (code, text) => {
+            if (code === 0) {
+                // 使用 sharp 转换为 jpg，质量 92，返回 temp 路径
+                const outputImage = await resizeByMaxSide(sharp(tempImageAfter), 3840)
+                await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
+                resolve(tempResultPath)
+            } else {
+                reject(new Error(text))
+            }
         })
     })
-})
+}

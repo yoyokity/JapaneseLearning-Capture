@@ -1,4 +1,18 @@
-import { invoke, send } from '@renderer/ipc/func.ts'
+import type {
+    IFormatInputPathObject,
+    ILogType,
+    IStats,
+    ReadDirectoryOptions
+} from '../../../main/ipc/filesystem.ts'
+
+import { sendTask, trpcClient } from '@renderer/ipc/func.ts'
+
+export type {
+    IFormatInputPathObject,
+    ILogType,
+    IStats,
+    ReadDirectoryOptions
+} from '../../../main/ipc/filesystem.ts'
 
 /**
  * 文件系统
@@ -8,37 +22,37 @@ export const filesystem = {
      * 判断path是否存在于磁盘上
      * @remarks 用时 <10ms
      */
-    isExist: (path: string): Promise<boolean> => invoke('filesystem:isExist', path),
+    isExist: (path: string): Promise<boolean> => trpcClient.filesystem.isExist.query(path),
 
     /**
      * 判断path是否为文件
      * @remarks 用时 <10ms
      */
-    isFile: (path: string): Promise<boolean> => invoke('filesystem:isFile', path),
+    isFile: (path: string): Promise<boolean> => trpcClient.filesystem.isFile.query(path),
 
     /**
      * 判断path是否为目录
      * @remarks 用时 <10ms
      */
-    isDirectory: (path: string): Promise<boolean> => invoke('filesystem:isDirectory', path),
+    isDirectory: (path: string): Promise<boolean> => trpcClient.filesystem.isDirectory.query(path),
 
     /**
      * 获取path状态信息
      * @remarks 用时 <10ms
      */
-    getSatus: (path: string): Promise<IStats> => invoke('filesystem:getStatus', path),
+    getSatus: (path: string): Promise<IStats> => trpcClient.filesystem.getStatus.query(path),
 
     /**
      * 路径拼接
      * @remarks 用时 <10ms
      */
-    join: (...paths: string[]): Promise<string> => invoke('filesystem:join', ...paths),
+    join: (...paths: string[]): Promise<string> => trpcClient.filesystem.join.query(paths),
 
     /**
      * 拼接并解析绝对路径
      * @remarks 用时 <10ms
      */
-    resolve: (...paths: string[]): Promise<string> => invoke('filesystem:resolve', ...paths),
+    resolve: (...paths: string[]): Promise<string> => trpcClient.filesystem.resolve.query(paths),
 
     /**
      * 获取文件扩展名，如果为目录则返回''
@@ -46,7 +60,7 @@ export const filesystem = {
      * @remarks 用时 <10ms
      * @param path 文件路径
      */
-    extname: (path: string): Promise<string> => invoke('filesystem:extname', path),
+    extname: (path: string): Promise<string> => trpcClient.filesystem.extname.query(path),
 
     /**
      * 获取路径中的文件名
@@ -56,7 +70,10 @@ export const filesystem = {
      * @param ext 可选的文件扩展名，如果提供则会从结果中移除
      */
     basename: (path: string, ext?: string): Promise<string> =>
-        invoke('filesystem:basename', path, ext),
+        trpcClient.filesystem.basename.query({
+            filePath: path,
+            ext
+        }),
 
     /**
      * 获取路径中的目录名
@@ -64,7 +81,7 @@ export const filesystem = {
      * @remarks 用时 <10ms
      * @param path 文件路径
      */
-    dirname: (path: string): Promise<string> => invoke('filesystem:dirname', path),
+    dirname: (path: string): Promise<string> => trpcClient.filesystem.dirname.query(path),
 
     /**
      * 从对象中格式化路径
@@ -72,7 +89,7 @@ export const filesystem = {
      * @param pathObject 包含路径组件的对象
      */
     format: (pathObject: IFormatInputPathObject): Promise<string> =>
-        invoke('filesystem:format', pathObject),
+        trpcClient.filesystem.format.query(pathObject),
 
     /**
 	 * 获取to基于from的相对路径
@@ -87,7 +104,10 @@ const to = '/home/user/app/dist';
 	 * ```
 	 */
     relative: (from: string, to: string): Promise<string> =>
-        invoke('filesystem:relative', from, to),
+        trpcClient.filesystem.relative.query({
+            from,
+            to
+        }),
 
     /**
      * 递归创建目录
@@ -97,7 +117,7 @@ const to = '/home/user/app/dist';
      * @returns 目录是否存在或创建成功
      */
     createDirectory: (dirPath: string): Promise<boolean> =>
-        invoke('filesystem:createDirectory', dirPath),
+        trpcClient.filesystem.createDirectory.mutate(dirPath),
 
     /**
      * 使用fast-glob搜索文件和目录
@@ -123,7 +143,11 @@ const to = '/home/user/app/dist';
     readDirectory: (
         patterns: string | string[],
         options?: ReadDirectoryOptions
-    ): Promise<string[]> => invoke('filesystem:readDirectory', patterns, options),
+    ): Promise<string[]> =>
+        trpcClient.filesystem.readDirectory.query({
+            patterns,
+            options
+        }),
 
     /**
      * 删除文件或目录
@@ -131,7 +155,8 @@ const to = '/home/user/app/dist';
      * @param targetPath 要删除的文件或目录路径
      * @returns 目标是否已不存在
      */
-    remove: (targetPath: string): Promise<boolean> => invoke('filesystem:remove', targetPath),
+    remove: (targetPath: string): Promise<boolean> =>
+        trpcClient.filesystem.remove.mutate(targetPath),
 
     /**
      * 复制文件或目录
@@ -146,7 +171,13 @@ const to = '/home/user/app/dist';
         destPath: string,
         overwrite: boolean = true,
         filter?: (src: string, dest: string) => boolean
-    ): Promise<boolean> => invoke('filesystem:copy', sourcePath, destPath, overwrite, filter),
+    ): Promise<boolean> =>
+        trpcClient.filesystem.copy.mutate({
+            sourcePath,
+            destPath,
+            overwrite,
+            filter
+        }),
 
     /**
      * 移动文件或目录
@@ -156,7 +187,11 @@ const to = '/home/user/app/dist';
      * @param overwrite 是否覆盖已存在的文件或目录，默认为true
      */
     move: (sourcePath: string, destPath: string, overwrite: boolean = true): Promise<boolean> =>
-        invoke('filesystem:move', sourcePath, destPath, overwrite),
+        trpcClient.filesystem.move.mutate({
+            sourcePath,
+            destPath,
+            overwrite
+        }),
 
     /**
      * 写入文件（如果目录不存在自动则创建）
@@ -165,7 +200,10 @@ const to = '/home/user/app/dist';
      * @param data 要写入的数据
      */
     writeFile: (filePath: string, data: string | ArrayBufferView): Promise<boolean> =>
-        invoke('filesystem:writeFile', filePath, data),
+        trpcClient.filesystem.writeFile.mutate({
+            filePath,
+            data: data as unknown as string | ArrayBufferView
+        }),
 
     /**
      * 追加内容到文件（如果文件不存在则自动创建）
@@ -174,7 +212,10 @@ const to = '/home/user/app/dist';
      * @param data 要追加的数据
      */
     appendFile: (filePath: string, data: string | Uint8Array): Promise<boolean> =>
-        invoke('filesystem:appendFile', filePath, data),
+        trpcClient.filesystem.appendFile.mutate({
+            filePath,
+            data
+        }),
 
     readFile,
 
@@ -182,15 +223,21 @@ const to = '/home/user/app/dist';
      * 写入日志
      * @remarks 用时 <10ms
      */
-    writeLog: (type: 'log' | 'error' | 'warn' | 'success' | 'debug', ...params: any[]): void =>
-        send('filesystem:writeLog', type, ...params),
+    writeLog: (type: ILogType, ...params: any[]): void =>
+        sendTask(
+            trpcClient.filesystem.writeLog.mutate({
+                type,
+                params
+            })
+        ),
 
     /**
      * 在资源管理器中打开路径
      * @remarks 用时 <10ms
      * @param path 要打开的路径
      */
-    openInExplorer: (path: string): Promise<boolean> => invoke('filesystem:openInExplorer', path),
+    openInExplorer: (path: string): Promise<boolean> =>
+        trpcClient.filesystem.openInExplorer.mutate(path),
 
     /**
      * 获取前端文件的实际绝对路径
@@ -198,7 +245,9 @@ const to = '/home/user/app/dist';
      * @param file 文件
      * @returns 文件路径
      */
-    getPathForFile: (file: File) => (window.api as any).getPathForFile(file),
+    getPathForFile: (file: File) =>
+        // @ts-ignore
+        (window.api as any).getPathForFile(file),
 
     /**
      * 删除空文件夹
@@ -206,7 +255,7 @@ const to = '/home/user/app/dist';
      * @param rootPath 根路径
      */
     removeEmptyFolders: (rootPath: string): Promise<void> =>
-        invoke('filesystem:removeEmptyFolders', rootPath),
+        trpcClient.filesystem.removeEmptyFolders.mutate(rootPath),
 
     /**
      * 清空文件夹（删除文件夹内所有内容，保留文件夹本身）
@@ -215,7 +264,7 @@ const to = '/home/user/app/dist';
      * @returns 是否成功清空
      */
     clearFolder: (folderPath: string): Promise<boolean> =>
-        invoke('filesystem:clearFolder', folderPath)
+        trpcClient.filesystem.clearFolder.mutate(folderPath)
 }
 
 function readFile(filePath: string, encoding: BufferEncoding): Promise<string>
@@ -231,90 +280,8 @@ function readFile(
     filePath: string,
     encoding: BufferEncoding | 'arrayBuffer' = 'utf-8'
 ): Promise<string | ArrayBuffer> {
-    return invoke('filesystem:readFile', filePath, encoding || undefined)
-}
-
-export interface ReadDirectoryOptions {
-    /**
-     * 指定搜索的起始目录
-     */
-    cwd?: string
-    /**
-     * 要忽略的文件或目录模式数组
-     * @example ['node_modules/**', '*.tmp']
-     */
-    ignore?: string[]
-    /**
-     * 是否只搜索文件
-     */
-    onlyFiles?: boolean
-    /**
-     * 是否只搜索目录
-     */
-    onlyDirectories?: boolean
-    /**
-     * 搜索的最大深度
-     * @example 1 - 只在指定目录中搜索
-     * @example 2 - 搜索指定目录及其直接子目录
-     */
-    deep?: number
-}
-
-export interface IStats extends IStatsBase<number> {}
-interface IStatsBase<T> {
-    dev: T
-    ino: T
-    mode: T
-    nlink: T
-    uid: T
-    gid: T
-    rdev: T
-    size: T
-    blksize: T
-    blocks: T
-    atimeMs: T
-    mtimeMs: T
-    ctimeMs: T
-    birthtimeMs: T
-    atime: Date
-    mtime: Date
-    ctime: Date
-    birthtime: Date
-
-    isFile: () => boolean
-
-    isDirectory: () => boolean
-
-    isBlockDevice: () => boolean
-
-    isCharacterDevice: () => boolean
-
-    isSymbolicLink: () => boolean
-
-    isFIFO: () => boolean
-
-    isSocket: () => boolean
-}
-
-export interface IFormatInputPathObject {
-    /**
-     * 路径的根部分，例如 '/' 或 'c:\'
-     */
-    root?: string | undefined
-    /**
-     * 完整的目录路径，例如 '/home/user/dir' 或 'c:\path\dir'
-     */
-    dir?: string | undefined
-    /**
-     * 包含扩展名（如果有）的文件名，例如 'index.html'
-     */
-    base?: string | undefined
-    /**
-     * 文件扩展名（如果有），例如 '.html'
-     */
-    ext?: string | undefined
-    /**
-     * 不含扩展名的文件名（如果有），例如 'index'
-     */
-    name?: string | undefined
+    return trpcClient.filesystem.readFile.query({
+        filePath,
+        encoding: encoding || undefined
+    }) as Promise<string | ArrayBuffer>
 }

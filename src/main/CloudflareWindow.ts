@@ -1,21 +1,9 @@
-import { resolve } from 'node:path'
-import { BrowserWindow, ipcMain } from 'electron'
+import type { IVerifyCookies } from './ipc/net'
 
-import { tryExecute } from './ipc/func'
+import { resolve } from 'node:path'
+import { BrowserWindow } from 'electron'
 
 const iconPath = resolve(__dirname, '../../resources/mainIcon.png')
-
-/** Cloudflare 验证结果 */
-export interface ICloudflareCookies {
-    /** 是否验证成功 */
-    success: boolean
-    /** Cookie 字符串 */
-    cookies: string
-    /** 获取到的目标 Cookie 键值对 */
-    targetCookies: Record<string, string>
-    /** 错误信息 */
-    error?: string | undefined
-}
 
 let cfWindow: BrowserWindow | null = null
 
@@ -28,7 +16,7 @@ let cfWindow: BrowserWindow | null = null
 export async function openCloudflareWindow(
     url: string,
     targetCookies: string[] = ['XSRF-TOKEN']
-): Promise<ICloudflareCookies> {
+): Promise<IVerifyCookies> {
     return new Promise((resolve) => {
         // 如果已有窗口，先关闭
         if (cfWindow && !cfWindow.isDestroyed()) {
@@ -56,7 +44,7 @@ export async function openCloudflareWindow(
         const urlObj = new URL(url)
 
         // 监听 Cookie 变化
-        const checkCookies = async (): Promise<ICloudflareCookies | null> => {
+        const checkCookies = async (): Promise<IVerifyCookies | null> => {
             if (!cfWindow || cfWindow.isDestroyed()) return null
 
             try {
@@ -158,14 +146,5 @@ export async function openCloudflareWindow(
 
         // 加载目标 URL
         cfWindow.loadURL(url)
-    })
-}
-
-/**
- * 注册 IPC 处理器
- */
-export function registerCloudflareIpc(): void {
-    ipcMain.handle('cloudflare:verify', async (_, url: string, targetCookies?: string[]) => {
-        return tryExecute(async () => await openCloudflareWindow(url, targetCookies))
     })
 }

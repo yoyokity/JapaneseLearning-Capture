@@ -1,20 +1,8 @@
-import { invoke } from '@renderer/ipc/func.ts'
+import type { ImageData } from '@shared'
 
-/**
- * 图像数据类型
- */
-export type ImageData =
-    | ArrayBuffer
-    | Uint8Array
-    | Uint8ClampedArray
-    | Int8Array
-    | Uint16Array
-    | Int16Array
-    | Uint32Array
-    | Int32Array
-    | Float32Array
-    | Float64Array
-    | string
+import { trpcClient } from '@renderer/ipc/func.ts'
+
+export type { ImageData } from '@shared'
 
 export const image = {
     /**
@@ -23,13 +11,17 @@ export const image = {
      * @param path 保存路径
      */
     saveImage: (imageData: ImageData, path: string): Promise<void> =>
-        invoke('image:save', imageData, path),
+        trpcClient.image.saveImage.mutate({
+            imageData,
+            path
+        }),
 
     /**
      * 读取图片为 Data URL
      * @param path 图片路径
      */
-    readImage: (path: string): Promise<ArrayBuffer> => invoke('image:read', path),
+    readImage: (path: string): Promise<ArrayBuffer> =>
+        trpcClient.image.readImage.query(path) as Promise<ArrayBuffer>,
 
     /**
      * 超分辨率处理图片
@@ -38,5 +30,8 @@ export const image = {
      * @returns 超分后的临时图片路径
      */
     superResolutionImage: (imagePath: string, anime: boolean = false): Promise<string> =>
-        invoke('image:superResolution', imagePath, anime)
+        trpcClient.image.superResolutionImage.mutate({
+            imagePath,
+            anime
+        })
 }

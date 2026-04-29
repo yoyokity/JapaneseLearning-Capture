@@ -1,5 +1,6 @@
 import { app } from '@renderer/ipc/app.ts'
 import { filesystem } from '@renderer/ipc/filesystem.ts'
+import { trpcClient } from '@renderer/ipc/func.ts'
 import { image } from '@renderer/ipc/image.ts'
 import { net } from '@renderer/ipc/net.ts'
 
@@ -15,6 +16,6 @@ export class Ipc {
      * 测试IPC连通
      */
     static async check(): Promise<boolean> {
-        return (await window.electron.ipcRenderer.invoke('check')) || false
+        return (await trpcClient.check.query()) || false
     }
 }

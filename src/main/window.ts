@@ -20,7 +20,7 @@ interface IBrowserWindowConfig {
     }
 }
 
-export function createWindow(): void {
+export function createWindow() {
     // 保存窗口配置
     const store = new ElectronStore({
         name: 'window', // 保存到data/window.json
@@ -108,4 +108,6 @@ export function createWindow(): void {
             }
         })
     }
+
+    return mainWindow
 }

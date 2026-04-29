@@ -75,9 +75,8 @@ const translators = {
             const url = `https://translate.google.${translateOptions.tld}/_/TranslateWebserverUi/data/batchexecute?${searchParams}`
 
             // body
-            const normalizedText = escapeSpecialSymbols(s_text)
             const encodedData = EncodeHelper.encodeUrl(
-                `[[["${translateOptions.rpcids}","[[\\"${normalizedText}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
+                `[[["${translateOptions.rpcids}","[[\\"${s_text}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
             )
             const body = `f.req=${encodedData}&`
 
@@ -162,7 +161,7 @@ const translators = {
                 model: settings.translate.openai.model,
                 baseURL: settings.translate.openai.baseURL,
                 system: getGptPrompt(targetLanguage),
-                prompt: escapeSpecialSymbols(s_text),
+                prompt: s_text,
                 callback: streamCallback
             })
             const text = result.text.trim()
@@ -197,7 +196,7 @@ const translators = {
                 apiKey: settings.translate.deepseek.apiKey,
                 model: settings.translate.deepseek.model,
                 system: getDeepSeekPrompt(targetLanguage),
-                prompt: escapeSpecialSymbols(s_text),
+                prompt: s_text,
                 providerOptions: {
                     deepseek: settings.translate.deepseek.thinking
                         ? {
@@ -243,7 +242,7 @@ const translators = {
                 apiKey: settings.translate.gemini.apiKey,
                 model: settings.translate.gemini.model,
                 system: getGeminiPrompt(targetLanguage),
-                prompt: escapeSpecialSymbols(s_text),
+                prompt: s_text,
                 providerOptions: {
                     google: {
                         safetySettings: [
@@ -289,7 +288,7 @@ const translators = {
                 model: settings.translate.localLLM.model,
                 baseURL: `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1`,
                 system: getLLMPrompt(targetLanguage),
-                prompt: escapeSpecialSymbols(s_text),
+                prompt: s_text,
                 callback: streamCallback,
                 timeout: 30 * 1000 // 预留充分时间，方便llm加载
             })
@@ -427,11 +426,6 @@ export class TransHelper {
             .filter(Boolean)
             .join('\n\n')
     }
-}
-
-// 转义特殊符号
-function escapeSpecialSymbols(inputString: string): string {
-    return JSON.stringify(inputString.trim()).slice(1, -1)
 }
 
 function getPrompt(targetLanguage: string) {
