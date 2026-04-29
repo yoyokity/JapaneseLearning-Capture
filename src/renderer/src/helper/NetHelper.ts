@@ -260,6 +260,7 @@ export class NetHelper {
      * GET请求
      * @param url 请求地址
      * @param options 请求选项
+     * @remarks 响应cookie会自动存进session，以供下次请求
      * @return 只有status在200-299之间，ok字段才为true
      * @example
      * ```ts
@@ -304,6 +305,7 @@ export class NetHelper {
      * @param url 请求地址
      * @param data 请求体body数据
      * @param options 请求选项
+     * @remarks 响应cookie会自动存进session，以供下次请求
      * @return 只有status在200-299之间，ok字段才为true
      * @example
      * ```ts

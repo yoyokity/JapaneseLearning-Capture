@@ -429,6 +429,7 @@ function openLlmInfo() {
                 <!--info-->
                 <div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
                     123
+                    <!-- TODO 在这里打开log文件夹、temp文件夹、根目录 -->
                 </div>
             </transition>
         </Scroll>

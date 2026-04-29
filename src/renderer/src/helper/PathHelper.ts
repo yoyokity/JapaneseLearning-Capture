@@ -5,6 +5,7 @@ import { LogHelper } from './LogHelper.ts'
 import { TaskHelper } from './TaskHelper.ts'
 
 export class Path {
+    // TODO 改为私有属性
     readonly _path: string
 
     constructor(...paths: string[]) {

@@ -49,6 +49,7 @@ const currentScraperController = ref<AbortController | null>(null)
 const tabs = [
     { id: 'info', name: '信息', icon: 'pi pi-info-circle' },
     { id: 'image', name: '图片', icon: 'pi pi-image' }
+    // TODO 加个文件标签，是跟文件相关的信息
 ]
 const activeTab = ref('info')
 function switchTab(tabId: string) {
