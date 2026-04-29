@@ -416,29 +416,34 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             return true
         },
         parsePoster: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
+            let poster: string | null = null
+
+            // 从getchu获取
             if (context.webContent.getchu) {
-                context.封面 = await getPosterGetchu(context, signal)
+                poster = await getPosterGetchu(context, signal)
             }
 
             // 从fanza获取
-            if (!context.封面 && context.webContent.fanza) {
-                context.封面 = await getPosterFanza(context, signal)
+            if (!poster && context.webContent.fanza) {
+                poster = await getPosterFanza(context, signal)
             }
 
             // 没有则从hanime上获取
-            if (!context.封面) {
-                context.封面 = await getPosterHanime1(
+            if (!poster) {
+                poster = await getPosterHanime1(
                     video.originaltitle || video.title || video.sorttitle,
                     context,
                     signal
                 )
             }
 
-            if (!context.封面) {
+            if (!poster) {
                 return false
             }
 
-            video.poster = context.封面
+            context.封面 = poster
+            video.poster = poster
+
             return true
         },
         parseThumb: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {

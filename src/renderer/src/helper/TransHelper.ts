@@ -2,6 +2,7 @@ import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
 import { toSimplified, toTraditional } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
+import { split as splitSentence } from 'sentence-splitter'
 
 import { EncodeHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
@@ -421,15 +422,10 @@ export class TransHelper {
         text = TransHelper.translateSC(text)
         text = EncodeHelper.normalizePlotLineBreak(text)
 
-        return text
-            .split(/\n+/)
-            .map((line) => line.trim())
+        return splitSentence(text)
+            .filter((node) => node.type === 'Sentence')
+            .map((node) => node.raw.trim())
             .filter(Boolean)
-            .flatMap((line) =>
-                (line.match(/[^。！？!?…”\n]*(?:(?:[。！？!?]|……)+”*|$)/g) || [])
-                    .map((sentence) => sentence.trim())
-                    .filter(Boolean)
-            )
             .join('\n\n')
     }
 }
