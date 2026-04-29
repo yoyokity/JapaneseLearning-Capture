@@ -187,20 +187,14 @@ export class NetHelper {
         }
 
         const hostName = new URL(url).hostname
-        const queueResult = await TaskHelper.queueWithCancel(
+        return await TaskHelper.queueWithInterval(
             {
-                taskName: hostName,
+                taskName: `host-name:${hostName}`,
                 intervalMs: delay,
                 updateTimeAfterExecution: false
             },
             async () => await runTask()
         )
-
-        if (queueResult.cancel) {
-            return this._createCanceledResult<T>()
-        }
-
-        return queueResult.result
     }
 
     /**

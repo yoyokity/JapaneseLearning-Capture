@@ -270,6 +270,7 @@ async function transPlot() {
             newVideo.value.plot = TransHelper.formatTranslateText(text)
         })
 
+        console.info(text) // 打印一下方便debug
         LogHelper.log('翻译完成')
     } finally {
         isTranslatingPlot.value = false

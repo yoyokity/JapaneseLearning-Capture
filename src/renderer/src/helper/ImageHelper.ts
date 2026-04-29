@@ -85,11 +85,16 @@ export class ImageHelper {
         imagePath: Path | string,
         anime: boolean = false
     ): Promise<string | null> {
-        const re = await TaskHelper.tryExecute(
-            Ipc.image.superResolutionImage,
-            imagePath.toString(),
-            anime
+        const re = await TaskHelper.queueWithInterval(
+            {
+                taskName: 'super-resolution-image'
+            },
+            async () =>
+                await TaskHelper.tryExecute(
+                    async () => await Ipc.image.superResolutionImage(imagePath.toString(), anime)
+                )
         )
+
         if (!re.hasError) {
             return re.result
         } else {
