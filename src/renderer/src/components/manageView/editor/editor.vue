@@ -38,7 +38,7 @@ const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
 
-const newVideo = ref<IVideoFile>(createVideoFile(''))
+const newVideo = ref<IVideoFile>(createVideoFile())
 const isSaving = ref(false)
 const isTranslatingPlot = ref(false)
 const isCanceling = ref(false)

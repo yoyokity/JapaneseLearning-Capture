@@ -1,6 +1,9 @@
 import type { Path } from '@renderer/helper'
+import type { IFile } from '@shared'
+import type { Dayjs } from 'dayjs'
 
 import { PathHelper } from '@renderer/helper'
+import dayjs from 'dayjs'
 
 export interface IActor {
     /**
@@ -139,7 +142,22 @@ export interface IVideoFile extends IVideo {
     /**
      * 视频文件的NFO文件路径
      */
-    nfoPath: Path
+    nfoPath?: Path
+    /**
+     * 视频文件的大小
+     */
+    size: number
+    /**
+     * 加入时间
+     * @description 其实就是视频文件的文件元数据（如权限、所有者）或内容最后一次被修改的时间。（改名、移动位置、改权限都会更新它）
+     */
+    joinTime: Dayjs
+    /**
+     * 修改的时间
+     * @description 其实就是nfo文件的最后一次内容被修改的时间
+     * @remarks nfo文件不存在时，同joinTime
+     */
+    changeTime: Dayjs
 }
 
 /**
@@ -179,19 +197,28 @@ export function createVideo(params: Partial<IVideo> = {}): IVideo {
 
 /**
  * 创建视频文件信息
- * @param path 视频文件路径
  */
-export function createVideoFile(path: string): IVideoFile {
-    const _path = PathHelper.newPath(path)
-    const nfoPath = _path.parent.join(`${_path.basename}.nfo`)
+export function createVideoFile(): IVideoFile
+export function createVideoFile(videoFile: IFile, nfoFile?: IFile): IVideoFile
+export function createVideoFile(videoFile?: IFile, nfoFile?: IFile): IVideoFile {
+    // 如果没有视频文件，返回一个空的
+    if (!videoFile) {
+        return createVideo() as IVideoFile
+    }
+
+    const videoPath = PathHelper.newPath(videoFile.path)
+    const joinTime = dayjs(videoFile.stats.ctime)
 
     const video: IVideoFile = {
         ...createVideo(),
-        path: _path,
-        dir: _path.parent,
-        fileName: _path.basename,
-        extname: _path.extname,
-        nfoPath
+        path: videoPath,
+        dir: videoPath.parent,
+        fileName: videoPath.basename,
+        extname: videoPath.extname,
+        nfoPath: nfoFile ? PathHelper.newPath(nfoFile.path) : undefined,
+        size: videoFile.stats.size,
+        joinTime,
+        changeTime: nfoFile ? dayjs(nfoFile.stats.mtime) : joinTime
     }
 
     return video

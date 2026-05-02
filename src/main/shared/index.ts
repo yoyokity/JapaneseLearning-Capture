@@ -1,3 +1,10 @@
+export type {
+    FormatInputPathObject,
+    IFile,
+    ILogType,
+    IStats,
+    ReadDirectoryOptions
+} from '../ipc/filesystem'
 export type { ImageData } from '../ipc/image'
 export type {
     IAiOptions,

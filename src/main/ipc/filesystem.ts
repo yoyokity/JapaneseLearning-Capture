@@ -2,8 +2,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { shell } from 'electron'
 import log from 'electron-log'
-import fg from 'fast-glob'
 import pkg from 'fs-extra'
+import { glob } from 'tinyglobby'
 import { z } from 'zod'
 
 const { ensureDirSync, copySync, moveSync, outputFileSync } = pkg
@@ -18,98 +18,137 @@ export type ILogType = 'log' | 'error' | 'warn' | 'success' | 'debug'
  */
 export const logTypeSchema = z.enum(['log', 'error', 'warn', 'success', 'debug'])
 
-/**
- * 目录读取选项
- */
-export interface ReadDirectoryOptions {
-    /**
-     * 指定搜索的起始目录
-     */
-    cwd?: string
-    /**
-     * 要忽略的文件或目录模式数组
-     */
-    ignore?: string[]
-    /**
-     * 是否只搜索文件
-     */
-    onlyFiles?: boolean
-    /**
-     * 是否只搜索目录
-     */
-    onlyDirectories?: boolean
-    /**
-     * 搜索的最大深度
-     */
-    deep?: number
-}
-
-/**
- * 目录读取选项结构
- */
 export const readDirectoryOptionsSchema = z.object({
-    cwd: z.string().optional(),
+    /**
+     * 是否返回文件状态
+     * @default false
+     */
+    stats: z.boolean().optional(),
+    /**
+     * 忽略的文件名
+     * @description 一个由 glob 表达式组成的数组，匹配到的文件或目录会被排除在结果之外
+     * @default []
+     */
     ignore: z.array(z.string()).optional(),
+    /**
+     * 是否包含隐藏文件
+     * @default true
+     */
+    dot: z.boolean().optional(),
+    /**
+     * 是否跟随符号链接
+     * @description 在 macOS 或 Linux 上，有时会创建一个类似“快捷方式”的链接文件。windows上基本没有影响。
+     * @default true
+     */
+    followSymbolicLinks: z.boolean().optional(),
+    /**
+     * 是否只返回文件
+     * @default false
+     */
     onlyFiles: z.boolean().optional(),
-    onlyDirectories: z.boolean().optional(),
-    deep: z.number().int().optional()
+    /**
+     * 是否只返回目录
+     * @default false
+     */
+    onlyDirectories: z.boolean().optional()
 })
 
-export interface IStats extends IStatsBase<number> {}
-interface IStatsBase<T> {
-    dev: T
-    ino: T
-    mode: T
-    nlink: T
-    uid: T
-    gid: T
-    rdev: T
-    size: T
-    blksize: T
-    blocks: T
-    atimeMs: T
-    mtimeMs: T
-    ctimeMs: T
-    birthtimeMs: T
-    atime: string
-    mtime: string
-    ctime: string
+export type ReadDirectoryOptions = z.infer<typeof readDirectoryOptionsSchema>
+
+export interface IStats {
+    /**
+     * 创建时间
+     */
     birthtime: string
+    /**
+     * 修改时间
+     * @description 文件内容最后一次被修改的时间。（比如你编辑了文本、修改了图片）
+     */
+    mtime: string
+    /**
+     * 变更时间
+     * @description 文件元数据（如权限、所有者）或内容最后一次被修改的时间。（改名、移动位置、改权限都会更新它）
+     */
+    ctime: string
+    /**
+     * 文件大小
+     */
+    size: number
+    /**
+     * 是否是文件
+     */
+    isFile: boolean
+    /**
+     * 是否是目录
+     */
+    isDirectory: boolean
 }
 
-export interface IFormatInputPathObject {
+export interface IFile {
     /**
-     * 路径的根部分，例如 '/' 或 'c:\'
+     * 文件路径
      */
-    root?: string | undefined
+    path: string
     /**
-     * 完整的目录路径，例如 '/home/user/dir' 或 'c:\path\dir'
+     * 文件名称，不包含扩展名
      */
-    dir?: string | undefined
+    name: string
     /**
-     * 包含扩展名（如果有）的文件名，例如 'index.html'
+     * 文件扩展名，如果是目录则没有扩展名
      */
-    base?: string | undefined
+    extname?: string
     /**
-     * 文件扩展名（如果有），例如 '.html'
+     * 文件名称，包含扩展名
      */
-    ext?: string | undefined
+    fullName: string
     /**
-     * 不含扩展名的文件名（如果有），例如 'index'
+     * 文件状态
      */
-    name?: string | undefined
+    stats: IStats
 }
 
 /**
  * 路径对象结构
  */
 export const formatInputPathObjectSchema = z.object({
+    /**
+     * 路径的根部分，例如 '/' 或 'c:\'
+     */
     root: z.string().optional(),
+    /**
+     * 完整的目录路径，例如 '/home/user/dir' 或 'c:\path\dir'
+     */
     dir: z.string().optional(),
+    /**
+     * 包含扩展名（如果有）的文件名，例如 'index.html'
+     */
     base: z.string().optional(),
+    /**
+     * 文件扩展名（如果有）
+     */
     ext: z.string().optional(),
+    /**
+     * 不含扩展名的文件名（如果有）
+     */
     name: z.string().optional()
 })
+
+export type FormatInputPathObject = z.infer<typeof formatInputPathObjectSchema>
+
+/**
+ * 转换文件状态
+ * @param stats 文件状态
+ */
+function toStats(stats: fs.Stats): IStats {
+    return {
+        birthtime: stats.birthtime.toISOString(),
+        mtime: stats.mtime.toISOString(),
+        ctime: stats.ctime.toISOString(),
+        size: stats.size,
+        isFile: stats.isFile(),
+        isDirectory: stats.isDirectory()
+    }
+}
 
 /**
  * 判断 path 是否存在于磁盘上
@@ -136,7 +175,7 @@ export function isDirectory(filePath: string) {
  * 获取 path 状态信息
  */
 export function getStatus(filePath: string) {
-    return fs.statSync(path.normalize(filePath))
+    return toStats(fs.statSync(path.normalize(filePath)))
 }
 
 /**
@@ -177,7 +216,7 @@ export function dirname(filePath: string) {
 /**
  * 从对象中格式化路径
  */
-export function format(pathObject: IFormatInputPathObject) {
+export function format(pathObject: FormatInputPathObject) {
     return path.format(pathObject)
 }
 
@@ -201,25 +240,63 @@ export function createDirectory(dirPath: string) {
 }
 
 /**
- * 使用 fast-glob 搜索文件和目录
+ * 搜索文件和目录
+ * @param directory 要搜索的目录
+ * @param pattern 搜索通配符
  */
 export async function readDirectory(
-    patterns: string | string[],
+    directory: string,
+    pattern: string | string[],
+    options: ReadDirectoryOptions & { stats: true }
+): Promise<IFile[]>
+export async function readDirectory(
+    directory: string,
+    pattern: string | string[],
+    options?: ReadDirectoryOptions & { stats?: false | undefined }
+): Promise<string[]>
+export async function readDirectory(
+    directory: string,
+    pattern: string | string[],
+    options?: ReadDirectoryOptions
+): Promise<string[] | IFile[]>
+export async function readDirectory(
+    directory: string,
+    pattern: string | string[],
     options: ReadDirectoryOptions = {}
-) {
-    const searchOptions = {
-        ...options,
-        absolute: true,
+): Promise<string[] | IFile[]> {
+    const { stats, ...globOptions } = options
+    const cleanGlobOptions = Object.fromEntries(
+        Object.entries(globOptions).filter(([, value]) => value !== undefined)
+    )
+
+    const files = await glob(pattern, {
         dot: true,
-        stats: false
+        followSymbolicLinks: true,
+        onlyFiles: false,
+        onlyDirectories: false,
+        ...cleanGlobOptions,
+        cwd: directory,
+        absolute: true,
+        expandDirectories: false,
+        caseSensitiveMatch: false
+    })
+
+    if (stats !== true) {
+        return files
     }
 
-    // 如果没有明确指定只要文件或只要目录，则默认获取两者
-    if (options.onlyFiles === undefined && options.onlyDirectories === undefined) {
-        searchOptions.onlyFiles = false
-    }
+    return files.map((filePath) => {
+        const fileStats = fs.statSync(filePath)
+        const extname = fileStats.isDirectory() ? undefined : path.extname(filePath)
 
-    return await fg.glob(patterns, searchOptions)
+        return {
+            name: path.basename(filePath, extname),
+            fullName: path.basename(filePath),
+            path: filePath,
+            stats: toStats(fileStats),
+            ...(extname ? { extname } : {})
+        }
+    })
 }
 
 /**
@@ -340,44 +417,28 @@ export async function clearFolder(folderPath: string) {
 /**
  * 删除没有视频文件的空目录
  */
-export async function removeEmptyFolders(rootPath: string) {
+export async function removeEmptyFolders(rootPath: string, videoExtnames: string[]) {
     rootPath = path.normalize(rootPath)
 
     if (!fs.existsSync(rootPath) || !fs.statSync(rootPath).isDirectory()) return
 
     // 定义视频文件扩展名
-    const videoExtensions = ['.mp4', '.mkv', '.avi', '.wmv', '.mov', '.flv', '.webm']
-    const videoExtPattern = videoExtensions.map((ext) => ext.slice(1)).join(',')
+    const videoExtPattern = videoExtnames.map((ext) => ext.slice(1)).join(',')
 
-    // 一次性获取所有文件夹和视频文件
-    const entries = await fg.glob(['**/', `**/*.{${videoExtPattern}}`], {
-        cwd: rootPath,
-        dot: true,
-        deep: Infinity,
-        absolute: true,
-        onlyFiles: false,
-        stats: true,
-        ignore: ['**/extrafanart']
+    // 分两次获取文件夹和视频文件
+    const dirs = await readDirectory(rootPath, '**/', {
+        onlyDirectories: true,
+        ignore: ['**/extrafanart/**']
     })
-
-    // 分离文件夹和视频文件
-    const dirs: string[] = []
-    const videoFiles: string[] = []
-
-    for (const entry of entries) {
-        if (entry.stats && entry.stats.isDirectory()) {
-            // 文件夹
-            dirs.push(path.normalize(path.relative(rootPath, entry.path)))
-        } else if (entry.stats && entry.stats.isFile()) {
-            // 视频文件
-            videoFiles.push(path.normalize(path.relative(rootPath, entry.path)))
-        }
-    }
+    const videoFiles = await readDirectory(rootPath, `**/*.{${videoExtPattern}}`, {
+        onlyFiles: true,
+        ignore: ['**/extrafanart/**']
+    })
 
     // 构建包含视频的目录集合（包括所有父目录）
     const videoDirs = new Set<string>()
     for (const videoFile of videoFiles) {
-        let currentDir = path.dirname(videoFile)
+        let currentDir = path.relative(rootPath, path.dirname(videoFile))
         while (currentDir && currentDir !== path.sep && currentDir !== '.') {
             if (videoDirs.has(currentDir)) break
             videoDirs.add(currentDir)
@@ -386,7 +447,10 @@ export async function removeEmptyFolders(rootPath: string) {
     }
 
     // 筛选没有视频的路径，按路径长度排序，确保从最浅的文件夹开始处理
-    const emptyDirs = dirs.filter((dir) => !videoDirs.has(dir)).sort((a, b) => a.length - b.length)
+    const emptyDirs = dirs
+        .map((dir) => path.relative(rootPath, dir))
+        .filter((dir) => !videoDirs.has(dir))
+        .sort((a, b) => a.length - b.length)
 
     const topLevelDirs = new Set<string>()
     for (const dir of emptyDirs) {

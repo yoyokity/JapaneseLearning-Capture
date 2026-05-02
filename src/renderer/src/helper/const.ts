@@ -12,3 +12,8 @@ export const videoExtensions = {
     '.webm': 'rgb(46, 164, 255)',
     '.m4v': 'rgb(126, 70, 211)'
 }
+
+/**
+ * 图片文件扩展名列表
+ */
+export const imgExtnames = ['.jpg', '.jpeg', '.png', '.webp']

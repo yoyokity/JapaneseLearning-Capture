@@ -1,6 +1,9 @@
+import type { IFile, ReadDirectoryOptions } from '@shared'
+
 import { Ipc } from '@renderer/ipc'
 import * as pathe from 'pathe'
 
+import { videoExtensions } from './const.ts'
 import { LogHelper } from './LogHelper.ts'
 import { TaskHelper } from './TaskHelper.ts'
 
@@ -245,35 +248,42 @@ export class PathHelper {
     }
 
     /**
-     * 使用fast-glob搜索文件和目录
-     * @remarks 用时与文件数量相关，在5-100ms左右，正常10ms上下
-     * @description 由于ipc原因，不提供stats选项，需要获取文件状态请使用getSatus
-     * @param path 搜索的路径
-     * @param [type] 搜索的类型
-     * @param [filter] 搜索通配符
-     * @param ignore 忽略的通配符
-     * @param deep 搜索深度，undefined为无限，1为仅当前目录
+     * 搜索文件和目录
+     * @param path 要搜索的目录
+     * @param patterns 搜索模式通配符
+     * @param options 搜索选项
+     * @remarks 匹配模式不区分大小写
      */
     static async readDirectory(
         path: Path | string,
-        type: 'file' | 'directory' | 'all' = 'all',
-        filter: string | string[] = '**/*',
-        ignore?: string[],
-        deep?: number
-    ): Promise<string[]> {
+        patterns: string | string[],
+        options: ReadDirectoryOptions & { stats: true }
+    ): Promise<IFile[]>
+    static async readDirectory(
+        path: Path | string,
+        patterns: string | string[],
+        options?: ReadDirectoryOptions & { stats?: false | undefined }
+    ): Promise<string[]>
+    static async readDirectory(
+        path: Path | string,
+        patterns: string | string[],
+        options?: ReadDirectoryOptions
+    ): Promise<string[] | IFile[]>
+    static async readDirectory(
+        path: Path | string,
+        patterns: string | string[],
+        options: ReadDirectoryOptions = {}
+    ): Promise<string[] | IFile[]> {
         // 如果path为相对路径，则转换为appPath的绝对路径
         if (typeof path === 'string') path = new Path(path)
-        if (!(await path.isAbsolute)) {
+        if (!path.isAbsolute) {
             path = PathHelper.appPath.join(path.toString())
         }
 
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.readDirectory, filter, {
-            cwd: path.toString(),
-            deep,
-            onlyFiles: type === 'file' ? true : undefined,
-            onlyDirectories: type === 'directory' ? true : undefined,
-            ignore
-        })
+        const re = await TaskHelper.tryExecute(() =>
+            Ipc.filesystem.readDirectory(path.toString(), patterns, options)
+        )
+
         if (!re.hasError) {
             return re.result
         } else {
@@ -333,11 +343,14 @@ export class PathHelper {
      * 读取文件内容
      * @remarks 用时 <10ms
      * @param path 文件路径
-     * @param [encoding] 文件编码
+     * @param encoding 文件编码
      */
+    static async readFile(path: string | Path, encoding: BufferEncoding): Promise<string>
+    static async readFile(path: string | Path, encoding: 'arrayBuffer'): Promise<ArrayBuffer>
+    static async readFile(path: string | Path): Promise<string>
     static async readFile(
-        path: Path | string,
-        encoding: BufferEncoding | 'arraybuffer' = 'utf-8'
+        path: string | Path,
+        encoding: BufferEncoding | 'arrayBuffer' = 'utf-8'
     ): Promise<string | ArrayBuffer | null> {
         const re = await TaskHelper.tryExecute(Ipc.filesystem.readFile, path.toString(), encoding)
         if (!re.hasError) {
@@ -443,7 +456,8 @@ export class PathHelper {
         LogHelper.debug(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
         const re = await TaskHelper.tryExecute(
             Ipc.filesystem.removeEmptyFolders,
-            rootPath.toString()
+            rootPath.toString(),
+            Object.keys(videoExtensions)
         )
         if (!re.hasError) {
             return true

@@ -1,18 +1,8 @@
-import type {
-    IFormatInputPathObject,
-    ILogType,
-    IStats,
-    ReadDirectoryOptions
-} from '../../../main/ipc/filesystem.ts'
+import type { FormatInputPathObject, IFile, ILogType, IStats, ReadDirectoryOptions } from '@shared'
 
 import { sendTask, trpcClient } from '@renderer/ipc/func.ts'
 
-export type {
-    IFormatInputPathObject,
-    ILogType,
-    IStats,
-    ReadDirectoryOptions
-} from '../../../main/ipc/filesystem.ts'
+export type { FormatInputPathObject, IFile, ILogType, IStats, ReadDirectoryOptions } from '@shared'
 
 /**
  * 文件系统
@@ -88,7 +78,7 @@ export const filesystem = {
      * @remarks 用时 <10ms
      * @param pathObject 包含路径组件的对象
      */
-    format: (pathObject: IFormatInputPathObject): Promise<string> =>
+    format: (pathObject: FormatInputPathObject): Promise<string> =>
         trpcClient.filesystem.format.query(pathObject),
 
     /**
@@ -120,34 +110,12 @@ const to = '/home/user/app/dist';
         trpcClient.filesystem.createDirectory.mutate(dirPath),
 
     /**
-     * 使用fast-glob搜索文件和目录
-     * @remarks 用时与文件数量相关，在5-100ms左右，正常10ms上下
-     * @description 由于ipc原因，不提供stats选项，需要获取文件状态请使用getSatus
-     * @param patterns 搜索模式，支持通配符，如 '**\/*.js'
+     * 搜索文件和目录
+     * @param directory 要搜索的目录
+     * @param patterns 搜索模式
      * @param options 搜索选项
-     * @example
-     * ```ts
-     * // 搜索所有js文件
-     * const files = await filesystem.readDirectory('**\/*.js', { cwd: '/path/to/dir' });
-     *
-     * // 只搜索目录
-     * const dirs = await filesystem.readDirectory('**', { onlyDirectories: true });
-     *
-     * // 限制搜索深度
-     * const shallow = await filesystem.readDirectory('**', { deep: 2 });
-     *
-     * // 获取文件统计信息
-     * const withStats = await filesystem.readDirectory('**\/*.js', { stats: true });
-     * ```
      */
-    readDirectory: (
-        patterns: string | string[],
-        options?: ReadDirectoryOptions
-    ): Promise<string[]> =>
-        trpcClient.filesystem.readDirectory.query({
-            patterns,
-            options
-        }),
+    readDirectory,
 
     /**
      * 删除文件或目录
@@ -217,6 +185,12 @@ const to = '/home/user/app/dist';
             data
         }),
 
+    /**
+     * 读取文件内容
+     * @remarks 用时 <10ms
+     * @param filePath 文件路径
+     * @param [encoding] 文件编码
+     */
     readFile,
 
     /**
@@ -253,9 +227,13 @@ const to = '/home/user/app/dist';
      * 删除空文件夹
      * @remarks 用时 <10ms
      * @param rootPath 根路径
+     * @param videoExtnames 视频扩展名
      */
-    removeEmptyFolders: (rootPath: string): Promise<void> =>
-        trpcClient.filesystem.removeEmptyFolders.mutate(rootPath),
+    removeEmptyFolders: (rootPath: string, videoExtnames: string[]): Promise<void> =>
+        trpcClient.filesystem.removeEmptyFolders.mutate({
+            rootPath,
+            videoExtnames
+        }),
 
     /**
      * 清空文件夹（删除文件夹内所有内容，保留文件夹本身）
@@ -269,13 +247,7 @@ const to = '/home/user/app/dist';
 
 function readFile(filePath: string, encoding: BufferEncoding): Promise<string>
 function readFile(filePath: string, encoding: 'arrayBuffer'): Promise<ArrayBuffer>
-function readFile(filePath: string): Promise<ArrayBuffer>
-/**
- * 读取文件内容
- * @remarks 用时 <10ms
- * @param filePath 文件路径
- * @param [encoding] 文件编码
- */
+function readFile(filePath: string): Promise<string>
 function readFile(
     filePath: string,
     encoding: BufferEncoding | 'arrayBuffer' = 'utf-8'
@@ -283,5 +255,32 @@ function readFile(
     return trpcClient.filesystem.readFile.query({
         filePath,
         encoding: encoding || undefined
-    }) as Promise<string | ArrayBuffer>
+    })
+}
+
+function readDirectory(
+    directory: string,
+    patterns: string | string[],
+    options: ReadDirectoryOptions & { stats: true }
+): Promise<IFile[]>
+function readDirectory(
+    directory: string,
+    patterns: string | string[],
+    options?: ReadDirectoryOptions & { stats?: false | undefined }
+): Promise<string[]>
+function readDirectory(
+    directory: string,
+    patterns: string | string[],
+    options?: ReadDirectoryOptions
+): Promise<string[] | IFile[]>
+function readDirectory(
+    directory: string,
+    patterns: string | string[],
+    options: ReadDirectoryOptions = {}
+): Promise<string[] | IFile[]> {
+    return trpcClient.filesystem.readDirectory.query({
+        directory,
+        pattern: patterns,
+        options
+    })
 }
