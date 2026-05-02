@@ -174,7 +174,16 @@ export function isDirectory(filePath: string) {
 /**
  * 获取 path 状态信息
  */
-export function getStatus(filePath: string) {
+export function getStatus(filePath: string[]): { path: string; stats: IStats }[]
+export function getStatus(filePath: string): IStats
+export function getStatus(filePath: string | string[]): IStats | { path: string; stats: IStats }[] {
+    if (Array.isArray(filePath)) {
+        return filePath.map((item) => ({
+            path: item,
+            stats: toStats(fs.statSync(path.normalize(item)))
+        }))
+    }
+
     return toStats(fs.statSync(path.normalize(filePath)))
 }
 

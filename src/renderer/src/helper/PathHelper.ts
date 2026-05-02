@@ -1,4 +1,4 @@
-import type { IFile, ReadDirectoryOptions } from '@shared'
+import type { IFile, IStats, ReadDirectoryOptions } from '@shared'
 
 import { ipc } from '@renderer/ipc'
 import * as pathe from 'pathe'
@@ -114,7 +114,7 @@ export class Path {
      * 获取path的状态信息
      * @remarks 用时 <10ms
      */
-    async getSats() {
+    async getStats() {
         const re = await TaskHelper.tryExecute(() => ipc.filesystem.getStatus.query(this._path))
         if (!re.hasError) {
             return re.result
@@ -228,6 +228,33 @@ export class PathHelper {
 
         // 2. 移除开头和结尾的非法字符（如空格、点）
         return new Path(sanitized.replace(/[.\s]+$/, ''))
+    }
+
+    /**
+     * 获取path的状态信息
+     */
+    static async getStats(path: Path[] | string[]): Promise<{ path: Path; stats: IStats }[]>
+    static async getStats(path: Path | string): Promise<IStats | null>
+    static async getStats(
+        path: Path | string | Path[] | string[]
+    ): Promise<IStats | null | { path: Path; stats: IStats }[]> {
+        const input = Array.isArray(path)
+            ? path.map((item: { toString: () => any }) => item.toString())
+            : path.toString()
+        const re = await TaskHelper.tryExecute(() => ipc.filesystem.getStatus.query(input))
+        if (!re.hasError) {
+            if (Array.isArray(re.result)) {
+                return re.result.map((item) => ({
+                    path: new Path(item.path),
+                    stats: item.stats
+                }))
+            }
+
+            return re.result
+        } else {
+            LogHelper.error(`获取path的状态信息失败：`, re.error)
+            return null
+        }
     }
 
     /**

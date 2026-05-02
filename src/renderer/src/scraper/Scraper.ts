@@ -15,7 +15,10 @@ interface IModuleType {
     }
 }
 
-export type VideoFileWithoutStats = Omit<IVideoFile, 'size' | 'joinTime' | 'changeTime'>
+export type VideoFileWithoutStats = Omit<
+    IVideoFile,
+    'size' | 'joinTime' | 'changeTime' | 'dirJoinTime'
+>
 
 export interface IScraperVideoFuncs<TContext = unknown> {
     /**

@@ -41,6 +41,7 @@ interface IDirectory {
         fanart?: IFile
         thumb?: IFile
     }
+    stats?: IStats
 }
 
 /**
@@ -201,10 +202,25 @@ export async function scanFiles(toast: any) {
             })
         }
 
-        // 读取视频文件
-        for (const directory of directories) {
-            videoFiles.push(await read(directory))
+        // 先缓存父目录路径，避免重复创建 Path 对象
+        const parentPaths = directories.map((directory) =>
+            PathHelper.newPath(directory.video.path).parent.toString()
+        )
+
+        // 获取视频文件的父目录状态
+        const statsList = await PathHelper.getStats(parentPaths)
+        if (statsList) {
+            const statsMap = new Map(
+                statsList.map((item) => [item.path.toString(), item.stats] as const)
+            )
+
+            for (let index = 0; index < directories.length; index++) {
+                directories[index].stats = statsMap.get(parentPaths[index])
+            }
         }
+
+        // 并发读取视频文件，减少 NFO 读取等待时间
+        videoFiles.push(...(await Promise.all(directories.map((directory) => read(directory)))))
 
         // 更新文件列表状态
         globalStates.setManageViewFiles(videoFiles)
@@ -227,7 +243,7 @@ export async function scanFiles(toast: any) {
  * 读取NFO文件为video
  */
 async function read(directory: IDirectory): Promise<IVideoFile> {
-    const video = createVideoFile(directory.video, directory.nfo)
+    const video = createVideoFile(directory.stats?.birthtime, directory.video, directory.nfo)
     const nfoPath = video.nfoPath
 
     // 有nfo文件的情况

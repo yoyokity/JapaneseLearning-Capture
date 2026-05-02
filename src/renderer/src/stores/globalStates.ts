@@ -48,7 +48,7 @@ export const globalStatesStore = defineStore('globalStates', () => {
 
         // 加入时间
         if (settings.manageViewSort === 'joinTime') {
-            return isReverse ? b.joinTime.diff(a.joinTime) : a.joinTime.diff(b.joinTime)
+            return isReverse ? b.dirJoinTime.diff(a.dirJoinTime) : a.dirJoinTime.diff(b.dirJoinTime)
         }
 
         // 编辑时间

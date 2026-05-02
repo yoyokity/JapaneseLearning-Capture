@@ -95,7 +95,15 @@ export const appRouter = t.router({
         isExist: procedure.input(z.string()).query(({ input }) => isExist(input)),
         isFile: procedure.input(z.string()).query(({ input }) => isFile(input)),
         isDirectory: procedure.input(z.string()).query(({ input }) => isDirectory(input)),
-        getStatus: procedure.input(z.string()).query(({ input }) => getStatus(input)),
+        getStatus: procedure
+            .input(z.union([z.string(), z.array(z.string())]))
+            .query(({ input }) => {
+                if (Array.isArray(input)) {
+                    return getStatus(input)
+                }
+
+                return getStatus(input)
+            }),
         join: procedure.input(z.array(z.string())).query(({ input }) => join(...input)),
         resolve: procedure.input(z.array(z.string())).query(({ input }) => resolve(...input)),
         extname: procedure.input(z.string()).query(({ input }) => extname(input)),

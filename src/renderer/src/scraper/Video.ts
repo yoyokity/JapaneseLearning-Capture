@@ -153,6 +153,10 @@ export interface IVideoFile extends IVideo {
      */
     joinTime: Dayjs
     /**
+     * 目录加入时间
+     */
+    dirJoinTime: Dayjs
+    /**
      * 修改的时间
      * @description 其实就是nfo文件的最后一次内容被修改的时间
      * @remarks nfo文件不存在时，同joinTime
@@ -199,8 +203,16 @@ export function createVideo(params: Partial<IVideo> = {}): IVideo {
  * 创建视频文件信息
  */
 export function createVideoFile(): IVideoFile
-export function createVideoFile(videoFile: IFile, nfoFile?: IFile): IVideoFile
-export function createVideoFile(videoFile?: IFile, nfoFile?: IFile): IVideoFile {
+export function createVideoFile(
+    dirJoinTime: string | undefined,
+    videoFile: IFile,
+    nfoFile?: IFile
+): IVideoFile
+export function createVideoFile(
+    dirJoinTime?: string,
+    videoFile?: IFile,
+    nfoFile?: IFile
+): IVideoFile {
     // 如果没有视频文件，返回一个空的
     if (!videoFile) {
         return createVideo() as IVideoFile
@@ -218,7 +230,8 @@ export function createVideoFile(videoFile?: IFile, nfoFile?: IFile): IVideoFile 
         nfoPath: nfoFile ? PathHelper.newPath(nfoFile.path) : undefined,
         size: videoFile.stats.size,
         joinTime,
-        changeTime: nfoFile ? dayjs(nfoFile.stats.mtime) : joinTime
+        changeTime: nfoFile ? dayjs(nfoFile.stats.mtime) : joinTime,
+        dirJoinTime: dirJoinTime ? dayjs(dirJoinTime) : joinTime
     }
 
     return video

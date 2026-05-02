@@ -971,7 +971,7 @@ onMounted(async () => {
                         </div>
                         <div class="info-item">
                             <Tag value="加入时间"></Tag>
-                            <span class="info-value">{{ formatVideoTime(video.joinTime) }}</span>
+                            <span class="info-value">{{ formatVideoTime(video.dirJoinTime) }}</span>
                         </div>
                         <div class="info-item">
                             <Tag value="编辑时间"></Tag>
