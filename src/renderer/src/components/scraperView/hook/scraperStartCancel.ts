@@ -5,7 +5,6 @@ import { useMessage } from '@renderer/components/control/message'
 import { LogHelper } from '@renderer/helper'
 import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
 import { globalStatesStore } from '@renderer/stores'
-import { cloneDeep } from 'es-toolkit'
 
 /**
  * 开始取消刮削Hook
@@ -43,10 +42,7 @@ export function useScraperStartCancel(checkedFileList: Ref<IFileItem[]>) {
 
             // 刮削单个文件
             const { scraperState, scraperStateText, videoFile } = await scraperRun(
-                cloneDeep({
-                    title: file.title,
-                    num: file.num
-                }),
+                { title: file.title, num: file.num },
                 file.file,
                 file.scraper,
                 signal,

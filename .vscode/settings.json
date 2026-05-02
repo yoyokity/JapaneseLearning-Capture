@@ -1,6 +1,6 @@
 {
-    "npm.packageManager": "npm",
-    "npm.scriptRunner": "npm",
+    "npm.packageManager": "pnpm",
+    "npm.scriptRunner": "pnpm",
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "explorer.fileNesting.enabled": true,

@@ -15,6 +15,8 @@ interface IModuleType {
     }
 }
 
+export type VideoFileWithoutStats = Omit<IVideoFile, 'size' | 'joinTime' | 'changeTime'>
+
 export interface IScraperVideoFuncs<TContext = unknown> {
     /**
      * 0. 获取网页上下文
@@ -327,7 +329,7 @@ export class Scraper {
     static async createDirectory(
         scraperPath: Path,
         video: IVideo,
-        sourceVideoFile: IVideoFile,
+        sourceVideoFile: VideoFileWithoutStats,
         dir: string,
         fileName: string
     ): Promise<IResultWithError<Path>> {
@@ -366,6 +368,7 @@ export class Scraper {
 
             // 如果有两个nfo，则删除原来的
             if (
+                sourceVideoFile.nfoPath &&
                 !/[\\/]/.test(sourceVideoFile.nfoPath.toString()) &&
                 (await sourceVideoFile.nfoPath.isExist())
             ) {

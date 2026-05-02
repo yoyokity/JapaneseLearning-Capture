@@ -6,6 +6,7 @@
     "author": "yoyokity",
     "main": "./dist/main/index.js",
     "scripts": {
+        "type-check": "vue-tsc --noEmit -p tsconfig.web.json",
         "lint": "eslint . --fix && prettier . --write --experimental-cli",
         "start": "chcp 65001 && electron-vite preview --outDir=dist",
         "dev": "chcp 65001 && electron-vite dev --outDir=dist",

@@ -1,5 +1,5 @@
 import type { IResultWithError, Path } from '@renderer/helper'
-import type { IVideo, IVideoFile } from '@renderer/scraper'
+import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper'
 import type { IScraperContext, ScraperState } from '@renderer/scraper/hooks/type'
 
 import { LogHelper, PathHelper } from '@renderer/helper'
@@ -11,7 +11,7 @@ import { toRaw } from 'vue'
 interface IScraperRunResult {
     scraperState: ScraperState
     scraperStateText?: string
-    videoFile?: IVideoFile
+    videoFile?: VideoFileWithoutStats
 }
 
 /**
@@ -54,7 +54,7 @@ export function useBatchScraper() {
         videoContext: unknown
     ): Promise<IResultWithError<Path>> {
         try {
-            const sourceVideoFile: IVideoFile = {
+            const sourceVideoFile: VideoFileWithoutStats = {
                 path: sourceVideoPath,
                 dir: sourceVideoPath.parent,
                 fileName: sourceVideoPath.filename,
@@ -243,7 +243,7 @@ export function useBatchScraper() {
         }
 
         // 生成videoFile
-        const videoFile: IVideoFile = {
+        const videoFile: VideoFileWithoutStats = {
             path: videoDir.result,
             dir: videoDir.result.parent,
             fileName: videoDir.result.basename,

@@ -8,7 +8,7 @@ import { LogHelper } from './LogHelper.ts'
 import { TaskHelper } from './TaskHelper.ts'
 
 export class Path {
-    private readonly _path: string
+    readonly _path: string // 不设为private，不然cloneDeep后会类型报错
 
     constructor(...paths: string[]) {
         this._path = pathe.resolve(...paths)

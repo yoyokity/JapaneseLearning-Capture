@@ -1,5 +1,5 @@
 import type { Path } from '@renderer/helper'
-import type { IVideoFile } from '@renderer/scraper'
+import type { VideoFileWithoutStats } from '@renderer/scraper'
 import type { ScraperState } from '@renderer/scraper/hooks/type'
 
 /**
@@ -25,7 +25,7 @@ export interface IFileItem {
     /** 刮削状态文本 */
     scraperStateText?: string
     /** 刮削视频文件 */
-    videoFile?: IVideoFile
+    videoFile?: VideoFileWithoutStats
 }
 
 /**
