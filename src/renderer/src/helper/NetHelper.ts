@@ -7,10 +7,10 @@ import type {
     IResult,
     IVerifyCookies,
     ParseResultType
-} from '@renderer/ipc/net.ts'
+} from '@shared'
 import type { IResultWithError } from './TaskHelper.ts'
 
-import { Ipc } from '@renderer/ipc'
+import { ipc } from '@renderer/ipc'
 import { settingsStore } from '@renderer/stores'
 
 import { LogHelper, TaskHelper } from '.'
@@ -228,17 +228,19 @@ export class NetHelper {
             const proxyRules = `http://${host}:${port}`
             const proxyBypassRules = 'localhost'
 
-            const re = await TaskHelper.tryExecute(Ipc.net.setProxy, {
-                proxyRules,
-                proxyBypassRules
-            })
+            const re = await TaskHelper.tryExecute(() =>
+                ipc.net.setProxy.mutate({
+                    proxyRules,
+                    proxyBypassRules
+                })
+            )
             if (!re.hasError) {
                 LogHelper.success(`设置网络代理成功：`, proxyRules)
             } else {
                 LogHelper.error(`设置网络代理失败：`, re.error)
             }
         } else {
-            const re = await TaskHelper.tryExecute(Ipc.net.clearProxy)
+            const re = await TaskHelper.tryExecute(() => ipc.net.clearProxy.mutate())
             if (!re.hasError) {
                 LogHelper.success(`取消网络代理`)
             } else {
@@ -296,7 +298,11 @@ export class NetHelper {
             retry,
             delay,
             signal,
-            async () => await Ipc.net.get<P>(url, config)
+            async () =>
+                await ipc.net.get.query({
+                    url,
+                    options: config
+                })
         )
     }
 
@@ -341,7 +347,12 @@ export class NetHelper {
             retry,
             delay,
             signal,
-            async () => await Ipc.net.post<P>(url, data, config)
+            async () =>
+                await ipc.net.post.mutate({
+                    url,
+                    body: data,
+                    options: config
+                })
         )
     }
 
@@ -365,7 +376,11 @@ export class NetHelper {
             retry,
             0,
             signal,
-            async () => await Ipc.net.get<'arrayBuffer'>(url, config)
+            async () =>
+                await ipc.net.get.query({
+                    url,
+                    options: config
+                })
         )
     }
 
@@ -390,7 +405,93 @@ export class NetHelper {
             callback: options.callback
         }
 
-        const re = await TaskHelper.tryExecute(async () => await Ipc.net.ai(config))
+        const re = await TaskHelper.tryExecute(async () => {
+            let closed = false
+            let isCancelled = false
+            let isResolved = false
+            let text = ''
+            let reasoningText = ''
+
+            let resolveTask!: (value: IAiResult) => void
+            let rejectTask!: (reason?: any) => void
+
+            const completed = new Promise<IAiResult>((resolve, reject) => {
+                resolveTask = resolve
+                rejectTask = reject
+            })
+
+            const subscription = ipc.net.ai.subscribe(
+                {
+                    provider: config.provider,
+                    apiKey: config.apiKey,
+                    model: config.model,
+                    baseURL: config.baseURL,
+                    providerOptions: config.providerOptions,
+                    system: config.system,
+                    prompt: config.prompt,
+                    timeout: config.timeout
+                },
+                {
+                    onData(payload) {
+                        if (payload.type === 'data') {
+                            text += payload.data
+                            reasoningText += payload.reasoningData ?? ''
+                            config.callback?.(payload.data, payload.reasoningData ?? '')
+                            return
+                        }
+
+                        text = payload.text
+                        reasoningText = payload.reasoningText ?? reasoningText
+                        if (isResolved) return
+
+                        isResolved = true
+                        resolveTask({
+                            text,
+                            ...(reasoningText ? { reasoningText } : {})
+                        })
+                    },
+                    onError(error) {
+                        if (closed) return
+
+                        closed = true
+                        if (isCancelled) {
+                            rejectTask(new Error('AI流已取消'))
+                            return
+                        }
+
+                        rejectTask(error)
+                    },
+                    onComplete() {
+                        if (closed) return
+
+                        closed = true
+                        if (isCancelled || isResolved) {
+                            return
+                        }
+
+                        isResolved = true
+                        resolveTask({
+                            text,
+                            ...(reasoningText ? { reasoningText } : {})
+                        })
+                    }
+                }
+            )
+
+            return {
+                completed,
+                cancel: async () => {
+                    isCancelled = true
+                    closed = true
+                    subscription.unsubscribe()
+                    rejectTask(new Error('AI流已取消'))
+                },
+                getText: () => ({
+                    text,
+                    ...(reasoningText ? { reasoningText } : {})
+                })
+            }
+        })
 
         if (re.hasError) {
             LogHelper.error(`AI流请求失败：${options.provider}:${options.model}`, re.error)
@@ -424,7 +525,12 @@ export class NetHelper {
         const settings = settingsStore()
         const pingTimeout = timeout || settings.net.timeout * 1000
 
-        const re = await TaskHelper.tryExecute(async () => await Ipc.net.ping(host, pingTimeout))
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.net.ping.query({
+                host,
+                timeout: pingTimeout
+            })
+        )
 
         if (!re.hasError) {
             return re.result as IPingResult
@@ -447,7 +553,11 @@ export class NetHelper {
      */
     static async verify(url: string, targetCookies?: string[]): Promise<IVerifyCookies> {
         const re = await TaskHelper.tryExecute(
-            async () => await Ipc.net.cloudflareVerify(url, targetCookies)
+            async () =>
+                await ipc.net.cloudflareVerify.mutate({
+                    url,
+                    targetCookies
+                })
         )
 
         if (!re.hasError) {

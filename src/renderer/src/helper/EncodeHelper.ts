@@ -1,4 +1,4 @@
-import { Ipc } from '@renderer/ipc'
+import { ipc } from '@renderer/ipc'
 import stringSimilarity from 'string-similarity'
 
 /** 编码相关 */
@@ -21,7 +21,10 @@ export class EncodeHelper {
      * EUC-JP URL 编码
      */
     static async encodeUrlEucJp(value: string): Promise<string> {
-        const bytes = await Ipc.net.encode(value, 'EUC-JP')
+        const bytes = await ipc.net.encode.query({
+            value,
+            encoding: 'EUC-JP'
+        })
         return bytes.map((byte) => `%${byte.toString(16).toUpperCase().padStart(2, '0')}`).join('')
     }
 

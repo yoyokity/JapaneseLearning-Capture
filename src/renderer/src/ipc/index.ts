@@ -1,21 +1,20 @@
-import { app } from '@renderer/ipc/app.ts'
-import { filesystem } from '@renderer/ipc/filesystem.ts'
-import { trpcClient } from '@renderer/ipc/func.ts'
-import { image } from '@renderer/ipc/image.ts'
-import { net } from '@renderer/ipc/net.ts'
+import type { AppRouter } from '@shared'
 
-export type { ImageData } from '@renderer/ipc/image.ts'
+import { createTRPCProxyClient } from '@trpc/client'
+import { ipcLink } from 'electron-trpc/renderer'
+import superjson from 'superjson'
 
-export class Ipc {
-    static app = app
-    static filesystem = filesystem
-    static net = net
-    static image = image
+/**
+ * electron-trpc 客户端
+ */
+export const ipc = createTRPCProxyClient<AppRouter>({
+    links: [ipcLink()],
+    transformer: superjson
+})
 
-    /**
-     * 测试IPC连通
-     */
-    static async check(): Promise<boolean> {
-        return (await trpcClient.check.query()) || false
-    }
+/**
+ * 发送不关心返回值的任务
+ */
+export function sendTask(task: Promise<unknown>) {
+    void task.catch(() => {})
 }

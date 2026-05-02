@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper/PathHelper'
-import type { ImageData } from '@renderer/ipc'
+import type { ImageData } from '@shared'
 
-import { Ipc } from '@renderer/ipc'
+import { ipc } from '@renderer/ipc'
 import { v7 } from 'uuid'
 
 import { EncodeHelper } from './EncodeHelper'
@@ -44,7 +44,12 @@ export class ImageHelper {
      * @param path 图片路径
      */
     static async saveImage(imageData: ImageData, path: Path | string) {
-        const re = await TaskHelper.tryExecute(Ipc.image.saveImage, imageData, path.toString())
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.image.saveImage.mutate({
+                imageData,
+                path: path.toString()
+            })
+        )
         if (!re.hasError) {
             return re.result
         } else {
@@ -61,10 +66,11 @@ export class ImageHelper {
     static async saveTempImage(imageData: ImageData, name: string = v7()): Promise<string | null> {
         const uniqueName = `${name}_${v7()}`
         const tempImagePath = PathHelper.tempPath.join(`${uniqueName}.jpg`)
-        const result = await TaskHelper.tryExecute(
-            Ipc.image.saveImage,
-            imageData,
-            tempImagePath.toString()
+        const result = await TaskHelper.tryExecute(() =>
+            ipc.image.saveImage.mutate({
+                imageData,
+                path: tempImagePath.toString()
+            })
         )
         if (!result.hasError) {
             return tempImagePath.toString()
@@ -91,7 +97,11 @@ export class ImageHelper {
             },
             async () =>
                 await TaskHelper.tryExecute(
-                    async () => await Ipc.image.superResolutionImage(imagePath.toString(), anime)
+                    async () =>
+                        await ipc.image.superResolutionImage.mutate({
+                            imagePath: imagePath.toString(),
+                            anime
+                        })
                 )
         )
 

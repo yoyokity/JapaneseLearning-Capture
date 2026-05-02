@@ -1,6 +1,6 @@
 import type { IFile, ReadDirectoryOptions } from '@shared'
 
-import { Ipc } from '@renderer/ipc'
+import { ipc } from '@renderer/ipc'
 import * as pathe from 'pathe'
 
 import { videoExtensions } from './const.ts'
@@ -74,7 +74,7 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async isExist() {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.isExist, this._path)
+        const re = await TaskHelper.tryExecute(() => ipc.filesystem.isExist.query(this._path))
         if (!re.hasError) {
             return re.result
         } else {
@@ -87,7 +87,7 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async isDirectory() {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.isDirectory, this._path)
+        const re = await TaskHelper.tryExecute(() => ipc.filesystem.isDirectory.query(this._path))
         if (!re.hasError) {
             return re.result
         } else {
@@ -101,7 +101,7 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async isFile() {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.isFile, this._path)
+        const re = await TaskHelper.tryExecute(() => ipc.filesystem.isFile.query(this._path))
         if (!re.hasError) {
             return re.result
         } else {
@@ -115,7 +115,7 @@ export class Path {
      * @remarks 用时 <10ms
      */
     async getSats() {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.getSatus, this._path)
+        const re = await TaskHelper.tryExecute(() => ipc.filesystem.getStatus.query(this._path))
         if (!re.hasError) {
             return re.result
         } else {
@@ -151,7 +151,7 @@ export class PathHelper {
     static tempPath: Path
 
     static async init() {
-        const appPath = await TaskHelper.tryExecute(Ipc.app.appPath)
+        const appPath = await TaskHelper.tryExecute(() => ipc.app.appPath.query())
         if (!appPath.hasError) {
             LogHelper.debug(`获取appPath成功：`, appPath.result)
             PathHelper.appPath = new Path(appPath.result)
@@ -159,7 +159,7 @@ export class PathHelper {
             LogHelper.error(`获取appPath失败：`, appPath.error)
         }
 
-        const arsrPath = await TaskHelper.tryExecute(Ipc.app.arsrPath)
+        const arsrPath = await TaskHelper.tryExecute(() => ipc.app.arsrPath.query())
         if (!arsrPath.hasError) {
             LogHelper.debug(`获取arsrPath成功：`, arsrPath.result.root)
             LogHelper.debug(`获取resources成功：`, arsrPath.result.resources)
@@ -175,7 +175,7 @@ export class PathHelper {
             LogHelper.error(`获取arsrPath失败：`, arsrPath.error)
         }
 
-        const userDataPath = await TaskHelper.tryExecute(Ipc.app.userPath)
+        const userDataPath = await TaskHelper.tryExecute(() => ipc.app.userPath.query())
         if (!userDataPath.hasError) {
             LogHelper.debug(`获取userDataPath成功：`, userDataPath.result)
             PathHelper.userPath = new Path(userDataPath.result)
@@ -183,7 +183,7 @@ export class PathHelper {
             LogHelper.error(`获取userDataPath失败：`, userDataPath.error)
         }
 
-        const logsPath = await TaskHelper.tryExecute(Ipc.app.logsPath)
+        const logsPath = await TaskHelper.tryExecute(() => ipc.app.logsPath.query())
         if (!logsPath.hasError) {
             LogHelper.debug(`获取logsPath成功：`, logsPath.result)
             PathHelper.logsPath = new Path(logsPath.result)
@@ -191,7 +191,7 @@ export class PathHelper {
             LogHelper.error(`获取logsPath失败：`, logsPath.error)
         }
 
-        const tempPath = await TaskHelper.tryExecute(Ipc.app.tempPath)
+        const tempPath = await TaskHelper.tryExecute(() => ipc.app.tempPath.query())
         if (!tempPath.hasError) {
             LogHelper.debug(`获取tempPath成功：`, tempPath.result)
             PathHelper.tempPath = new Path(tempPath.result)
@@ -238,7 +238,9 @@ export class PathHelper {
      * @returns 目录是否存在或创建成功
      */
     static async createDirectory(path: Path | string): Promise<boolean> {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.createDirectory, path.toString())
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.createDirectory.mutate(path.toString())
+        )
         if (!re.hasError) {
             return re.result
         } else {
@@ -281,7 +283,11 @@ export class PathHelper {
         }
 
         const re = await TaskHelper.tryExecute(() =>
-            Ipc.filesystem.readDirectory(path.toString(), patterns, options)
+            ipc.filesystem.readDirectory.query({
+                directory: path.toString(),
+                pattern: patterns,
+                options
+            })
         )
 
         if (!re.hasError) {
@@ -298,7 +304,7 @@ export class PathHelper {
      * @returns 目标是否已不存在
      */
     static async remove(path: Path | string): Promise<boolean> {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.remove, path.toString())
+        const re = await TaskHelper.tryExecute(() => ipc.filesystem.remove.mutate(path.toString()))
         if (!re.hasError) {
             return true
         } else {
@@ -314,7 +320,12 @@ export class PathHelper {
      * @param data 要写入的数据
      */
     static async writeFile(path: Path | string, data: string | ArrayBufferView): Promise<boolean> {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.writeFile, path.toString(), data)
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.writeFile.mutate({
+                filePath: path.toString(),
+                data: data as unknown as string | ArrayBufferView
+            })
+        )
         if (!re.hasError) {
             return true
         } else {
@@ -330,7 +341,12 @@ export class PathHelper {
      * @param data 要追加的数据
      */
     static async appendFile(path: Path | string, data: string | Uint8Array): Promise<boolean> {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.appendFile, path.toString(), data)
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.appendFile.mutate({
+                filePath: path.toString(),
+                data
+            })
+        )
         if (!re.hasError) {
             return true
         } else {
@@ -352,7 +368,12 @@ export class PathHelper {
         path: string | Path,
         encoding: BufferEncoding | 'arrayBuffer' = 'utf-8'
     ): Promise<string | ArrayBuffer | null> {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.readFile, path.toString(), encoding)
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.readFile.query({
+                filePath: path.toString(),
+                encoding: encoding || undefined
+            })
+        )
         if (!re.hasError) {
             return re.result
         } else {
@@ -375,12 +396,13 @@ export class PathHelper {
         overwrite: boolean = true,
         filter?: (src: string, dest: string) => boolean
     ): Promise<boolean> {
-        const re = await TaskHelper.tryExecute(
-            Ipc.filesystem.copy,
-            sourcePath.toString(),
-            destPath.toString(),
-            overwrite,
-            filter
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.copy.mutate({
+                sourcePath: sourcePath.toString(),
+                destPath: destPath.toString(),
+                overwrite,
+                filter
+            })
         )
         if (!re.hasError) {
             return true
@@ -402,11 +424,12 @@ export class PathHelper {
         destPath: Path | string,
         overwrite: boolean = true
     ): Promise<boolean> {
-        const re = await TaskHelper.tryExecute(
-            Ipc.filesystem.move,
-            sourcePath.toString(),
-            destPath.toString(),
-            overwrite
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.move.mutate({
+                sourcePath: sourcePath.toString(),
+                destPath: destPath.toString(),
+                overwrite
+            })
         )
         if (!re.hasError) {
             return true
@@ -422,7 +445,9 @@ export class PathHelper {
      * @param path 要打开的路径
      */
     static async openInExplorer(path: Path | string) {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.openInExplorer, path.toString())
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.openInExplorer.mutate(path.toString())
+        )
         if (!re.hasError) {
             return true
         } else {
@@ -438,7 +463,10 @@ export class PathHelper {
      * @returns 文件路径
      */
     static async getPathForFile(file: File): Promise<string | null> {
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.getPathForFile, file)
+        const re = await TaskHelper.tryExecute(() =>
+            // @ts-ignore
+            (window.api as any).getPathForFile(file)
+        )
         if (!re.hasError) {
             return re.result
         } else {
@@ -454,10 +482,11 @@ export class PathHelper {
      */
     static async removeEmptyFolders(rootPath: Path | string) {
         LogHelper.debug(`检查路径内是否有无视频的文件夹：`, rootPath.toString())
-        const re = await TaskHelper.tryExecute(
-            Ipc.filesystem.removeEmptyFolders,
-            rootPath.toString(),
-            Object.keys(videoExtensions)
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.removeEmptyFolders.mutate({
+                rootPath: rootPath.toString(),
+                videoExtnames: Object.keys(videoExtensions)
+            })
         )
         if (!re.hasError) {
             return true
@@ -475,7 +504,9 @@ export class PathHelper {
      */
     static async clearFolder(folderPath: Path | string): Promise<boolean> {
         LogHelper.success(`清空文件夹：`, folderPath.toString())
-        const re = await TaskHelper.tryExecute(Ipc.filesystem.clearFolder, folderPath.toString())
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.filesystem.clearFolder.mutate(folderPath.toString())
+        )
         if (!re.hasError) {
             return re.result
         } else {

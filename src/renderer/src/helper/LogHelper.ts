@@ -1,4 +1,4 @@
-import { Ipc } from '@renderer/ipc'
+import { ipc, sendTask } from '@renderer/ipc'
 
 type LogType = 'success' | 'log' | 'debug' | 'warn' | 'error'
 
@@ -246,6 +246,11 @@ export class LogHelper {
      */
     private writeIpcLog(type: LogType, titles: ITitle[], args: any[]) {
         const titleTexts = titles.map((item) => `[${item.text}]`)
-        Ipc.filesystem.writeLog(type, ...titleTexts, ...args)
+        sendTask(
+            ipc.filesystem.writeLog.mutate({
+                type,
+                params: [...titleTexts, ...args]
+            })
+        )
     }
 }
