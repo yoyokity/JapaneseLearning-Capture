@@ -27,6 +27,7 @@ import InputText from 'primevue/inputtext'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
+import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import { inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
@@ -47,11 +48,11 @@ const currentScraperController = ref<AbortController | null>(null)
 
 // tab部分
 const tabs = [
-    { id: 'info', name: '信息', icon: 'pi pi-info-circle' },
-    { id: 'image', name: '图片', icon: 'pi pi-image' }
-    // TODO 加个文件标签，是跟文件相关的信息
+    { id: 'edit', name: '编辑', icon: 'pi pi-pencil' },
+    { id: 'image', name: '图片', icon: 'pi pi-image' },
+    { id: 'info', name: '信息', icon: 'pi pi-info-circle' }
 ]
-const activeTab = ref('info')
+const activeTab = ref('edit')
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
     activeTab.value = tabId
@@ -255,6 +256,40 @@ function openNumLink(sourceName: string) {
 }
 
 /**
+ * 格式化文件大小
+ * @param size 文件大小
+ */
+function formatFileSize(size: number) {
+    if (size < 1024) return `${size} B`
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`
+    if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`
+
+    return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+/**
+ * 格式化时间
+ * @param time 时间
+ */
+function formatVideoTime(time: IVideoFile['joinTime']) {
+    return time.format('YYYY年M月D日，HH:mm:ss')
+}
+
+/**
+ * 播放视频
+ */
+function openVideoPath() {
+    PathHelper.openInExplorer(video.path.toString())
+}
+
+/**
+ * 打开视频所在目录
+ */
+function openVideoDir() {
+    PathHelper.openInExplorer(video.dir.toString())
+}
+
+/**
  * 翻译剧情
  */
 async function transPlot() {
@@ -359,8 +394,8 @@ onMounted(async () => {
         </div>
         <Scroll style="height: calc(90vh - 0.75rem - var(--header-height) - var(--header-height))">
             <div class="content">
-                <!-- 信息编辑部分 -->
-                <div v-show="activeTab === 'info'" class="form-container">
+                <!-- #region 编辑部分  -->
+                <div v-show="activeTab === 'edit'" class="form-container">
                     <h2 style="margin-top: 0">
                         <i class="pi pi-search section-title-icon" />
                         刮削器
@@ -904,6 +939,7 @@ onMounted(async () => {
                         </FloatLabel>
                     </div>
                 </div>
+                <!-- #endregion 编辑部分 -->
 
                 <!-- 图片编辑部分 -->
                 <ImageEditor
@@ -913,6 +949,54 @@ onMounted(async () => {
                     :buttondisable="isScraperRunning"
                     :scraper-field="runScraperField"
                 />
+
+                <!-- #region 视频信息部分 -->
+                <div v-show="activeTab === 'info'">
+                    <!-- 文件信息列表 -->
+                    <div class="info-list">
+                        <div class="info-item">
+                            <Tag value="文件名"></Tag>
+                            <span class="info-value">{{
+                                `${video.fileName}${video.extname}`
+                            }}</span>
+                        </div>
+                        <div class="info-item">
+                            <Tag value="路径"></Tag>
+                            <span class="info-value">{{ video.path.toString() }}</span>
+                        </div>
+
+                        <div class="info-item">
+                            <Tag value="文件大小"></Tag>
+                            <span class="info-value">{{ formatFileSize(video.size) }}</span>
+                        </div>
+                        <div class="info-item">
+                            <Tag value="加入时间"></Tag>
+                            <span class="info-value">{{ formatVideoTime(video.joinTime) }}</span>
+                        </div>
+                        <div class="info-item">
+                            <Tag value="编辑时间"></Tag>
+                            <span class="info-value">{{ formatVideoTime(video.changeTime) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- 文件操作 -->
+                    <div style="display: flex; gap: 0.5rem">
+                        <Button
+                            icon="pi pi-play-circle"
+                            label="播放"
+                            size="small"
+                            @click="openVideoPath"
+                        />
+                        <Button
+                            icon="pi pi-folder-open"
+                            label="打开文件夹"
+                            severity="secondary"
+                            size="small"
+                            @click="openVideoDir"
+                        />
+                    </div>
+                </div>
+                <!-- #endregion 视频信息部分 -->
             </div>
         </Scroll>
 
@@ -1113,5 +1197,19 @@ onMounted(async () => {
 
 input {
     width: 100%;
+}
+
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 3rem;
+
+    .info-item {
+        .info-value {
+            margin-left: 0.5rem;
+            user-select: text;
+        }
+    }
 }
 </style>

@@ -14,6 +14,7 @@ import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
 import Paginator from 'primevue/paginator'
 import Select from 'primevue/select'
+import ToggleButton from 'primevue/togglebutton'
 import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
@@ -44,6 +45,9 @@ interface IVideoCardItem {
 }
 
 type ManageCardItem = ISeriesCardItem | IVideoCardItem
+type VideoSortField = 'title' | 'releasedate' | 'joinTime' | 'changeTime'
+
+const sortFieldOptions: VideoSortField[] = ['title', 'releasedate', 'joinTime', 'changeTime']
 
 /**
  * 获取系列封面视频
@@ -93,11 +97,6 @@ function clearFiles(e: SelectChangeEvent) {
         globalStates.manageViewFiles = []
         currentSet.value = null
     }
-}
-
-// 重新排序
-function handleSortChange(e: SelectChangeEvent) {
-    settings.manageViewSort = e.value
 }
 
 /**
@@ -211,6 +210,30 @@ const pagedDisplayItems = computed(() => {
  * 是否显示分页器
  */
 const isShowPaginator = computed(() => displayItems.value.length > manageViewRows)
+
+/**
+ * 当前排序字段
+ */
+const currentSortField = computed<VideoSortField>({
+    get() {
+        return settings.manageViewSort
+    },
+    set(value) {
+        settings.manageViewSort = value
+    }
+})
+
+/**
+ * 当前是否正序
+ */
+const isPositiveOrder = computed({
+    get() {
+        return !settings.manageViewSortReverse
+    },
+    set(value: boolean) {
+        settings.manageViewSortReverse = !value
+    }
+})
 
 /**
  * 当前页元素区间
@@ -437,17 +460,29 @@ onUnmounted(() => {
 
                 <!-- 排序 -->
                 <Select
-                    v-model="settings.manageViewSort"
+                    v-model="currentSortField"
                     v-tooltip.top="'排序'"
                     :option-label="(option) => VideoSortTypeList[option]"
-                    :options="Object.keys(VideoSortTypeList)"
+                    :options="sortFieldOptions"
                     class="sort-select"
                     dropdown-icon="pi pi-sort-amount-down"
                     size="small"
-                    @change="handleSortChange"
                     @hide="isSortActive = false"
                     @show="isSortActive = true"
-                />
+                >
+                    <template #footer>
+                        <!-- 排序方向 -->
+                        <div class="sort-footer">
+                            <ToggleButton
+                                v-model="isPositiveOrder"
+                                off-label="倒序"
+                                on-label="正序"
+                                size="small"
+                                style="width: 100%; transform: none !important"
+                            />
+                        </div>
+                    </template>
+                </Select>
             </div>
         </div>
 
@@ -536,9 +571,9 @@ onUnmounted(() => {
     transform: translateX(-50%);
     width: fit-content;
     display: inline-flex;
+    z-index: 2;
 
     .manage-view-float-content {
-        z-index: 2;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -601,6 +636,13 @@ onUnmounted(() => {
             }
         }
     }
+}
+
+.sort-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--p-select-list-padding);
 }
 
 .search-animation-enter-active,

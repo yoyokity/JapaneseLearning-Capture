@@ -7,9 +7,9 @@ import { reactive, ref, watch } from 'vue'
 export type VideoSortType = keyof typeof VideoSortTypeList
 export const VideoSortTypeList = {
     title: '标题名称',
-    title_reverse: '标题名称 (倒序)',
     releasedate: '发布日期',
-    releasedate_reverse: '发布日期 (倒序)'
+    joinTime: '加入时间',
+    changeTime: '编辑时间'
 } as const
 
 export const settingsStore = defineStore(
@@ -83,6 +83,7 @@ export const settingsStore = defineStore(
         const scraperPath = reactive<Record<string, string>>({})
         const currentScraper = ref('')
         const manageViewSort = ref<VideoSortType>('title')
+        const manageViewSortReverse = ref(true)
 
         return {
             proxy,
@@ -102,7 +103,11 @@ export const settingsStore = defineStore(
             /**
              * 管理视图排序
              */
-            manageViewSort
+            manageViewSort,
+            /**
+             * 管理视图排序方向
+             */
+            manageViewSortReverse
         }
     },
     {

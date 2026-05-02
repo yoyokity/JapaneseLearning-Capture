@@ -37,20 +37,32 @@ export const globalStatesStore = defineStore('globalStates', () => {
      * 视频排序
      */
     function videoSortFunc(a: IVideoFile, b: IVideoFile) {
+        const isReverse = settings.manageViewSortReverse
+
+        // 标题
         if (settings.manageViewSort === 'title') {
-            return a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
-        } else if (settings.manageViewSort === 'title_reverse') {
-            return b.sorttitle.localeCompare(a.sorttitle, undefined, { sensitivity: 'base' })
-        } else if (settings.manageViewSort === 'releasedate') {
-            const dateA = parseDateString(a.releasedate)
-            const dateB = parseDateString(b.releasedate)
-            return dateA.getTime() - dateB.getTime()
-        } else if (settings.manageViewSort === 'releasedate_reverse') {
-            const dateA = parseDateString(a.releasedate)
-            const dateB = parseDateString(b.releasedate)
-            return dateB.getTime() - dateA.getTime()
+            return isReverse
+                ? b.sorttitle.localeCompare(a.sorttitle, undefined, { sensitivity: 'base' })
+                : a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
         }
-        // TODO 按照加入时间排序（文件夹的创建时间）
+
+        // 加入时间
+        if (settings.manageViewSort === 'joinTime') {
+            return isReverse ? b.joinTime.diff(a.joinTime) : a.joinTime.diff(b.joinTime)
+        }
+
+        // 编辑时间
+        if (settings.manageViewSort === 'changeTime') {
+            return isReverse ? b.changeTime.diff(a.changeTime) : a.changeTime.diff(b.changeTime)
+        }
+
+        // 发布日期
+        if (settings.manageViewSort === 'releasedate') {
+            const dateA = parseDateString(a.releasedate)
+            const dateB = parseDateString(b.releasedate)
+            return isReverse ? dateB.getTime() - dateA.getTime() : dateA.getTime() - dateB.getTime()
+        }
+
         return 0
     }
     /**
