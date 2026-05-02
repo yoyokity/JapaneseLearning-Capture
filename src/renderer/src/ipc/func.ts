@@ -2,12 +2,14 @@ import type { AppRouter } from '@shared'
 
 import { createTRPCProxyClient } from '@trpc/client'
 import { ipcLink } from 'electron-trpc/renderer'
+import superjson from 'superjson'
 
 /**
  * electron-trpc 客户端
  */
 export const trpcClient = createTRPCProxyClient<AppRouter>({
-    links: [ipcLink()]
+    links: [ipcLink()],
+    transformer: superjson
 })
 
 /**

@@ -1,9 +1,9 @@
-import type { ReadDirectoryOptions } from './filesystem'
 import type { ImageData } from './image'
 import type { IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
 
 import { initTRPC } from '@trpc/server'
 import { app } from 'electron'
+import superjson from 'superjson'
 import { z } from 'zod'
 
 import { openCloudflareWindow } from '../CloudflareWindow'
@@ -51,7 +51,7 @@ import {
     setProxy
 } from './net'
 
-const t = initTRPC.create()
+const t = initTRPC.create({ transformer: superjson })
 
 /**
  * 公共 procedure
@@ -123,16 +123,16 @@ export const appRouter = t.router({
         readDirectory: procedure
             .input(
                 z.object({
-                    patterns: z.union([z.string(), z.array(z.string())]),
+                    directory: z.string(),
+                    pattern: z.union([z.string(), z.array(z.string())]),
                     options: readDirectoryOptionsSchema.optional()
                 })
             )
             .query(({ input }) =>
                 readDirectory(
-                    input.patterns,
-                    input.options
-                        ? (omitUndefined(input.options) as ReadDirectoryOptions)
-                        : undefined
+                    input.directory,
+                    input.pattern,
+                    input.options ? omitUndefined(input.options) : undefined
                 )
             ),
         remove: procedure.input(z.string()).mutation(({ input }) => remove(input)),
@@ -197,8 +197,13 @@ export const appRouter = t.router({
         openInExplorer: procedure.input(z.string()).mutation(({ input }) => openInExplorer(input)),
         clearFolder: procedure.input(z.string()).mutation(({ input }) => clearFolder(input)),
         removeEmptyFolders: procedure
-            .input(z.string())
-            .mutation(({ input }) => removeEmptyFolders(input))
+            .input(
+                z.object({
+                    rootPath: z.string(),
+                    videoExtnames: z.array(z.string())
+                })
+            )
+            .mutation(({ input }) => removeEmptyFolders(input.rootPath, input.videoExtnames))
     }),
     image: t.router({
         saveImage: procedure
