@@ -9,3 +9,4 @@ out
 /.cursor/
 /data
 .VSCodeCounter/
+*.tsbuildinfo
