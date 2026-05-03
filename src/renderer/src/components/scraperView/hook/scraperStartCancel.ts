@@ -2,9 +2,10 @@ import type { Ref } from 'vue'
 import type { IFileItem } from './type'
 
 import { useMessage } from '@renderer/components/control/message'
-import { LogHelper } from '@renderer/helper'
+import { LogHelper, PathHelper } from '@renderer/helper'
 import { useBatchScraper } from '@renderer/scraper/hooks/useBatchScraper'
 import { globalStatesStore } from '@renderer/stores'
+import dayjs from 'dayjs'
 
 /**
  * 开始取消刮削Hook
@@ -58,7 +59,21 @@ export function useScraperStartCancel(checkedFileList: Ref<IFileItem[]>) {
             // 更新文件状态
             file.scraperState = scraperState
             file.scraperStateText = scraperStateText
-            file.videoFile = videoFile
+
+            if (videoFile) {
+                // 获取新的stats
+                const videoStats = await PathHelper.getStats(videoFile.path)
+                const nfoStats = await PathHelper.getStats(videoFile.nfoPath!)
+                const dirStats = await PathHelper.getStats(videoFile.dir)
+
+                file.videoFile = {
+                    ...videoFile,
+                    size: videoStats?.size ?? 0,
+                    joinTime: dayjs(videoStats?.ctime),
+                    dirJoinTime: dayjs(dirStats?.ctime),
+                    changeTime: dayjs(nfoStats?.mtime)
+                }
+            }
 
             // 更新批量刮削进度
             globalStates.batchScrapedCount += 1
