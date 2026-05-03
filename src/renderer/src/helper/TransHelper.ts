@@ -1,14 +1,19 @@
+import { Segmenter } from '@formatjs/intl-segmenter'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
 import { toSimplified, toTraditional } from 'chinese-simple2traditional'
 import { setupEnhance } from 'chinese-simple2traditional/enhance'
-import { split as splitSentence } from 'sentence-splitter'
 
 import { EncodeHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
 
 // 注入短语库，提高准确性
 setupEnhance()
+
+// 句子分段器，用于格式化翻译结果
+const sentenceSegmenter = new Segmenter('zh-CN', {
+    granularity: 'sentence'
+})
 
 export type TranslateEngine = keyof typeof translators
 export type TranslateTargetLanguage = 'zh-CN' | 'zh-TW'
@@ -420,9 +425,9 @@ export class TransHelper {
     static formatTranslateText(text: string) {
         text = TransHelper.translateSC(text)
 
-        return splitSentence(text)
-            .filter((node) => node.type === 'Sentence')
-            .map((node) => node.raw.trim())
+        return Array.from(sentenceSegmenter.segment(text))
+            .filter((item): item is NonNullable<typeof item> => Boolean(item))
+            .map((item) => item.segment.trim())
             .filter(Boolean)
             .join('\n\n')
     }

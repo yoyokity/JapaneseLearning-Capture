@@ -173,7 +173,10 @@ export function useEditeScraper() {
             const success = await parseField(scraperContext, video, funcName, logName, signal)
             if (getAbortResult(signal, onProgress)) return
 
-            if (!success) {
+            if (success === null) {
+                scraperContext.logger.log(`${logName}解析跳过！`)
+                toast.info(`${logName}解析跳过！`)
+            } else if (!success) {
                 scraperContext.logger.warn(`${logName}解析出错！`)
                 toast.warn(`${logName}解析出错！`)
             } else {

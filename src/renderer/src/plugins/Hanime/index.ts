@@ -20,6 +20,7 @@ import {
 import { getPosterHanime1, getWebContentHanime1 } from '@renderer/plugins/Hanime/Hanime1'
 import { maker_trans } from '@renderer/plugins/Hanime/makerTrans'
 import { load as cheerioLoad } from 'cheerio'
+import { toNumber } from 'es-toolkit/compat'
 
 import { loggerDlsite, loggerGetchu, scraperName } from './temp'
 
@@ -229,21 +230,19 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 loggerGetchu.log(`搜索导演...`)
 
                 const $ = cheerioLoad(context.webContent.getchu)
-                const text = $('div#wrapper').text()
+                const regex1 = /監督([^：]*)：\n?(?<name>[^／\n ]+)/
+                const regex2 = /プロデューサー([^：]*)：(?<name>.*)[\n ]/ // 没有監督时使用制片人
 
-                let regex = /監督([^：]*)：\n?(?<name>[^／\n ]+)/
-                let match = text.match(regex)
-                if (match && match.groups) {
-                    video.director = match.groups.name.trim()
-                    return true
-                }
+                for (const el of $('div#wrapper').find('div.tablebody').toArray()) {
+                    const text = $(el).text()
+                    const director =
+                        text.match(regex1)?.groups?.name.trim() ||
+                        text.match(regex2)?.groups?.name.trim()
 
-                // 没有監督用制片人
-                regex = /プロデューサー([^：]*)：(?<name>.*)[\n ]/
-                match = text.match(regex)
-                if (match && match.groups) {
-                    video.director = match.groups.name
-                    return true
+                    if (director) {
+                        video.director = director
+                        return true
+                    }
                 }
 
                 loggerGetchu.warn(`没有找到导演`)
@@ -279,7 +278,14 @@ const hanimeScraper: IScraper<IHanimeContext> = {
         },
         parseSet: async (video: IVideo, context: IHanimeContext) => {
             const $ = cheerioLoad(context.webContent.hanime1)
-            let set = $('.single-icon-wrapper.video-playlist-top').children('h4').first().text()
+            const titles = $('.single-icon-wrapper.video-playlist-top').children('h4')
+
+            // 先获取视频数量，如果只有一个视频就返回null
+            const num = toNumber(titles.last().text().match(/\d+/)?.[0]) ?? 0
+            if (num <= 1) return null
+
+            // 否则获取系列名
+            let set = titles.first().text()
             set = set.includes('/') ? set.split('/')[1].trim() : set.trim()
 
             if (!set) return false
