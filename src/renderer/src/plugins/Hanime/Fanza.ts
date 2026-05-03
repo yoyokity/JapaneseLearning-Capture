@@ -72,7 +72,9 @@ export async function getWebContentFanza(
 
     const matchedTitle = EncodeHelper.bestMatch(
         searchTitle,
-        candidates.map((item) => item.title)
+        candidates
+            .map((item) => item.title)
+            .filter((item) => !item.includes('BOX') && !item.includes('box'))
     )
     if (!matchedTitle) {
         loggerFanza.warn(`没有找到匹配的番剧`)

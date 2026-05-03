@@ -272,14 +272,14 @@ function formatFileSize(size: number) {
  * 播放视频
  */
 function openVideoPath() {
-    PathHelper.openInExplorer(video.path.toString())
+    PathHelper.openInExplorer(newVideo.value.path.toString())
 }
 
 /**
  * 打开视频所在目录
  */
 function openVideoDir() {
-    PathHelper.openInExplorer(video.dir.toString())
+    PathHelper.openInExplorer(newVideo.value.dir.toString())
 }
 
 /**

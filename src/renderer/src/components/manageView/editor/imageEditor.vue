@@ -203,9 +203,12 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
         }
 
         // 然后处理本地文件
-        const path = PathHelper.newPath(clipboardText)
-        if (clipboardText && (await path.isFile()) && (await path.isExist())) {
-            updateVideoImage(imageType, clipboardText)
+        const path =
+            clipboardText.startsWith('"') && clipboardText.endsWith('"')
+                ? PathHelper.newPath(clipboardText.slice(1, -1))
+                : PathHelper.newPath(clipboardText)
+        if (path && (await path.isFile()) && (await path.isExist())) {
+            updateVideoImage(imageType, path.toString())
             return
         }
 

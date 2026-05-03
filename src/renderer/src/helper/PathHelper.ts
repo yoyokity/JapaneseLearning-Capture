@@ -59,7 +59,7 @@ export class Path {
     }
 
     toString() {
-        return this._path
+        return PathHelper.sanitizePath(this._path)
     }
 
     /**
@@ -210,15 +210,14 @@ export class PathHelper {
     /**
      * 替换掉路径中的非法字符
      */
-    static sanitizePath(path: Path | string): Path {
-        if (typeof path === 'string') path = new Path(path)
-
+    static sanitizePath(path: string): string {
         const fullWidthMap = {
             '?': '？',
             '"': '＂',
             '<': '＜',
             '>': '＞',
-            '|': '｜'
+            '|': '｜',
+            ':': '：'
         }
 
         // 1. 替换非法字符为全角符号
@@ -227,7 +226,7 @@ export class PathHelper {
         })
 
         // 2. 移除开头和结尾的非法字符（如空格、点）
-        return new Path(sanitized.replace(/[.\s]+$/, ''))
+        return sanitized.replace(/[.\s]+$/, '')
     }
 
     /**
