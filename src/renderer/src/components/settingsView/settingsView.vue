@@ -3,7 +3,7 @@ import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
 import SettingsLineItem from '@renderer/components/settingsView/settingsLineItem.vue'
-import { DeepseekReasoningEffortArray, LogHelper, TransHelper } from '@renderer/helper'
+import { DeepseekReasoningEffortArray, LogHelper, PathHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
@@ -11,10 +11,16 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
+import Tag from 'primevue/tag'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 import { ref } from 'vue'
+
+const appName = __APP_NAME__
+    .replace(/-/g, ' ') // 把短横线变成空格
+    .replace(/\b\w/g, (char) => char.toUpperCase()) // 每个单词首字母大写
+const appVersion = __APP_VERSION__
 
 const settings = settingsStore()
 const translateEngineConfigRef = ref()
@@ -95,6 +101,18 @@ function openLlmInfo() {
             fetchLLMModels()
         }
     })
+}
+
+function openAppPath() {
+    PathHelper.openInExplorer(PathHelper.appPath)
+}
+
+function openLogsFile() {
+    PathHelper.openInExplorer(PathHelper.logsPath.join('main.log'))
+}
+
+function openTempPath() {
+    PathHelper.openInExplorer(PathHelper.tempPath)
 }
 </script>
 
@@ -428,8 +446,34 @@ function openLlmInfo() {
 
                 <!--info-->
                 <div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
-                    123
-                    <!-- TODO 在这里打开log文件夹、temp文件夹、根目录 -->
+                    <!-- 应用信息列表 -->
+                    <div class="info-list">
+                        <div class="info-item">
+                            <Tag value="应用名"></Tag>
+                            <span class="info-value">{{ appName }}</span>
+                        </div>
+                        <div class="info-item">
+                            <Tag value="版本号"></Tag>
+                            <span class="info-value">{{ appVersion }}</span>
+                        </div>
+                    </div>
+
+                    <!-- 路径操作按钮 -->
+                    <div style="display: flex; gap: 0.5rem; flex-direction: column; width: 10rem">
+                        <Button icon="pi pi-folder-open" label="打开根目录" @click="openAppPath" />
+                        <Button
+                            icon="pi pi-folder-open"
+                            label="打开临时目录"
+                            severity="secondary"
+                            @click="openTempPath"
+                        />
+                        <Button
+                            icon="pi pi-folder-open"
+                            label="打开日志文件"
+                            severity="secondary"
+                            @click="openLogsFile"
+                        />
+                    </div>
                 </div>
             </transition>
         </Scroll>

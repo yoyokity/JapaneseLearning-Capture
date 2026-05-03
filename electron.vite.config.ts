@@ -1,8 +1,16 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'electron-vite'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import svgLoader from 'vite-svg-loader'
+
+const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as {
+    name: string
+    version: string
+}
+const APP_NAME = packageJson.name
+const APP_VERSION = packageJson.version
 
 export default defineConfig({
     main: {
@@ -26,6 +34,10 @@ export default defineConfig({
         }
     },
     renderer: {
+        define: {
+            __APP_NAME__: JSON.stringify(APP_NAME),
+            __APP_VERSION__: JSON.stringify(APP_VERSION)
+        },
         server: {
             port: 5174
         },

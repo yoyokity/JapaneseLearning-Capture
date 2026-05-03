@@ -984,14 +984,14 @@ onMounted(async () => {
                         <Button
                             icon="pi pi-play-circle"
                             label="播放"
-                            size="small"
+                            style="width: 10rem"
                             @click="openVideoPath"
                         />
                         <Button
                             icon="pi pi-folder-open"
                             label="打开文件夹"
                             severity="secondary"
-                            size="small"
+                            style="width: 10rem"
                             @click="openVideoDir"
                         />
                     </div>
@@ -1197,19 +1197,5 @@ onMounted(async () => {
 
 input {
     width: 100%;
-}
-
-.info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 3rem;
-
-    .info-item {
-        .info-value {
-            margin-left: 0.5rem;
-            user-select: text;
-        }
-    }
 }
 </style>
