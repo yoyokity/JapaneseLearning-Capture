@@ -1,6 +1,7 @@
 import type { IHanimeContext } from './temp'
 
-import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
+import { EncodeHelper, NetHelper } from '@renderer/helper'
+import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { loggerGetchu } from './temp'
@@ -133,30 +134,8 @@ export async function getExtrafanartGetchu(
         .filter((href): href is string => !!href)
         .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
 
-    const extrafanart: string[] = []
-    const successUrls: string[] = []
-    const failedUrls: string[] = []
-    for (const url of urls) {
-        const re = await NetHelper.getImage(url, { ...getchuOptions, signal })
-        if (signal.aborted) break
-        if (re.ok) {
-            successUrls.push(url)
-            const tempPath = await ImageHelper.saveTempImage(re.body, `getchu_extrafanart`)
-            if (tempPath) extrafanart.push(tempPath)
-        } else {
-            failedUrls.push(url)
-        }
-    }
-
-    if (successUrls.length > 0) {
-        loggerGetchu.log(`获取${successUrls.length}张剧照成功`)
-    }
-
-    if (failedUrls.length > 0) {
-        loggerGetchu.warn(`获取${failedUrls.length}张剧照失败`, failedUrls)
-    }
-
-    return extrafanart
+    if (urls.length < 1) return []
+    return Scraper.downloadExtrafanart(urls, { ...getchuOptions, signal })
 }
 
 /**
@@ -177,18 +156,9 @@ export async function getPosterGetchu(
         .attr('href')
         ?.replace(/^\.\/ */, '')
 
-    if (!url) {
-        return null
-    }
-
-    const posterUrl = NetHelper.joinUrl('https://www.getchu.com/', url)
-    const re = await NetHelper.getImage(posterUrl, { ...getchuOptions, signal })
-    if (signal.aborted) return null
-    if (!re.ok) {
-        loggerGetchu.warn(`获取封面失败！:${posterUrl}`)
-        return null
-    }
-
-    loggerGetchu.log(`获取封面成功！:${posterUrl}`)
-    return ImageHelper.saveTempImage(re.body, `getchu_poster`)
+    if (!url) return null
+    return Scraper.downloadImage(NetHelper.joinUrl('https://www.getchu.com/', url), {
+        ...getchuOptions,
+        signal
+    })
 }

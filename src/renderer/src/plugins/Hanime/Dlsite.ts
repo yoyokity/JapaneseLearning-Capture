@@ -1,6 +1,7 @@
 import type { IHanimeContext } from './temp'
 
-import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
+import { EncodeHelper, NetHelper } from '@renderer/helper'
+import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { loggerDlsite } from './temp'
@@ -101,36 +102,13 @@ export async function getExtrafanartDlsite(
     }
 
     const $ = cheerioLoad(context.webContent.dlsite)
-    const hrefs = $('.product-slider-data')
+    const urls = $('.product-slider-data')
         .children()
         .map((_, el) => $(el).attr('data-src'))
         .get()
         .filter((src) => !src.includes('_main.'))
         .map((href) => `https:${href.trim()}`)
 
-    // TODO 统一下载
-    const extrafanart: string[] = []
-    const successUrls: string[] = []
-    const failedUrls: string[] = []
-    for (const url of hrefs) {
-        const re = await NetHelper.getImage(url, { ...dlsiteOptions, signal })
-        if (signal.aborted) break
-        if (re.ok) {
-            successUrls.push(url)
-            const tempPath = await ImageHelper.saveTempImage(re.body, `dlsite_extrafanart`)
-            if (tempPath) extrafanart.push(tempPath)
-        } else {
-            failedUrls.push(url)
-        }
-    }
-
-    if (successUrls.length > 0) {
-        loggerDlsite.log(`获取${successUrls.length}张剧照成功`)
-    }
-
-    if (failedUrls.length > 0) {
-        loggerDlsite.warn(`获取${failedUrls.length}张剧照失败`, failedUrls)
-    }
-
-    return extrafanart
+    if (urls.length < 1) return []
+    return Scraper.downloadExtrafanart(urls, { ...dlsiteOptions, signal })
 }

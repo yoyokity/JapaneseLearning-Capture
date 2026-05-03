@@ -1,7 +1,8 @@
 import type { IHanimeContext } from '@renderer/plugins/Hanime/temp'
 
-import { EncodeHelper, ImageHelper, NetHelper } from '@renderer/helper'
+import { EncodeHelper, NetHelper } from '@renderer/helper'
 import { loggerFanza } from '@renderer/plugins/Hanime/temp'
+import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
 export const fanzaOptions = {
@@ -110,19 +111,8 @@ export async function getPosterFanza(
     const $ = cheerioLoad(context.webContent.fanza)
     const posterUrl = $('meta[property="og:image"]').attr('content')?.trim()
 
-    if (!posterUrl) {
-        return null
-    }
-
-    const re = await NetHelper.getImage(posterUrl, { ...fanzaOptions, signal })
-    if (signal.aborted) return null
-    if (!re.ok) {
-        loggerFanza.warn(`获取封面失败！:${posterUrl}`)
-        return null
-    }
-
-    loggerFanza.log(`获取封面成功！:${posterUrl}`)
-    return ImageHelper.saveTempImage(re.body, `fanza_poster`)
+    if (!posterUrl) return null
+    return Scraper.downloadImage(posterUrl, { ...fanzaOptions, signal })
 }
 
 /**
@@ -138,7 +128,7 @@ export async function getExtrafanartFanza(
     }
 
     const $ = cheerioLoad(context.webContent.fanza)
-    const hrefs = $('ul#sample-image-block')
+    const urls = $('ul#sample-image-block')
         .find('li')
         .filter((_, el) => $(el).find('a').attr('id')?.startsWith('sample') === true)
         .map((_, el) =>
@@ -153,28 +143,6 @@ export async function getExtrafanartFanza(
         )
         .toArray()
 
-    const extrafanart: string[] = []
-    const successUrls: string[] = []
-    const failedUrls: string[] = []
-    for (const url of hrefs) {
-        const re = await NetHelper.getImage(url, { ...fanzaOptions, signal })
-        if (signal.aborted) break
-        if (re.ok) {
-            successUrls.push(url)
-            const tempPath = await ImageHelper.saveTempImage(re.body, `fanza_extrafanart`)
-            if (tempPath) extrafanart.push(tempPath)
-        } else {
-            failedUrls.push(url)
-        }
-    }
-
-    if (successUrls.length > 0) {
-        loggerFanza.log(`获取${successUrls.length}张剧照成功`)
-    }
-
-    if (failedUrls.length > 0) {
-        loggerFanza.warn(`获取${failedUrls.length}张剧照失败`, failedUrls)
-    }
-
-    return extrafanart
+    if (urls.length < 1) return []
+    return Scraper.downloadExtrafanart(urls, { ...fanzaOptions, signal })
 }

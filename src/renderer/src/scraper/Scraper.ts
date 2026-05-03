@@ -1,7 +1,7 @@
-import type { IResultWithError, Path } from '@renderer/helper'
+import type { IRequestOptions, IResultWithError, Path } from '@renderer/helper'
 import type { IVideo, IVideoFile } from '@renderer/scraper/Video'
 
-import { LogHelper, PathHelper } from '@renderer/helper'
+import { ImageHelper, LogHelper, NetHelper, PathHelper } from '@renderer/helper'
 import { Nfo } from '@renderer/scraper/Nfo'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
@@ -329,6 +329,16 @@ export class Scraper {
         return Scraper.instances.find((scraper) => scraper.scraperName === settings.currentScraper)
     }
 
+    /**
+     * 创建视频目录
+     * @description 包括完成视频、nfo文件、图片
+     * @param scraperPath 目标刮削器设置的目录
+     * @param video 视频信息
+     * @param sourceVideoFile 原视频文件信息
+     * @param dir 视频目录的相对路径（最终目录是scraperPath + dir）
+     * @param fileName 不包含后缀的视频名
+     * @returns 最终的视频文件的完整路径
+     */
     static async createDirectory(
         scraperPath: Path,
         video: IVideo,
@@ -457,5 +467,55 @@ export class Scraper {
             LogHelper.error(`保存刮削结果异常：${errorMessage}`)
             return { error: `保存刮削结果失败！`, hasError: true }
         }
+    }
+
+    /**
+     * 下载图片到临时目录
+     * @returns 返回临时图片路径
+     */
+    static async downloadImage(url: string, options?: Omit<IRequestOptions, 'parse' | 'delay'>) {
+        const re = await NetHelper.getImage(url, options)
+        if (options && options.signal?.aborted) return null
+        if (!re.ok) {
+            LogHelper.warn(`下载图片失败！:${url}`)
+            return null
+        }
+
+        LogHelper.log(`下载图片成功！:${url}`)
+        return ImageHelper.saveTempImage(re.body, `download_image`)
+    }
+
+    /**
+     * 下载剧照到临时目录
+     * @returns 返回临时图片路径
+     */
+    static async downloadExtrafanart(
+        urls: string[],
+        options?: Omit<IRequestOptions, 'parse' | 'delay'>
+    ) {
+        const extrafanart: string[] = []
+        const successUrls: string[] = []
+        const failedUrls: string[] = []
+        for (const url of urls) {
+            const re = await NetHelper.getImage(url, options)
+            if (options && options.signal?.aborted) break
+            if (re.ok) {
+                successUrls.push(url)
+                const tempPath = await ImageHelper.saveTempImage(re.body, `download_extrafanart`)
+                if (tempPath) extrafanart.push(tempPath)
+            } else {
+                failedUrls.push(url)
+            }
+        }
+
+        if (successUrls.length > 0) {
+            LogHelper.log(`下载${successUrls.length}张剧照成功`)
+        }
+
+        if (failedUrls.length > 0) {
+            LogHelper.warn(`下载${failedUrls.length}张剧照失败`, failedUrls)
+        }
+
+        return extrafanart
     }
 }

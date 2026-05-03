@@ -36,8 +36,11 @@ const hanimeScraper: IScraper<IHanimeContext> = {
         fanza: 'https://www.dmm.co.jp/mono/anime/-/detail/=/cid={num}/'
     },
     createContext: () => ({
-        封面: null,
         超分封面: null,
+        Hanime1SearchResult: {
+            searched: false,
+            result: null
+        },
         num: {
             hanime1: '',
             getchu: '',
@@ -447,7 +450,6 @@ const hanimeScraper: IScraper<IHanimeContext> = {
                 return false
             }
 
-            context.封面 = poster
             video.poster = poster
 
             return true
