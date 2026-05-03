@@ -1,5 +1,5 @@
 import type { IRequestOptions, IResultWithError, Path } from '@renderer/helper'
-import type { IVideo, IVideoFile } from '@renderer/scraper/Video'
+import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper/Video'
 
 import { ImageHelper, LogHelper, NetHelper, PathHelper } from '@renderer/helper'
 import { Nfo } from '@renderer/scraper/Nfo'
@@ -14,11 +14,6 @@ interface IModuleType {
         default: IScraper
     }
 }
-
-export type VideoFileWithoutStats = Omit<
-    IVideoFile,
-    'size' | 'joinTime' | 'changeTime' | 'dirJoinTime'
->
 
 export interface IScraperVideoFuncs<TContext = unknown> {
     /**

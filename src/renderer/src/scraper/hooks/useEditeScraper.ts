@@ -4,10 +4,10 @@ import type { IScraperContext, ScraperFuncName } from '@renderer/scraper/hooks/t
 
 import { useMessage } from '@renderer/components/control/message'
 import { LogHelper, PathHelper } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
+import { Scraper, videoObjFormat } from '@renderer/scraper'
 import { parseFuncs } from '@renderer/scraper/hooks/type'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
-import { computed, ref, toRaw } from 'vue'
+import { computed, ref } from 'vue'
 
 /**
  * 管理编辑界面的刮削Hook
@@ -152,7 +152,7 @@ export function useEditeScraper() {
         const logName = funcConfig?.label || funcName
 
         scraperContext.logger.separator()
-        scraperContext.logger.log(`开始刮削：`, toRaw(video))
+        scraperContext.logger.log(`开始刮削：`, videoObjFormat(video))
         scraperFieldRunning.value = true
 
         try {
@@ -216,9 +216,9 @@ export function useEditeScraper() {
 
             // 结束
             if (success) {
-                scraperContext.logger.success(`刮削结束：`, toRaw(video))
+                scraperContext.logger.success(`刮削结束：`, videoObjFormat(video))
             } else {
-                scraperContext.logger.warn(`刮削结束：`, toRaw(video))
+                scraperContext.logger.warn(`刮削结束：`, videoObjFormat(video))
             }
         } finally {
             scraperFieldRunning.value = false
@@ -240,7 +240,7 @@ export function useEditeScraper() {
         }
 
         scraperContext.logger.separator()
-        scraperContext.logger.log(`开始刮削：`, toRaw(video))
+        scraperContext.logger.log(`开始刮削：`, videoObjFormat(video))
         scraperAllRunning.value = true
 
         try {
@@ -281,7 +281,7 @@ export function useEditeScraper() {
                 toast.success('全部信息获取成功！')
             }
 
-            scraperContext.logger.success(`刮削结束：`, toRaw(video))
+            scraperContext.logger.success(`刮削结束：`, videoObjFormat(video))
         } finally {
             scraperAllRunning.value = false
         }

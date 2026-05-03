@@ -13,6 +13,7 @@ import {
     isValidDate,
     LogHelper,
     PathHelper,
+    timeFormat,
     TransHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
@@ -265,14 +266,6 @@ function formatFileSize(size: number) {
     if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`
 
     return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
-}
-
-/**
- * 格式化时间
- * @param time 时间
- */
-function formatVideoTime(time: IVideoFile['joinTime']) {
-    return time.format('YYYY年M月D日，HH:mm:ss')
 }
 
 /**
@@ -971,11 +964,15 @@ onMounted(async () => {
                         </div>
                         <div class="info-item">
                             <Tag value="加入时间"></Tag>
-                            <span class="info-value">{{ formatVideoTime(video.dirJoinTime) }}</span>
+                            <span class="info-value">{{
+                                video.dirJoinTime.format(timeFormat)
+                            }}</span>
                         </div>
                         <div class="info-item">
                             <Tag value="编辑时间"></Tag>
-                            <span class="info-value">{{ formatVideoTime(video.changeTime) }}</span>
+                            <span class="info-value">{{
+                                video.changeTime.format(timeFormat)
+                            }}</span>
                         </div>
                     </div>
 

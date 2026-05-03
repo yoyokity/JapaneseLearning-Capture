@@ -3,10 +3,9 @@ import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper'
 import type { IScraperContext, ScraperState } from '@renderer/scraper/hooks/type'
 
 import { LogHelper, PathHelper } from '@renderer/helper'
-import { createVideo, Scraper } from '@renderer/scraper'
+import { createVideo, Scraper, videoObjFormat } from '@renderer/scraper'
 import { parseFuncs } from '@renderer/scraper/hooks/type'
 import { settingsStore } from '@renderer/stores'
-import { toRaw } from 'vue'
 
 interface IScraperRunResult {
     scraperState: ScraperState
@@ -127,7 +126,7 @@ export function useBatchScraper() {
         })
 
         scraperContext.logger.separator()
-        scraperContext.logger.log(`开始刮削：`, toRaw(video))
+        scraperContext.logger.log(`开始刮削：`, videoObjFormat(video))
 
         const videoContext = scraperContext.scraper.createContext()
 
@@ -253,7 +252,7 @@ export function useBatchScraper() {
         }
 
         // 完成
-        scraperContext.logger.success(`刮削完成！`, videoFile)
+        scraperContext.logger.success(`刮削完成！`, videoObjFormat(videoFile))
         scraperContext.logger.success(`保存路径：${videoDir.result.parent}`)
 
         // 有warn

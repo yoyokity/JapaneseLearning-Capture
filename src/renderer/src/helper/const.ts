@@ -17,3 +17,5 @@ export const videoExtensions = {
  * 图片文件扩展名列表
  */
 export const imgExtnames = ['.jpg', '.jpeg', '.png', '.webp']
+
+export const timeFormat = 'YYYY年M月D日，HH:mm:ss'

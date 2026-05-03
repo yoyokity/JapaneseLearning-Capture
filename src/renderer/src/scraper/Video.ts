@@ -2,8 +2,10 @@ import type { Path } from '@renderer/helper'
 import type { IFile } from '@shared'
 import type { Dayjs } from 'dayjs'
 
-import { PathHelper } from '@renderer/helper'
+import { PathHelper, timeFormat } from '@renderer/helper'
 import dayjs from 'dayjs'
+import { cloneDeep } from 'es-toolkit'
+import { toRaw } from 'vue'
 
 export interface IActor {
     /**
@@ -164,6 +166,11 @@ export interface IVideoFile extends IVideo {
     changeTime: Dayjs
 }
 
+export type VideoFileWithoutStats = Omit<
+    IVideoFile,
+    'size' | 'joinTime' | 'changeTime' | 'dirJoinTime'
+>
+
 /**
  * 创建视频信息
  * @param params 视频信息，可只传入部分字段
@@ -235,4 +242,21 @@ export function createVideoFile(
     }
 
     return video
+}
+
+export function videoObjFormat(video: VideoFileWithoutStats | IVideo | IVideoFile): any {
+    const newVideo = cloneDeep(toRaw(video))
+
+    if ('path' in newVideo && newVideo.path) newVideo.path = newVideo.path.toString() as any
+    if ('dir' in newVideo && newVideo.dir) newVideo.dir = newVideo.dir.toString() as any
+    if ('nfoPath' in newVideo && newVideo.nfoPath)
+        newVideo.nfoPath = newVideo.nfoPath.toString() as any
+    if ('joinTime' in newVideo && newVideo.joinTime)
+        newVideo.joinTime = newVideo.joinTime.format(timeFormat) as any
+    if ('dirJoinTime' in newVideo && newVideo.dirJoinTime)
+        newVideo.dirJoinTime = newVideo.dirJoinTime.format(timeFormat) as any
+    if ('changeTime' in newVideo && newVideo.changeTime)
+        newVideo.changeTime = newVideo.changeTime.format(timeFormat) as any
+
+    return newVideo
 }
