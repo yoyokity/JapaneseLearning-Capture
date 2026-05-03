@@ -64,3 +64,8 @@ export const isValidDate = (dateString: string): boolean => {
         date.getDate().toString().padStart(2, '0') === day
     )
 }
+
+/**
+ * 将指定的属性设置为必填
+ */
+export type WithRequired<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>

@@ -1,7 +1,9 @@
+import type { WithRequired } from '@renderer/helper'
 import type { MenuItem } from 'primevue/menuitem'
 import type { IFileItem } from './type'
 
 import Editor from '@renderer/components/manageView/editor/editor.vue'
+import { globalStatesStore } from '@renderer/stores'
 import { useDialog } from 'primevue/usedialog'
 import { ref } from 'vue'
 
@@ -9,17 +11,23 @@ import { ref } from 'vue'
  * 右键菜单Hook
  */
 export function useFileContextMenu() {
+    const globalStates = globalStatesStore()
     const dialog = useDialog()
     const fileItemContextMenu = ref()
     const currentContextMenuItem = ref<IFileItem | null>(null)
 
     /**
+     * 判断文件项是否包含可编辑的视频信息
+     */
+    function hasVideoFile(item: IFileItem): item is WithRequired<IFileItem, 'videoFile'> {
+        return item.videoFile !== undefined
+    }
+
+    /**
      * 编辑刮削数据
      * @param item 文件项
      */
-    function handleEditScraperData(item: IFileItem) {
-        if (item.videoFile === undefined) return
-
+    function handleEditScraperData(item: WithRequired<IFileItem, 'videoFile'>) {
         dialog.open(Editor, {
             props: {
                 modal: true,
@@ -53,6 +61,7 @@ export function useFileContextMenu() {
             label: '编辑刮削数据',
             command: () => {
                 if (!currentContextMenuItem.value) return
+                if (!hasVideoFile(currentContextMenuItem.value)) return
 
                 handleEditScraperData(currentContextMenuItem.value)
             }
@@ -66,7 +75,8 @@ export function useFileContextMenu() {
      */
     function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
         // 判断有右键菜单时的条件
-        if (item.videoFile === undefined) return
+        if (!hasVideoFile(item)) return
+        if (globalStates.batchRunning) return
 
         event.preventDefault()
         event.stopPropagation()

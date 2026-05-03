@@ -59,7 +59,7 @@ export function useFileAppendRemove(
     async function appendFiles(files: File[]) {
         if (!files.length) return
 
-        const nextFiles: IFileItem[] = []
+        const nextFiles: Omit<IFileItem, 'videoFile'>[] = []
 
         for (const file of files) {
             const filePath = await PathHelper.getPathForFile(file)
