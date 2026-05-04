@@ -2,6 +2,7 @@
 import type { IActor, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
+import InfoTable from '@renderer/components/control/infoTable.vue'
 import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
@@ -28,7 +29,6 @@ import InputText from 'primevue/inputtext'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
-import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import { inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
@@ -945,37 +945,6 @@ onMounted(async () => {
 
                 <!-- #region 视频信息部分 -->
                 <div v-show="activeTab === 'info'">
-                    <!-- 文件信息列表 -->
-                    <div class="info-list">
-                        <div class="info-item">
-                            <Tag value="文件名"></Tag>
-                            <span class="info-value">{{
-                                `${video.fileName}${video.extname}`
-                            }}</span>
-                        </div>
-                        <div class="info-item">
-                            <Tag value="路径"></Tag>
-                            <span class="info-value">{{ video.path.toString() }}</span>
-                        </div>
-
-                        <div class="info-item">
-                            <Tag value="文件大小"></Tag>
-                            <span class="info-value">{{ formatFileSize(video.size) }}</span>
-                        </div>
-                        <div class="info-item">
-                            <Tag value="加入时间"></Tag>
-                            <span class="info-value">{{
-                                video.dirJoinTime.format(timeFormat)
-                            }}</span>
-                        </div>
-                        <div class="info-item">
-                            <Tag value="编辑时间"></Tag>
-                            <span class="info-value">{{
-                                video.changeTime.format(timeFormat)
-                            }}</span>
-                        </div>
-                    </div>
-
                     <!-- 文件操作 -->
                     <div style="display: flex; gap: 0.5rem">
                         <Button
@@ -992,6 +961,19 @@ onMounted(async () => {
                             @click="openVideoDir"
                         />
                     </div>
+
+                    <InfoTable
+                        :info="{
+                            default: [
+                                { 文件名: `${video.fileName}${video.extname}` },
+                                { 路径: video.path.toString() },
+                                { 文件大小: formatFileSize(video.size) },
+                                { 加入时间: video.dirJoinTime.format(timeFormat) },
+                                { 编辑时间: video.changeTime.format(timeFormat) }
+                            ]
+                        }"
+                        style="margin-top: 3rem"
+                    />
                 </div>
                 <!-- #endregion 视频信息部分 -->
             </div>

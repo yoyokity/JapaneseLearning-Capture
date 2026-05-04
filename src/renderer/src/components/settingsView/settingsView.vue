@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import InfoTable from '@renderer/components/control/infoTable.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
@@ -11,7 +12,6 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
-import Tag from 'primevue/tag'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
@@ -446,17 +446,12 @@ function openTempPath() {
 
                 <!--info-->
                 <div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
-                    <!-- 应用信息列表 -->
-                    <div class="info-list">
-                        <div class="info-item">
-                            <Tag value="应用名"></Tag>
-                            <span class="info-value">{{ appName }}</span>
-                        </div>
-                        <div class="info-item">
-                            <Tag value="版本号"></Tag>
-                            <span class="info-value">{{ appVersion }}</span>
-                        </div>
-                    </div>
+                    <InfoTable
+                        :info="{
+                            default: [{ 应用名: appName }, { 版本号: appVersion }]
+                        }"
+                        style="margin-bottom: 3rem"
+                    />
 
                     <!-- 路径操作按钮 -->
                     <div style="display: flex; gap: 0.5rem; flex-direction: column; width: 10rem">

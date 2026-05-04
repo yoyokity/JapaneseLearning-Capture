@@ -48,17 +48,3 @@ body {
 img {
     -webkit-user-drag: none; /* 针对 WebKit 内核的浏览器（Chrome, Safari） 禁止图片拖动*/
 }
-
-.info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 3rem;
-
-    .info-item {
-        .info-value {
-            margin-left: 0.5rem;
-            user-select: text;
-        }
-    }
-}
