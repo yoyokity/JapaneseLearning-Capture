@@ -1,5 +1,5 @@
 import { ipc } from '@renderer/ipc'
-import stringSimilarity from 'string-similarity'
+import stringComparison from 'string-comparison'
 
 /** 编码相关 */
 export class EncodeHelper {
@@ -58,25 +58,17 @@ export class EncodeHelper {
      * @remarks 忽略字符全角半角的不同
      */
     static bestMatch(target: string, candidates: string[]) {
-        if (candidates.length === 0) {
-            return null
-        }
+        if (candidates.length === 0) return null
 
-        const normalizedTarget = EncodeHelper.fullToHalf(target)
-        const normalizedCandidates = candidates.map((candidate) =>
-            EncodeHelper.fullToHalf(candidate)
-        )
-        const bestMatch = stringSimilarity.findBestMatch(
-            normalizedTarget,
-            normalizedCandidates
-        ).bestMatch
-        if (bestMatch.rating < 0.5) {
-            return null
-        }
+        const bestMatch = stringComparison.diceCoefficient
+            .sortMatch(
+                EncodeHelper.fullToHalf(target),
+                candidates.map((candidate) => EncodeHelper.fullToHalf(candidate))
+            )
+            .at(-1)
 
-        const index = normalizedCandidates.indexOf(bestMatch.target)
-
-        return index === -1 ? null : candidates[index]
+        if (!bestMatch || bestMatch.rating < 0.5) return null
+        return candidates[bestMatch.index] ?? null
     }
 
     /**

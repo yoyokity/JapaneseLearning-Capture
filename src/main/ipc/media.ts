@@ -64,6 +64,26 @@ export function readImage(path: string) {
 }
 
 /**
+ * 读取媒体信息
+ */
+export async function readMediaInfo(path: string) {
+    const ars = ['--Output=JSON', path]
+    const mediainfoPath = join(appPath.extraResource, 'tools/mediainfo/MediaInfo.exe')
+
+    return await new Promise<string>((resolve, reject) => {
+        const mediainfo = new Cmd(mediainfoPath)
+        const cmd = mediainfo.run(ars)
+        cmd.onExit(async (code, text) => {
+            if (code === 0) {
+                resolve(text)
+            } else {
+                reject(new Error(text))
+            }
+        })
+    })
+}
+
+/**
  * 超分图片
  */
 export async function superResolutionImage(imagePath: string, anime: boolean = false) {

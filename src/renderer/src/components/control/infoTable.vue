@@ -278,7 +278,7 @@ watch(collapsibleGroupList, syncOpenGroupMap, {
         width: 100%;
         padding: 0 0 0.5rem;
         user-select: text;
-        line-height: 1.5;
+        line-height: 1.75;
         white-space: pre-wrap;
         word-break: break-all;
         vertical-align: top;

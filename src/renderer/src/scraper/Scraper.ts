@@ -1,7 +1,7 @@
 import type { IRequestOptions, IResultWithError, Path } from '@renderer/helper'
 import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper/Video'
 
-import { ImageHelper, LogHelper, NetHelper, PathHelper } from '@renderer/helper'
+import { LogHelper, MediaHelper, NetHelper, PathHelper } from '@renderer/helper'
 import { Nfo } from '@renderer/scraper/Nfo'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
@@ -477,7 +477,7 @@ export class Scraper {
         }
 
         LogHelper.log(`下载图片成功！:${url}`)
-        return ImageHelper.saveTempImage(re.body, `download_image`)
+        return MediaHelper.saveTempImage(re.body, `download_image`)
     }
 
     /**
@@ -496,7 +496,7 @@ export class Scraper {
             if (options && options.signal?.aborted) break
             if (re.ok) {
                 successUrls.push(url)
-                const tempPath = await ImageHelper.saveTempImage(re.body, `download_extrafanart`)
+                const tempPath = await MediaHelper.saveTempImage(re.body, `download_extrafanart`)
                 if (tempPath) extrafanart.push(tempPath)
             } else {
                 failedUrls.push(url)

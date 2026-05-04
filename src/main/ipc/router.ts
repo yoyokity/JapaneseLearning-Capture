@@ -1,4 +1,4 @@
-import type { ImageData } from './image'
+import type { ImageData } from './media'
 import type { IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
 
 import { initTRPC } from '@trpc/server'
@@ -36,7 +36,7 @@ import {
     writeFile,
     writeLog
 } from './filesystem'
-import { readImage, saveImage, superResolutionImage } from './image'
+import { readImage, readMediaInfo, saveImage, superResolutionImage } from './media'
 import {
     aiStartOptionsSchema,
     clearCache,
@@ -213,7 +213,7 @@ export const appRouter = t.router({
             )
             .mutation(({ input }) => removeEmptyFolders(input.rootPath, input.videoExtnames))
     }),
-    image: t.router({
+    media: t.router({
         saveImage: procedure
             .input(
                 z.object({
@@ -223,6 +223,7 @@ export const appRouter = t.router({
             )
             .mutation(({ input }) => saveImage(input.imageData, input.path)),
         readImage: procedure.input(z.string()).query(({ input }) => readImage(input)),
+        readMediaInfo: procedure.input(z.string()).query(({ input }) => readMediaInfo(input)),
         superResolutionImage: procedure
             .input(
                 z.object({

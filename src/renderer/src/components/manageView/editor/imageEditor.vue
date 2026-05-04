@@ -3,7 +3,7 @@ import type { IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
 
 import { useMessage } from '@renderer/components/control/message'
 import VideoImage from '@renderer/components/control/videoImage.vue'
-import { ImageHelper, isUrl, NetHelper, PathHelper } from '@renderer/helper'
+import { isUrl, MediaHelper, NetHelper, PathHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
@@ -68,7 +68,7 @@ const extrafanartList = computed(() =>
     (video.value.extrafanart || []).map((item, index) => ({
         id: index,
         imgData: item,
-        src: ImageHelper.toLocalFileUrl(item, globalStates.imageCacheVersion)
+        src: MediaHelper.toLocalFileUrl(item, globalStates.imageCacheVersion)
     }))
 )
 
@@ -190,7 +190,7 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
             if (url.protocol === 'http:' || url.protocol === 'https:') {
                 const re = await NetHelper.getImage(clipboardText)
                 if (re.ok) {
-                    const imagePath = await ImageHelper.saveTempImage(
+                    const imagePath = await MediaHelper.saveTempImage(
                         re.body,
                         `${video.value.title}_${imageType}`
                     )
@@ -227,7 +227,7 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
                 }
             }
 
-            const imagePath = await ImageHelper.saveTempImage(
+            const imagePath = await MediaHelper.saveTempImage(
                 await blob.arrayBuffer(),
                 `${video.value.title}_${imageType}`
             )
@@ -252,7 +252,7 @@ async function handleSuperResolutionImage(imageType: 'poster' | 'fanart' | 'thum
         const imagePath = video.value[imageType]
         if (!imagePath) return
 
-        const tempImagePath = await ImageHelper.superResolutionImage(imagePath, true)
+        const tempImagePath = await MediaHelper.superResolutionImage(imagePath, true)
         if (!tempImagePath) return
 
         video.value = {

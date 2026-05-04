@@ -1,11 +1,12 @@
 <script lang="ts" setup>
+import type { MediaInfo } from '@renderer/helper'
 import type { IActor, IVideoFile } from '@renderer/scraper'
 import type { Ref } from 'vue'
 
-import InfoTable from '@renderer/components/control/infoTable.vue'
 import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
+import VideoInfo from '@renderer/components/manageView/editor/videoInfo.vue'
 import { readExtrafanart, scanFiles } from '@renderer/components/manageView/func'
 import {
     EncodeHelper,
@@ -13,13 +14,15 @@ import {
     isUrl,
     isValidDate,
     LogHelper,
+    MediaHelper,
     PathHelper,
-    timeFormat,
     TransHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
 import { settingsStore } from '@renderer/stores'
+import dayjs from 'dayjs'
+import duration from 'dayjs/plugin/duration'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
 import Button from 'primevue/button'
@@ -32,6 +35,8 @@ import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
 import { inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
+dayjs.extend(duration)
+
 const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
 const { scraperAll, scraperField, scraperSave, isScraperRunning, isEditeScraperRunning } =
@@ -41,6 +46,7 @@ const settings = settingsStore()
 const video = dialogRef.value.data.video as IVideoFile
 
 const newVideo = ref<IVideoFile>(createVideoFile())
+const isInitialized = ref(false)
 const isSaving = ref(false)
 const isTranslatingPlot = ref(false)
 const isCanceling = ref(false)
@@ -257,32 +263,6 @@ function openNumLink(sourceName: string) {
 }
 
 /**
- * 格式化文件大小
- * @param size 文件大小
- */
-function formatFileSize(size: number) {
-    if (size < 1024) return `${size} B`
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`
-    if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`
-
-    return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
-}
-
-/**
- * 播放视频
- */
-function openVideoPath() {
-    PathHelper.openInExplorer(newVideo.value.path.toString())
-}
-
-/**
- * 打开视频所在目录
- */
-function openVideoDir() {
-    PathHelper.openInExplorer(newVideo.value.dir.toString())
-}
-
-/**
  * 翻译剧情
  */
 async function transPlot() {
@@ -317,6 +297,8 @@ function handleMouseBackAction(event: MouseEvent) {
     }
 }
 
+const mediaInfo = ref<MediaInfo | null>(null)
+
 onMounted(() => {
     window.addEventListener('mouseup', handleMouseBackAction)
 })
@@ -325,7 +307,7 @@ onUnmounted(() => {
     window.removeEventListener('mouseup', handleMouseBackAction)
 })
 
-onMounted(async () => {
+onMounted(() => {
     newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
     normalizeTagGenre()
 
@@ -339,6 +321,11 @@ onMounted(async () => {
 
     // 读取extrafanart
     readExtrafanart(video.dir, newVideo.value, video)
+
+    // 读取视频元数据
+    MediaHelper.readMediaInfo(newVideo.value.path).then((info) => (mediaInfo.value = info))
+
+    isInitialized.value = true
 })
 </script>
 
@@ -385,6 +372,7 @@ onMounted(async () => {
                 />
             </div>
         </div>
+        <!-- 初始化完成后再渲染编辑区 -->
         <Scroll style="height: calc(90vh - 0.75rem - var(--header-height) - var(--header-height))">
             <div class="content">
                 <!-- #region 编辑部分  -->
@@ -943,39 +931,10 @@ onMounted(async () => {
                     :scraper-field="runScraperField"
                 />
 
-                <!-- #region 视频信息部分 -->
+                <!-- 视频信息部分 -->
                 <div v-show="activeTab === 'info'">
-                    <!-- 文件操作 -->
-                    <div style="display: flex; gap: 0.5rem">
-                        <Button
-                            icon="pi pi-play-circle"
-                            label="播放"
-                            style="width: 10rem"
-                            @click="openVideoPath"
-                        />
-                        <Button
-                            icon="pi pi-folder-open"
-                            label="打开文件夹"
-                            severity="secondary"
-                            style="width: 10rem"
-                            @click="openVideoDir"
-                        />
-                    </div>
-
-                    <InfoTable
-                        :info="{
-                            default: [
-                                { 文件名: `${video.fileName}${video.extname}` },
-                                { 路径: video.path.toString() },
-                                { 文件大小: formatFileSize(video.size) },
-                                { 加入时间: video.dirJoinTime.format(timeFormat) },
-                                { 编辑时间: video.changeTime.format(timeFormat) }
-                            ]
-                        }"
-                        style="margin-top: 3rem"
-                    />
+                    <VideoInfo v-if="isInitialized" :video="newVideo" :info="mediaInfo" />
                 </div>
-                <!-- #endregion 视频信息部分 -->
             </div>
         </Scroll>
 

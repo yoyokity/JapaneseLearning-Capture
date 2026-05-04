@@ -1,24 +1,11 @@
+import type { BrowserWindowConstructorOptions } from 'electron'
+
 import { join, resolve } from 'node:path'
 import { is } from '@electron-toolkit/utils'
 import { BrowserWindow, shell } from 'electron'
 import ElectronStore from 'electron-store'
 
 const iconPath = resolve(__dirname, '../../resources/mainIcon.png')
-
-interface IBrowserWindowConfig {
-    width: number
-    height: number
-    minWidth: number
-    minHeight: number
-    x?: number
-    y?: number
-    icon?: any
-    webPreferences: {
-        preload: string
-        sandbox: boolean
-        webSecurity: boolean
-    }
-}
 
 export function createWindow() {
     // 保存窗口配置
@@ -54,7 +41,7 @@ export function createWindow() {
     // 获取保存的窗口配置
     const windowConfig = config.getWindowConfig()
 
-    const browserWindowConfig: IBrowserWindowConfig = {
+    const browserWindowConfig: BrowserWindowConstructorOptions = {
         width: windowConfig.width,
         height: windowConfig.height,
         minWidth: 670,

@@ -1,7 +1,7 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
 import type { IHanimeContext } from './temp'
 
-import { ImageHelper, LogHelper, NetHelper, TransHelper } from '@renderer/helper'
+import { LogHelper, MediaHelper, NetHelper, TransHelper } from '@renderer/helper'
 import {
     dlsiteOptions,
     getExtrafanartDlsite,
@@ -464,7 +464,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             if (!poster) return false
 
             if (!context.超分封面) {
-                const re = await ImageHelper.superResolutionImage(poster, true)
+                const re = await MediaHelper.superResolutionImage(poster, true)
                 context.超分封面 = re ?? poster
             }
 
@@ -482,7 +482,7 @@ const hanimeScraper: IScraper<IHanimeContext> = {
             if (!poster) return false
 
             if (!context.超分封面) {
-                const re = await ImageHelper.superResolutionImage(poster, true)
+                const re = await MediaHelper.superResolutionImage(poster, true)
                 context.超分封面 = re ?? poster
             }
 

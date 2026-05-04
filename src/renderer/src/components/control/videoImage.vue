@@ -2,7 +2,7 @@
 import type { StyleValue } from 'vue'
 
 import imgFall from '@renderer/assets/img-fall.svg?url'
-import { ImageHelper } from '@renderer/helper'
+import { MediaHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import { onMounted, ref, watch } from 'vue'
 
@@ -50,7 +50,7 @@ function loadImage() {
         return
     }
 
-    imageData.value = ImageHelper.toLocalFileUrl(props.path, globalStates.imageCacheVersion)
+    imageData.value = MediaHelper.toLocalFileUrl(props.path, globalStates.imageCacheVersion)
     isImgError.value = false
 }
 
