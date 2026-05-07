@@ -391,7 +391,7 @@ onUnmounted(() => {
         <!-- TODO 添加标签筛选 -->
         <Scroll
             style="height: calc(100% - var(--header-height))"
-            :scrollbar-occupy-space="false"
+            occupy-space="none"
             @touchmove="hideMenuOnScroll"
             @wheel.capture="hideMenuOnScroll"
         >

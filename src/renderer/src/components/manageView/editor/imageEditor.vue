@@ -435,8 +435,7 @@ function clearAllExtrafanart() {
                     >
                         <img
                             :src="url"
-                            loading="lazy"
-                            decoding="async"
+                            loading="eager"
                             @load="renderWaterfall"
                             @error="handleWaterfallImageError(item.imgData, url)"
                         />

@@ -138,7 +138,7 @@ function openTempPath() {
                 class="active-indicator"
             />
         </div>
-        <Scroll class="content" :scrollbar-occupy-space="false">
+        <Scroll class="content">
             <transition name="slide-up">
                 <div v-if="activeTab === 'settings'" key="settings" class="settings-tab-content">
                     <h1 style="margin-top: 0">输出目录</h1>
