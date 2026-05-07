@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { IVideoFile } from '@renderer/scraper'
-import type { PageState } from 'primevue/paginator'
 import type { SelectChangeEvent } from 'primevue/select'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
@@ -12,7 +11,6 @@ import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/s
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
-import Paginator from 'primevue/paginator'
 import Select from 'primevue/select'
 import ToggleButton from 'primevue/togglebutton'
 import { useToast } from 'primevue/usetoast'
@@ -25,12 +23,8 @@ const toast = useToast()
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
 const currentSet = ref<string | null>(null)
-const manageViewPage = ref(0)
-const manageViewRows = 100
 
 const isSortActive = ref(false)
-const isSearchActive = ref(false)
-const isFloatActive = computed(() => isSortActive.value || isSearchActive.value)
 
 interface ISeriesCardItem {
     type: 'series'
@@ -99,13 +93,6 @@ function clearFiles(e: SelectChangeEvent) {
         globalStates.manageViewFiles = []
         currentSet.value = null
     }
-}
-
-/**
- * 切换分页
- */
-function handlePageChange(e: PageState) {
-    manageViewPage.value = e.page
 }
 
 /**
@@ -201,19 +188,6 @@ const displayItems = computed<ManageCardItem[]>(() => {
 })
 
 /**
- * 当前页展示列表
- */
-const pagedDisplayItems = computed(() => {
-    const first = manageViewPage.value * manageViewRows
-    return displayItems.value.slice(first, first + manageViewRows)
-})
-
-/**
- * 是否显示分页器
- */
-const isShowPaginator = computed(() => displayItems.value.length > manageViewRows)
-
-/**
  * 当前排序字段
  */
 const currentSortField = computed<VideoSortField>({
@@ -235,18 +209,6 @@ const isPositiveOrder = computed({
     set(value: boolean) {
         settings.manageViewSortReverse = !value
     }
-})
-
-/**
- * 当前页元素区间
- */
-const paginatorRangeText = computed(() => {
-    const total = displayItems.value.length
-    if (total === 0) return '0-0'
-
-    const start = manageViewPage.value * manageViewRows + 1
-    const end = Math.min(start + manageViewRows - 1, total)
-    return `${start}-${end}`
 })
 
 /**
@@ -318,17 +280,6 @@ watch(
     { deep: true }
 )
 
-watch(
-    displayItems,
-    () => {
-        const maxPage = Math.max(Math.ceil(displayItems.value.length / manageViewRows) - 1, 0)
-        if (manageViewPage.value > maxPage) {
-            manageViewPage.value = 0
-        }
-    },
-    { immediate: true }
-)
-
 onMounted(() => {
     window.addEventListener('mouseup', handleMouseBackAction)
 })
@@ -350,23 +301,56 @@ onUnmounted(() => {
                         class="pi pi-arrow-left manage-view-back"
                         @click="backToHomeView"
                     />
-                    <h3 style="transform: translate(0.5rem, -1px)">{{ currentSet }}</h3>
+                    <h3 class="manage-view-back-title">{{ currentSet }}</h3>
                 </div>
             </div>
-            <!-- 中间分页 -->
+
+            <!-- 中间搜索和排序 -->
             <div class="tab-header-center">
-                <span v-if="isShowPaginator" class="paginator-range">{{ paginatorRangeText }}</span>
-                <Paginator
-                    v-if="isShowPaginator"
-                    :first="manageViewPage * manageViewRows"
-                    :rows="manageViewRows"
-                    :total-records="displayItems.length"
-                    style="margin-right: 4rem"
-                    current-page-report-template="{currentPage}/{totalPages}"
-                    template="PrevPageLink CurrentPageReport NextPageLink"
-                    @page="handlePageChange"
-                />
+                <div
+                    v-show="globalStates.manageViewFiles.length > 0"
+                    :class="{ active: isSortActive }"
+                    class="manage-view-toolbar"
+                >
+                    <!-- 搜索 -->
+                    <div class="search-input-container">
+                        <i class="pi pi-search search-input-icon" />
+                        <InputText
+                            v-model="globalStates.manageViewFilesFilterValue"
+                            class="search-input"
+                            placeholder="搜索"
+                            size="small"
+                        />
+                    </div>
+
+                    <!-- 排序 -->
+                    <Select
+                        v-model="currentSortField"
+                        v-tooltip.top="'排序'"
+                        :option-label="(option) => VideoSortTypeList[option]"
+                        :options="sortFieldOptions"
+                        class="sort-select"
+                        dropdown-icon="pi pi-sort-amount-down"
+                        size="small"
+                        @hide="isSortActive = false"
+                        @show="isSortActive = true"
+                    >
+                        <template #footer>
+                            <!-- 排序方向 -->
+                            <div style="padding: var(--p-select-list-padding)">
+                                <ToggleButton
+                                    v-model="isPositiveOrder"
+                                    off-label="倒序"
+                                    on-label="正序"
+                                    size="small"
+                                    style="width: 100%; transform: none !important"
+                                />
+                            </div>
+                        </template>
+                    </Select>
+                </div>
             </div>
+
             <!-- 右侧操作 -->
             <div class="tab-header-side tab-header-actions">
                 <Select
@@ -382,7 +366,7 @@ onUnmounted(() => {
                     icon="pi pi-refresh"
                     label="开始扫描"
                     size="small"
-                    style="width: 7rem"
+                    style="width: 7rem; min-width: 7rem"
                     @click="scanFiles(toast)"
                 />
             </div>
@@ -398,7 +382,7 @@ onUnmounted(() => {
                 <div :key="currentSet || 'home'" class="manage-view-content">
                     <!-- 卡片视图 -->
                     <template
-                        v-for="item in pagedDisplayItems"
+                        v-for="item in displayItems"
                         :key="
                             item.type === 'series'
                                 ? `series-${item.name}`
@@ -428,67 +412,6 @@ onUnmounted(() => {
             </transition>
         </Scroll>
 
-        <!--灵动岛-->
-        <div v-if="globalStates.manageViewFiles.length > 0" class="manage-view-float">
-            <div :class="{ active: isFloatActive }" class="manage-view-float-content">
-                <!-- 搜索 -->
-                <i
-                    v-tooltip.top="'搜索'"
-                    :class="{ active: isSearchActive }"
-                    class="search-button pi pi-search"
-                    @click="
-                        () => {
-                            isSearchActive = !isSearchActive
-                            globalStates.manageViewFilesFilterValue = ''
-                        }
-                    "
-                />
-                <transition name="search-animation">
-                    <div v-show="isSearchActive" class="search-input-container">
-                        <InputText
-                            v-model="globalStates.manageViewFilesFilterValue"
-                            class="search-input"
-                            placeholder="搜索"
-                            size="small"
-                            @blur="
-                                () => {
-                                    if (globalStates.manageViewFilesFilterValue.trim() === '') {
-                                        isSearchActive = false
-                                    }
-                                }
-                            "
-                        />
-                    </div>
-                </transition>
-
-                <!-- 排序 -->
-                <Select
-                    v-model="currentSortField"
-                    v-tooltip.top="'排序'"
-                    :option-label="(option) => VideoSortTypeList[option]"
-                    :options="sortFieldOptions"
-                    class="sort-select"
-                    dropdown-icon="pi pi-sort-amount-down"
-                    size="small"
-                    @hide="isSortActive = false"
-                    @show="isSortActive = true"
-                >
-                    <template #footer>
-                        <!-- 排序方向 -->
-                        <div class="sort-footer">
-                            <ToggleButton
-                                v-model="isPositiveOrder"
-                                off-label="倒序"
-                                on-label="正序"
-                                size="small"
-                                style="width: 100%; transform: none !important"
-                            />
-                        </div>
-                    </template>
-                </Select>
-            </div>
-        </div>
-
         <!-- 右键菜单 -->
         <ContextMenu ref="cm" :model="menuItems" />
     </div>
@@ -508,26 +431,6 @@ onUnmounted(() => {
     min-width: 0;
 }
 
-.tab-header-center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-
-    :deep(.p-paginator) {
-        padding: 0;
-        border: none;
-        background: transparent;
-    }
-}
-
-.paginator-range {
-    width: 6rem;
-    color: var(--p-text-muted-color);
-    white-space: nowrap;
-    text-align: end;
-}
-
 .tab-header-actions {
     justify-content: flex-end;
     gap: 0.5rem;
@@ -538,6 +441,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
 
     h3 {
         margin: 0;
@@ -545,6 +449,14 @@ onUnmounted(() => {
         pointer-events: none;
         color: inherit;
     }
+}
+
+.manage-view-back-title {
+    transform: translate(0.5rem, -1px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 2rem;
 }
 
 .manage-view-back {
@@ -567,103 +479,63 @@ onUnmounted(() => {
     grid-auto-flow: dense; /* 使用dense填充算法，减少空白 */
 }
 
-.manage-view-float {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    transform: translateX(-50%);
-    width: fit-content;
-    display: inline-flex;
-    z-index: 2;
-
-    .manage-view-float-content {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: var(--p-surface-200);
-        margin-bottom: 1rem;
-        border-radius: 10rem;
-        padding: 0 0.5rem;
-        height: 2rem;
-        transition: all 0.2s ease-in-out;
-        opacity: 0.8;
-        cursor: pointer;
-
-        &:hover,
-        &.active {
-            opacity: 1;
-            background-color: var(--p-surface-0);
-            box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.3);
-        }
-
-        .search-button {
-            color: var(--p-text-muted-color);
-            transition: color 0.3s var(--animation-type);
-            margin-right: 0.25rem;
-
-            &:hover,
-            &.active {
-                color: var(--p-primary-color);
-            }
-        }
-
-        .search-input-container {
-            width: 10rem;
-            height: 1.5rem;
-            overflow: hidden;
-
-            .search-input {
-                width: 100%;
-                height: 100%;
-                border-radius: 10rem;
-                padding: 0 0.5rem;
-            }
-        }
-
-        .sort-select {
-            --p-select-dropdown-width: 100%;
-            --p-select-dropdown-color: var(--p-text-muted-color);
-
-            width: 1rem;
-            border: none !important;
-            background: transparent !important;
-            transition: color 0.3s var(--animation-type);
-            margin-left: 0.25rem;
-
-            :deep(.p-select-label) {
-                display: none;
-            }
-
-            &:hover {
-                --p-select-dropdown-color: var(--p-primary-color);
-            }
-        }
-    }
+.tab-header-center {
+    display: flex;
+    justify-content: center;
+    flex: 0 0 auto;
 }
 
-.sort-footer {
+.manage-view-toolbar {
+    width: fit-content;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--p-select-list-padding);
-}
+    padding: 0 0.5rem;
+    height: 2rem;
+    transform: translateX(-2rem);
 
-.search-animation-enter-active,
-.search-animation-leave-active {
-    transition: all 0.3s var(--animation-type);
-    max-width: 10rem;
-}
+    .search-input-container {
+        width: 15rem;
+        height: 2rem;
+        position: relative;
 
-.search-animation-enter-from,
-.search-animation-leave-to {
-    max-width: 0;
-    opacity: 0;
-}
+        .search-input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--p-text-muted-color);
+            font-size: 0.75rem;
+            pointer-events: none;
+            z-index: 1;
+        }
 
-.search-animation-enter-to,
-.search-animation-leave-from {
-    max-width: 10rem;
-    opacity: 1;
+        .search-input {
+            width: 100%;
+            height: 100%;
+            border-radius: 10rem;
+            padding-left: 2rem;
+        }
+    }
+
+    .sort-select {
+        --p-icon-size: calc(1rem + 2px);
+        --p-select-dropdown-width: 100%;
+        --p-select-dropdown-color: var(--p-text-muted-color);
+
+        width: 2rem;
+        border: none !important;
+        background: transparent !important;
+        transition: color 0.3s var(--animation-type);
+
+        :deep(.p-select-label) {
+            display: none;
+        }
+
+        &:hover {
+            --p-select-dropdown-color: var(--p-primary-color);
+        }
+    }
 }
 
 .manage-view-fade-enter-active,

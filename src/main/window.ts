@@ -44,7 +44,7 @@ export function createWindow() {
     const browserWindowConfig: BrowserWindowConstructorOptions = {
         width: windowConfig.width,
         height: windowConfig.height,
-        minWidth: 670,
+        minWidth: 810,
         minHeight: 500,
         icon: iconPath, // 为所有平台添加图标
         webPreferences: {
