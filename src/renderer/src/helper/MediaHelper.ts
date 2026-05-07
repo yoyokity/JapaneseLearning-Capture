@@ -263,6 +263,7 @@ export interface IMediaInfoAudioTrack {
     StreamSize: string
     Default: string
     Forced: string
+    Language: string
 }
 
 /** MediaInfo Text 轨道 */

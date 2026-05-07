@@ -125,11 +125,11 @@ watch(collapsibleGroupList, syncOpenGroupMap, {
                         class="info-row"
                     >
                         <!-- 键名 -->
-                        <td class="info-key">
+                        <td v-if="item.value" class="info-key">
                             <Tag :value="item.key" />
                         </td>
                         <!-- 键值 -->
-                        <td class="info-value">
+                        <td v-if="item.value" class="info-value">
                             {{ item.value }}
                         </td>
                     </tr>
@@ -178,11 +178,11 @@ watch(collapsibleGroupList, syncOpenGroupMap, {
                                 class="info-row"
                             >
                                 <!-- 键名 -->
-                                <td class="info-key">
+                                <td v-if="item.value" class="info-key">
                                     <Tag :value="item.key" />
                                 </td>
                                 <!-- 键值 -->
-                                <td class="info-value">
+                                <td v-if="item.value" class="info-value">
                                     {{ item.value }}
                                 </td>
                             </tr>
