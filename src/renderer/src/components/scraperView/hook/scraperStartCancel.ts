@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { IFileItem } from './type'
+import type { FileItem } from './type'
 
 import { useMessage } from '@renderer/components/control/message'
 import { LogHelper, PathHelper } from '@renderer/helper'
@@ -10,18 +10,21 @@ import dayjs from 'dayjs'
 /**
  * 开始取消刮削Hook
  */
-export function useScraperStartCancel(checkedFileList: Ref<IFileItem[]>) {
+export function useScraperStartCancel(fileList: Ref<FileItem[]>) {
     const globalStates = globalStatesStore()
     const message = useMessage()
     const { scraperRun } = useBatchScraper()
+
     let currentController: AbortController | null = null
-    let currentFile: IFileItem | null = null
+    let currentFile: FileItem | null = null
 
     /**
      * 开始刮削
      */
     async function handleStart() {
-        if (!checkedFileList.value.length) {
+        const fileListWithScraperable = fileList.value.filter((item) => item.scraperable)
+
+        if (!fileListWithScraperable.length) {
             message.toast.info('没有需要刮削的文件')
             return
         }
@@ -31,14 +34,11 @@ export function useScraperStartCancel(checkedFileList: Ref<IFileItem[]>) {
 
         globalStates.batchRunning = true
         globalStates.batchScrapedCount = 0
-        globalStates.batchTotalCount = checkedFileList.value.length
+        globalStates.batchTotalCount = fileListWithScraperable.length
 
         // 遍历所有需要刮削的文件
-        for (const file of checkedFileList.value) {
-            if (signal.aborted) {
-                break
-            }
-
+        for (const file of fileListWithScraperable) {
+            if (signal.aborted) break
             currentFile = file
 
             // 刮削单个文件

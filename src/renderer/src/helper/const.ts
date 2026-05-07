@@ -11,7 +11,7 @@ export const videoExtensions = {
     '.flv': 'rgb(170, 70, 211)',
     '.webm': 'rgb(46, 164, 255)',
     '.m4v': 'rgb(126, 70, 211)'
-}
+} as const
 
 /**
  * 图片文件扩展名列表

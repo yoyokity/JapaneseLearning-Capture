@@ -420,6 +420,7 @@ export class Scraper {
             // 保存extrafanart
             if (
                 video.extrafanart &&
+                video.extrafanart.length > 0 &&
                 (!isEqual(sourceVideoFile.extrafanart, video.extrafanart) || dirDiff)
             ) {
                 // 清空剧照文件夹

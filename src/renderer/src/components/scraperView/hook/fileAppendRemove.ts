@@ -1,19 +1,18 @@
 import type { Path } from '@renderer/helper'
 import type { Ref } from 'vue'
-import type { IFileItem } from './type'
 
 import { PathHelper, videoExtensions } from '@renderer/helper'
-import { settingsStore } from '@renderer/stores'
 import { ref } from 'vue'
+
+import { FileItem } from './type'
 
 /**
  * 文件添加删除Hook
  */
 export function useFileAppendRemove(
-    fileList: Ref<IFileItem[]>,
+    fileList: Ref<FileItem[]>,
     fileInputRef: Ref<HTMLInputElement | null>
 ) {
-    const settings = settingsStore()
     const isDragging = ref(false)
 
     /**
@@ -23,15 +22,6 @@ export function useFileAppendRemove(
     function isVideoFile(filePath: Path) {
         const ext = filePath.extname.toLowerCase()
         return Object.keys(videoExtensions).includes(ext)
-    }
-
-    /**
-     * 获取文件类型图标背景色
-     * @param filePath 文件路径
-     */
-    function getFileExtColor(filePath: Path) {
-        const ext = filePath.extname.toLowerCase()
-        return videoExtensions[ext] || 'var(--p-text-muted-color)'
     }
 
     /**
@@ -59,7 +49,7 @@ export function useFileAppendRemove(
     async function appendFiles(files: File[]) {
         if (!files.length) return
 
-        const nextFiles: Omit<IFileItem, 'videoFile'>[] = []
+        const nextFiles: FileItem[] = []
 
         for (const file of files) {
             const filePath = await PathHelper.getPathForFile(file)
@@ -68,16 +58,7 @@ export function useFileAppendRemove(
             const path = PathHelper.newPath(filePath)
             if (!isVideoFile(path)) continue
 
-            nextFiles.push({
-                file: path,
-                title: path.basename,
-                num: {},
-                checked: true,
-                extColor: getFileExtColor(path),
-                scraper: settings.currentScraper,
-                progress: 0,
-                scraperState: null
-            })
+            nextFiles.push(new FileItem(path))
         }
 
         if (!nextFiles.length) return

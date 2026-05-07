@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import type { WithRequired } from '@renderer/helper'
 import type { MenuItem } from 'primevue/menuitem'
-import type { IFileItem } from './hook'
+import type { FileItem } from './hook'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
@@ -18,13 +17,7 @@ import Select from 'primevue/select'
 import { useDialog } from 'primevue/usedialog'
 import { computed, ref } from 'vue'
 
-import {
-    fileItemSize,
-    fileItemStateColorMap,
-    useFileAppendRemove,
-    useFileChecked,
-    useScraperStartCancel
-} from './hook'
+import { fileItemSize, useFileAppendRemove, useFileChecked, useScraperStartCancel } from './hook'
 
 interface IContextMenuRef {
     /**
@@ -46,12 +39,12 @@ const settings = settingsStore()
 const globalStates = globalStatesStore()
 const dialog = useDialog()
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const fileList = ref<IFileItem[]>([])
+const fileList = ref<FileItem[]>([])
 const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
 const fileItemContextMenu = ref<IContextMenuRef | null>(null)
 const scraperMenu = ref<IMenuRef | null>(null)
-const currentContextMenuItem = ref<IFileItem | null>(null)
-const currentMenuItem = ref<IFileItem | null>(null)
+const currentContextMenuItem = ref<FileItem | null>(null)
+const currentMenuItem = ref<FileItem | null>(null)
 
 const {
     isDragging,
@@ -64,24 +57,17 @@ const {
     clearFiles
 } = useFileAppendRemove(fileList, fileInputRef)
 
-const { getFileDisable, isAllChecked, checkedFileList, toggleFileChecked, toggleAllFilesChecked } =
-    useFileChecked(fileList)
+const { isAllChecked, toggleAllFilesChecked } = useFileChecked(fileList)
 
-const { handleStart, handleCancel } = useScraperStartCancel(checkedFileList)
-
-/**
- * 判断文件项是否包含可编辑的视频信息
- * @param item 文件项
- */
-function hasVideoFile(item: IFileItem | null): item is WithRequired<IFileItem, 'videoFile'> {
-    return item !== null && item.videoFile !== undefined
-}
+const { handleStart, handleCancel } = useScraperStartCancel(fileList)
 
 /**
  * 编辑刮削数据
  * @param item 文件项
  */
-function handleEditScraperData(item: WithRequired<IFileItem, 'videoFile'>) {
+function handleEditScraperData(item: FileItem) {
+    if (!item.scraperCompleted) return
+
     dialog.open(Editor, {
         props: {
             modal: true,
@@ -111,30 +97,29 @@ function handleEditScraperData(item: WithRequired<IFileItem, 'videoFile'>) {
  * 文件项右键菜单项
  */
 const fileItemContextMenuItems = computed(() => {
-    if (hasVideoFile(currentContextMenuItem.value)) {
-        // 已经刮削完的
+    const item = currentContextMenuItem.value
+    if (!item) return []
+
+    // 已经刮削完的
+    if (item.scraperCompleted)
         return [
             {
                 label: '编辑刮削数据',
                 command: () => {
-                    if (!currentContextMenuItem.value) return
-                    if (!hasVideoFile(currentContextMenuItem.value)) return
-                    handleEditScraperData(currentContextMenuItem.value)
+                    handleEditScraperData(item)
                 }
             }
         ]
-    } else {
-        // 未刮削完的
-        return [
-            {
-                label: '修改标题或编号',
-                command: () => {
-                    if (!currentContextMenuItem.value) return
-                    showFileEditor(currentContextMenuItem.value)
-                }
+
+    // 未刮削完的
+    return [
+        {
+            label: '修改标题或编号',
+            command: () => {
+                showFileEditor(item)
             }
-        ]
-    }
+        }
+    ]
 })
 
 /**
@@ -154,7 +139,7 @@ const scraperMenuItems: MenuItem[] = scraperOptions.map((scraperName) => ({
  * @param event 鼠标事件
  * @param item 当前文件项
  */
-function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
+function showFileItemContextMenu(event: MouseEvent, item: FileItem) {
     if (globalStates.batchRunning) return
 
     event.preventDefault()
@@ -169,7 +154,7 @@ function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
  * @param event 鼠标事件
  * @param item 当前文件项
  */
-function showScraperMenu(event: MouseEvent, item: IFileItem) {
+function showScraperMenu(event: MouseEvent, item: FileItem) {
     currentMenuItem.value = item
     scraperMenu.value?.toggle(event)
 }
@@ -178,7 +163,7 @@ function showScraperMenu(event: MouseEvent, item: IFileItem) {
  * 打开文件信息编辑窗口
  * @param item 文件项
  */
-function showFileEditor(item: IFileItem) {
+function showFileEditor(item: FileItem) {
     dialog.open(FileItemEditor, {
         props: {
             modal: true,
@@ -203,36 +188,6 @@ function showFileEditor(item: IFileItem) {
             item.num = data.num || {}
         }
     })
-}
-
-/**
- * 获取编号展示文本
- * @param item 文件项
- */
-function getNumText(item: IFileItem) {
-    return Object.entries(item.num)
-        .map(([key, value]) => `${key}:${value}`)
-        .join(',  ')
-}
-
-/**
- * 获取进度条颜色
- * @param item 文件项
- */
-function getFileProgressColor(item: IFileItem) {
-    return item.scraperState ? fileItemStateColorMap[item.scraperState] : item.extColor
-}
-
-/**
- * 获取文件提示文本
- * @param item 文件项
- */
-function getFileTooltipText(item: IFileItem) {
-    if (item.scraperState === null || item.scraperState === 'success') {
-        return undefined
-    }
-
-    return `${item.scraperState === 'error' ? '失败' : '提示'}：\n ${item.scraperStateText}`
 }
 </script>
 
@@ -324,7 +279,7 @@ function getFileTooltipText(item: IFileItem) {
             <template #default="{ index }">
                 <div
                     v-tooltip.top="{
-                        value: getFileTooltipText(fileList[index]),
+                        value: fileList[index].tooltipText,
                         showDelay: 0,
                         hideDelay: 0,
                         pt: {
@@ -335,7 +290,7 @@ function getFileTooltipText(item: IFileItem) {
                             },
                             text: {
                                 style: {
-                                    color: getFileProgressColor(fileList[index]),
+                                    color: fileList[index].progressColor,
                                     padding: '1em 1.5em',
                                     fontSize: 'calc(1rem - 2px)'
                                 }
@@ -345,7 +300,7 @@ function getFileTooltipText(item: IFileItem) {
                     class="file-item-shell"
                     :style="{
                         cursor:
-                            getFileTooltipText(fileList[index]) || !fileList[index].videoFile
+                            fileList[index].tooltipText || !fileList[index].videoFile
                                 ? 'pointer'
                                 : 'default'
                     }"
@@ -355,19 +310,21 @@ function getFileTooltipText(item: IFileItem) {
                         <div
                             class="file-item-container"
                             :class="{
-                                'file-item-container-disabled': getFileDisable(fileList[index])
+                                'file-item-container-disabled': fileList[index].disabled
                             }"
                         >
+                            <!-- 选中按钮 -->
                             <i
                                 class="check-icon pi"
                                 :class="[fileList[index].checked ? 'pi-check-circle' : 'pi-circle']"
                                 :style="{ '--check-icon-color': fileList[index].extColor }"
                                 role="button"
                                 tabindex="0"
-                                @click="toggleFileChecked(fileList[index])"
-                                @keydown.enter="toggleFileChecked(fileList[index])"
-                                @keydown.space.prevent="toggleFileChecked(fileList[index])"
+                                @click="fileList[index].toggleChecked()"
+                                @keydown.enter="fileList[index].toggleChecked()"
+                                @keydown.space.prevent="fileList[index].toggleChecked()"
                             />
+
                             <div class="file-main">
                                 <span
                                     class="file-ext-icon"
@@ -389,7 +346,7 @@ function getFileTooltipText(item: IFileItem) {
                                         v-if="Object.keys(fileList[index].num).length"
                                         class="file-num"
                                     >
-                                        {{ getNumText(fileList[index]) }}
+                                        {{ fileList[index].numText }}
                                     </div>
                                 </div>
                             </div>
@@ -420,7 +377,7 @@ function getFileTooltipText(item: IFileItem) {
                             :show-value="false"
                             class="file-progress"
                             :style="{
-                                '--file-progress-color': getFileProgressColor(fileList[index])
+                                '--file-progress-color': fileList[index].progressColor
                             }"
                         />
                     </div>
