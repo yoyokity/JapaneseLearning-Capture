@@ -38,8 +38,20 @@ export class MediaHelper {
     }
 
     /**
-     * 保存图片
-     * @remarks 用时 <10ms
+     * 读取本地图片
+     */
+    static async readImage(path: Path | string): Promise<ArrayBuffer | null> {
+        const re = await TaskHelper.tryExecute(() => ipc.media.readImage.query(path.toString()))
+        if (!re.hasError) {
+            return re.result
+        } else {
+            LogHelper.error(`读取图片失败：`, re.error)
+            return null
+        }
+    }
+
+    /**
+     * 保存图片为jpg
      * @param imageData 图片数据
      * @param path 图片路径
      */
@@ -58,7 +70,7 @@ export class MediaHelper {
     }
 
     /**
-     * 保存图片到临时目录并返回本地路径
+     * 保存图片到临时目录并返回本地路径，自动保存为jpg
      * @param imageData 图片数据
      * @param name 临时文件名，默认为随机uuid。如果传入，会自动加上uuid
      * @returns 临时图片路径

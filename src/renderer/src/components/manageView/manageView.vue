@@ -54,7 +54,9 @@ const sortFieldOptions: VideoSortField[] = ['title', 'releasedate', 'joinTime', 
  * @param files 系列文件列表
  */
 function getSeriesCoverVideo(files: IVideoFile[]) {
-    return [...files].sort((a, b) =>
+    const filteredFiles = files.filter((file) => file.poster && file.fanart && file.thumb)
+
+    return [...(filteredFiles.length ? filteredFiles : files)].sort((a, b) =>
         a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
     )[0]
 }
@@ -386,6 +388,7 @@ onUnmounted(() => {
             </div>
         </div>
         <!-- TODO 优化滚动，切换tab回来依然保存滚动位置 -->
+        <!-- TODO 添加标签筛选 -->
         <Scroll
             style="height: calc(100% - var(--header-height))"
             :scrollbar-occupy-space="false"

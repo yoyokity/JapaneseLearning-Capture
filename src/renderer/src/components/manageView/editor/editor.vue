@@ -372,11 +372,11 @@ onMounted(() => {
                 />
             </div>
         </div>
-        <!-- 初始化完成后再渲染编辑区 -->
-        <Scroll style="height: calc(90vh - 0.75rem - var(--header-height) - var(--header-height))">
+
+        <!-- #region 编辑部分  -->
+        <Scroll v-show="activeTab === 'edit'" class="scroll">
             <div class="content">
-                <!-- #region 编辑部分  -->
-                <div v-show="activeTab === 'edit'" class="form-container">
+                <div class="form-container">
                     <h2 style="margin-top: 0">
                         <i class="pi pi-search section-title-icon" />
                         刮削器
@@ -920,21 +920,26 @@ onMounted(() => {
                         </FloatLabel>
                     </div>
                 </div>
-                <!-- #endregion 编辑部分 -->
+            </div>
+        </Scroll>
+        <!-- #endregion 编辑部分 -->
 
-                <!-- 图片编辑部分 -->
+        <!-- 图片编辑部分 -->
+        <Scroll v-show="activeTab === 'image'" class="scroll">
+            <div class="content">
                 <ImageEditor
-                    v-show="activeTab === 'image'"
                     v-model:video="newVideo"
                     v-model:preview-image="previewImage"
                     :buttondisable="isScraperRunning"
                     :scraper-field="runScraperField"
                 />
+            </div>
+        </Scroll>
 
-                <!-- 视频信息部分 -->
-                <div v-show="activeTab === 'info'">
-                    <VideoInfo v-if="isInitialized" :video="newVideo" :info="mediaInfo" />
-                </div>
+        <!-- 视频信息部分 -->
+        <Scroll v-show="activeTab === 'info'" class="scroll">
+            <div class="content">
+                <VideoInfo v-if="isInitialized" :video="newVideo" :info="mediaInfo" />
             </div>
         </Scroll>
 
@@ -1131,6 +1136,10 @@ onMounted(() => {
     .content {
         padding: 1rem;
     }
+}
+
+.scroll {
+    height: calc(90vh - 0.75rem - var(--header-height) - var(--header-height));
 }
 
 input {

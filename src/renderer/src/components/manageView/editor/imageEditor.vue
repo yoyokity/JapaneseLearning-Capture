@@ -208,7 +208,17 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
                 ? PathHelper.newPath(clipboardText.slice(1, -1))
                 : PathHelper.newPath(clipboardText)
         if (path && (await path.isFile()) && (await path.isExist())) {
-            updateVideoImage(imageType, path.toString())
+            // 转为jpg的临时文件
+            const data = await MediaHelper.readImage(path)
+            if (!data) return
+
+            const imagePath = await MediaHelper.saveTempImage(
+                data,
+                `${video.value.title}_${imageType}`
+            )
+            if (!imagePath) return
+
+            updateVideoImage(imageType, imagePath)
             return
         }
 

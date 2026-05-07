@@ -295,26 +295,30 @@ function openVideoDir() {
 </script>
 
 <template>
-    <div>
-        <!-- 文件操作 -->
-        <div style="display: flex; gap: 0.5rem">
-            <Button
-                icon="pi pi-play-circle"
-                label="播放"
-                style="width: 10rem"
-                @click="openVideoPath"
-            />
-            <Button
-                icon="pi pi-folder-open"
-                label="打开文件夹"
-                severity="secondary"
-                style="width: 10rem"
-                @click="openVideoDir"
-            />
-        </div>
+    <InfoTable :info="infoData" style="margin-bottom: 4rem" />
 
-        <InfoTable :info="infoData" style="margin-top: 3rem" />
+    <!-- 文件操作 -->
+    <div class="button-container">
+        <Button icon="pi pi-play-circle" label="播放" style="width: 10rem" @click="openVideoPath" />
+        <Button
+            icon="pi pi-folder-open"
+            label="打开文件夹"
+            severity="secondary"
+            style="width: 10rem"
+            @click="openVideoDir"
+        />
     </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.button-container {
+    position: fixed;
+    bottom: var(--header-height);
+    width: 100%;
+    background-color: var(--p-surface-0);
+    padding: 1rem 0;
+
+    display: flex;
+    gap: 0.5rem;
+}
+</style>
