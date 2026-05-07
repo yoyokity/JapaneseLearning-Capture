@@ -3,7 +3,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import type { FileItem } from './hook'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
-import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
+import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import Editor from '@renderer/components/manageView/editor/editor.vue'
 import FileItemEditor from '@renderer/components/scraperView/fileItemEditor.vue'
 import { videoExtensions } from '@renderer/helper'
@@ -17,7 +17,7 @@ import Select from 'primevue/select'
 import { useDialog } from 'primevue/usedialog'
 import { computed, ref } from 'vue'
 
-import { fileItemSize, useFileAppendRemove, useFileChecked, useScraperStartCancel } from './hook'
+import { useFileAppendRemove, useFileChecked, useScraperStartCancel } from './hook'
 
 interface IContextMenuRef {
     /**
@@ -264,22 +264,23 @@ function showFileEditor(item: FileItem) {
         </div>
 
         <!-- 列表 -->
-        <VirtualScroll
+        <Scroll
             v-else
             style="height: calc(100% - var(--header-height))"
-            :item-count="fileList.length"
-            :item-size="fileItemSize"
-            :content-css="{ padding: '1rem' }"
-            :scrollbar-occupy-space="false"
+            occupy-space="0"
             @dragover.prevent
             @drop.prevent="handleDrop"
             @dragenter.prevent="handleDragEnter"
             @dragleave.prevent="handleDragLeave"
         >
-            <template #default="{ index }">
+            <!-- 文件列表 -->
+            <div class="file-list">
+                <!-- 文件项 -->
                 <div
+                    v-for="item in fileList"
+                    :key="item.file.toString()"
                     v-tooltip.top="{
-                        value: fileList[index].tooltipText,
+                        value: item.tooltipText,
                         showDelay: 0,
                         hideDelay: 0,
                         pt: {
@@ -290,7 +291,7 @@ function showFileEditor(item: FileItem) {
                             },
                             text: {
                                 style: {
-                                    color: fileList[index].progressColor,
+                                    color: item.progressColor,
                                     padding: '1em 1.5em',
                                     fontSize: 'calc(1rem - 2px)'
                                 }
@@ -298,55 +299,50 @@ function showFileEditor(item: FileItem) {
                         }
                     }"
                     class="file-item-shell"
-                    :style="{
-                        cursor:
-                            fileList[index].tooltipText || !fileList[index].videoFile
-                                ? 'pointer'
-                                : 'default'
-                    }"
-                    @contextmenu="(event) => showFileItemContextMenu(event, fileList[index])"
+                    @contextmenu="(event) => showFileItemContextMenu(event, item)"
                 >
-                    <div class="file-item">
+                    <div
+                        class="file-item"
+                        :style="{
+                            cursor: item.tooltipText || !item.videoFile ? 'pointer' : 'default'
+                        }"
+                    >
                         <div
                             class="file-item-container"
                             :class="{
-                                'file-item-container-disabled': fileList[index].disabled
+                                'file-item-container-disabled': item.disabled
                             }"
                         >
                             <!-- 选中按钮 -->
                             <i
                                 class="check-icon pi"
-                                :class="[fileList[index].checked ? 'pi-check-circle' : 'pi-circle']"
-                                :style="{ '--check-icon-color': fileList[index].extColor }"
+                                :class="[item.checked ? 'pi-check-circle' : 'pi-circle']"
+                                :style="{ '--check-icon-color': item.extColor }"
                                 role="button"
                                 tabindex="0"
-                                @click="fileList[index].toggleChecked()"
-                                @keydown.enter="fileList[index].toggleChecked()"
-                                @keydown.space.prevent="fileList[index].toggleChecked()"
+                                @click="item.toggleChecked()"
+                                @keydown.enter="item.toggleChecked()"
+                                @keydown.space.prevent="item.toggleChecked()"
                             />
 
+                            <!-- 文件主信息 -->
                             <div class="file-main">
                                 <span
                                     class="file-ext-icon"
-                                    :style="{ backgroundColor: fileList[index].extColor }"
+                                    :style="{ backgroundColor: item.extColor }"
                                 >
-                                    {{
-                                        fileList[index].file.extname.replace('.', '').toUpperCase()
-                                    }}
+                                    {{ item.file.extname.replace('.', '').toUpperCase() }}
                                 </span>
                                 <div class="file-info">
                                     <TextButton
                                         v-tooltip.top="'点击修改标题或编号'"
-                                        :label="fileList[index].title"
+                                        :label="item.title"
                                         class="file-name-button"
                                         :rounded="false"
-                                        @click="showFileEditor(fileList[index])"
+                                        @click="showFileEditor(item)"
                                     />
-                                    <div
-                                        v-if="Object.keys(fileList[index].num).length"
-                                        class="file-num"
-                                    >
-                                        {{ fileList[index].numText }}
+                                    <div v-if="Object.keys(item.num).length" class="file-num">
+                                        {{ item.numText }}
                                     </div>
                                 </div>
                             </div>
@@ -354,12 +350,12 @@ function showFileEditor(item: FileItem) {
                                 <!-- 单项选择刮削器按钮 -->
                                 <Button
                                     v-tooltip.top="'修改当前视频的刮削器'"
-                                    :label="fileList[index].scraper"
+                                    :label="item.scraper"
                                     class="scraper-button"
                                     severity="secondary"
                                     size="small"
                                     text
-                                    @click="showScraperMenu($event, fileList[index])"
+                                    @click="showScraperMenu($event, item)"
                                 />
                             </div>
                         </div>
@@ -369,21 +365,21 @@ function showFileEditor(item: FileItem) {
                             class="remove-button"
                             icon="pi pi-times"
                             :disabled="globalStates.batchRunning"
-                            @click="removeFile(fileList[index].file)"
+                            @click="removeFile(item.file)"
                         />
 
                         <ProgressBar
-                            :value="fileList[index].progress"
+                            :value="item.progress"
                             :show-value="false"
                             class="file-progress"
                             :style="{
-                                '--file-progress-color': fileList[index].progressColor
+                                '--file-progress-color': item.progressColor
                             }"
                         />
                     </div>
                 </div>
-            </template>
-        </VirtualScroll>
+            </div>
+        </Scroll>
     </div>
 </template>
 
@@ -438,11 +434,14 @@ $remove-button-width: 3rem;
     }
 }
 
+.file-list {
+    padding: 1rem;
+}
+
 .file-item-shell {
     box-sizing: border-box;
-    height: fit-content;
-    height: 100%;
-    padding-bottom: 0.75em;
+    height: 4.875rem;
+    padding-bottom: 1em;
 }
 
 .file-item {

@@ -6,11 +6,6 @@ import { videoExtensions } from '@renderer/helper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 
 /**
- * 文件项高度
- */
-export const fileItemSize = 78
-
-/**
  * 文件项状态颜色映射
  */
 export const fileItemStateColorMap: Record<ScraperState, string> = {
