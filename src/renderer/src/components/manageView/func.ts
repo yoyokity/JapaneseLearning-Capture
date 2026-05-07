@@ -3,6 +3,7 @@ import type { IVideoFile } from '@renderer/scraper'
 import type { IFile, IStats } from '@shared'
 
 import {
+    DataHelper,
     EncodeHelper,
     imgExtnames,
     LogHelper,
@@ -12,6 +13,7 @@ import {
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { globalStatesStore } from '@renderer/stores'
+import dayjs from 'dayjs'
 import { convert } from 'xmlbuilder2'
 
 /**
@@ -44,12 +46,145 @@ interface IDirectory {
     stats?: IStats
 }
 
+type INfoCacheData = Omit<
+    IVideoFile,
+    | 'path'
+    | 'dir'
+    | 'fileName'
+    | 'extname'
+    | 'nfoPath'
+    | 'size'
+    | 'joinTime'
+    | 'dirJoinTime'
+    | 'changeTime'
+    | 'extrafanart'
+>
+
+interface INfoCacheRecord {
+    updateTime: number
+    data: INfoCacheData
+}
+
+const NFO_CACHE_DATA_NAME = 'nfo-cache-data'
+
 /**
  * 获取文件更新时间
  * @param stats 文件状态
+ * @param field 时间字段
  */
-function getFileUpdateTime(stats: IStats): number {
-    return Date.parse(stats.mtime)
+function getFileUpdateTime(stats: IStats, field: 'ctime' | 'mtime' = 'mtime'): number {
+    return dayjs(stats[field]).valueOf()
+}
+
+/**
+ * 解析NFO中的图片路径
+ * @param value 原始值
+ */
+function getNfoImagePath(value: unknown): string | null {
+    const imagePath = normalizeTextValue(value).trim()
+    return imagePath || null
+}
+
+/**
+ * 从movie节点中提取可缓存的数据
+ * @param movie NFO的movie节点
+ */
+function createNfoCacheData(movie: any): INfoCacheData {
+    const data: INfoCacheData = {
+        scraperName: normalizeTextValue(movie.scraperName).trim(),
+        title: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.title)) || '',
+        originaltitle: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.originaltitle)) || '',
+        sorttitle: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.sorttitle)) || '',
+        tagline: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.tagline)) || '',
+        plot: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.plot)) || '',
+        mpaa: normalizeTextValue(movie.mpaa).trim(),
+        rating: normalizeTextValue(movie.rating).trim(),
+        director: normalizeTextValue(movie.director).trim(),
+        studio: normalizeTextValue(movie.studio).trim(),
+        maker: normalizeTextValue(movie.maker).trim(),
+        set: normalizeTextValue(movie.set).trim(),
+        year: normalizeTextValue(movie.year).trim(),
+        premiered: normalizeTextValue(movie.premiered).trim(),
+        releasedate: normalizeTextValue(movie.releasedate).trim(),
+        num: {},
+        actor: [],
+        tag: [],
+        genre: [],
+        poster: getNfoImagePath(movie.poster),
+        thumb: getNfoImagePath(movie.thumb),
+        fanart: getNfoImagePath(movie.fanart)
+    }
+
+    // 处理编号信息
+    if (movie.num) {
+        const nums = Array.isArray(movie.num) ? movie.num : [movie.num]
+
+        try {
+            for (const num of nums) {
+                const source = normalizeTextValue(num.source).trim()
+                const value = normalizeTextValue(num.value).trim()
+                if (!source || !value) continue
+
+                data.num[source] = value
+            }
+        } catch {}
+    }
+
+    // 处理演员信息
+    if (movie.actor) {
+        const actors = Array.isArray(movie.actor) ? movie.actor : [movie.actor]
+        data.actor = actors.map((actor) => ({
+            name: normalizeTextValue(actor.name).trim(),
+            imgUrl: normalizeTextValue(actor.thumb).trim(),
+            role: normalizeTextValue(actor.role).trim()
+        }))
+    }
+
+    // 处理标签
+    if (movie.tag) {
+        const tags = Array.isArray(movie.tag) ? movie.tag : [movie.tag]
+        data.tag = tags.map((tag) => normalizeTextValue(tag)).filter(Boolean)
+    }
+
+    // 处理类型
+    if (movie.genre) {
+        const genres = Array.isArray(movie.genre) ? movie.genre : [movie.genre]
+        data.genre = genres.map((genre) => normalizeTextValue(genre)).filter(Boolean)
+    }
+
+    return data
+}
+
+/**
+ * 解析NFO里的图片路径
+ * @param video 视频数据
+ * @param imagePath NFO中的图片路径
+ */
+function resolveNfoImagePath(video: IVideoFile, imagePath: string | null): string | null {
+    if (!imagePath) return null
+
+    const path = PathHelper.newPath(imagePath)
+    const normalizedPath = path.isAbsolute ? path : video.dir.join(imagePath)
+    return normalizedPath.toString()
+}
+
+/**
+ * 将缓存中的NFO数据写回video对象
+ * @param video 视频数据
+ * @param data NFO缓存数据
+ */
+function applyNfoCacheData(video: IVideoFile, data: INfoCacheData): void {
+    const { num, actor, tag, genre, poster, thumb, fanart, ...rest } = data
+
+    Object.assign(video, rest, {
+        num: { ...num },
+        actor: actor.map((item) => ({ ...item })),
+        tag: [...tag],
+        genre: [...genre],
+        poster: resolveNfoImagePath(video, poster),
+        thumb: resolveNfoImagePath(video, thumb),
+        fanart: resolveNfoImagePath(video, fanart)
+    })
 }
 
 /**
@@ -248,104 +383,39 @@ async function read(directory: IDirectory): Promise<IVideoFile> {
 
     // 有nfo文件的情况
     if (nfoPath) {
-        // 打开文件
-        const re = await TaskHelper.tryExecute(() => PathHelper.readFile(nfoPath))
-        if (re.hasError) {
-            LogHelper.warn(`读取NFO文件失败：${nfoPath.toString()} \n`, re.error)
-            return video
-        }
+        const nfoPathText = nfoPath.toString()
+        const cache = await DataHelper.get<INfoCacheRecord>(NFO_CACHE_DATA_NAME, nfoPathText)
+        const actualCtime = directory.nfo ? getFileUpdateTime(directory.nfo.stats, 'ctime') : 0
+        const actualMtime = directory.nfo ? getFileUpdateTime(directory.nfo.stats, 'mtime') : 0
 
-        const obj: any = convert({ encoding: 'UTF-8' }, re.result, { format: 'object' })
-        if (!obj || !obj.movie) {
-            LogHelper.warn(`读取NFO文件失败（数据格式错误）：${nfoPath.toString()}`)
-            return video
-        }
+        if (
+            cache?.data &&
+            typeof cache.updateTime === 'number' &&
+            actualCtime <= cache.updateTime &&
+            actualMtime <= cache.updateTime
+        ) {
+            // 使用data缓存记录
+            applyNfoCacheData(video, cache.data)
+        } else {
+            // 打开文件
+            const re = await TaskHelper.tryExecute(() => PathHelper.readFile(nfoPath))
+            if (re.hasError) {
+                LogHelper.warn(`读取NFO文件失败：${nfoPath.toString()} \n`, re.error)
+                return video
+            }
 
-        const movie = obj.movie
-        //
-        video.scraperName = movie.scraperName || ''
-        video.title = EncodeHelper.decodeHtmlEntity(movie.title) || ''
-        video.originaltitle = EncodeHelper.decodeHtmlEntity(movie.originaltitle) || ''
-        video.sorttitle = EncodeHelper.decodeHtmlEntity(movie.sorttitle) || ''
-        video.tagline = EncodeHelper.decodeHtmlEntity(movie.tagline) || ''
-        video.plot = EncodeHelper.decodeHtmlEntity(movie.plot) || ''
-        video.mpaa = movie.mpaa || ''
-        video.rating = movie.rating || ''
-        video.director = movie.director || ''
-        video.studio = movie.studio || ''
-        video.maker = movie.maker || ''
-        video.set = movie.set || ''
-        video.year = movie.year || ''
-        video.premiered = movie.premiered || ''
-        video.releasedate = movie.releasedate || ''
+            const obj: any = convert({ encoding: 'UTF-8' }, re.result, { format: 'object' })
+            if (!obj || !obj.movie) {
+                LogHelper.warn(`读取NFO文件失败（数据格式错误）：${nfoPath.toString()}`)
+                return video
+            }
 
-        // 处理编号信息
-        video.num = {}
-        if (movie.num) {
-            const nums = Array.isArray(movie.num) ? movie.num : [movie.num]
-
-            try {
-                for (const num of nums) {
-                    const source = normalizeTextValue(num.source).trim()
-                    const value = normalizeTextValue(num.value).trim()
-                    if (!source || !value) continue
-
-                    video.num[source] = value
-                }
-            } catch {}
-        }
-
-        // 处理演员信息
-        if (movie.actor) {
-            const actors = Array.isArray(movie.actor) ? movie.actor : [movie.actor]
-            video.actor = actors.map((actor) => ({
-                name: actor.name || '',
-                imgUrl: actor.thumb || '',
-                role: actor.role || ''
-            }))
-        }
-
-        // 处理标签
-        if (movie.tag) {
-            const tags = Array.isArray(movie.tag) ? movie.tag : [movie.tag]
-            video.tag = tags.map((tag) => normalizeTextValue(tag)).filter(Boolean)
-        }
-
-        // 处理类型
-        if (movie.genre) {
-            const genres = Array.isArray(movie.genre) ? movie.genre : [movie.genre]
-            video.genre = genres.map((genre) => normalizeTextValue(genre)).filter(Boolean)
-        }
-
-        // 处理图片
-        if (movie.poster) {
-            const posterPath = PathHelper.newPath(movie.poster)
-            const normalizedPosterPath = posterPath.isAbsolute
-                ? posterPath
-                : video.dir.join(movie.poster)
-            video.poster = (await normalizedPosterPath.isExist())
-                ? normalizedPosterPath.toString()
-                : null
-        }
-
-        if (movie.thumb) {
-            const thumbPath = PathHelper.newPath(movie.thumb)
-            const normalizedThumbPath = thumbPath.isAbsolute
-                ? thumbPath
-                : video.dir.join(movie.thumb)
-            video.thumb = (await normalizedThumbPath.isExist())
-                ? normalizedThumbPath.toString()
-                : null
-        }
-
-        if (movie.fanart) {
-            const fanartPath = PathHelper.newPath(movie.fanart)
-            const normalizedFanartPath = fanartPath.isAbsolute
-                ? fanartPath
-                : video.dir.join(movie.fanart)
-            video.fanart = (await normalizedFanartPath.isExist())
-                ? normalizedFanartPath.toString()
-                : null
+            const data = createNfoCacheData(obj.movie)
+            applyNfoCacheData(video, data)
+            await DataHelper.set(NFO_CACHE_DATA_NAME, nfoPathText, {
+                updateTime: Math.max(actualCtime, actualMtime),
+                data
+            })
         }
     } else {
         // 如果没有nfo文件，title为文件名
