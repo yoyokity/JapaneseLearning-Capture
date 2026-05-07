@@ -1,9 +1,14 @@
 <script lang="ts" setup>
+import type { WithRequired } from '@renderer/helper'
+import type { MenuItem } from 'primevue/menuitem'
 import type { IFileItem } from './hook'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
 import VirtualScroll from '@renderer/components/control/scroll/virtualScroll.vue'
+import Editor from '@renderer/components/manageView/editor/editor.vue'
+import FileItemEditor from '@renderer/components/scraperView/fileItemEditor.vue'
 import { videoExtensions } from '@renderer/helper'
+import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
@@ -11,22 +16,42 @@ import Menu from 'primevue/menu'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import { useDialog } from 'primevue/usedialog'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import {
     fileItemSize,
+    fileItemStateColorMap,
     useFileAppendRemove,
     useFileChecked,
-    useFileContextMenu,
-    useScraperStartCancel,
-    useScraperViewMenu
+    useScraperStartCancel
 } from './hook'
+
+interface IContextMenuRef {
+    /**
+     * 显示右键菜单
+     * @param event 鼠标事件
+     */
+    show: (event: MouseEvent) => void
+}
+
+interface IMenuRef {
+    /**
+     * 切换菜单显示
+     * @param event 鼠标事件
+     */
+    toggle: (event: MouseEvent) => void
+}
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
 const dialog = useDialog()
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const fileList = ref<IFileItem[]>([])
+const scraperOptions = Scraper.instances.map((scraper) => scraper.scraperName)
+const fileItemContextMenu = ref<IContextMenuRef | null>(null)
+const scraperMenu = ref<IMenuRef | null>(null)
+const currentContextMenuItem = ref<IFileItem | null>(null)
+const currentMenuItem = ref<IFileItem | null>(null)
 
 const {
     isDragging,
@@ -42,23 +67,173 @@ const {
 const { getFileDisable, isAllChecked, checkedFileList, toggleFileChecked, toggleAllFilesChecked } =
     useFileChecked(fileList)
 
-// @ts-ignore
-const { fileItemContextMenu, fileItemContextMenuItems, showFileItemContextMenu } =
-    useFileContextMenu()
-
-const {
-    scraperOptions,
-    // @ts-ignore
-    scraperMenu,
-    scraperMenuItems,
-    showScraperMenu,
-    showFileEditor,
-    getNumText,
-    getFileProgressColor,
-    getFileTooltipText
-} = useScraperViewMenu(dialog)
-
 const { handleStart, handleCancel } = useScraperStartCancel(checkedFileList)
+
+/**
+ * 判断文件项是否包含可编辑的视频信息
+ * @param item 文件项
+ */
+function hasVideoFile(item: IFileItem | null): item is WithRequired<IFileItem, 'videoFile'> {
+    return item !== null && item.videoFile !== undefined
+}
+
+/**
+ * 编辑刮削数据
+ * @param item 文件项
+ */
+function handleEditScraperData(item: WithRequired<IFileItem, 'videoFile'>) {
+    dialog.open(Editor, {
+        props: {
+            modal: true,
+            draggable: false,
+            showHeader: false,
+            style: {
+                width: 'fit-content',
+                maxWidth: '90vw'
+            },
+            contentStyle: {
+                overflow: 'initial'
+            }
+        },
+        data: {
+            video: item.videoFile
+        },
+        onClose: (options) => {
+            const data = options?.data
+            if (!data) return
+
+            item.videoFile = data
+        }
+    })
+}
+
+/**
+ * 文件项右键菜单项
+ */
+const fileItemContextMenuItems = computed(() => {
+    if (hasVideoFile(currentContextMenuItem.value)) {
+        // 已经刮削完的
+        return [
+            {
+                label: '编辑刮削数据',
+                command: () => {
+                    if (!currentContextMenuItem.value) return
+                    if (!hasVideoFile(currentContextMenuItem.value)) return
+                    handleEditScraperData(currentContextMenuItem.value)
+                }
+            }
+        ]
+    } else {
+        // 未刮削完的
+        return [
+            {
+                label: '修改标题或编号',
+                command: () => {
+                    if (!currentContextMenuItem.value) return
+                    showFileEditor(currentContextMenuItem.value)
+                }
+            }
+        ]
+    }
+})
+
+/**
+ * 刮削器菜单项
+ */
+const scraperMenuItems: MenuItem[] = scraperOptions.map((scraperName) => ({
+    label: scraperName,
+    command: () => {
+        if (currentMenuItem.value) {
+            currentMenuItem.value.scraper = scraperName
+        }
+    }
+}))
+
+/**
+ * 打开文件项右键菜单
+ * @param event 鼠标事件
+ * @param item 当前文件项
+ */
+function showFileItemContextMenu(event: MouseEvent, item: IFileItem) {
+    if (globalStates.batchRunning) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    currentContextMenuItem.value = item
+    fileItemContextMenu.value?.show(event)
+}
+
+/**
+ * 打开刮削器选择菜单
+ * @param event 鼠标事件
+ * @param item 当前文件项
+ */
+function showScraperMenu(event: MouseEvent, item: IFileItem) {
+    currentMenuItem.value = item
+    scraperMenu.value?.toggle(event)
+}
+
+/**
+ * 打开文件信息编辑窗口
+ * @param item 文件项
+ */
+function showFileEditor(item: IFileItem) {
+    dialog.open(FileItemEditor, {
+        props: {
+            modal: true,
+            draggable: false,
+            showHeader: false,
+            style: {
+                width: 'fit-content',
+                maxWidth: '90vw'
+            },
+            header: '信息编辑'
+        },
+        data: {
+            scraperName: item.scraper,
+            title: item.title,
+            num: { ...item.num }
+        },
+        onClose: (options) => {
+            const data = options?.data
+            if (!data) return
+
+            item.title = data.title || item.file.basename
+            item.num = data.num || {}
+        }
+    })
+}
+
+/**
+ * 获取编号展示文本
+ * @param item 文件项
+ */
+function getNumText(item: IFileItem) {
+    return Object.entries(item.num)
+        .map(([key, value]) => `${key}:${value}`)
+        .join(',  ')
+}
+
+/**
+ * 获取进度条颜色
+ * @param item 文件项
+ */
+function getFileProgressColor(item: IFileItem) {
+    return item.scraperState ? fileItemStateColorMap[item.scraperState] : item.extColor
+}
+
+/**
+ * 获取文件提示文本
+ * @param item 文件项
+ */
+function getFileTooltipText(item: IFileItem) {
+    if (item.scraperState === null || item.scraperState === 'success') {
+        return undefined
+    }
+
+    return `${item.scraperState === 'error' ? '失败' : '提示'}：\n ${item.scraperStateText}`
+}
 </script>
 
 <template>
@@ -169,7 +344,10 @@ const { handleStart, handleCancel } = useScraperStartCancel(checkedFileList)
                     }"
                     class="file-item-shell"
                     :style="{
-                        cursor: getFileTooltipText(fileList[index]) ? 'pointer' : 'default'
+                        cursor:
+                            getFileTooltipText(fileList[index]) || !fileList[index].videoFile
+                                ? 'pointer'
+                                : 'default'
                     }"
                     @contextmenu="(event) => showFileItemContextMenu(event, fileList[index])"
                 >
@@ -204,6 +382,7 @@ const { handleStart, handleCancel } = useScraperStartCancel(checkedFileList)
                                         v-tooltip.top="'点击修改标题或编号'"
                                         :label="fileList[index].title"
                                         class="file-name-button"
+                                        :rounded="false"
                                         @click="showFileEditor(fileList[index])"
                                     />
                                     <div
