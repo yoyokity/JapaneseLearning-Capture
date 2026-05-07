@@ -11,15 +11,13 @@ const tabs = [
 ]
 const activeTab = ref('scraper')
 
+/**
+ * 切换标签页
+ * @param tabId 标签ID
+ */
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
     activeTab.value = tabId
-}
-
-// 获取当前活动组件
-const currentComponent = () => {
-    const tab = tabs.find((tab) => tab.id === activeTab.value)
-    return tab ? tab.component : null
 }
 </script>
 
@@ -34,21 +32,27 @@ const currentComponent = () => {
                 class="tab-item"
                 @click="switchTab(tab.id)"
             >
+                <!-- Tab按钮内容 -->
                 <div class="tab-content-wrapper">
                     <i :class="tab.icon" />
                     <span class="tab-name">{{ tab.name }}</span>
                 </div>
-                <transition name="indicator">
-                    <div v-if="activeTab === tab.id" class="active-indicator" />
-                </transition>
+                <!-- 激活指示器 -->
+                <div class="active-indicator" />
             </div>
         </div>
         <div class="content">
-            <transition name="slide-up">
-                <keep-alive exclude="settingsView">
-                    <component :is="currentComponent()" :key="activeTab" class="tab-content" />
-                </keep-alive>
-            </transition>
+            <!-- Tab内容区域 -->
+            <component
+                :is="tab.component"
+                v-for="tab in tabs"
+                :key="tab.id"
+                class="tab-content"
+                :class="{
+                    active: activeTab === tab.id,
+                    'slide-up': activeTab === tab.id
+                }"
+            />
         </div>
     </div>
 </template>
@@ -116,10 +120,29 @@ const currentComponent = () => {
     flex: 1;
     height: auto;
     overflow: hidden;
+    position: relative;
 }
 
 .tab-content {
     height: 100%;
+    width: 100%;
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0);
+
+    &.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        z-index: 1;
+    }
+
+    &.slide-up {
+        animation: slide-up-enter 0.2s var(--animation-type);
+    }
 }
 
 h2 {
@@ -133,53 +156,26 @@ h2 {
     bottom: 5px;
     left: 50%;
     transform: translateX(-50%);
-    width: 2rem;
+    width: 0.5rem;
     height: 0.25rem;
     background-color: var(--p-primary-color);
     border-radius: 0.125rem;
-}
-
-/* 指示器进入和离开动画 */
-.indicator-enter-active,
-.indicator-leave-active {
+    opacity: 0;
     transition: all 0.3s var(--animation-type);
 }
 
-.indicator-enter-from {
-    width: 0.5rem;
-    opacity: 0;
+.tab-item.active .active-indicator {
+    width: 2rem;
+    opacity: 1;
 }
 
-.indicator-leave-to {
-    width: 0.5rem;
-    opacity: 0;
-}
+@keyframes slide-up-enter {
+    from {
+        transform: translateY(20px);
+    }
 
-/* Tab内容滑动动画 */
-.slide-up-enter-active,
-.slide-down-enter-active {
-    transition: transform 0.2s var(--animation-type);
-}
-
-.slide-up-leave-active,
-.slide-down-leave-active {
-    transition: none;
-    display: none;
-}
-
-.slide-up-enter-from {
-    transform: translateY(20px);
-}
-
-.slide-up-leave-to {
-    transform: translateY(0);
-}
-
-.slide-down-enter-from {
-    transform: translateY(-20px);
-}
-
-.slide-down-leave-to {
-    transform: translateY(0);
+    to {
+        transform: translateY(0);
+    }
 }
 </style>
