@@ -15,6 +15,7 @@ import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import ToggleButton from 'primevue/togglebutton'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const {
@@ -263,7 +264,7 @@ onUnmounted(() => {
             <div v-if="activeFilterPanel" class="filter-panel">
                 <div class="filter-panel-content">
                     <!-- 标签 -->
-                    <Scroll style="height: 100%" occupy-space="none">
+                    <Scroll style="height: calc(100% - 4rem)" occupy-space="none">
                         <div v-if="activeFilterPanel === 'tag'" class="tag-list">
                             <!-- 标签项 -->
                             <div
@@ -279,6 +280,11 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </Scroll>
+                    <!-- 匹配按钮 -->
+                    <div class="tag-footer">
+                        <span>所有标签都包含</span>
+                        <ToggleSwitch v-model="settings.manageViewTagsMatchAll" />
+                    </div>
                 </div>
             </div>
         </transition>
@@ -478,7 +484,7 @@ onUnmounted(() => {
         width: 22rem;
     }
 
-    opacity: 0.8;
+    opacity: 0.7;
     &:hover {
         opacity: 1;
     }
@@ -521,6 +527,15 @@ onUnmounted(() => {
                     line-height: 1;
                 }
             }
+        }
+
+        .tag-footer {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            height: 4rem;
         }
     }
 }
