@@ -7,7 +7,7 @@ import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
 import VideoInfo from '@renderer/components/manageView/editor/videoInfo.vue'
-import { readExtrafanart, scanFiles } from '@renderer/components/manageView/func'
+import { useDisplay, useScanFiles } from '@renderer/components/manageView/hook'
 import {
     EncodeHelper,
     isNumeric,
@@ -41,6 +41,8 @@ const dialogRef = inject('dialogRef') as any
 const { toast } = useMessage()
 const { scraperAll, scraperField, scraperSave, isScraperRunning, isEditeScraperRunning } =
     useEditeScraper()
+const { runScanFiles, readExtrafanart } = useScanFiles()
+const { setManageViewFiles } = useDisplay()
 const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
@@ -201,7 +203,7 @@ async function onSave() {
     }
 
     // 重新扫描文件
-    await scanFiles(toast)
+    await runScanFiles(setManageViewFiles)
 
     // 先关闭弹窗并清空预览，释放旧图片文件引用
     previewImage.value = null

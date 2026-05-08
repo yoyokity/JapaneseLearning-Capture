@@ -1,9 +1,10 @@
 <script lang="ts" setup>
+import type { ManageCardItem } from '@renderer/components/manageView/hook'
 import type { IVideoFile } from '@renderer/scraper'
 import type { SelectChangeEvent } from 'primevue/select'
 
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
-import { scanFiles } from '@renderer/components/manageView/func'
+import { useDisplay, useScanFiles } from '@renderer/components/manageView/hook'
 import VideoCard from '@renderer/components/manageView/videoCard.vue'
 import { PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
@@ -13,47 +14,27 @@ import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import ToggleButton from 'primevue/togglebutton'
-import { useToast } from 'primevue/usetoast'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const settings = settingsStore()
 const globalStates = globalStatesStore()
-const toast = useToast()
 
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
-const currentSet = ref<string | null>(null)
-
 const isSortActive = ref(false)
 
-interface ISeriesCardItem {
-    type: 'series'
-    name: string
-    coverVideo: IVideoFile
-    files: IVideoFile[]
-}
+const {
+    hasManageViewFiles,
+    displayItems,
+    currentSet,
+    isSetView,
+    currentSortField,
+    isPositiveOrder,
+    manageViewFilesFilterValue,
+    setManageViewFiles
+} = useDisplay()
 
-interface IVideoCardItem {
-    type: 'video'
-    video: IVideoFile
-}
-
-type ManageCardItem = ISeriesCardItem | IVideoCardItem
-type VideoSortField = 'title' | 'releasedate' | 'joinTime' | 'changeTime'
-
-const sortFieldOptions: VideoSortField[] = ['title', 'releasedate', 'joinTime', 'changeTime']
-
-/**
- * 获取系列封面视频
- * @param files 系列文件列表
- */
-function getSeriesCoverVideo(files: IVideoFile[]) {
-    const filteredFiles = files.filter((file) => file.poster && file.fanart && file.thumb)
-
-    return [...(filteredFiles.length ? filteredFiles : files)].sort((a, b) =>
-        a.sorttitle.localeCompare(b.sorttitle, undefined, { sensitivity: 'base' })
-    )[0]
-}
+const { runScanFiles } = useScanFiles()
 
 /**
  * 判断视频是否存在编号
@@ -90,7 +71,7 @@ const menuItems = ref([
 // 重新选择目录后，清除文件列表
 function clearFiles(e: SelectChangeEvent) {
     if (e.value !== settings.currentScraper) {
-        globalStates.manageViewFiles = []
+        setManageViewFiles([])
         currentSet.value = null
     }
 }
@@ -109,112 +90,6 @@ function showMenu(event: MouseEvent, video: IVideoFile) {
 function hideMenuOnScroll() {
     cm.value?.hide?.()
 }
-
-/**
- * 管理页展示列表
- */
-const displayItems = computed<ManageCardItem[]>(() => {
-    const files = globalStates.manageViewFilesFilter as IVideoFile[]
-    const allFiles = globalStates.manageViewFiles as IVideoFile[]
-    const isSearching = globalStates.manageViewFilesFilterValue.trim() !== ''
-
-    if (currentSet.value) {
-        return files
-            .filter((file) => file.set === currentSet.value)
-            .map((video) => ({
-                type: 'video',
-                video
-            }))
-    }
-
-    const setMap = new Map<string, IVideoFile[]>()
-    const allSetMap = new Map<string, IVideoFile[]>()
-
-    for (const file of allFiles) {
-        const setName = file.set.trim()
-        if (!setName) continue
-
-        const setFiles = allSetMap.get(setName) || []
-        setFiles.push(file)
-        allSetMap.set(setName, setFiles)
-    }
-
-    for (const file of files) {
-        const setName = file.set.trim()
-        if (!setName) continue
-
-        const setFiles = setMap.get(setName) || []
-        setFiles.push(file)
-        setMap.set(setName, setFiles)
-    }
-
-    const items: ManageCardItem[] = []
-
-    for (const file of files) {
-        const setName = file.set.trim()
-
-        if (!setName) {
-            items.push({
-                type: 'video',
-                video: file
-            })
-            continue
-        }
-
-        const setFiles = setMap.get(setName) || []
-        const allSetFiles = allSetMap.get(setName) || []
-
-        if (!isSearching && allSetFiles.length <= 1) {
-            items.push({
-                type: 'video',
-                video: file
-            })
-            continue
-        }
-
-        if (items.some((item) => item.type === 'series' && item.name === setName)) {
-            continue
-        }
-
-        items.push({
-            type: 'series',
-            name: setName,
-            coverVideo: getSeriesCoverVideo(allSetFiles),
-            files: setFiles
-        })
-    }
-
-    return items
-})
-
-/**
- * 当前排序字段
- */
-const currentSortField = computed<VideoSortField>({
-    get() {
-        return settings.manageViewSort
-    },
-    set(value) {
-        settings.manageViewSort = value
-    }
-})
-
-/**
- * 当前是否正序
- */
-const isPositiveOrder = computed({
-    get() {
-        return !settings.manageViewSortReverse
-    },
-    set(value: boolean) {
-        settings.manageViewSortReverse = !value
-    }
-})
-
-/**
- * 是否在系列详情视角
- */
-const isSetView = computed(() => currentSet.value !== null)
 
 /**
  * 点击系列卡片
@@ -267,19 +142,6 @@ function handleCardContextmenu(item: ManageCardItem, event: MouseEvent) {
     showMenu(event, item.video)
 }
 
-watch(
-    () => globalStates.manageViewFilesFilter,
-    (files) => {
-        if (!currentSet.value) return
-
-        const hasCurrentSet = (files as IVideoFile[]).some((file) => file.set === currentSet.value)
-        if (!hasCurrentSet) {
-            currentSet.value = null
-        }
-    },
-    { deep: true }
-)
-
 onMounted(() => {
     window.addEventListener('mouseup', handleMouseBackAction)
 })
@@ -308,7 +170,7 @@ onUnmounted(() => {
             <!-- 中间搜索和排序 -->
             <div class="tab-header-center">
                 <div
-                    v-show="globalStates.manageViewFiles.length > 0"
+                    v-show="hasManageViewFiles"
                     :class="{ active: isSortActive }"
                     class="manage-view-toolbar"
                 >
@@ -316,7 +178,7 @@ onUnmounted(() => {
                     <div class="search-input-container">
                         <i class="pi pi-search search-input-icon" />
                         <InputText
-                            v-model="globalStates.manageViewFilesFilterValue"
+                            v-model="manageViewFilesFilterValue"
                             class="search-input"
                             placeholder="搜索"
                             size="small"
@@ -328,7 +190,7 @@ onUnmounted(() => {
                         v-model="currentSortField"
                         v-tooltip.top="'排序'"
                         :option-label="(option) => VideoSortTypeList[option]"
-                        :options="sortFieldOptions"
+                        :options="Object.keys(VideoSortTypeList)"
                         class="sort-select"
                         dropdown-icon="pi pi-sort-amount-down"
                         size="small"
@@ -367,7 +229,7 @@ onUnmounted(() => {
                     label="开始扫描"
                     size="small"
                     style="width: 7rem; min-width: 7rem"
-                    @click="scanFiles(toast)"
+                    @click="runScanFiles(setManageViewFiles)"
                 />
             </div>
         </div>
@@ -395,7 +257,7 @@ onUnmounted(() => {
                             :file-num="item.type === 'series' ? item.files.length : undefined"
                             :has-video-num="
                                 item.type === 'series'
-                                    ? item.files.every((video) => hasVideoNum(video))
+                                    ? item.files.every((video: IVideoFile) => hasVideoNum(video))
                                     : hasVideoNum(item.video)
                             "
                             :on-click="
