@@ -84,6 +84,7 @@ export const settingsStore = defineStore(
         const currentScraper = ref('')
         const manageViewSort = ref<VideoSortType>('title')
         const manageViewSortReverse = ref(true)
+        const manageViewTagsMatchAll = ref(true)
 
         return {
             proxy,
@@ -107,7 +108,12 @@ export const settingsStore = defineStore(
             /**
              * 管理视图排序方向
              */
-            manageViewSortReverse
+            manageViewSortReverse,
+            /**
+             * 管理视图tags匹配模式
+             * @description 如果为false，则只要包含一个tag，就算匹配上；反之要包含全部tags
+             */
+            manageViewTagsMatchAll
         }
     },
     {

@@ -44,14 +44,22 @@ withDefaults(defineProps<IProps>(), {
 </template>
 
 <style lang="scss" scoped>
-.text-button-disabled {
-    pointer-events: none !important;
-    color: var(--p-surface-400) !important;
-}
+.text-button {
+    --hover-color: var(--p-primary-color);
 
-.text-button:hover,
-.text-button:active {
-    background: var(--hover-background) !important;
-    color: var(--p-primary-color) !important;
+    &.text-button-disabled {
+        pointer-events: none !important;
+        color: var(--p-surface-400) !important;
+    }
+
+    &:hover {
+        background: var(--hover-background) !important;
+        color: var(--hover-color) !important;
+    }
+
+    &:active {
+        background: var(--hover-background) !important;
+        color: var(--p-primary-color) !important;
+    }
 }
 </style>

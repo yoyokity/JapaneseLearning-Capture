@@ -1,5 +1,4 @@
 import type { IVideoFile } from '@renderer/scraper'
-import type { VideoSortType } from '@renderer/stores'
 import type { Dayjs } from 'dayjs'
 import type { ManageCardItem } from './type'
 
@@ -13,7 +12,7 @@ export function useDisplay() {
     /**
      * 当前选中的系列
      */
-    const currentSet = ref<string | null>(null)
+    const currentSetField = ref<string | null>(null)
     /**
      * 文件列表
      */
@@ -29,18 +28,7 @@ export function useDisplay() {
     /**
      * 是否在系列页面
      */
-    const isSetView = computed(() => currentSet.value !== null)
-    /**
-     * 当前排序用的字段
-     */
-    const currentSortField = computed<VideoSortType>({
-        get() {
-            return settings.manageViewSort
-        },
-        set(value) {
-            settings.manageViewSort = value
-        }
-    })
+    const isSetView = computed(() => currentSetField.value !== null)
     /**
      * 当前排序是否正序
      */
@@ -52,6 +40,29 @@ export function useDisplay() {
             settings.manageViewSortReverse = !value
         }
     })
+    /**
+     * 标签列表
+     */
+    const tagsList = computed(() => {
+        const tagCountMap = new Map<string, number>()
+
+        for (const file of manageViewFiles) {
+            for (const tag of file.tag) {
+                tagCountMap.set(tag, (tagCountMap.get(tag) || 0) + 1)
+            }
+        }
+
+        return [...tagCountMap]
+            .map(([tag, count]) => ({
+                tag,
+                count
+            }))
+            .sort((a, b) => b.count - a.count)
+    })
+    /**
+     * 当前选中的标签
+     */
+    const currentTagField = ref<string[]>([])
 
     /**
      * 设置管理视图文件列表文件
@@ -113,20 +124,28 @@ export function useDisplay() {
      * 文件列表过滤后的，筛选+排序 后的文件列表
      */
     const manageViewFilesFilter = computed(() => {
-        if (manageViewFilesFilterValue.value.trim() !== '') {
-            return manageViewFiles
-                .filter((file) => {
-                    return (
-                        file.title.includes(manageViewFilesFilterValue.value) ||
-                        file.originaltitle.includes(manageViewFilesFilterValue.value) ||
-                        file.sorttitle.includes(manageViewFilesFilterValue.value) ||
-                        file.set.toString().includes(manageViewFilesFilterValue.value)
-                    )
-                })
-                .sort(videoSortFunc)
-        } else {
-            return [...manageViewFiles].sort(videoSortFunc)
-        }
+        const keyword = manageViewFilesFilterValue.value.trim()
+        const hasCurrentTag = currentTagField.value.length > 0
+
+        return manageViewFiles
+            .filter((file) => {
+                if (keyword) {
+                    const hasKeyword =
+                        file.title.includes(keyword) ||
+                        file.originaltitle.includes(keyword) ||
+                        file.sorttitle.includes(keyword) ||
+                        file.set.includes(keyword)
+
+                    if (!hasKeyword) return false
+                }
+
+                if (!hasCurrentTag) return true
+
+                return settings.manageViewTagsMatchAll
+                    ? currentTagField.value.every((tag) => file.tag.includes(tag))
+                    : currentTagField.value.some((tag) => file.tag.includes(tag))
+            })
+            .sort(videoSortFunc)
     })
 
     const displayItems = computed<ManageCardItem[]>(() => {
@@ -134,9 +153,9 @@ export function useDisplay() {
         const allFiles = manageViewFiles
         const isSearching = manageViewFilesFilterValue.value.trim() !== ''
 
-        if (currentSet.value) {
+        if (currentSetField.value) {
             return files.value
-                .filter((file) => file.set === currentSet.value)
+                .filter((file) => file.set === currentSetField.value)
                 .map((video) => ({
                     type: 'video',
                     video
@@ -207,11 +226,11 @@ export function useDisplay() {
     watch(
         () => manageViewFilesFilter,
         (files) => {
-            if (!currentSet.value) return
+            if (!currentSetField.value) return
 
-            const hasCurrentSet = files.value.some((file) => file.set === currentSet.value)
+            const hasCurrentSet = files.value.some((file) => file.set === currentSetField.value)
 
-            if (!hasCurrentSet) currentSet.value = null
+            if (!hasCurrentSet) currentSetField.value = null
         },
         { deep: true }
     )
@@ -223,6 +242,7 @@ export function useDisplay() {
         hasManageViewFiles,
         /**
          * 管理页显示的文件列表
+         * @remarks 可能也是系列
          */
         displayItems,
         /**
@@ -232,15 +252,11 @@ export function useDisplay() {
         /**
          * 当前选中的系列
          */
-        currentSet,
+        currentSetField,
         /**
          * 是否在系列页面
          */
         isSetView,
-        /**
-         * 当前排序用的字段
-         */
-        currentSortField,
         /**
          * 当前排序是否正序
          */
@@ -249,6 +265,14 @@ export function useDisplay() {
          * 文件列表过滤值
          */
         manageViewFilesFilterValue,
+        /**
+         * 标签列表
+         */
+        tagsList,
+        /**
+         * 当前选中的标签
+         */
+        currentTagField,
         /**
          * 文件列表过滤后的，筛选+排序 后的文件列表
          */

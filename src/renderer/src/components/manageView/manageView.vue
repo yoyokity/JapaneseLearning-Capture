@@ -3,6 +3,7 @@ import type { ManageCardItem } from '@renderer/components/manageView/hook'
 import type { IVideoFile } from '@renderer/scraper'
 import type { SelectChangeEvent } from 'primevue/select'
 
+import TextButton from '@renderer/components/control/button/textButton.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import { useDisplay, useScanFiles } from '@renderer/components/manageView/hook'
 import VideoCard from '@renderer/components/manageView/videoCard.vue'
@@ -16,6 +17,18 @@ import Select from 'primevue/select'
 import ToggleButton from 'primevue/togglebutton'
 import { onMounted, onUnmounted, ref } from 'vue'
 
+const {
+    hasManageViewFiles,
+    displayItems,
+    currentSetField,
+    isSetView,
+    isPositiveOrder,
+    manageViewFilesFilterValue,
+    tagsList,
+    currentTagField,
+    setManageViewFiles
+} = useDisplay()
+const { runScanFiles } = useScanFiles()
 const settings = settingsStore()
 const globalStates = globalStatesStore()
 
@@ -23,18 +36,25 @@ const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
 const isSortActive = ref(false)
 
-const {
-    hasManageViewFiles,
-    displayItems,
-    currentSet,
-    isSetView,
-    currentSortField,
-    isPositiveOrder,
-    manageViewFilesFilterValue,
-    setManageViewFiles
-} = useDisplay()
+// 筛选面板
+type FilterPanel = 'tag' | 'sort'
+const activeFilterPanel = ref<FilterPanel | null>(null)
+function toggleFilterPanel(panel: FilterPanel) {
+    activeFilterPanel.value = activeFilterPanel.value === panel ? null : panel
+}
 
-const { runScanFiles } = useScanFiles()
+/**
+ * 切换标签选中状态
+ * @param tag 标签
+ */
+function toggleCurrentTag(tag: string) {
+    if (currentTagField.value.includes(tag)) {
+        currentTagField.value = currentTagField.value.filter((value) => value !== tag)
+        return
+    }
+
+    currentTagField.value.push(tag)
+}
 
 /**
  * 判断视频是否存在编号
@@ -72,7 +92,7 @@ const menuItems = ref([
 function clearFiles(e: SelectChangeEvent) {
     if (e.value !== settings.currentScraper) {
         setManageViewFiles([])
-        currentSet.value = null
+        currentSetField.value = null
     }
 }
 
@@ -92,18 +112,10 @@ function hideMenuOnScroll() {
 }
 
 /**
- * 点击系列卡片
- */
-function enterSet(setName: string) {
-    currentSet.value = setName
-    hideMenuOnScroll()
-}
-
-/**
  * 回到主页视角
  */
 function backToHomeView() {
-    currentSet.value = null
+    currentSetField.value = null
     hideMenuOnScroll()
 }
 
@@ -126,7 +138,8 @@ function handleMouseBackAction(event: MouseEvent) {
  */
 function handleCardClick(item: ManageCardItem, _event: MouseEvent) {
     if (item.type === 'series') {
-        enterSet(item.name)
+        currentSetField.value = item.name
+        hideMenuOnScroll()
     }
 }
 
@@ -163,7 +176,7 @@ onUnmounted(() => {
                         class="pi pi-arrow-left manage-view-back"
                         @click="backToHomeView"
                     />
-                    <h3 class="manage-view-back-title">{{ currentSet }}</h3>
+                    <h3 class="manage-view-back-title">{{ currentSetField }}</h3>
                 </div>
             </div>
 
@@ -187,7 +200,7 @@ onUnmounted(() => {
 
                     <!-- 排序 -->
                     <Select
-                        v-model="currentSortField"
+                        v-model="settings.manageViewSort"
                         v-tooltip.top="'排序'"
                         :option-label="(option) => VideoSortTypeList[option]"
                         :options="Object.keys(VideoSortTypeList)"
@@ -210,6 +223,17 @@ onUnmounted(() => {
                             </div>
                         </template>
                     </Select>
+
+                    <!-- 标签筛选 -->
+                    <TextButton
+                        v-tooltip.top="'标签筛选'"
+                        icon="pi pi-tags"
+                        class="active-button"
+                        :class="{
+                            active: activeFilterPanel === 'tag'
+                        }"
+                        @click="toggleFilterPanel('tag')"
+                    />
                 </div>
             </div>
 
@@ -233,7 +257,32 @@ onUnmounted(() => {
                 />
             </div>
         </div>
-        <!-- TODO 添加标签筛选 -->
+
+        <!-- 筛选面板 -->
+        <transition name="filter-panel-fade">
+            <div v-if="activeFilterPanel" class="filter-panel">
+                <div class="filter-panel-content">
+                    <!-- 标签 -->
+                    <Scroll style="height: 100%" occupy-space="none">
+                        <div v-if="activeFilterPanel === 'tag'" class="tag-list">
+                            <!-- 标签项 -->
+                            <div
+                                v-for="item in tagsList"
+                                :key="item.tag"
+                                :class="{
+                                    active: currentTagField.includes(item.tag)
+                                }"
+                                class="tag-item"
+                                @click="toggleCurrentTag(item.tag)"
+                            >
+                                <span class="tag-item-label">{{ item.tag }}</span>
+                            </div>
+                        </div>
+                    </Scroll>
+                </div>
+            </div>
+        </transition>
+
         <Scroll
             style="height: calc(100% - var(--header-height))"
             occupy-space="none"
@@ -241,7 +290,7 @@ onUnmounted(() => {
             @wheel.capture="hideMenuOnScroll"
         >
             <transition mode="out-in" name="manage-view-fade">
-                <div :key="currentSet || 'home'" class="manage-view-content">
+                <div :key="currentSetField || 'home'" class="manage-view-content">
                     <!-- 卡片视图 -->
                     <template
                         v-for="item in displayItems"
@@ -347,6 +396,16 @@ onUnmounted(() => {
     flex: 0 0 auto;
 }
 
+.active-button {
+    &:hover {
+        --hover-color: none !important;
+    }
+
+    &.active {
+        color: var(--p-primary-color) !important;
+    }
+}
+
 .manage-view-toolbar {
     width: fit-content;
     display: flex;
@@ -381,9 +440,8 @@ onUnmounted(() => {
     }
 
     .sort-select {
-        --p-icon-size: calc(1rem + 2px);
-        --p-select-dropdown-width: 100%;
-        --p-select-dropdown-color: var(--p-text-muted-color);
+        --p-select-dropdown-width: var(--p-button-icon-only-width);
+        --p-select-dropdown-color: var(--p-button-text-secondary-color);
 
         width: 2rem;
         border: none !important;
@@ -400,6 +458,90 @@ onUnmounted(() => {
     }
 }
 
+.filter-panel {
+    position: absolute;
+    height: calc(100% - var(--header-height));
+    padding: 1rem 0.5rem;
+    top: var(--header-height);
+    left: 0;
+    z-index: 2;
+    transition: opacity 0.3s var(--animation-type);
+
+    width: 22rem;
+    @media (min-width: 1600px) {
+        width: 35rem;
+    }
+    @media (min-width: 1200px) and (max-width: 1600px) {
+        width: 28rem;
+    }
+    @media (max-width: 1200px) {
+        width: 22rem;
+    }
+
+    opacity: 0.8;
+    &:hover {
+        opacity: 1;
+    }
+
+    .filter-panel-content {
+        height: 100%;
+        background-color: var(--p-surface-0);
+        box-shadow: 0 0px 8px rgba(0, 0, 0, 0.1);
+        border: var(--separator);
+        border-radius: 1rem;
+        overflow: hidden;
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 1rem;
+
+            .tag-item {
+                width: fit-content;
+                display: inline-flex;
+                align-items: center;
+                gap: 2px;
+                padding: 0.45rem 0.85rem;
+                border: 1px solid var(--p-content-border-color);
+                border-radius: 999rem;
+                background-color: var(--p-surface-0);
+                color: inherit;
+                cursor: pointer;
+                transition: all 0.3s var(--animation-type);
+
+                &.active {
+                    border-color: var(--p-primary-color);
+                    background-color: var(--p-primary-color);
+                    color: var(--p-primary-inverse-color);
+                }
+
+                .tag-item-label {
+                    font-size: 0.9rem;
+                    line-height: 1;
+                }
+            }
+        }
+    }
+}
+
+// 筛选面板切换动画
+.filter-panel-fade-enter-active,
+.filter-panel-fade-leave-active {
+    transition: transform 0.3s var(--animation-type);
+}
+
+.filter-panel-fade-enter-from,
+.filter-panel-fade-leave-to {
+    transform: translateX(-100%);
+}
+
+.filter-panel-fade-enter-to,
+.filter-panel-fade-leave-from {
+    transform: translateX(0);
+}
+
+// 系列页面切换动画
 .manage-view-fade-enter-active,
 .manage-view-fade-leave-active {
     transition: opacity 0.2s ease;
