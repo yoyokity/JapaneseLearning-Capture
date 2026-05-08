@@ -7,7 +7,7 @@ import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
 import VideoInfo from '@renderer/components/manageView/editor/videoInfo.vue'
-import { useDisplay, useScanFiles } from '@renderer/components/manageView/hook'
+import { useScanFiles } from '@renderer/components/manageView/hook'
 import {
     EncodeHelper,
     isNumeric,
@@ -23,7 +23,7 @@ import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
 import { settingsStore } from '@renderer/stores'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
-import { isEqual } from 'es-toolkit'
+import { delay, isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
 import Button from 'primevue/button'
 import Chip from 'primevue/chip'
@@ -42,7 +42,6 @@ const { toast } = useMessage()
 const { scraperAll, scraperField, scraperSave, isScraperRunning, isEditeScraperRunning } =
     useEditeScraper()
 const { runScanFiles, readExtrafanart } = useScanFiles()
-const { setManageViewFiles } = useDisplay()
 const settings = settingsStore()
 
 const video = dialogRef.value.data.video as IVideoFile
@@ -203,7 +202,8 @@ async function onSave() {
     }
 
     // 重新扫描文件
-    await runScanFiles(setManageViewFiles)
+    await delay(500)
+    await runScanFiles()
 
     // 先关闭弹窗并清空预览，释放旧图片文件引用
     previewImage.value = null

@@ -2,6 +2,7 @@ import type { Path } from '@renderer/helper'
 import type { IVideoFile } from '@renderer/scraper'
 import type { IFile, IStats } from '@shared'
 
+import { useDisplay } from '@renderer/components/manageView/hook'
 import {
     DataHelper,
     EncodeHelper,
@@ -52,8 +53,11 @@ const NFO_CACHE_DATA_NAME = 'nfo-cache-data'
 export function useScanFiles() {
     const globalStates = globalStatesStore()
     const toast = useToast()
+    const display = useDisplay()
 
-    async function runScanFiles(setManageViewFiles: (files: IVideoFile[]) => void) {
+    async function runScanFiles() {
+        globalStates.scanFilesLoading = true
+
         try {
             const path = Scraper.getCurrentScraperPath()
             const videoFiles: IVideoFile[] = []
@@ -218,7 +222,7 @@ export function useScanFiles() {
             videoFiles.push(...(await Promise.all(directories.map((directory) => read(directory)))))
 
             // 更新文件列表状态
-            setManageViewFiles(videoFiles)
+            display.setManageViewFiles(videoFiles)
             // 扫描完成后刷新图片缓存状态，确保同路径图片重新加载
             globalStates.refreshImageCacheVersion()
         } catch (error) {

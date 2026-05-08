@@ -18,18 +18,8 @@ import ToggleButton from 'primevue/togglebutton'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { onMounted, onUnmounted, ref } from 'vue'
 
-const {
-    hasManageViewFiles,
-    displayItems,
-    currentSetField,
-    isSetView,
-    isPositiveOrder,
-    manageViewFilesFilterValue,
-    tagsList,
-    currentTagField,
-    setManageViewFiles
-} = useDisplay()
 const { runScanFiles } = useScanFiles()
+const display = useDisplay()
 const settings = settingsStore()
 const globalStates = globalStatesStore()
 
@@ -49,12 +39,12 @@ function toggleFilterPanel(panel: FilterPanel) {
  * @param tag 标签
  */
 function toggleCurrentTag(tag: string) {
-    if (currentTagField.value.includes(tag)) {
-        currentTagField.value = currentTagField.value.filter((value) => value !== tag)
+    if (display.currentTagField.includes(tag)) {
+        display.currentTagField = display.currentTagField.filter((value) => value !== tag)
         return
     }
 
-    currentTagField.value.push(tag)
+    display.currentTagField.push(tag)
 }
 
 /**
@@ -92,8 +82,8 @@ const menuItems = ref([
 // 重新选择目录后，清除文件列表
 function clearFiles(e: SelectChangeEvent) {
     if (e.value !== settings.currentScraper) {
-        setManageViewFiles([])
-        currentSetField.value = null
+        display.setManageViewFiles([])
+        display.currentSetField = null
     }
 }
 
@@ -116,7 +106,7 @@ function hideMenuOnScroll() {
  * 回到主页视角
  */
 function backToHomeView() {
-    currentSetField.value = null
+    display.currentSetField = null
     hideMenuOnScroll()
 }
 
@@ -125,7 +115,7 @@ function backToHomeView() {
  */
 function handleMouseBackAction(event: MouseEvent) {
     if (document.querySelector('.p-dialog-mask')) return
-    if (!isSetView.value) return
+    if (!display.isSetView) return
 
     // 鼠标侧键返回
     if (event.button === 3) {
@@ -139,7 +129,7 @@ function handleMouseBackAction(event: MouseEvent) {
  */
 function handleCardClick(item: ManageCardItem, _event: MouseEvent) {
     if (item.type === 'series') {
-        currentSetField.value = item.name
+        display.currentSetField = item.name
         hideMenuOnScroll()
     }
 }
@@ -170,21 +160,21 @@ onUnmounted(() => {
         <div class="tab-header">
             <!-- 左侧标题 -->
             <div class="tab-header-side">
-                <h3 v-if="!isSetView">管理</h3>
+                <h3 v-if="!display.isSetView">管理</h3>
                 <div v-else class="manage-view-back-wrapper">
                     <i
                         v-tooltip.left="'返回'"
                         class="pi pi-arrow-left manage-view-back"
                         @click="backToHomeView"
                     />
-                    <h3 class="manage-view-back-title">{{ currentSetField }}</h3>
+                    <h3 class="manage-view-back-title">{{ display.currentSetField }}</h3>
                 </div>
             </div>
 
             <!-- 中间搜索和排序 -->
             <div class="tab-header-center">
                 <div
-                    v-show="hasManageViewFiles"
+                    v-show="display.hasManageViewFiles"
                     :class="{ active: isSortActive }"
                     class="manage-view-toolbar"
                 >
@@ -192,7 +182,7 @@ onUnmounted(() => {
                     <div class="search-input-container">
                         <i class="pi pi-search search-input-icon" />
                         <InputText
-                            v-model="manageViewFilesFilterValue"
+                            v-model="display.manageViewFilesFilterValue"
                             class="search-input"
                             placeholder="搜索"
                             size="small"
@@ -215,7 +205,7 @@ onUnmounted(() => {
                             <!-- 排序方向 -->
                             <div style="padding: var(--p-select-list-padding)">
                                 <ToggleButton
-                                    v-model="isPositiveOrder"
+                                    v-model="display.isPositiveOrder"
                                     off-label="倒序"
                                     on-label="正序"
                                     size="small"
@@ -254,7 +244,7 @@ onUnmounted(() => {
                     label="开始扫描"
                     size="small"
                     style="width: 7rem; min-width: 7rem"
-                    @click="runScanFiles(setManageViewFiles)"
+                    @click="runScanFiles"
                 />
             </div>
         </div>
@@ -268,10 +258,10 @@ onUnmounted(() => {
                         <div v-if="activeFilterPanel === 'tag'" class="tag-list">
                             <!-- 标签项 -->
                             <div
-                                v-for="item in tagsList"
+                                v-for="item in display.tagsList"
                                 :key="item.tag"
                                 :class="{
-                                    active: currentTagField.includes(item.tag)
+                                    active: display.currentTagField.includes(item.tag)
                                 }"
                                 class="tag-item"
                                 @click="toggleCurrentTag(item.tag)"
@@ -296,10 +286,10 @@ onUnmounted(() => {
             @wheel.capture="hideMenuOnScroll"
         >
             <transition mode="out-in" name="manage-view-fade">
-                <div :key="currentSetField || 'home'" class="manage-view-content">
+                <div :key="display.currentSetField || 'home'" class="manage-view-content">
                     <!-- 卡片视图 -->
                     <template
-                        v-for="item in displayItems"
+                        v-for="item in display.displayItems"
                         :key="
                             item.type === 'series'
                                 ? `series-${item.name}`

@@ -4,9 +4,10 @@ import type { ManageCardItem } from './type'
 
 import { settingsStore } from '@renderer/stores'
 import dayjs from 'dayjs'
+import { defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
 
-export function useDisplay() {
+export const useDisplay = defineStore('useDisplay', () => {
     const settings = settingsStore()
 
     /**
@@ -281,7 +282,7 @@ export function useDisplay() {
          */
         manageViewFilesFilter
     }
-}
+})
 
 /**
  * 解析日期字符串为 Dayjs 对象
