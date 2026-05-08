@@ -4,7 +4,7 @@ import type { StyleValue } from 'vue'
 import imgFall from '@renderer/assets/img-fall.svg?url'
 import { MediaHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
-import { onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 interface ImageProps {
     path?: string | null
@@ -37,21 +37,18 @@ const props = withDefaults(defineProps<ImageProps>(), {
 })
 const globalStates = globalStatesStore()
 
-const isImgError = ref(true)
-const imageData = ref<string>()
+const isImgError = ref(false)
+const imageData = computed(() => {
+    if (!props.path) return ''
+
+    return MediaHelper.toLocalFileUrl(props.path, globalStates.imageCacheVersion)
+})
 
 /**
  * 加载图片
  */
 function loadImage() {
-    if (!props.path) {
-        imageData.value = ''
-        isImgError.value = true
-        return
-    }
-
-    imageData.value = MediaHelper.toLocalFileUrl(props.path, globalStates.imageCacheVersion)
-    isImgError.value = false
+    isImgError.value = !props.path
 }
 
 /**
@@ -63,8 +60,7 @@ function handleImageError() {
 
 watch(() => props.path, loadImage)
 watch(() => globalStates.imageCacheVersion, loadImage)
-
-onMounted(loadImage)
+loadImage()
 </script>
 
 <template>

@@ -149,12 +149,12 @@ export function useDisplay() {
     })
 
     const displayItems = computed<ManageCardItem[]>(() => {
-        const files = manageViewFilesFilter
+        const files = manageViewFilesFilter.value
         const allFiles = manageViewFiles
         const isSearching = manageViewFilesFilterValue.value.trim() !== ''
 
         if (currentSetField.value) {
-            return files.value
+            return files
                 .filter((file) => file.set === currentSetField.value)
                 .map((video) => ({
                     type: 'video',
@@ -174,7 +174,7 @@ export function useDisplay() {
             allSetMap.set(setName, setFiles)
         }
 
-        for (const file of files.value) {
+        for (const file of files) {
             const setName = file.set.trim()
             if (!setName) continue
 
@@ -184,8 +184,10 @@ export function useDisplay() {
         }
 
         const items: ManageCardItem[] = []
+        // 记录已加入的系列，避免在循环中重复遍历 items
+        const addedSetNames = new Set<string>()
 
-        for (const file of files.value) {
+        for (const file of files) {
             const setName = file.set.trim()
 
             if (!setName) {
@@ -207,10 +209,11 @@ export function useDisplay() {
                 continue
             }
 
-            if (items.some((item) => item.type === 'series' && item.name === setName)) {
+            if (addedSetNames.has(setName)) {
                 continue
             }
 
+            addedSetNames.add(setName)
             items.push({
                 type: 'series',
                 name: setName,
