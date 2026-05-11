@@ -10,16 +10,6 @@ export class DataHelper {
     private static readonly DB_NAME = 'japanese-learning-capture-db'
 
     /**
-     * 默认数据库版本
-     */
-    private static readonly DB_VERSION = 1
-
-    /**
-     * 默认存储对象名称
-     */
-    private static readonly STORE_NAME = 'app-data'
-
-    /**
      * 数据库连接实例
      */
     private static _db: IDBDatabase | null = null
@@ -31,22 +21,19 @@ export class DataHelper {
 
     /**
      * 存储数据到IndexedDB
-     * @param name 刮削器名称
+     * @param name 表名
      * @param key 数据的键
      * @param value 要存储的数据
      * @returns 返回是否存储成功
      */
     static async set(name: string, key: string, value: any): Promise<boolean> {
         try {
-            const db = await this.getDBConnection()
-            const transaction = db.transaction(this.STORE_NAME, 'readwrite')
-            const store = transaction.objectStore(this.STORE_NAME)
-
-            // 使用name:key的组合形式作为存储键
-            const compositeKey = `${name}:${key}`
+            const db = await this.getDBConnection(name)
+            const transaction = db.transaction(name, 'readwrite')
+            const store = transaction.objectStore(name)
 
             return new Promise((resolve) => {
-                const request = store.put({ key: compositeKey, value })
+                const request = store.put({ key, value })
 
                 request.onsuccess = () => {
                     resolve(true)
@@ -65,21 +52,18 @@ export class DataHelper {
 
     /**
      * 从IndexedDB获取数据
-     * @param name 刮削器名称
+     * @param name 表名
      * @param key 数据的键
      * @returns 返回获取的数据，如果不存在则返回null
      */
     static async get<T = any>(name: string, key: string): Promise<T | null> {
         try {
-            const db = await this.getDBConnection()
-            const transaction = db.transaction(this.STORE_NAME, 'readonly')
-            const store = transaction.objectStore(this.STORE_NAME)
-
-            // 使用name:key的组合形式作为存储键
-            const compositeKey = `${name}:${key}`
+            const db = await this.getDBConnection(name)
+            const transaction = db.transaction(name, 'readonly')
+            const store = transaction.objectStore(name)
 
             return new Promise((resolve) => {
-                const request = store.get(compositeKey)
+                const request = store.get(key)
 
                 request.onsuccess = (event) => {
                     const result = (event.target as IDBRequest).result
@@ -134,19 +118,38 @@ export class DataHelper {
      * @returns 返回数据库连接
      * @private
      */
-    private static async getDBConnection(): Promise<IDBDatabase> {
-        // 如果已有连接且未关闭，直接返回
-        if (this._db && this._db.objectStoreNames.length > 0) {
+    private static async getDBConnection(storeName?: string): Promise<IDBDatabase> {
+        // 如果正在连接中，等待连接完成
+        if (this._connecting) {
+            this._db = await this._connecting
+        }
+
+        // 如果已有连接且表存在，直接返回
+        if (this._db && (!storeName || this._db.objectStoreNames.contains(storeName))) {
             return this._db
         }
 
-        // 如果正在连接中，等待连接完成
-        if (this._connecting) {
-            return this._connecting
+        // 如果没有连接，则创建新连接
+        if (!this._db) {
+            this._connecting = this.openDB(storeName)
+
+            try {
+                this._db = await this._connecting
+            } finally {
+                this._connecting = null
+            }
         }
 
-        // 创建新连接
-        this._connecting = this.openDB()
+        // 如果表已存在，直接返回
+        if (this._db && (!storeName || this._db.objectStoreNames.contains(storeName))) {
+            return this._db
+        }
+
+        // 如果表不存在，则升级数据库并创建对应的表
+        const version = this._db!.version + 1
+        this._db?.close()
+        this._db = null
+        this._connecting = this.openDB(storeName, version)
 
         try {
             this._db = await this._connecting
@@ -161,9 +164,11 @@ export class DataHelper {
      * @returns 返回打开的数据库连接
      * @private
      */
-    private static openDB(): Promise<IDBDatabase> {
+    private static openDB(storeName?: string, version?: number): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION)
+            const request = version
+                ? indexedDB.open(this.DB_NAME, version)
+                : indexedDB.open(this.DB_NAME)
 
             request.onerror = (event) => {
                 LogHelper.error('打开数据库失败:', (event.target as IDBRequest).error)
@@ -192,13 +197,10 @@ export class DataHelper {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result
 
-                // 如果存储对象已存在，则删除
-                if (db.objectStoreNames.contains(this.STORE_NAME)) {
-                    db.deleteObjectStore(this.STORE_NAME)
+                // 按表名创建存储对象，使用key作为主键
+                if (storeName && !db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName, { keyPath: 'key' })
                 }
-
-                // 创建存储对象，使用key作为主键
-                db.createObjectStore(this.STORE_NAME, { keyPath: 'key' })
             }
         })
     }

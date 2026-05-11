@@ -48,7 +48,7 @@ interface INfoCacheRecord {
     data: INfoCacheData
 }
 
-const NFO_CACHE_DATA_NAME = 'nfo-cache-data'
+const NFO_CACHE_DATA_NAME = '#nfo-cache-data'
 
 export function useScanFiles() {
     const globalStates = globalStatesStore()
