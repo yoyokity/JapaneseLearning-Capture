@@ -1,5 +1,5 @@
 import { ipc } from '@renderer/ipc'
-import stringComparison from 'string-comparison'
+import { extract, token_set_ratio } from 'fuzzball'
 
 /** 编码相关 */
 export class EncodeHelper {
@@ -60,15 +60,17 @@ export class EncodeHelper {
     static bestMatch(target: string, candidates: string[]) {
         if (candidates.length === 0) return null
 
-        const bestMatch = stringComparison.diceCoefficient
-            .sortMatch(
-                EncodeHelper.fullToHalf(target),
-                candidates.map((candidate) => EncodeHelper.fullToHalf(candidate))
-            )
-            .at(-1)
+        const bestMatch = extract(
+            EncodeHelper.fullToHalf(target),
+            candidates.map((candidate) => EncodeHelper.fullToHalf(candidate)),
+            {
+                scorer: token_set_ratio,
+                cutoff: 50
+            }
+        ).at(0)
 
-        if (!bestMatch || bestMatch.rating < 0.5) return null
-        return candidates[bestMatch.index] ?? null
+        if (!bestMatch) return null
+        return candidates[bestMatch[2]] ?? null
     }
 
     /**
