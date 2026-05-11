@@ -1,6 +1,6 @@
 import App from '@renderer/App.vue'
 import Tooltip from '@renderer/components/control/tooltip'
-import { LogHelper, PathHelper } from '@renderer/helper'
+import { LogHelper, PathHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import { theme } from '@renderer/style/theme'
@@ -20,6 +20,7 @@ LogHelper.debug('应用初始化中...')
 
 async function initApp() {
     await PathHelper.init()
+    await TransHelper.init()
 
     const pinia = createPinia().use(piniaPluginPersistedstate)
     const app = createApp(App)

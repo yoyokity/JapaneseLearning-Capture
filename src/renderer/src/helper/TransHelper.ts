@@ -1,14 +1,10 @@
 import { Segmenter } from '@formatjs/intl-segmenter'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
-import { toSimplified, toTraditional } from 'chinese-simple2traditional'
-import { setupEnhance } from 'chinese-simple2traditional/enhance'
+import { createConverter } from 'js-opencc'
 
 import { EncodeHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
-
-// 注入短语库，提高准确性
-setupEnhance()
 
 // 句子分段器，用于格式化翻译结果
 const sentenceSegmenter = new Segmenter('zh-CN', {
@@ -320,6 +316,17 @@ const translators = {
  * 翻译相关
  */
 export class TransHelper {
+    private static traditionalToSimpleConverter: ((text: string) => string) | null = null
+
+    /**
+     * 初始化本地繁转简转换器
+     */
+    static async init() {
+        if (!this.traditionalToSimpleConverter) {
+            this.traditionalToSimpleConverter = await createConverter({ from: 't', to: 'cn' })
+        }
+    }
+
     /**
      * 获取全部翻译引擎
      */
@@ -339,7 +346,6 @@ export class TransHelper {
      * @param text 要翻译的文本
      * @param format 是否格式化，默认为 true
      * @param streamCallback 翻译过程中每一次流传输的回调，不会对data进行格式化处理
-     * @return 如果翻译失败，则返回原文
      */
     static async translate(
         text: string,
@@ -365,11 +371,13 @@ export class TransHelper {
                 streamCallback
             )
 
+            googleRe.text = TransHelper.translateSC(googleRe.text)
             return format
                 ? { ...googleRe, text: TransHelper.formatTranslateText(googleRe.text) }
                 : googleRe
         }
 
+        re.text = TransHelper.translateSC(re.text)
         return format ? { ...re, text: TransHelper.formatTranslateText(re.text) } : re
     }
 
@@ -406,15 +414,8 @@ export class TransHelper {
     /**
      * 本地繁体转化为简体
      */
-    static translateSC(text: string) {
-        return toSimplified(text, true)
-    }
-
-    /**
-     * 本地简体转化为繁体
-     */
-    static translateTC(text: string) {
-        return toTraditional(text, true)
+    static translateSC(text: string): string {
+        return this.traditionalToSimpleConverter ? this.traditionalToSimpleConverter(text) : text
     }
 
     /**
@@ -423,8 +424,6 @@ export class TransHelper {
      * @description 每一句话之间隔一行，同时句首顶格，全部翻译为简体中文，最后将文本中的转义换行符转为普通换行
      */
     static formatTranslateText(text: string) {
-        text = TransHelper.translateSC(text)
-
         return Array.from(sentenceSegmenter.segment(text))
             .filter((item): item is NonNullable<typeof item> => Boolean(item))
             .map((item) => item.segment.trim())
@@ -441,6 +440,7 @@ function getPrompt(targetLanguage: string) {
     - 标点符号之类的转为${targetLanguage}语言的标点。
     - 注意联系上下文正确使用人称代词，不要混淆使役态和被动态的主语和宾语。
     - 语句的前后逻辑关系要通顺，不要前后矛盾。
+    - 如果遇到英文片假名，结合语境判断是翻译成英文原文还是翻译成${targetLanguage}，一定不要保留原有的日文片假名。
     - 人名使用中文音译。
     - 自行优化排版。`
 }
