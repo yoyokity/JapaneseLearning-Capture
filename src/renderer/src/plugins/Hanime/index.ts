@@ -1,5 +1,5 @@
 import type { IScraper, IVideo } from '@renderer/scraper'
-import type { IHanimeContext } from './temp'
+import type { IHanimeContext } from './type'
 
 import { LogHelper, MediaHelper, NetHelper, TransHelper } from '@renderer/helper'
 import {
@@ -22,7 +22,7 @@ import { maker_trans } from '@renderer/plugins/Hanime/makerTrans'
 import { load as cheerioLoad } from 'cheerio'
 import { toNumber } from 'es-toolkit/compat'
 
-import { loggerDlsite, loggerGetchu, scraperName } from './temp'
+import { loggerDlsite, loggerGetchu, scraperName } from './type'
 
 const hanimeScraper: IScraper<IHanimeContext> = {
     scraperName,

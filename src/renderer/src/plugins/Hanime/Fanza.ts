@@ -1,7 +1,7 @@
-import type { IHanimeContext } from '@renderer/plugins/Hanime/temp'
+import type { IHanimeContext } from '@renderer/plugins/Hanime/type'
 
 import { EncodeHelper, NetHelper } from '@renderer/helper'
-import { loggerFanza } from '@renderer/plugins/Hanime/temp'
+import { loggerFanza } from '@renderer/plugins/Hanime/type'
 import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
@@ -67,8 +67,11 @@ export async function getWebContentFanza(
         href: $(el).attr('href')?.trim()
     }))
 
-    loggerFanza.log(`搜索到${candidates.length}个番剧作为候选项：`, searchUrl)
-    candidates.forEach((item) => loggerFanza.log(`【${item.title}】`))
+    loggerFanza.log(
+        `搜索到${candidates.length}个番剧作为候选项：`,
+        searchUrl,
+        candidates.map((item) => item.title)
+    )
 
     const matchedTitle = EncodeHelper.bestMatch(
         searchTitle,

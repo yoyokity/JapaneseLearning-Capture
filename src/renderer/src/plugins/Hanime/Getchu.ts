@@ -1,10 +1,10 @@
-import type { IHanimeContext } from './temp'
+import type { IHanimeContext } from './type'
 
 import { EncodeHelper, NetHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { loggerGetchu } from './temp'
+import { loggerGetchu } from './type'
 
 export const getchuOptions = {
     headers: { referer: 'https://www.getchu.com' },
@@ -72,8 +72,11 @@ export async function getWebContentGetchu(
         href: $(el).attr('href')?.trim()
     }))
 
-    loggerGetchu.log(`搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
-    candidates.forEach((item) => loggerGetchu.log(`【${item.title}】`))
+    loggerGetchu.log(
+        `搜索到${videoList.length}个番剧作为候选项：`,
+        searchUrl,
+        candidates.map((item) => item.title)
+    )
 
     const matchedTitle = EncodeHelper.bestMatch(
         searchTitle,

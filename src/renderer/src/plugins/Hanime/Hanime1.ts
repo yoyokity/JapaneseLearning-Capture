@@ -1,10 +1,10 @@
-import type { IHanimeContext } from './temp'
+import type { IHanimeContext } from './type'
 
 import { EncodeHelper, NetHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { loggerHanime1 } from './temp'
+import { loggerHanime1 } from './type'
 
 export async function searchVideoHanime1(
     searchTitle: string,
@@ -30,8 +30,11 @@ export async function searchVideoHanime1(
             '[href^="https://hanime1.me/watch?v="]'
         )
 
-        loggerHanime1.log(`搜索到${videoList.length}个番剧作为候选项`)
-        videoList.each((_, el) => loggerHanime1.log(`【${$(el).text().trim().trim()}】`))
+        loggerHanime1.log(
+            `搜索到${videoList.length}个番剧作为候选项：`,
+            url,
+            videoList.map((_, el) => $(el).text().trim().trim())
+        )
 
         const firstVideo = videoList.first()
         const href = firstVideo.attr('href')

@@ -1,10 +1,10 @@
-import type { IHanimeContext } from './temp'
+import type { IHanimeContext } from './type'
 
 import { EncodeHelper, NetHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
-import { loggerDlsite } from './temp'
+import { loggerDlsite } from './type'
 
 export const dlsiteOptions = {
     headers: {
@@ -59,8 +59,11 @@ export async function getWebContentDlsite(
         href: $(el).attr('href')?.trim()
     }))
 
-    loggerDlsite.log(`搜索到${videoList.length}个番剧作为候选项：`, searchUrl)
-    candidates.forEach((item) => loggerDlsite.log(`【${item.title}】`))
+    loggerDlsite.log(
+        `搜索到${videoList.length}个番剧作为候选项：`,
+        searchUrl,
+        candidates.map((item) => item.title)
+    )
 
     const matchedTitle = EncodeHelper.bestMatch(
         searchTitle,

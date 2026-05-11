@@ -440,7 +440,7 @@ $remove-button-width: 3rem;
 
 .file-item-shell {
     box-sizing: border-box;
-    height: 4.875rem;
+    height: 5rem;
     padding-bottom: 1em;
 }
 
