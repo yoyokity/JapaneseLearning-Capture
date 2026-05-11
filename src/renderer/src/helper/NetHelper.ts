@@ -601,6 +601,14 @@ export interface IRequestOptions<P extends IFetchParse = 'text'> {
     delay?: number
     /**
      * 取消信号
+     * @description 取消后返回
+     * {
+        ok: false,
+        status: -1,
+        statusText: '',
+        headers: {},
+        body: undefined
+        }
      */
     signal?: AbortSignal
 }
