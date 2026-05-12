@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { computed } from 'vue'
 
@@ -15,7 +16,7 @@ const html = computed(() => marked.parse(props.content) as string)
 </script>
 
 <template>
-    <div class="markdown-body" v-html="html" />
+    <div class="markdown-body" v-html="DOMPurify.sanitize(html)" />
 </template>
 
 <style lang="scss" scoped>

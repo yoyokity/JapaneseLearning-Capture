@@ -49,6 +49,8 @@ export function createWindow() {
         icon: iconPath, // 为所有平台添加图标
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
             sandbox: false,
             webSecurity: true // web安全性
         }

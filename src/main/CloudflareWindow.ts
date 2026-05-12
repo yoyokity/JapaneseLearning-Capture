@@ -29,7 +29,6 @@ export async function openCloudflareWindow(
             icon: iconPath,
             autoHideMenuBar: true,
             webPreferences: {
-                nodeIntegration: false,
                 contextIsolation: true,
                 sandbox: true
             }
