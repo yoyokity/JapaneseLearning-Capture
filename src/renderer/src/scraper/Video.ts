@@ -97,10 +97,12 @@ export interface IVideo {
     year: string
     /**
      * 首映日期，一般与releasedate相同
+     * @remarks 格式为YYYY-MM-DD
      */
     premiered: string
     /**
      * 上映日期
+     * @remarks 格式为YYYY-MM-DD
      */
     releasedate: string
     /**

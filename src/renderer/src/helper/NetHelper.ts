@@ -581,6 +581,7 @@ export interface IRequestOptions<P extends IFetchParse = 'text'> {
     parse?: P
     /**
      * 请求头
+     * @remarks Content-Type 默认为 application/json
      */
     headers?: Record<string, string>
     /**
