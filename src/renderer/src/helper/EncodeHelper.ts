@@ -57,20 +57,31 @@ export class EncodeHelper {
      * @param candidates 候选文本列表
      * @remarks 忽略字符全角半角的不同
      */
-    static bestMatch(target: string, candidates: string[]) {
+    static bestMatch(
+        target: string,
+        candidates: string[]
+    ): {
+        match: string
+        index: number
+    } | null {
         if (candidates.length === 0) return null
 
         const bestMatch = extract(
             EncodeHelper.fullToHalf(target),
             candidates.map((candidate) => EncodeHelper.fullToHalf(candidate)),
             {
+                returnObjects: true,
                 scorer: token_set_ratio,
-                cutoff: 50
+                cutoff: 50,
+                limit: 1
             }
         ).at(0)
 
         if (!bestMatch) return null
-        return candidates[bestMatch[2]] ?? null
+        return {
+            match: candidates[bestMatch.key],
+            index: bestMatch.key
+        }
     }
 
     /**

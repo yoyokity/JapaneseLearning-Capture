@@ -67,10 +67,19 @@ export async function getWebContentGetchu(
     // 在视频列表中找到符合条件的第一个
     const $ = cheerioLoad(searchBody)
     const videoList = $('td > a.blueb[href*="/soft.phtml?id="]')
-    const candidates = videoList.toArray().map((el) => ({
-        title: $(el).text().trim(),
-        href: $(el).attr('href')?.trim()
-    }))
+    const candidates = videoList
+        .toArray()
+        .map((el) => {
+            const item = $(el)
+            return {
+                title: item.text().trim(),
+                href: item.attr('href')?.trim()
+            }
+        })
+        .filter(
+            (item): item is { href: string; title: string } =>
+                !!item.title && !!item.href && !/box/i.test(item.title)
+        )
 
     loggerGetchu.log(
         `搜索到${videoList.length}个番剧作为候选项：`,
@@ -78,18 +87,16 @@ export async function getWebContentGetchu(
         candidates.map((item) => item.title)
     )
 
-    const matchedTitle = EncodeHelper.bestMatch(
+    const match = EncodeHelper.bestMatch(
         searchTitle,
-        candidates
-            .map((item) => item.title)
-            .filter((item) => !item.includes('BOX') && !item.includes('box'))
+        candidates.map((item) => item.title)
     )
-    if (!matchedTitle) {
+    if (!match) {
         loggerGetchu.warn(`没有找到匹配的番剧`)
         return
     }
 
-    const href = candidates.find((item) => item.title === matchedTitle)!.href!
+    const href = candidates[match.index].href
     const id = href.match(/[?&]id=(?<id>\d+)/)?.groups?.id
     if (!id) {
         loggerGetchu.warn(`没有找到匹配的番剧`)
@@ -97,7 +104,7 @@ export async function getWebContentGetchu(
     }
 
     const fullUrl = NetHelper.joinUrl('https://www.getchu.com/item', id, '?gc=gc')
-    loggerGetchu.log(`找到匹配的番剧：【${matchedTitle}】 ${fullUrl}`)
+    loggerGetchu.log(`找到匹配的番剧：【${match.match}】 ${fullUrl}`)
 
     // 根据href获取webContent
     const body = await fetchPage(fullUrl)

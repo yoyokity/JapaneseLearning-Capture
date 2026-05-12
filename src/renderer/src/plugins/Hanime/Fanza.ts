@@ -62,10 +62,19 @@ export async function getWebContentFanza(
     // 在视频列表中找到匹配度最高的
     const $ = cheerioLoad(webContent.body)
     const videoList = $('ul#list p.tmb > a')
-    const candidates = videoList.toArray().map((el) => ({
-        title: $(el).find('span.txt').text().trim(),
-        href: $(el).attr('href')?.trim()
-    }))
+    const candidates = videoList
+        .toArray()
+        .map((el) => {
+            const item = $(el)
+            return {
+                title: item.find('span.txt').text().trim(),
+                href: item.attr('href')?.trim()
+            }
+        })
+        .filter(
+            (item): item is { href: string; title: string } =>
+                !!item.title && !!item.href && !/box/i.test(item.title)
+        )
 
     loggerFanza.log(
         `搜索到${candidates.length}个番剧作为候选项：`,
@@ -73,19 +82,17 @@ export async function getWebContentFanza(
         candidates.map((item) => item.title)
     )
 
-    const matchedTitle = EncodeHelper.bestMatch(
+    const match = EncodeHelper.bestMatch(
         searchTitle,
-        candidates
-            .map((item) => item.title)
-            .filter((item) => !item.includes('BOX') && !item.includes('box'))
+        candidates.map((item) => item.title)
     )
-    if (!matchedTitle) {
+    if (!match) {
         loggerFanza.warn(`没有找到匹配的番剧`)
         return
     }
 
-    const href = candidates.find((item) => item.title === matchedTitle)!.href!
-    loggerFanza.log(`找到匹配的番剧：【${matchedTitle}】 ${href}`)
+    const href = candidates[match.index].href
+    loggerFanza.log(`找到匹配的番剧：【${match.match}】 ${href}`)
 
     // 根据href获取webContent
     const detailContent = await NetHelper.get(href, { ...fanzaOptions, signal })
