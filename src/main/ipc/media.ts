@@ -55,12 +55,22 @@ export async function saveImage(imageData: ImageData, path: string) {
     await sharp(imageData).jpeg({ quality: 92 }).toFile(path)
 }
 
+export interface ImageDataInfo {
+    data: ArrayBuffer
+    info: sharp.OutputInfo
+}
+
 /**
  * 读取图片
  */
-export function readImage(path: string) {
-    const data = fs.readFileSync(path)
-    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+export async function readImage(path: string): Promise<ImageDataInfo> {
+    const srcImage = await sharp(path).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const data = srcImage.data
+
+    return {
+        data: new Uint8Array(data).buffer,
+        info: srcImage.info
+    }
 }
 
 /**

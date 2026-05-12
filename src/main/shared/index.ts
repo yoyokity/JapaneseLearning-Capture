@@ -5,7 +5,7 @@ export type {
     IStats,
     ReadDirectoryOptions
 } from '../ipc/filesystem'
-export type { ImageData } from '../ipc/media'
+export type { ImageData, ImageDataInfo } from '../ipc/media'
 export type {
     IAiOptions,
     IAiResult,

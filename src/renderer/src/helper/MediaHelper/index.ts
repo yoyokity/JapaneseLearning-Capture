@@ -1,13 +1,18 @@
-import type { Path } from '@renderer/helper/PathHelper'
-import type { ImageData } from '@shared'
+import type { Path } from '@renderer/helper'
+import type {
+    IMediaInfo,
+    IMediaInfoAudioTrack,
+    IMediaInfoGeneralTrack,
+    IMediaInfoTextTrack,
+    IMediaInfoTrack,
+    IMediaInfoVideoTrack
+} from '@renderer/helper/MediaHelper/type'
+import type { ImageData, ImageDataInfo } from '@shared'
 
+import { EncodeHelper, LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
+import cvModule from '@techstark/opencv-js'
 import { v7 } from 'uuid'
-
-import { EncodeHelper } from './EncodeHelper'
-import { LogHelper } from './LogHelper'
-import { PathHelper } from './PathHelper'
-import { TaskHelper } from './TaskHelper'
 
 /** 媒体相关 */
 export class MediaHelper {
@@ -40,7 +45,7 @@ export class MediaHelper {
     /**
      * 读取本地图片
      */
-    static async readImage(path: Path | string): Promise<ArrayBuffer | null> {
+    static async readImage(path: Path | string): Promise<ImageDataInfo | null> {
         const re = await TaskHelper.tryExecute(() => ipc.media.readImage.query(path.toString()))
         if (!re.hasError) {
             return re.result
@@ -146,6 +151,109 @@ export class MediaHelper {
             return null
         }
     }
+
+    private static cv: typeof cvModule | null = null
+
+    /**
+     * 查找模板图在源图中的位置
+     */
+    static async templateMatchIamge(srcImage: string, templImage: string) {
+        if (!this.cv) this.cv = (await getOpenCv()).cv
+
+        const cv = this.cv
+        if (!cv) {
+            LogHelper.error('OpenCV 初始化失败')
+            return null
+        }
+
+        const srcImageData = await MediaHelper.readImage(srcImage)
+        const templImageData = await MediaHelper.readImage(templImage)
+        if (!srcImageData || !templImageData) return null
+
+        const srcMat = new cv.Mat(srcImageData.info.height, srcImageData.info.width, cv.CV_8UC4)
+        const templMat = new cv.Mat(
+            templImageData.info.height,
+            templImageData.info.width,
+            cv.CV_8UC4
+        )
+        const srcGrayMat = new cv.Mat()
+        const templGrayMat = new cv.Mat()
+
+        try {
+            srcMat.data.set(new Uint8Array(srcImageData.data))
+            templMat.data.set(new Uint8Array(templImageData.data))
+
+            // 转成灰度图，减少颜色差异对匹配结果的影响
+            cv.cvtColor(srcMat, srcGrayMat, cv.COLOR_RGBA2GRAY)
+            cv.cvtColor(templMat, templGrayMat, cv.COLOR_RGBA2GRAY)
+
+            let bestScale = 1
+            let bestMaxVal = Number.NEGATIVE_INFINITY
+            let bestMaxLoc = { x: 0, y: 0 }
+            const minScale = Math.max(
+                templGrayMat.cols / srcGrayMat.cols,
+                templGrayMat.rows / srcGrayMat.rows
+            )
+            const scaleCount = 30
+
+            for (let i = 0; i < scaleCount; i++) {
+                const scale = 1 - ((1 - minScale) * i) / (scaleCount - 1)
+                const scaledWidth = Math.round(srcGrayMat.cols * scale)
+                const scaledHeight = Math.round(srcGrayMat.rows * scale)
+
+                if (scaledWidth < templGrayMat.cols || scaledHeight < templGrayMat.rows) {
+                    continue
+                }
+
+                const scaledSrcMat = new cv.Mat()
+                const resultMat = new cv.Mat()
+
+                try {
+                    // 缩放源图，查找与模板尺寸最接近的原图区域
+                    cv.resize(
+                        srcGrayMat,
+                        scaledSrcMat,
+                        new cv.Size(scaledWidth, scaledHeight),
+                        0,
+                        0,
+                        cv.INTER_AREA
+                    )
+                    cv.matchTemplate(scaledSrcMat, templGrayMat, resultMat, cv.TM_CCOEFF_NORMED)
+
+                    // 当前 opencv-js 运行时支持单参数，类型声明与实际行为不一致
+                    const { maxLoc, maxVal } = (cv.minMaxLoc as any)(resultMat)
+
+                    if (maxVal > bestMaxVal) {
+                        bestScale = scale
+                        bestMaxVal = maxVal
+                        bestMaxLoc = maxLoc
+                    }
+                } finally {
+                    scaledSrcMat.delete()
+                    resultMat.delete()
+                }
+            }
+
+            const left = Math.round(bestMaxLoc.x / bestScale)
+            const top = Math.round(bestMaxLoc.y / bestScale)
+            const width = Math.round(templGrayMat.cols / bestScale)
+            const height = Math.round(templGrayMat.rows / bestScale)
+
+            return {
+                leftTop: {
+                    x: left,
+                    y: top
+                },
+                width: Math.min(srcGrayMat.cols - left, width),
+                height: Math.min(srcGrayMat.rows - top, height)
+            }
+        } finally {
+            srcMat.delete()
+            templMat.delete()
+            srcGrayMat.delete()
+            templGrayMat.delete()
+        }
+    }
 }
 
 export class MediaInfo {
@@ -172,147 +280,20 @@ export class MediaInfo {
     }
 }
 
-/** MediaInfo 创建库信息 */
-export interface IMediaInfoCreatingLibrary {
-    name: string
-    version: string
-    url: string
-}
-
-/** MediaInfo 通用轨道附加信息 */
-export interface IMediaInfoGeneralTrackExtra {
-    Attachments: string
-}
-
-/** MediaInfo General 轨道 */
-export interface IMediaInfoGeneralTrack {
-    '@type': 'General'
-    UniqueID: string
-    VideoCount: string
-    AudioCount: string
-    TextCount: string
-    FileExtension: string
-    Format: string
-    Format_Version: string
-    FileSize: string
-    Duration: string
-    OverallBitRate: string
-    FrameRate: string
-    FrameCount: string
-    StreamSize: string
-    IsStreamable: string
-    Encoded_Date: string
-    File_Created_Date: string
-    File_Created_Date_Local: string
-    File_Modified_Date: string
-    File_Modified_Date_Local: string
-    Encoded_Application: string
-    Encoded_Application_Name: string
-    Encoded_Application_Version: string
-    Encoded_Library: string
-    extra?: IMediaInfoGeneralTrackExtra
-}
-
-/** MediaInfo Video 轨道 */
-export interface IMediaInfoVideoTrack {
-    '@type': 'Video'
-    StreamOrder: string
-    ID: string
-    UniqueID: string
-    Format: string
-    Format_Profile: string
-    Format_Level: string
-    Format_Tier: string
-    CodecID: string
-    Duration: string
-    BitRate: string
-    Width: string
-    Height: string
-    Stored_Height: string
-    Sampled_Width: string
-    Sampled_Height: string
-    PixelAspectRatio: string
-    DisplayAspectRatio: string
-    FrameRate_Mode: string
-    FrameRate: string
-    FrameRate_Num: string
-    FrameRate_Den: string
-    FrameCount: string
-    ColorSpace: string
-    ChromaSubsampling: string
-    BitDepth: string
-    Delay: string
-    Delay_Source: string
-    StreamSize: string
-    Default: string
-    Forced: string
-}
-
-/** MediaInfo Audio 轨道 */
-export interface IMediaInfoAudioTrack {
-    '@type': 'Audio'
-    StreamOrder: string
-    ID: string
-    UniqueID: string
-    Format: string
-    Format_Settings_SBR: string
-    Format_AdditionalFeatures: string
-    CodecID: string
-    Duration: string
-    BitRate: string
-    Channels: string
-    ChannelPositions: string
-    ChannelLayout: string
-    SamplesPerFrame: string
-    SamplingRate: string
-    SamplingCount: string
-    FrameRate: string
-    FrameCount: string
-    Compression_Mode: string
-    Delay: string
-    Delay_Source: string
-    Video_Delay: string
-    StreamSize: string
-    Default: string
-    Forced: string
-    Language: string
-}
-
-/** MediaInfo Text 轨道 */
-export interface IMediaInfoTextTrack {
-    '@type': 'Text'
-    StreamOrder: string
-    ID: string
-    UniqueID: string
-    Format: string
-    CodecID: string
-    Duration: string
-    BitRate: string
-    FrameRate: string
-    FrameCount: string
-    ElementCount: string
-    Compression_Mode: string
-    StreamSize: string
-    Language: string
-    Default: string
-    Forced: string
-}
-
-/** MediaInfo 轨道 */
-export type IMediaInfoTrack =
-    | IMediaInfoGeneralTrack
-    | IMediaInfoVideoTrack
-    | IMediaInfoAudioTrack
-    | IMediaInfoTextTrack
-
-/** MediaInfo 媒体信息 */
-export interface IMediaInfoMedia {
-    '@ref': string
-    track: IMediaInfoTrack[]
-}
-
-/** MediaInfo JSON 结构 */
-export interface IMediaInfo {
-    creatingLibrary: IMediaInfoCreatingLibrary
-    media: IMediaInfoMedia
+export async function getOpenCv(): Promise<{ cv: typeof cvModule }> {
+    let cv: typeof cvModule
+    if (cvModule instanceof Promise) {
+        cv = await cvModule
+    } else {
+        if (cvModule.Mat) {
+            // already initialized
+            cv = cvModule
+        } else {
+            await new Promise<void>((resolve) => {
+                cvModule.onRuntimeInitialized = () => resolve()
+            })
+            cv = cvModule
+        }
+    }
+    return { cv }
 }

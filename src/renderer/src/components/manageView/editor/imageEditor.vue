@@ -213,7 +213,7 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
             if (!data) return
 
             const imagePath = await MediaHelper.saveTempImage(
-                data,
+                data.data,
                 `${video.value.title}_${imageType}`
             )
             if (!imagePath) return
