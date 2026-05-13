@@ -355,6 +355,17 @@ export class MediaHelper {
             // 降噪
             cv.bilateralFilter(srcMat, dstMat, d, sigmaColor, sigmaSpace)
 
+            // 等比缩放
+            const { maxWidth, maxHeight } = options.scale || {}
+            if (maxWidth && maxHeight) {
+                // 计算缩放比例
+                const scale = Math.min(maxWidth / dstMat.cols, maxHeight / dstMat.rows)
+                const dstWidth = Math.round(dstMat.cols * scale)
+                const dstHeight = Math.round(dstMat.rows * scale)
+
+                cv.resize(dstMat, dstMat, new cv.Size(dstWidth, dstHeight), 0, 0, cv.INTER_LANCZOS4)
+            }
+
             return await this.matToArrayBuffer(dstMat)
         } finally {
             srcMat.delete()

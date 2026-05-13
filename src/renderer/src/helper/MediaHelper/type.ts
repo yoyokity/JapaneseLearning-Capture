@@ -171,4 +171,18 @@ export interface IDenoiseOptions {
      * @default 75
      */
     sigmaSpace?: number
+    /**
+     * 等比缩放选项
+     * @description 缩放算法使用LANCZOS4
+     */
+    scale?: {
+        /**
+         * 最大宽度
+         */
+        maxWidth: number
+        /**
+         * 最大高度
+         */
+        maxHeight: number
+    }
 }
