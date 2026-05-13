@@ -24,6 +24,33 @@ export type ImageData =
     | string
 
 /**
+ * 图像位置信息
+ */
+export interface ImageCropPos {
+    left: number
+    top: number
+    width: number
+    height: number
+}
+
+/**
+ * 图像数据信息，包含了ArrayBuffer和图像信息
+ */
+export interface ImageDataInfo {
+    /**
+     * PNG格式的无损 ArrayBuffer 数据
+     * @remark 这个数据传入saveImage是有效的
+     */
+    data: ArrayBuffer
+    /**
+     * RAW格式的原始 ArrayBuffer 数据
+     * @remark 这个数据传入saveImage是无效的
+     */
+    rawData: ArrayBuffer
+    info: sharp.OutputInfo
+}
+
+/**
  * 按最大边限制等比缩放图片
  */
 const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
@@ -58,32 +85,16 @@ export async function saveImage(imageData: ImageData, path: string, crop?: Image
 }
 
 /**
- * 图像位置信息
- */
-export interface ImageCropPos {
-    left: number
-    top: number
-    width: number
-    height: number
-}
-
-/**
- * 图像数据信息，包含了ArrayBuffer和图像信息
- */
-export interface ImageDataInfo {
-    data: ArrayBuffer
-    info: sharp.OutputInfo
-}
-
-/**
  * 读取图片
  */
 export async function readImage(path: string): Promise<ImageDataInfo> {
-    const srcImage = await sharp(path).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-    const data = srcImage.data
+    const img = sharp(path).ensureAlpha()
+    const srcImage = await img.png().toBuffer({ resolveWithObject: true })
+    const raw = await img.raw().toBuffer()
 
     return {
-        data: new Uint8Array(data).buffer,
+        data: new Uint8Array(srcImage.data).buffer,
+        rawData: new Uint8Array(raw).buffer,
         info: srcImage.info
     }
 }

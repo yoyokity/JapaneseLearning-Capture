@@ -197,47 +197,57 @@ export class MediaHelper {
         const templGrayMat = new cv.Mat()
 
         try {
-            srcMat.data.set(new Uint8Array(srcImageData.data))
-            templMat.data.set(new Uint8Array(templImageData.data))
+            srcMat.data.set(new Uint8Array(srcImageData.rawData))
+            templMat.data.set(new Uint8Array(templImageData.rawData))
 
             // 转成灰度图，减少颜色差异对匹配结果的影响
             cv.cvtColor(srcMat, srcGrayMat, cv.COLOR_RGBA2GRAY)
             cv.cvtColor(templMat, templGrayMat, cv.COLOR_RGBA2GRAY)
 
+            const shouldScaleSrc =
+                srcGrayMat.cols >= templGrayMat.cols && srcGrayMat.rows >= templGrayMat.rows
+            const scaleStart = shouldScaleSrc
+                ? 1
+                : Math.min(srcGrayMat.cols / templGrayMat.cols, srcGrayMat.rows / templGrayMat.rows)
+            const scaleEnd = shouldScaleSrc
+                ? Math.max(templGrayMat.cols / srcGrayMat.cols, templGrayMat.rows / srcGrayMat.rows)
+                : scaleStart
+            const scaleCount = scaleStart === scaleEnd ? 1 : 30
             let bestScale = 1
             let bestMaxVal = Number.NEGATIVE_INFINITY
             let bestMaxLoc = { x: 0, y: 0 }
-            const minScale = Math.max(
-                templGrayMat.cols / srcGrayMat.cols,
-                templGrayMat.rows / srcGrayMat.rows
-            )
-            const scaleCount = 30
 
             for (let i = 0; i < scaleCount; i++) {
-                const scale = 1 - ((1 - minScale) * i) / (scaleCount - 1)
-                const scaledWidth = Math.round(srcGrayMat.cols * scale)
-                const scaledHeight = Math.round(srcGrayMat.rows * scale)
-
-                if (scaledWidth < templGrayMat.cols || scaledHeight < templGrayMat.rows) {
-                    continue
-                }
-
-                const scaledSrcMat = new cv.Mat()
+                const scale =
+                    scaleCount === 1
+                        ? scaleStart
+                        : scaleStart - ((scaleStart - scaleEnd) * i) / (scaleCount - 1)
+                const scaledWidth = Math.round(
+                    (shouldScaleSrc ? srcGrayMat.cols : templGrayMat.cols) * scale
+                )
+                const scaledHeight = Math.round(
+                    (shouldScaleSrc ? srcGrayMat.rows : templGrayMat.rows) * scale
+                )
+                const scaledMat = new cv.Mat()
                 const resultMat = new cv.Mat()
 
                 try {
-                    // 缩放源图，查找与模板尺寸最接近的原图区域
+                    // 谁大缩谁，尽量避免把小图放大后再做模板匹配
                     cv.resize(
-                        srcGrayMat,
-                        scaledSrcMat,
+                        shouldScaleSrc ? srcGrayMat : templGrayMat,
+                        scaledMat,
                         new cv.Size(scaledWidth, scaledHeight),
                         0,
                         0,
                         cv.INTER_AREA
                     )
-                    cv.matchTemplate(scaledSrcMat, templGrayMat, resultMat, cv.TM_CCOEFF_NORMED)
 
-                    // 当前 opencv-js 运行时支持单参数，类型声明与实际行为不一致
+                    if (shouldScaleSrc) {
+                        cv.matchTemplate(scaledMat, templGrayMat, resultMat, cv.TM_CCOEFF_NORMED)
+                    } else {
+                        cv.matchTemplate(srcGrayMat, scaledMat, resultMat, cv.TM_CCOEFF_NORMED)
+                    }
+
                     const { maxLoc, maxVal } = (cv.minMaxLoc as any)(resultMat)
 
                     if (maxVal > bestMaxVal) {
@@ -246,15 +256,19 @@ export class MediaHelper {
                         bestMaxLoc = maxLoc
                     }
                 } finally {
-                    scaledSrcMat.delete()
+                    scaledMat.delete()
                     resultMat.delete()
                 }
             }
 
-            const left = Math.round(bestMaxLoc.x / bestScale)
-            const top = Math.round(bestMaxLoc.y / bestScale)
-            const width = Math.round(templGrayMat.cols / bestScale)
-            const height = Math.round(templGrayMat.rows / bestScale)
+            const left = shouldScaleSrc ? Math.round(bestMaxLoc.x / bestScale) : bestMaxLoc.x
+            const top = shouldScaleSrc ? Math.round(bestMaxLoc.y / bestScale) : bestMaxLoc.y
+            const width = shouldScaleSrc
+                ? Math.round(templGrayMat.cols / bestScale)
+                : Math.round(templGrayMat.cols * bestScale)
+            const height = shouldScaleSrc
+                ? Math.round(templGrayMat.rows / bestScale)
+                : Math.round(templGrayMat.rows * bestScale)
 
             return {
                 srcImageData,

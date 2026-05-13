@@ -1,4 +1,5 @@
 import type {
+    CookiesSetDetails,
     IAiOptions,
     IAiResult,
     IFetchOptions,
@@ -84,11 +85,6 @@ export class NetHelper {
             parse = options.parse ?? parse
             headers = options.headers ?? headers
             signal = options.signal
-
-            if (options.cookie) {
-                const cookieStr = this._cookieToString(options.cookie)
-                headers.cookie = headers.cookie ? `${headers.cookie}; ${cookieStr}` : cookieStr
-            }
         }
 
         return {
@@ -250,19 +246,21 @@ export class NetHelper {
     }
 
     /**
-     * 将cookie对象转换为cookie字符串
+     * 设置cookie
+     * @param cookie cookie对象
      */
-    private static _cookieToString(cookie: Record<string, string>): string {
-        return Object.entries(cookie)
-            .map(([key, value]) => `${key}=${value}`)
-            .join('; ')
+    static async setCookie(cookie: CookiesSetDetails) {
+        const re = await TaskHelper.tryExecute(() => ipc.net.setCookie.mutate(cookie))
+        if (re.hasError) {
+            LogHelper.error(`设置cookie失败：`, re.error)
+        }
     }
 
     /**
      * GET请求
      * @param url 请求地址
      * @param options 请求选项
-     * @remarks 响应cookie会自动存进session，以供下次请求
+     * @remarks cookie请用NetHelper.setCookie单独设置
      * @return 只有status在200-299之间，ok字段才为true
      * @example
      * ```ts
@@ -274,8 +272,7 @@ export class NetHelper {
      * // 带选项的请求
      * const re = await NetHelper.get('https://api.example.com', {
      *     parse: 'json',
-     *     headers: { 'Authorization': 'Bearer token' },
-     *     cookie: { session: 'abc123' }
+     *     headers: { 'Authorization': 'Bearer token' }
      * })
      * ```
      */
@@ -311,7 +308,7 @@ export class NetHelper {
      * @param url 请求地址
      * @param data 请求体body数据
      * @param options 请求选项
-     * @remarks 响应cookie会自动存进session，以供下次请求
+     * @remarks cookie请用NetHelper.setCookie单独设置
      * @return 只有status在200-299之间，ok字段才为true
      * @example
      * ```ts
@@ -582,12 +579,9 @@ export interface IRequestOptions<P extends IFetchParse = 'text'> {
     /**
      * 请求头
      * @remarks Content-Type 默认为 application/json
+     * @remarks 在这里设置cookies无效
      */
     headers?: Record<string, string>
-    /**
-     * Cookie对象，会自动转换为cookie字符串并添加到headers中
-     */
-    cookie?: Record<string, string>
     /**
      * 请求超时时间（毫秒）
      */
