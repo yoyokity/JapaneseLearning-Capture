@@ -3,14 +3,6 @@ import type { IActor } from '@renderer/scraper'
 import { DataHelper, EncodeHelper, NetHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-const javDBRequestOptions = {
-    headers: {
-        'Upgrade-Insecure-Requests': '1',
-        Referer: 'https://javdb.com/'
-    },
-    cookie: { over18: '1', locale: 'zh' }
-}
-
 const gravurefitRequestOptions = {
     headers: {
         'content-type': 'application/x-www-form-urlencoded',
@@ -150,8 +142,7 @@ export class Actor implements IActorFull {
         // 如果有javdb_url，直接从演员页面获取头像
         if (javDB_url) {
             const response = await NetHelper.get(javDB_url, {
-                signal,
-                ...javDBRequestOptions
+                signal
             })
             if (signal.aborted) return false
             if (response.ok) {
@@ -170,8 +161,7 @@ export class Actor implements IActorFull {
         const response = await NetHelper.get(
             `https://javdb.com/search?f=actor&q=${EncodeHelper.encodeUrl(this.name)}`,
             {
-                signal,
-                ...javDBRequestOptions
+                signal
             }
         )
         if (signal.aborted) return false

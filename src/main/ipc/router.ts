@@ -1,5 +1,5 @@
 import type { ImageData } from './media'
-import type { IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
+import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
 
 import { initTRPC } from '@trpc/server'
 import { app } from 'electron'
@@ -48,6 +48,7 @@ import {
     ping,
     post,
     proxyConfigSchema,
+    setCookie,
     setProxy
 } from './net'
 
@@ -218,10 +219,18 @@ export const appRouter = t.router({
             .input(
                 z.object({
                     imageData: z.custom<ImageData>(),
-                    path: z.string()
+                    path: z.string(),
+                    crop: z
+                        .object({
+                            left: z.number(),
+                            top: z.number(),
+                            width: z.number(),
+                            height: z.number()
+                        })
+                        .optional()
                 })
             )
-            .mutation(({ input }) => saveImage(input.imageData, input.path)),
+            .mutation(({ input }) => saveImage(input.imageData, input.path, input.crop)),
         readImage: procedure.input(z.string()).query(({ input }) => readImage(input)),
         readMediaInfo: procedure.input(z.string()).query(({ input }) => readMediaInfo(input)),
         superResolutionImage: procedure
@@ -270,6 +279,9 @@ export const appRouter = t.router({
             .mutation(({ input }) => setProxy(omitUndefined(input) as IProxyConfig)),
         clearProxy: procedure.mutation(() => clearProxy()),
         clearCache: procedure.mutation(() => clearCache()),
+        setCookie: procedure
+            .input(z.custom<CookiesSetDetails>())
+            .mutation(({ input }) => setCookie(input)),
         ping: procedure
             .input(
                 z.object({

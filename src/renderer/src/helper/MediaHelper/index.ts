@@ -7,7 +7,7 @@ import type {
     IMediaInfoTrack,
     IMediaInfoVideoTrack
 } from '@renderer/helper/MediaHelper/type'
-import type { ImageData, ImageDataInfo } from '@shared'
+import type { ImageCropPos, ImageData, ImageDataInfo } from '@shared'
 
 import { EncodeHelper, LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
@@ -59,12 +59,14 @@ export class MediaHelper {
      * 保存图片为jpg
      * @param imageData 图片数据
      * @param path 图片路径
+     * @param crop 裁剪区域
      */
-    static async saveImage(imageData: ImageData, path: Path | string) {
+    static async saveImage(imageData: ImageData, path: Path | string, crop?: ImageCropPos) {
         const re = await TaskHelper.tryExecute(() =>
             ipc.media.saveImage.mutate({
                 imageData,
-                path: path.toString()
+                path: path.toString(),
+                crop
             })
         )
         if (!re.hasError) {
@@ -78,15 +80,21 @@ export class MediaHelper {
      * 保存图片到临时目录并返回本地路径，自动保存为jpg
      * @param imageData 图片数据
      * @param name 临时文件名，默认为随机uuid。如果传入，会自动加上uuid
+     * @param crop 裁剪区域
      * @returns 临时图片路径
      */
-    static async saveTempImage(imageData: ImageData, name: string = v7()): Promise<string | null> {
+    static async saveTempImage(
+        imageData: ImageData,
+        name: string = v7(),
+        crop?: ImageCropPos
+    ): Promise<string | null> {
         const uniqueName = `${name}_${v7()}`
         const tempImagePath = PathHelper.tempPath.join(`${uniqueName}.jpg`)
         const result = await TaskHelper.tryExecute(() =>
             ipc.media.saveImage.mutate({
                 imageData,
-                path: tempImagePath.toString()
+                path: tempImagePath.toString(),
+                crop
             })
         )
         if (!result.hasError) {
@@ -156,8 +164,17 @@ export class MediaHelper {
 
     /**
      * 查找模板图在源图中的位置
+     * @param srcImagePath 本地源图路径
+     * @param templImagePath 本地模板图路径
      */
-    static async templateMatchIamge(srcImage: string, templImage: string) {
+    static async templateMatchIamge(
+        srcImagePath: Path | string,
+        templImagePath: Path | string
+    ): Promise<{
+        srcImageData: ImageDataInfo
+        templImageData: ImageDataInfo
+        pos: ImageCropPos
+    } | null> {
         if (!this.cv) this.cv = (await getOpenCv()).cv
 
         const cv = this.cv
@@ -166,8 +183,8 @@ export class MediaHelper {
             return null
         }
 
-        const srcImageData = await MediaHelper.readImage(srcImage)
-        const templImageData = await MediaHelper.readImage(templImage)
+        const srcImageData = await MediaHelper.readImage(srcImagePath)
+        const templImageData = await MediaHelper.readImage(templImagePath)
         if (!srcImageData || !templImageData) return null
 
         const srcMat = new cv.Mat(srcImageData.info.height, srcImageData.info.width, cv.CV_8UC4)
@@ -240,12 +257,14 @@ export class MediaHelper {
             const height = Math.round(templGrayMat.rows / bestScale)
 
             return {
-                leftTop: {
-                    x: left,
-                    y: top
-                },
-                width: Math.min(srcGrayMat.cols - left, width),
-                height: Math.min(srcGrayMat.rows - top, height)
+                srcImageData,
+                templImageData,
+                pos: {
+                    left,
+                    top,
+                    width: Math.min(srcGrayMat.cols - left, width),
+                    height: Math.min(srcGrayMat.rows - top, height)
+                }
             }
         } finally {
             srcMat.delete()

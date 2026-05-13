@@ -8,9 +8,14 @@ import { load as cheerioLoad } from 'cheerio'
 export const fanzaOptions = {
     headers: {
         referer: 'https://www.dmm.co.jp/'
-    },
-    cookie: { age_check_done: '1', ckcy: '1' }
+    }
 }
+
+NetHelper.setCookie({
+    url: 'https://www.dmm.co.jp/',
+    domain: 'dmm.co.jp',
+    value: { age_check_done: '1', ckcy: '1' }
+})
 
 async function get(url: string, signal: AbortSignal) {
     const webContent = await NetHelper.get(url, { ...fanzaOptions, signal })

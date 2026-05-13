@@ -10,9 +10,14 @@ export const dlsiteOptions = {
     headers: {
         'Upgrade-Insecure-Requests': '1',
         referer: 'https://www.dlsite.com'
-    },
-    cookie: { adultchecked: '1' }
+    }
 }
+
+NetHelper.setCookie({
+    url: 'https://www.dlsite.com/',
+    domain: 'dlsite.com',
+    value: { adultchecked: '1' }
+})
 
 /**
  * Dlsite

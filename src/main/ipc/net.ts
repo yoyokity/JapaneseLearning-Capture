@@ -251,6 +251,69 @@ export async function clearCache() {
     await session.defaultSession.clearCache()
 }
 
+export interface CookiesSetDetails {
+    /**
+     * Cookie 关联的完整请求地址
+     * Electron @remark 会基于该地址推导默认的协议、域名和路径
+     */
+    url: string
+    /**
+     * 一个或多个cookie的name、value键值对
+     */
+    value: Record<string, string>
+    /**
+     * Cookie 生效的域名
+     * @remark 例如 `.example.com` 表示当前域名及其子域名都可携带该 Cookie
+     */
+    domain?: string
+    /**
+     * Cookie 生效的路径，省略则为空
+     * @remark 只有请求路径匹配该值时，浏览器才会附带该 Cookie
+     */
+    path?: string
+    /**
+     * 是否标记为 Secure（仅HTTPS 请求会携带）
+     * @default false
+     */
+    secure?: boolean
+    /**
+     * 是否标记为 HTTP （仅在 HTTP 请求中发送）
+     * @default false
+     */
+    httpOnly?: boolean
+    /**
+     * 过期时间，单位为秒
+     * @remark 通常使用 Unix 时间戳，超过该时间后 Cookie 会失效
+     * @remark 省略则为会话 cookie（关闭会话即失效）
+     */
+    expirationDate?: number
+    /**
+     * SameSite 策略，用于限制跨站请求时是否发送 Cookie
+     * @param no_restriction 允许在所有请求（包括跨站）中发送 cookie
+     * @param lax 相对宽松，只在顶级导航（比如点击链接跳转到你的网站）或安全请求方法（如GET）中发送 cookie。普通的图片加载、iframe 里的请求或 AJAX 调用都不会带。
+     * @param strict 最严格，完全禁止在任何跨站请求中发送 cookie。必须是完全同站（即地址栏域名一致）的请求才会携带。
+     * @param unspecified 效果等同于 lax
+     * @default lax
+     */
+    sameSite?: 'unspecified' | 'no_restriction' | 'lax' | 'strict'
+}
+
+/**
+ * 设置 defaultSession 的 Cookie
+ * @param details Cookie 详情
+ */
+export async function setCookie(details: CookiesSetDetails) {
+    await Promise.all(
+        Object.entries(details.value).map(([name, v]) =>
+            session.defaultSession.cookies.set({
+                ...details,
+                name,
+                value: v
+            })
+        )
+    )
+}
+
 /**
  * Ping 检测网络连通性
  * @param host 主机地址

@@ -7,9 +7,14 @@ import { load as cheerioLoad } from 'cheerio'
 import { loggerGetchu } from './type'
 
 export const getchuOptions = {
-    headers: { referer: 'https://www.getchu.com' },
-    cookie: { _gat: '1', getchu_adalt_flag: 'getchu.com' }
+    headers: { referer: 'https://www.getchu.com' }
 }
+
+NetHelper.setCookie({
+    url: 'https://www.getchu.com/',
+    domain: 'getchu.com',
+    value: { _gat: '1', getchu_adalt_flag: 'getchu.com' }
+})
 
 /**
  * Getchu

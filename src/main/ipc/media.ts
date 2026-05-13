@@ -51,10 +51,25 @@ const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
 /**
  * 保存图片
  */
-export async function saveImage(imageData: ImageData, path: string) {
-    await sharp(imageData).jpeg({ quality: 92 }).toFile(path)
+export async function saveImage(imageData: ImageData, path: string, crop?: ImageCropPos) {
+    const image = sharp(imageData)
+    if (crop) image.extract(crop)
+    await image.jpeg({ quality: 92 }).toFile(path)
 }
 
+/**
+ * 图像位置信息
+ */
+export interface ImageCropPos {
+    left: number
+    top: number
+    width: number
+    height: number
+}
+
+/**
+ * 图像数据信息，包含了ArrayBuffer和图像信息
+ */
 export interface ImageDataInfo {
     data: ArrayBuffer
     info: sharp.OutputInfo
