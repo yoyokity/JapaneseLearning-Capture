@@ -4,12 +4,14 @@ import type { IVideoFile } from '@renderer/scraper'
 import type { SelectChangeEvent } from 'primevue/select'
 
 import TextButton from '@renderer/components/control/button/textButton.vue'
+import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import { useDisplay, useScanFiles } from '@renderer/components/manageView/hook'
 import VideoCard from '@renderer/components/manageView/videoCard.vue'
 import { PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
+import { delay } from 'es-toolkit'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
 import InputText from 'primevue/inputtext'
@@ -22,6 +24,7 @@ const { runScanFiles } = useScanFiles()
 const display = useDisplay()
 const settings = settingsStore()
 const globalStates = globalStatesStore()
+const message = useMessage()
 
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
@@ -64,7 +67,7 @@ const menuItems = ref([
         icon: 'pi pi-play-circle',
         command: () => {
             if (currentVideo.value) {
-                PathHelper.openInExplorer(currentVideo.value.path.toString())
+                PathHelper.openInExplorer(currentVideo.value.path)
             }
         }
     },
@@ -73,8 +76,22 @@ const menuItems = ref([
         icon: 'pi pi-folder-open',
         command: () => {
             if (currentVideo.value) {
-                PathHelper.openInExplorer(currentVideo.value.dir.toString())
+                PathHelper.openInExplorer(currentVideo.value.dir)
             }
+        }
+    },
+    {
+        label: '移动到回收站',
+        icon: 'pi pi-trash',
+        command: () => {
+            if (currentVideo.value)
+                message.confirmDialog.yesOrNo('确认移动到回收站吗？', async () => {
+                    if (currentVideo.value) {
+                        await PathHelper.remove(currentVideo.value.dir)
+                        await delay(100)
+                        runScanFiles()
+                    }
+                })
         }
     }
 ])
