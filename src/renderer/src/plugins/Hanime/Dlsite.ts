@@ -89,7 +89,7 @@ export async function getWebContentDlsite(
     }
 
     const href = candidates[match.index].href
-    loggerDlsite.log(`找到匹配的番剧：【${match.match}】 ${href}`)
+    loggerDlsite.log(`选择第 ${match.index + 1} 个视频: 【${candidates[match.index].title}】`, href)
 
     // 根据href获取webContent
     const body = await NetHelper.get(href, { ...dlsiteOptions, signal })

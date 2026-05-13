@@ -97,7 +97,7 @@ export async function getWebContentFanza(
     }
 
     const href = candidates[match.index].href
-    loggerFanza.log(`找到匹配的番剧：【${match.match}】 ${href}`)
+    loggerFanza.log(`选择第 ${match.index + 1} 个视频: 【${candidates[match.index].title}】`, href)
 
     // 根据href获取webContent
     const detailContent = await NetHelper.get(href, { ...fanzaOptions, signal })

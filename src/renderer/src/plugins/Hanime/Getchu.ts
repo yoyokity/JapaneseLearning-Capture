@@ -109,7 +109,10 @@ export async function getWebContentGetchu(
     }
 
     const fullUrl = NetHelper.joinUrl('https://www.getchu.com/item', id, '?gc=gc')
-    loggerGetchu.log(`找到匹配的番剧：【${match.match}】 ${fullUrl}`)
+    loggerGetchu.log(
+        `选择第 ${match.index + 1} 个视频: 【${candidates[match.index].title}】`,
+        fullUrl
+    )
 
     // 根据href获取webContent
     const body = await fetchPage(fullUrl)

@@ -44,7 +44,7 @@ export async function searchVideoHanime1(
         }
 
         const poster = firstVideo.find('img').attr('src')
-        loggerHanime1.log(`找到匹配的番剧：【${firstVideo.text().trim()}】 ${href}`)
+        loggerHanime1.log(`找到匹配的番剧：【${firstVideo.text().trim()}】`, href)
         return { href, poster }
     })()
 
