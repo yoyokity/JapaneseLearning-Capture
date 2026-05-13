@@ -1,5 +1,6 @@
 import type { Path } from '@renderer/helper'
 import type {
+    IDenoiseOptions,
     IMediaInfo,
     IMediaInfoAudioTrack,
     IMediaInfoGeneralTrack,
@@ -8,6 +9,7 @@ import type {
     IMediaInfoVideoTrack
 } from '@renderer/helper/MediaHelper/type'
 import type { ImageCropPos, ImageData, ImageDataInfo } from '@shared'
+import type { Mat } from '@techstark/opencv-js'
 
 import { EncodeHelper, LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
@@ -163,6 +165,36 @@ export class MediaHelper {
     private static cv: typeof cvModule | null = null
 
     /**
+     * 将 Mat 转成 PNG 格式的 ArrayBuffer
+     * @param mat OpenCV Mat
+     * @returns PNG 格式的 ArrayBuffer 数据
+     */
+    private static async matToArrayBuffer(mat: Mat): Promise<ArrayBuffer | null> {
+        if (!this.cv) this.cv = (await getOpenCv()).cv
+
+        const cv = this.cv
+        if (!cv) {
+            LogHelper.error('OpenCV 初始化失败')
+            return null
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = mat.cols
+        canvas.height = mat.rows
+        cv.imshow(canvas, mat)
+
+        const blob = await new Promise<Blob | null>((resolve) =>
+            canvas.toBlob(resolve, 'image/png')
+        )
+        if (!blob) {
+            LogHelper.error('图片转 Blob 失败')
+            return null
+        }
+
+        return await blob.arrayBuffer()
+    }
+
+    /**
      * 查找模板图在源图中的位置
      * @param srcImagePath 本地源图路径
      * @param templImagePath 本地模板图路径
@@ -183,6 +215,7 @@ export class MediaHelper {
             return null
         }
 
+        // 读取图片
         const srcImageData = await MediaHelper.readImage(srcImagePath)
         const templImageData = await MediaHelper.readImage(templImagePath)
         if (!srcImageData || !templImageData) return null
@@ -285,6 +318,47 @@ export class MediaHelper {
             templMat.delete()
             srcGrayMat.delete()
             templGrayMat.delete()
+        }
+    }
+
+    /**
+     * 图片降噪
+     * @param imagePath 图片路径
+     * @param options 降噪选项
+     * @returns PNG 格式的 ArrayBuffer 数据
+     */
+    static async imageDenois(
+        imagePath: Path | string,
+        options: IDenoiseOptions
+    ): Promise<ArrayBuffer | null> {
+        if (!this.cv) this.cv = (await getOpenCv()).cv
+
+        const cv = this.cv
+        if (!cv) {
+            LogHelper.error('OpenCV 初始化失败')
+            return null
+        }
+
+        // 解析参数
+        const { d = 9, sigmaColor = 75, sigmaSpace = 75 } = options
+
+        // 读取图片
+        const imageData = await MediaHelper.readImage(imagePath)
+        if (!imageData) return null
+
+        const srcMat = new cv.Mat(imageData.info.height, imageData.info.width, cv.CV_8UC4)
+        const dstMat = new cv.Mat()
+
+        try {
+            srcMat.data.set(new Uint8Array(imageData.rawData))
+
+            // 降噪
+            cv.bilateralFilter(srcMat, dstMat, d, sigmaColor, sigmaSpace)
+
+            return await this.matToArrayBuffer(dstMat)
+        } finally {
+            srcMat.delete()
+            dstMat.delete()
         }
     }
 }
