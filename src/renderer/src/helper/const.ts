@@ -23,7 +23,19 @@ export const timeFormat = 'YYYY年M月D日，HH:mm:ss'
 /**
  * 封面最大尺寸
  */
-export const posterMax = {
-    width: 800,
-    height: 700
+export const posterScale = {
+    maxWidth: 1500,
+    maxHeight: 1500,
+    minWidth: 900,
+    minHeight: 900
+}
+
+/**
+ * 缩略图最大尺寸
+ */
+export const thumbScale = {
+    maxWidth: 960,
+    maxHeight: 960,
+    minWidth: 720,
+    minHeight: 720
 }

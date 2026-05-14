@@ -42,11 +42,20 @@ export interface SaveImageOptions {
     crop?: ImageCropPos
     /**
      * 等比缩放选项
+     * @remark 指定width和height，会按等比缩放，宽高均不超过指定值
+     * @remark 指定最大最小值，如果图片宽高在指定范围内，不会缩放，否则会按最大边限制等比缩放
      */
-    scale?: {
-        maxWidth: number
-        maxHeight: number
-    }
+    scale?:
+        | {
+              maxWidth: number
+              maxHeight: number
+              minWidth: number
+              minHeight: number
+          }
+        | {
+              width: number
+              height: number
+          }
 }
 
 /**
@@ -104,16 +113,29 @@ export async function saveImage(imageData: ImageData, path: string, options?: Sa
 
     // 缩放图片
     if (scale) {
-        const { maxWidth, maxHeight } = scale
         const data = await image.toBuffer()
-        const re = await useImageMagick(data, [
-            '-filter',
-            'Lanczos',
-            '-resize',
-            `${maxWidth}x${maxHeight}`
-        ])
 
-        if (re) image = sharp(re)
+        if ('width' in scale) {
+            const re = await useImageMagick(data, [
+                '-filter',
+                'Lanczos',
+                '-resize',
+                `${scale.width}x${scale.height}`
+            ])
+
+            if (re) image = sharp(re)
+        } else {
+            const re = await useImageMagick(data, [
+                '-filter',
+                'Lanczos',
+                '-resize',
+                `${scale.minWidth}x${scale.minHeight}<`,
+                '-resize',
+                `${scale.maxWidth}x${scale.maxHeight}>`
+            ])
+
+            if (re) image = sharp(re)
+        }
     }
 
     await image.jpeg({ quality: 92 }).toFile(path)

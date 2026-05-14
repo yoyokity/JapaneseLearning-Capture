@@ -220,36 +220,10 @@ export const appRouter = t.router({
                 z.object({
                     imageData: z.custom<ImageData>(),
                     path: z.string(),
-                    options: z
-                        .object({
-                            crop: z
-                                .object({
-                                    left: z.number(),
-                                    top: z.number(),
-                                    width: z.number(),
-                                    height: z.number()
-                                })
-                                .optional(),
-                            scale: z
-                                .object({
-                                    maxWidth: z.number(),
-                                    maxHeight: z.number()
-                                })
-                                .optional()
-                        })
-                        .optional()
+                    options: z.custom<SaveImageOptions>().optional()
                 })
             )
-            .mutation(({ input }) => {
-                const options: SaveImageOptions | undefined = input.options
-                    ? {
-                          ...(input.options.crop ? { crop: input.options.crop } : {}),
-                          ...(input.options.scale ? { scale: input.options.scale } : {})
-                      }
-                    : undefined
-
-                return saveImage(input.imageData, input.path, options)
-            }),
+            .mutation(({ input }) => saveImage(input.imageData, input.path, input.options)),
         readImage: procedure.input(z.string()).query(({ input }) => readImage(input)),
         readMediaInfo: procedure.input(z.string()).query(({ input }) => readMediaInfo(input)),
         superResolutionImage: procedure
