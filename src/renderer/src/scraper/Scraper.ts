@@ -471,7 +471,6 @@ export class Scraper {
      */
     static async downloadImage(url: string, options?: Omit<IRequestOptions, 'parse' | 'delay'>) {
         const re = await NetHelper.getImage(url, options)
-        if (options && options.signal?.aborted) return null
         if (!re.ok) {
             LogHelper.warn(`下载图片失败！:${url}`)
             return null
@@ -489,19 +488,34 @@ export class Scraper {
         urls: string[],
         options?: Omit<IRequestOptions, 'parse' | 'delay'>
     ) {
+        const results = await Promise.all(
+            urls.map(async (url) => {
+                const re = await NetHelper.getImage(url, options)
+                if (!re.ok) {
+                    return {
+                        url,
+                        tempPath: null
+                    }
+                }
+
+                return {
+                    url,
+                    tempPath: await MediaHelper.saveTempImage(re.body, `download_extrafanart`)
+                }
+            })
+        )
+
         const extrafanart: string[] = []
         const successUrls: string[] = []
         const failedUrls: string[] = []
-        for (const url of urls) {
-            const re = await NetHelper.getImage(url, options)
-            if (options && options.signal?.aborted) break
-            if (re.ok) {
-                successUrls.push(url)
-                const tempPath = await MediaHelper.saveTempImage(re.body, `download_extrafanart`)
-                if (tempPath) extrafanart.push(tempPath)
-            } else {
-                failedUrls.push(url)
+        for (const result of results) {
+            if (result.tempPath) {
+                successUrls.push(result.url)
+                extrafanart.push(result.tempPath)
+                continue
             }
+
+            failedUrls.push(result.url)
         }
 
         if (successUrls.length > 0) {

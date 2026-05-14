@@ -1,6 +1,5 @@
 import type { Path } from '@renderer/helper'
 import type {
-    IDenoiseOptions,
     IMediaInfo,
     IMediaInfoAudioTrack,
     IMediaInfoGeneralTrack,
@@ -8,7 +7,7 @@ import type {
     IMediaInfoTrack,
     IMediaInfoVideoTrack
 } from '@renderer/helper/MediaHelper/type'
-import type { ImageCropPos, ImageData, ImageDataInfo } from '@shared'
+import type { ImageCropPos, ImageData, ImageDataInfo, SaveImageOptions } from '@shared'
 import type { Mat } from '@techstark/opencv-js'
 
 import { EncodeHelper, LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
@@ -61,14 +60,14 @@ export class MediaHelper {
      * 保存图片为jpg
      * @param imageData 图片数据
      * @param path 图片路径
-     * @param crop 裁剪区域
+     * @param options 保存选项
      */
-    static async saveImage(imageData: ImageData, path: Path | string, crop?: ImageCropPos) {
+    static async saveImage(imageData: ImageData, path: Path | string, options?: SaveImageOptions) {
         const re = await TaskHelper.tryExecute(() =>
             ipc.media.saveImage.mutate({
                 imageData,
                 path: path.toString(),
-                crop
+                options
             })
         )
         if (!re.hasError) {
@@ -82,13 +81,13 @@ export class MediaHelper {
      * 保存图片到临时目录并返回本地路径，自动保存为jpg
      * @param imageData 图片数据
      * @param name 临时文件名，默认为随机uuid。如果传入，会自动加上uuid
-     * @param crop 裁剪区域
+     * @param options 保存选项
      * @returns 临时图片路径
      */
     static async saveTempImage(
         imageData: ImageData,
         name: string = v7(),
-        crop?: ImageCropPos
+        options?: SaveImageOptions
     ): Promise<string | null> {
         const uniqueName = `${name}_${v7()}`
         const tempImagePath = PathHelper.tempPath.join(`${uniqueName}.jpg`)
@@ -96,7 +95,7 @@ export class MediaHelper {
             ipc.media.saveImage.mutate({
                 imageData,
                 path: tempImagePath.toString(),
-                crop
+                options
             })
         )
         if (!result.hasError) {
@@ -313,6 +312,9 @@ export class MediaHelper {
                     height: Math.min(srcGrayMat.rows - top, height)
                 }
             }
+        } catch (error) {
+            LogHelper.error('图片模板匹配失败', error)
+            return null
         } finally {
             srcMat.delete()
             templMat.delete()
@@ -322,54 +324,29 @@ export class MediaHelper {
     }
 
     /**
-     * 图片降噪
-     * @param imagePath 图片路径
-     * @param options 降噪选项
-     * @returns PNG 格式的 ArrayBuffer 数据
+     * 图片缩放
+     * @param imageData 图片数据
+     * @param maxWidth 最大宽度
+     * @param maxHeight 最大高度
+     * @returns 缩放后的图片数据
      */
-    static async imageDenois(
-        imagePath: Path | string,
-        options: IDenoiseOptions
+    static async imageSacle(
+        imageData: ImageData,
+        maxWidth: number,
+        maxHeight: number
     ): Promise<ArrayBuffer | null> {
-        if (!this.cv) this.cv = (await getOpenCv()).cv
+        const re = await TaskHelper.tryExecute(() =>
+            ipc.media.useImageMagick.mutate({
+                imageData,
+                args: ['-filter', 'Lanczos', '-resize', `${maxWidth}x${maxHeight}`]
+            })
+        )
 
-        const cv = this.cv
-        if (!cv) {
-            LogHelper.error('OpenCV 初始化失败')
+        if (!re.hasError) {
+            return re.result
+        } else {
+            LogHelper.error(`图片缩放失败：`, re.error)
             return null
-        }
-
-        // 解析参数
-        const { d = 9, sigmaColor = 75, sigmaSpace = 75 } = options
-
-        // 读取图片
-        const imageData = await MediaHelper.readImage(imagePath)
-        if (!imageData) return null
-
-        const srcMat = new cv.Mat(imageData.info.height, imageData.info.width, cv.CV_8UC4)
-        const dstMat = new cv.Mat()
-
-        try {
-            srcMat.data.set(new Uint8Array(imageData.rawData))
-
-            // 降噪
-            cv.bilateralFilter(srcMat, dstMat, d, sigmaColor, sigmaSpace)
-
-            // 等比缩放
-            const { maxWidth, maxHeight } = options.scale || {}
-            if (maxWidth && maxHeight) {
-                // 计算缩放比例
-                const scale = Math.min(maxWidth / dstMat.cols, maxHeight / dstMat.rows)
-                const dstWidth = Math.round(dstMat.cols * scale)
-                const dstHeight = Math.round(dstMat.rows * scale)
-
-                cv.resize(dstMat, dstMat, new cv.Size(dstWidth, dstHeight), 0, 0, cv.INTER_LANCZOS4)
-            }
-
-            return await this.matToArrayBuffer(dstMat)
-        } finally {
-            srcMat.delete()
-            dstMat.delete()
         }
     }
 }

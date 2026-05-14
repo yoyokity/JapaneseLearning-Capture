@@ -19,3 +19,11 @@ export const videoExtensions = {
 export const imgExtnames = ['.jpg', '.jpeg', '.png', '.webp']
 
 export const timeFormat = 'YYYY年M月D日，HH:mm:ss'
+
+/**
+ * 封面最大尺寸
+ */
+export const posterMax = {
+    width: 800,
+    height: 700
+}

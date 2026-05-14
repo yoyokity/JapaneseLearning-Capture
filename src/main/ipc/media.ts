@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer'
+import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
@@ -8,7 +10,7 @@ import { appPath } from '../globalStates'
 import { Cmd } from '../helper/shell'
 
 /**
- * 图像数据类型
+ * sharp支持读取的图像数据类型，也包括本地路径文本
  */
 export type ImageData =
     | ArrayBuffer
@@ -31,6 +33,20 @@ export interface ImageCropPos {
     top: number
     width: number
     height: number
+}
+
+export interface SaveImageOptions {
+    /**
+     * 裁剪选项
+     */
+    crop?: ImageCropPos
+    /**
+     * 等比缩放选项
+     */
+    scale?: {
+        maxWidth: number
+        maxHeight: number
+    }
 }
 
 /**
@@ -78,9 +94,28 @@ const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
 /**
  * 保存图片
  */
-export async function saveImage(imageData: ImageData, path: string, crop?: ImageCropPos) {
-    const image = sharp(imageData)
+export async function saveImage(imageData: ImageData, path: string, options?: SaveImageOptions) {
+    const { crop, scale } = options || {}
+
+    let image = sharp(imageData).ensureAlpha()
+
+    // 裁剪图片
     if (crop) image.extract(crop)
+
+    // 缩放图片
+    if (scale) {
+        const { maxWidth, maxHeight } = scale
+        const data = await image.toBuffer()
+        const re = await useImageMagick(data, [
+            '-filter',
+            'Lanczos',
+            '-resize',
+            `${maxWidth}x${maxHeight}`
+        ])
+
+        if (re) image = sharp(re)
+    }
+
     await image.jpeg({ quality: 92 }).toFile(path)
 }
 
@@ -163,4 +198,54 @@ export async function superResolutionImage(imagePath: string, anime: boolean = f
             }
         })
     })
+}
+
+export async function useImageMagick(
+    imageData: ImageData,
+    args: string[]
+): Promise<ArrayBuffer | null> {
+    try {
+        const imageBuffer = await sharp(imageData).ensureAlpha().png().toBuffer()
+        const imageMagickPath = join(appPath.extraResource, 'tools/ImageMagick/magick.exe')
+
+        // 使用 spawn 启动 ImageMagick，指定从 stdin 读取
+        const magickProcess = spawn(imageMagickPath, [
+            'png:-', // 输入格式 png，从 stdin 读取
+            ...args,
+            'png:-' // 输出格式 png，写入 stdout
+        ])
+
+        const stdoutChunks: Buffer[] = []
+        magickProcess.stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk))
+
+        return await new Promise((resolve) => {
+            magickProcess.stdin.on('error', () => resolve(null))
+            magickProcess.stdin.end(imageBuffer)
+
+            magickProcess.on('close', (code) => {
+                if (code !== 0) {
+                    resolve(null)
+                    return
+                }
+
+                const outputBuffer = Buffer.concat(stdoutChunks)
+                if (!outputBuffer.length) {
+                    resolve(null)
+                    return
+                }
+
+                // 转换为 ArrayBuffer 并返回
+                resolve(
+                    outputBuffer.buffer.slice(
+                        outputBuffer.byteOffset,
+                        outputBuffer.byteOffset + outputBuffer.byteLength
+                    )
+                )
+            })
+
+            magickProcess.on('error', () => resolve(null))
+        })
+    } catch {
+        return null
+    }
 }

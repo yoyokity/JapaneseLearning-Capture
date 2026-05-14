@@ -1,4 +1,4 @@
-import type { ImageData } from './media'
+import type { ImageData, SaveImageOptions } from './media'
 import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
 
 import { initTRPC } from '@trpc/server'
@@ -36,7 +36,7 @@ import {
     writeFile,
     writeLog
 } from './filesystem'
-import { readImage, readMediaInfo, saveImage, superResolutionImage } from './media'
+import { readImage, readMediaInfo, saveImage, superResolutionImage, useImageMagick } from './media'
 import {
     aiStartOptionsSchema,
     clearCache,
@@ -220,17 +220,36 @@ export const appRouter = t.router({
                 z.object({
                     imageData: z.custom<ImageData>(),
                     path: z.string(),
-                    crop: z
+                    options: z
                         .object({
-                            left: z.number(),
-                            top: z.number(),
-                            width: z.number(),
-                            height: z.number()
+                            crop: z
+                                .object({
+                                    left: z.number(),
+                                    top: z.number(),
+                                    width: z.number(),
+                                    height: z.number()
+                                })
+                                .optional(),
+                            scale: z
+                                .object({
+                                    maxWidth: z.number(),
+                                    maxHeight: z.number()
+                                })
+                                .optional()
                         })
                         .optional()
                 })
             )
-            .mutation(({ input }) => saveImage(input.imageData, input.path, input.crop)),
+            .mutation(({ input }) => {
+                const options: SaveImageOptions | undefined = input.options
+                    ? {
+                          ...(input.options.crop ? { crop: input.options.crop } : {}),
+                          ...(input.options.scale ? { scale: input.options.scale } : {})
+                      }
+                    : undefined
+
+                return saveImage(input.imageData, input.path, options)
+            }),
         readImage: procedure.input(z.string()).query(({ input }) => readImage(input)),
         readMediaInfo: procedure.input(z.string()).query(({ input }) => readMediaInfo(input)),
         superResolutionImage: procedure
@@ -240,7 +259,15 @@ export const appRouter = t.router({
                     anime: z.boolean().optional()
                 })
             )
-            .mutation(({ input }) => superResolutionImage(input.imagePath, input.anime))
+            .mutation(({ input }) => superResolutionImage(input.imagePath, input.anime)),
+        useImageMagick: procedure
+            .input(
+                z.object({
+                    imageData: z.custom<ImageData>(),
+                    args: z.array(z.string())
+                })
+            )
+            .mutation(({ input }) => useImageMagick(input.imageData, input.args))
     }),
     net: t.router({
         get: procedure
