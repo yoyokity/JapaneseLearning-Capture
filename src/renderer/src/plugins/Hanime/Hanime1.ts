@@ -19,7 +19,6 @@ export async function searchVideoHanime1(
         )}&genre=${EncodeHelper.encodeUrl('裏番')}`
 
         const webContent = await NetHelper.get(url, { signal })
-        if (signal.aborted) return null
         if (!webContent.ok) {
             loggerHanime1.warn(`获取搜索结果失败`, url)
             return null
@@ -87,7 +86,6 @@ export async function getWebContentHanime1(
 
     // 获取目标视频的webContent
     const webContent = await NetHelper.get(searchResult.href, { signal })
-    if (signal.aborted) return
     if (!webContent.ok) {
         loggerHanime1.warn(`获取网页内容失败`)
         return

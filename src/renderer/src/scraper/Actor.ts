@@ -65,7 +65,6 @@ export class Actor implements IActorFull {
                 ...gravurefitRequestOptions
             }
         )
-        if (signal.aborted) return false
         if (!response.ok) return false
 
         let $ = cheerioLoad(response.body)
@@ -92,7 +91,6 @@ export class Actor implements IActorFull {
         const actorResponse = await NetHelper.get(actorList[match.index].href, {
             signal
         })
-        if (signal.aborted) return false
         if (!actorResponse.ok) return false
 
         // 解析演员信息
@@ -164,7 +162,6 @@ export class Actor implements IActorFull {
                 signal
             }
         )
-        if (signal.aborted) return false
         if (!response.ok) return false
 
         const $ = cheerioLoad(response.body)

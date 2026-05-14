@@ -7,7 +7,13 @@ import type {
     IMediaInfoTrack,
     IMediaInfoVideoTrack
 } from '@renderer/helper/MediaHelper/type'
-import type { ImageCropPos, ImageData, ImageDataInfo, SaveImageOptions } from '@shared'
+import type {
+    ImageCropPos,
+    ImageData,
+    ImageDataInfo,
+    ImageResizeOptions,
+    SaveImageOptions
+} from '@shared'
 import type { Mat } from '@techstark/opencv-js'
 
 import { EncodeHelper, LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
@@ -109,7 +115,7 @@ export class MediaHelper {
     /**
      * 超分辨率处理图片并返回临时图片路径
      * @param imagePath 原图路径
-     * @param anime 是否为动漫图片
+     * @param anime 是否为动漫图片，默认false
      * @returns 超分后的本地图片路径
      * @remarks 输出的图片任意一边的长度不会高于3840
      */
@@ -326,19 +332,17 @@ export class MediaHelper {
     /**
      * 图片缩放
      * @param imageData 图片数据
-     * @param maxWidth 最大宽度
-     * @param maxHeight 最大高度
+     * @param options 缩放选项
      * @returns 缩放后的图片数据
      */
-    static async imageSacle(
+    static async resizeImage(
         imageData: ImageData,
-        maxWidth: number,
-        maxHeight: number
+        options: ImageResizeOptions
     ): Promise<ArrayBuffer | null> {
         const re = await TaskHelper.tryExecute(() =>
-            ipc.media.useImageMagick.mutate({
+            ipc.media.resizeImage.mutate({
                 imageData,
-                args: ['-filter', 'Lanczos', '-resize', `${maxWidth}x${maxHeight}`]
+                options
             })
         )
 

@@ -1,5 +1,6 @@
 import type { IRequestOptions, IResultWithError, Path } from '@renderer/helper'
 import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper/Video'
+import type { SaveImageOptions } from '@shared'
 
 import { LogHelper, MediaHelper, NetHelper, PathHelper } from '@renderer/helper'
 import { Nfo } from '@renderer/scraper/Nfo'
@@ -261,6 +262,8 @@ export interface IScraper<TContext = unknown> {
 }
 
 export class Scraper {
+    private static downloadImageCache = new Map<string, string>()
+
     /**
      * 刮削器实例对象列表
      */
@@ -467,30 +470,52 @@ export class Scraper {
 
     /**
      * 下载图片到临时目录
+     * @remark 每个url的图片只下载一次，后续重复下载直接返回缓存路径
      * @returns 返回临时图片路径
      */
-    static async downloadImage(url: string, options?: Omit<IRequestOptions, 'parse' | 'delay'>) {
-        const re = await NetHelper.getImage(url, options)
+    static async downloadImage(
+        url: string,
+        netOptions?: Omit<IRequestOptions, 'parse' | 'delay'>,
+        saveOptions?: SaveImageOptions
+    ) {
+        const cachePath = this.downloadImageCache.get(url)
+        if (cachePath) return cachePath
+
+        const re = await NetHelper.getImage(url, netOptions)
         if (!re.ok) {
             LogHelper.warn(`下载图片失败！:${url}`)
             return null
         }
 
         LogHelper.log(`下载图片成功！:${url}`)
-        return MediaHelper.saveTempImage(re.body, `download_image`)
+        const tempPath = await MediaHelper.saveTempImage(re.body, `download_image`, saveOptions)
+        if (tempPath) this.downloadImageCache.set(url, tempPath)
+        return tempPath
     }
 
     /**
      * 下载剧照到临时目录
+     * @remark 每个url的图片只下载一次，后续重复下载直接返回缓存路径
      * @returns 返回临时图片路径
      */
     static async downloadExtrafanart(
         urls: string[],
-        options?: Omit<IRequestOptions, 'parse' | 'delay'>
+        netOptions?: Omit<IRequestOptions, 'parse' | 'delay'>,
+        saveOptions?: SaveImageOptions
     ) {
+        if (urls.length === 0) return []
+
         const results = await Promise.all(
             urls.map(async (url) => {
-                const re = await NetHelper.getImage(url, options)
+                const cachePath = this.downloadImageCache.get(url)
+                if (cachePath) {
+                    return {
+                        url,
+                        tempPath: cachePath
+                    }
+                }
+
+                const re = await NetHelper.getImage(url, netOptions)
                 if (!re.ok) {
                     return {
                         url,
@@ -498,9 +523,16 @@ export class Scraper {
                     }
                 }
 
+                const tempPath = await MediaHelper.saveTempImage(
+                    re.body,
+                    `download_extrafanart`,
+                    saveOptions
+                )
+                if (tempPath) this.downloadImageCache.set(url, tempPath)
+
                 return {
                     url,
-                    tempPath: await MediaHelper.saveTempImage(re.body, `download_extrafanart`)
+                    tempPath
                 }
             })
         )

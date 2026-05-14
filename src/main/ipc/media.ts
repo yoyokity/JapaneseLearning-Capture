@@ -1,5 +1,3 @@
-import { Buffer } from 'node:buffer'
-import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
@@ -35,6 +33,20 @@ export interface ImageCropPos {
     height: number
 }
 
+export interface ImageResize {
+    maxWidth: number
+    maxHeight: number
+    minWidth: number
+    minHeight: number
+}
+
+export interface ImageResizeWidthHeight {
+    width: number
+    height: number
+}
+
+export type ImageResizeOptions = ImageResize | ImageResizeWidthHeight
+
 export interface SaveImageOptions {
     /**
      * 裁剪选项
@@ -45,17 +57,7 @@ export interface SaveImageOptions {
      * @remark 指定width和height，会按等比缩放，宽高均不超过指定值
      * @remark 指定最大最小值，如果图片宽高在指定范围内，不会缩放，否则会按最大边限制等比缩放
      */
-    scale?:
-        | {
-              maxWidth: number
-              maxHeight: number
-              minWidth: number
-              minHeight: number
-          }
-        | {
-              width: number
-              height: number
-          }
+    resize?: ImageResizeOptions
 }
 
 /**
@@ -76,9 +78,11 @@ export interface ImageDataInfo {
 }
 
 /**
- * 按最大边限制等比缩放图片
+ * 按配置等比缩放图片
  */
-const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
+const resize = async (input: sharp.Sharp, options: ImageResizeOptions) => {
+    if (!options) return input
+
     const metadata = await input.metadata()
     const { width, height } = metadata
 
@@ -86,25 +90,52 @@ const resizeByMaxSide = async (input: sharp.Sharp, maxSide: number) => {
         return input
     }
 
-    const longestSide = Math.max(width, height)
-    if (longestSide <= maxSide) {
+    if ('width' in options) {
+        return input.resize({
+            width: options.width,
+            height: options.height,
+            fit: 'inside',
+            withoutEnlargement: true,
+            kernel: sharp.kernel.mks2021
+        })
+    }
+
+    if (
+        width >= options.minWidth &&
+        width <= options.maxWidth &&
+        height >= options.minHeight &&
+        height <= options.maxHeight
+    ) {
         return input
     }
 
+    // 小于最小值时按最小值放大，大于最大值时按最大值缩小
+    const scaleRatio =
+        width < options.minWidth || height < options.minHeight
+            ? Math.max(options.minWidth / width, options.minHeight / height)
+            : Math.min(options.maxWidth / width, options.maxHeight / height)
+
     return input.resize({
-        width: width >= height ? maxSide : undefined,
-        height: height > width ? maxSide : undefined,
-        fit: 'inside',
-        withoutEnlargement: true,
+        width: Math.round(width * scaleRatio),
+        height: Math.round(height * scaleRatio),
         kernel: sharp.kernel.mks2021
     })
+}
+
+export async function resizeImage(
+    imageData: ImageData,
+    options: ImageResizeOptions
+): Promise<ArrayBuffer> {
+    const image = await resize(sharp(imageData).ensureAlpha(), options)
+    const buffer = await image.toBuffer()
+    return new Uint8Array(buffer).buffer
 }
 
 /**
  * 保存图片
  */
 export async function saveImage(imageData: ImageData, path: string, options?: SaveImageOptions) {
-    const { crop, scale } = options || {}
+    const { crop, resize: scale } = options || {}
 
     let image = sharp(imageData).ensureAlpha()
 
@@ -112,31 +143,7 @@ export async function saveImage(imageData: ImageData, path: string, options?: Sa
     if (crop) image.extract(crop)
 
     // 缩放图片
-    if (scale) {
-        const data = await image.toBuffer()
-
-        if ('width' in scale) {
-            const re = await useImageMagick(data, [
-                '-filter',
-                'Lanczos',
-                '-resize',
-                `${scale.width}x${scale.height}`
-            ])
-
-            if (re) image = sharp(re)
-        } else {
-            const re = await useImageMagick(data, [
-                '-filter',
-                'Lanczos',
-                '-resize',
-                `${scale.minWidth}x${scale.minHeight}<`,
-                '-resize',
-                `${scale.maxWidth}x${scale.maxHeight}>`
-            ])
-
-            if (re) image = sharp(re)
-        }
-    }
+    if (scale) image = await resize(image, scale)
 
     await image.jpeg({ quality: 92 }).toFile(path)
 }
@@ -189,7 +196,12 @@ export async function superResolutionImage(imagePath: string, anime: boolean = f
     const tempResultPath = join(tempPath, `${tempFileId}_super_resolution.jpg`)
     const sourceImageData = await fs.promises.readFile(imagePath)
 
-    const inputImage = await resizeByMaxSide(sharp(sourceImageData), 1080)
+    const inputImage = await resize(sharp(sourceImageData), {
+        maxHeight: 1280,
+        maxWidth: 1280,
+        minWidth: -1,
+        minHeight: -1
+    })
     await inputImage.toFile(tempImageBefore)
 
     const ars = [
@@ -211,8 +223,12 @@ export async function superResolutionImage(imagePath: string, anime: boolean = f
         const cmd = realesrgan.run(ars)
         cmd.onExit(async (code, text) => {
             if (code === 0) {
-                // 使用 sharp 转换为 jpg，质量 92，返回 temp 路径
-                const outputImage = await resizeByMaxSide(sharp(tempImageAfter), 3840)
+                const outputImage = await resize(sharp(tempImageAfter), {
+                    maxHeight: 3840,
+                    maxWidth: 3840,
+                    minWidth: -1,
+                    minHeight: -1
+                })
                 await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
                 resolve(tempResultPath)
             } else {
@@ -220,54 +236,4 @@ export async function superResolutionImage(imagePath: string, anime: boolean = f
             }
         })
     })
-}
-
-export async function useImageMagick(
-    imageData: ImageData,
-    args: string[]
-): Promise<ArrayBuffer | null> {
-    try {
-        const imageBuffer = await sharp(imageData).ensureAlpha().png().toBuffer()
-        const imageMagickPath = join(appPath.extraResource, 'tools/ImageMagick/magick.exe')
-
-        // 使用 spawn 启动 ImageMagick，指定从 stdin 读取
-        const magickProcess = spawn(imageMagickPath, [
-            'png:-', // 输入格式 png，从 stdin 读取
-            ...args,
-            'png:-' // 输出格式 png，写入 stdout
-        ])
-
-        const stdoutChunks: Buffer[] = []
-        magickProcess.stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk))
-
-        return await new Promise((resolve) => {
-            magickProcess.stdin.on('error', () => resolve(null))
-            magickProcess.stdin.end(imageBuffer)
-
-            magickProcess.on('close', (code) => {
-                if (code !== 0) {
-                    resolve(null)
-                    return
-                }
-
-                const outputBuffer = Buffer.concat(stdoutChunks)
-                if (!outputBuffer.length) {
-                    resolve(null)
-                    return
-                }
-
-                // 转换为 ArrayBuffer 并返回
-                resolve(
-                    outputBuffer.buffer.slice(
-                        outputBuffer.byteOffset,
-                        outputBuffer.byteOffset + outputBuffer.byteLength
-                    )
-                )
-            })
-
-            magickProcess.on('error', () => resolve(null))
-        })
-    } catch {
-        return null
-    }
 }

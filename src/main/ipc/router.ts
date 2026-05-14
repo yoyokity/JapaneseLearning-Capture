@@ -1,4 +1,4 @@
-import type { ImageData, SaveImageOptions } from './media'
+import type { ImageData, ImageResizeOptions, SaveImageOptions } from './media'
 import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
 
 import { initTRPC } from '@trpc/server'
@@ -36,7 +36,7 @@ import {
     writeFile,
     writeLog
 } from './filesystem'
-import { readImage, readMediaInfo, saveImage, superResolutionImage, useImageMagick } from './media'
+import { readImage, readMediaInfo, resizeImage, saveImage, superResolutionImage } from './media'
 import {
     aiStartOptionsSchema,
     clearCache,
@@ -225,6 +225,14 @@ export const appRouter = t.router({
             )
             .mutation(({ input }) => saveImage(input.imageData, input.path, input.options)),
         readImage: procedure.input(z.string()).query(({ input }) => readImage(input)),
+        resizeImage: procedure
+            .input(
+                z.object({
+                    imageData: z.custom<ImageData>(),
+                    options: z.custom<ImageResizeOptions>()
+                })
+            )
+            .mutation(({ input }) => resizeImage(input.imageData, input.options)),
         readMediaInfo: procedure.input(z.string()).query(({ input }) => readMediaInfo(input)),
         superResolutionImage: procedure
             .input(
@@ -233,15 +241,7 @@ export const appRouter = t.router({
                     anime: z.boolean().optional()
                 })
             )
-            .mutation(({ input }) => superResolutionImage(input.imagePath, input.anime)),
-        useImageMagick: procedure
-            .input(
-                z.object({
-                    imageData: z.custom<ImageData>(),
-                    args: z.array(z.string())
-                })
-            )
-            .mutation(({ input }) => useImageMagick(input.imageData, input.args))
+            .mutation(({ input }) => superResolutionImage(input.imagePath, input.anime))
     }),
     net: t.router({
         get: procedure

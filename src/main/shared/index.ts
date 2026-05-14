@@ -5,7 +5,13 @@ export type {
     IStats,
     ReadDirectoryOptions
 } from '../ipc/filesystem'
-export type { ImageCropPos, ImageData, ImageDataInfo, SaveImageOptions } from '../ipc/media'
+export type {
+    ImageCropPos,
+    ImageData,
+    ImageDataInfo,
+    ImageResizeOptions,
+    SaveImageOptions
+} from '../ipc/media'
 export type {
     CookiesSetDetails,
     IAiOptions,

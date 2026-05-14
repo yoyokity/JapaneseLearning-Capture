@@ -154,7 +154,6 @@ export async function getExtrafanartGetchu(
         .filter((href): href is string => !!href)
         .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
 
-    if (urls.length < 1) return []
     return Scraper.downloadExtrafanart(urls, { ...getchuOptions, signal })
 }
 

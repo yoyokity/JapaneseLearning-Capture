@@ -19,7 +19,7 @@ NetHelper.setCookie({
 
 async function get(url: string, signal: AbortSignal) {
     const webContent = await NetHelper.get(url, { ...fanzaOptions, signal })
-    if (!webContent.ok || signal.aborted) return webContent
+    if (!webContent.ok) return webContent
 
     if (webContent.body.includes('18歳未満')) {
         // 开始绕过验证
@@ -101,7 +101,6 @@ export async function getWebContentFanza(
 
     // 根据href获取webContent
     const detailContent = await NetHelper.get(href, { ...fanzaOptions, signal })
-    if (signal.aborted) return
     if (!detailContent.ok) {
         loggerFanza.warn(`获取网页内容失败`, href)
         return
@@ -160,6 +159,5 @@ export async function getExtrafanartFanza(
         )
         .toArray()
 
-    if (urls.length < 1) return []
     return Scraper.downloadExtrafanart(urls, { ...fanzaOptions, signal })
 }

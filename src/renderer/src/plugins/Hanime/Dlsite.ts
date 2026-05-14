@@ -50,7 +50,6 @@ export async function getWebContentDlsite(
     const keyword = EncodeHelper.encodeUrl(searchTitle).replace(/%20/g, '+')
     const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
     const webContent = await NetHelper.get(searchUrl, { ...dlsiteOptions, signal })
-    if (signal.aborted) return
     if (!webContent.ok) {
         loggerDlsite.warn(`获取搜索结果失败`, searchUrl)
         return
@@ -93,7 +92,6 @@ export async function getWebContentDlsite(
 
     // 根据href获取webContent
     const body = await NetHelper.get(href, { ...dlsiteOptions, signal })
-    if (signal.aborted) return
     if (!body.ok) {
         loggerDlsite.warn(`获取网页内容失败`, href)
         return
@@ -126,6 +124,5 @@ export async function getExtrafanartDlsite(
         .filter((src) => !src.includes('_main.'))
         .map((href) => `https:${href.trim()}`)
 
-    if (urls.length < 1) return []
     return Scraper.downloadExtrafanart(urls, { ...dlsiteOptions, signal })
 }
