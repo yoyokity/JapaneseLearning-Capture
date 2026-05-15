@@ -18,14 +18,13 @@ export interface IAvContext {
         mgs: string
         fanza: NumResponse.PpvContent | null
     }
-    originaltitle: string
     maker: string
     tag: string[]
     /**
      * 番号后缀，CU、UC、C、U
      */
     suffix: string
-    actor: Actor[]
+    actor: Actor[] | null
     image: {
         smallImgUrl: string
         bigImgUrl: string

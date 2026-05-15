@@ -2,6 +2,7 @@ import type { IAvContext } from '@renderer/plugins/AV/type'
 import type { IScraper, IVideo } from '@renderer/scraper'
 
 import {
+    DebugHelper,
     EncodeHelper,
     MediaHelper,
     NetHelper,
@@ -18,6 +19,44 @@ import { Actor, Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 import dayjs from 'dayjs'
 import { isNaN, toNumber } from 'es-toolkit/compat'
+
+const getActor = DebugHelper.withMutex(async (context: IAvContext, signal: AbortSignal) => {
+    if (context.actor) return true
+
+    const $ = cheerioLoad(context.webContent.JavDB)
+    const actors = $('.movie-panel-info .panel-block')
+        .filter((_, el) => $(el).find('strong').text().includes('演員'))
+        .find('.value a')
+        .toArray()
+        .map((el) => {
+            const item = $(el)
+            const name = item.text().trim()
+            const gender = item.next().hasClass('male') ? 'male' : 'female'
+            const href = item.attr('href')?.trim()
+            return {
+                name,
+                gender,
+                href: href ? NetHelper.joinUrl('https://www.javdb.com/', href) : undefined
+            }
+        })
+        .filter(
+            (item): item is { href: string; name: string; gender: 'male' | 'female' } =>
+                !!item.href && !!item.name && !!item.gender
+        )
+
+    if (!actors.length) return false
+
+    const actorObjs = actors.map((actor) => new Actor(actor.name, actor.gender))
+
+    // 查询演员详情
+    await Promise.all(
+        actorObjs.map((actorObj, index) => actorObj.search(signal, actors[index].href))
+    )
+    if (signal.aborted) return false
+
+    context.actor = actorObjs
+    return true
+})
 
 const avScraper: IScraper<IAvContext> = {
     scraperName,
@@ -44,11 +83,10 @@ const avScraper: IScraper<IAvContext> = {
                 mgs: '',
                 fanza: null
             },
-            originaltitle: '',
             maker: '',
             tag: [],
             suffix: '',
-            actor: [],
+            actor: null,
             image: {
                 smallImgUrl: '',
                 bigImgUrl: ''
@@ -121,7 +159,7 @@ const avScraper: IScraper<IAvContext> = {
             return true
         },
         async parseOriginaltitle(video: IVideo, context: IAvContext): Promise<boolean | null> {
-            // 原始标题使用 EBWH-001-C 这样的格式
+            // 使用 EBWH-001-C 这样的格式
             const $ = cheerioLoad(context.webContent.JavDB)
             let originaltitle = $('.movie-panel-info span.value')
                 .first()
@@ -133,24 +171,20 @@ const avScraper: IScraper<IAvContext> = {
             // 加上后缀
             if (context.suffix) originaltitle += `-${context.suffix}`
 
-            context.originaltitle = originaltitle
             video.originaltitle = originaltitle
             return true
         },
-        async parseSorttitle(
-            video: IVideo,
-            context: IAvContext,
-            signal: AbortSignal
-        ): Promise<boolean | null> {
-            if (!context.originaltitle) {
-                if (
-                    !(await avScraper.scraperVideoFuncs.parseOriginaltitle(video, context, signal))
-                ) {
-                    return false
-                }
-            }
+        async parseSorttitle(video: IVideo, context: IAvContext): Promise<boolean | null> {
+            // 使用 EBWH-001 这样的格式
+            const $ = cheerioLoad(context.webContent.JavDB)
+            const sorttitle = $('.movie-panel-info span.value')
+                .first()
+                .text()
+                .toLocaleUpperCase()
+                .trim()
+            if (!sorttitle) return false
 
-            video.sorttitle = context.originaltitle
+            video.sorttitle = sorttitle
             return true
         },
         async parseTagline(): Promise<boolean | null> {
@@ -159,6 +193,8 @@ const avScraper: IScraper<IAvContext> = {
         async parseNum(video: IVideo, context: IAvContext): Promise<boolean | null> {
             if (context.num.JavDB) video.num.JavDB = context.num.JavDB
             if (context.num.jable) video.num.jable = context.num.jable
+            if (context.num.mgs) video.num.mgs = context.num.mgs
+            if (context.num.fanza) video.num.fanza = context.num.fanza
             return true
         },
         async parseMpaa(video: IVideo): Promise<boolean | null> {
@@ -195,40 +231,9 @@ const avScraper: IScraper<IAvContext> = {
             context: IAvContext,
             signal: AbortSignal
         ): Promise<boolean | null> {
-            const $ = cheerioLoad(context.webContent.JavDB)
-            const actors = $('.movie-panel-info .panel-block')
-                .filter((_, el) => $(el).find('strong').text().includes('演員'))
-                .find('.value a')
-                .toArray()
-                .map((el) => {
-                    const item = $(el)
-                    const name = item.text().trim()
-                    const gender = item.next().hasClass('male') ? 'male' : 'female'
-                    const href = item.attr('href')?.trim()
-                    return {
-                        name,
-                        gender,
-                        href: href ? NetHelper.joinUrl('https://www.javdb.com/', href) : undefined
-                    }
-                })
-                .filter(
-                    (item): item is { href: string; name: string; gender: 'male' | 'female' } =>
-                        !!item.href && !!item.name && !!item.gender
-                )
+            if (!(await getActor(context, signal))) return false
 
-            if (!actors.length) return false
-
-            const actorObjs = actors.map((actor) => new Actor(actor.name, actor.gender))
-
-            // 查询演员详情
-            await Promise.all(
-                actorObjs.map((actorObj, index) => actorObj.search(signal, actors[index].href))
-            )
-            if (signal.aborted) return false
-
-            // 写入演员信息
-            context.actor = actorObjs
-            video.actor = actorObjs.map((actorObj) => ({
+            video.actor = context.actor!.map((actorObj) => ({
                 name: actorObj.name,
                 role: actorObj.role,
                 imgUrl: actorObj.imgUrl
@@ -351,7 +356,11 @@ const avScraper: IScraper<IAvContext> = {
             video.genre = [...genres]
             return true
         },
-        async parsePlot(video: IVideo, context: IAvContext): Promise<boolean | null> {
+        async parsePlot(
+            video: IVideo,
+            context: IAvContext,
+            signal: AbortSignal
+        ): Promise<boolean | null> {
             let plot = ''
 
             // 从Mgs获取
@@ -371,9 +380,11 @@ const avScraper: IScraper<IAvContext> = {
             }
 
             // 加上演员信息
-            context.actor.forEach((actor) => {
-                plot += actor.toString()
-            })
+            if (await getActor(context, signal)) {
+                context.actor!.forEach((actor) => {
+                    plot += actor.toString()
+                })
+            }
 
             if (!plot) return false
 
