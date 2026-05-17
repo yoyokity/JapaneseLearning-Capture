@@ -29,8 +29,8 @@ const message = useMessage()
 
 const imageLabels: Record<'poster' | 'fanart' | 'thumb', string> = {
     poster: '封面',
-    fanart: '背景',
-    thumb: '缩略图'
+    thumb: '缩略图',
+    fanart: '背景'
 }
 
 const video = computed({

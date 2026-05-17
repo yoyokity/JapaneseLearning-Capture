@@ -1,7 +1,6 @@
 import type { IHanimeContext } from './type'
 
-import { EncodeHelper, NetHelper } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
+import { EncodeHelper, NetHelper, ScraperHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { loggerGetchu } from './type'
@@ -154,7 +153,7 @@ export async function getExtrafanartGetchu(
         .filter((href): href is string => !!href)
         .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
 
-    return Scraper.downloadExtrafanart(urls, { ...getchuOptions, signal })
+    return ScraperHelper.downloadExtrafanart(urls, { ...getchuOptions, signal })
 }
 
 /**
@@ -176,7 +175,7 @@ export async function getPosterGetchu(
         ?.replace(/^\.\/ */, '')
 
     if (!url) return null
-    return Scraper.downloadImage(NetHelper.joinUrl('https://www.getchu.com/', url), {
+    return ScraperHelper.downloadImage(NetHelper.joinUrl('https://www.getchu.com/', url), {
         ...getchuOptions,
         signal
     })

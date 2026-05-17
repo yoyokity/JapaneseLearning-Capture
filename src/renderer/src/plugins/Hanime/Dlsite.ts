@@ -1,7 +1,6 @@
 import type { IHanimeContext } from './type'
 
-import { EncodeHelper, NetHelper } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
+import { EncodeHelper, NetHelper, ScraperHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { loggerDlsite } from './type'
@@ -124,5 +123,5 @@ export async function getExtrafanartDlsite(
         .filter((src) => !src.includes('_main.'))
         .map((href) => `https:${href.trim()}`)
 
-    return Scraper.downloadExtrafanart(urls, { ...dlsiteOptions, signal })
+    return ScraperHelper.downloadExtrafanart(urls, { ...dlsiteOptions, signal })
 }

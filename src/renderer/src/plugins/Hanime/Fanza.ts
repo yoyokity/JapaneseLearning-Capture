@@ -1,8 +1,7 @@
 import type { IHanimeContext } from '@renderer/plugins/Hanime/type'
 
-import { EncodeHelper, NetHelper } from '@renderer/helper'
+import { EncodeHelper, NetHelper, ScraperHelper } from '@renderer/helper'
 import { loggerFanza } from '@renderer/plugins/Hanime/type'
-import { Scraper } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 
 export const fanzaOptions = {
@@ -128,7 +127,7 @@ export async function getPosterFanza(
     const posterUrl = $('meta[property="og:image"]').attr('content')?.trim()
 
     if (!posterUrl) return null
-    return Scraper.downloadImage(posterUrl, { ...fanzaOptions, signal })
+    return ScraperHelper.downloadImage(posterUrl, { ...fanzaOptions, signal })
 }
 
 /**
@@ -159,5 +158,5 @@ export async function getExtrafanartFanza(
         )
         .toArray()
 
-    return Scraper.downloadExtrafanart(urls, { ...fanzaOptions, signal })
+    return ScraperHelper.downloadExtrafanart(urls, { ...fanzaOptions, signal })
 }

@@ -1,5 +1,5 @@
 import type { IResultWithError, Path } from '@renderer/helper'
-import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper'
+import type { IScraperVideoFuncs, IVideo, VideoFileWithoutStats } from '@renderer/scraper'
 import type { IScraperContext, ScraperState } from '@renderer/scraper/hooks/type'
 
 import { LogHelper, PathHelper } from '@renderer/helper'
@@ -49,8 +49,7 @@ export function useBatchScraper() {
     async function saveVideo(
         video: IVideo,
         sourceVideoPath: Path,
-        scraperContext: IScraperContext,
-        videoContext: unknown
+        funcs: IScraperVideoFuncs
     ): Promise<IResultWithError<Path>> {
         try {
             const sourceVideoFile: VideoFileWithoutStats = {
@@ -62,10 +61,7 @@ export function useBatchScraper() {
                 ...video
             }
 
-            const { dir, fileName } = await scraperContext.scraper.scraperVideoFuncs.parseOutput(
-                video,
-                videoContext
-            )
+            const { dir, fileName } = await funcs.parseOutput()
             const scraperPath = settings.scraperPath[video.scraperName]
 
             return await Scraper.createDirectory(
@@ -125,10 +121,11 @@ export function useBatchScraper() {
             num: search.num || {}
         })
 
+        // 创建新的刮削器方法实例
+        const funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
+
         scraperContext.logger.separator()
         scraperContext.logger.log(`开始刮削：`, videoObjFormat(video))
-
-        const videoContext = scraperContext.scraper.createContext()
 
         const abortResult = getAbortResult(signal)
         if (abortResult) return abortResult
@@ -137,11 +134,7 @@ export function useBatchScraper() {
         const hasContentResult = await (async () => {
             try {
                 scraperContext.logger.log(`获取网页内容中...`)
-                const re = await scraperContext.scraper.scraperVideoFuncs.getWebContext(
-                    video,
-                    videoContext,
-                    signal
-                )
+                const re = await funcs.getWebContext()
 
                 const contentAbortResult = getAbortResult(signal)
                 if (contentAbortResult) return false
@@ -168,45 +161,43 @@ export function useBatchScraper() {
 
         onProgress(10)
 
-        // 依次刮削其余信息
         const failed: string[] = []
-        for (const [index, { name, label }] of parseFuncs.entries()) {
-            const parseAbortResult = getAbortResult(signal)
-            if (parseAbortResult) return parseAbortResult
+        let finishedCount = 0
 
-            const re = await (async () => {
+        // 并发刮削其余信息
+        const parseResults = await Promise.all(
+            parseFuncs.map(async ({ name, label }) => {
+                if (signal.aborted) return { label, re: false }
+
                 try {
                     scraperContext.logger.log(`解析${label}...`)
 
-                    const func = scraperContext.scraper.scraperVideoFuncs[name] as (
-                        video: IVideo,
-                        content: unknown,
-                        signal: AbortSignal
-                    ) => Promise<boolean | null>
-                    const _re = await func(video, videoContext, signal)
+                    const re = (await funcs[name]()) as boolean | null
 
-                    if (_re === false) {
+                    if (re === false) {
                         scraperContext.logger.warn(`解析${label}失败！`)
                     }
 
-                    if (_re === null) {
+                    if (re === null) {
                         scraperContext.logger.log(`解析${label}跳过。`)
                     }
 
-                    return _re
+                    return { label, re }
                 } catch (error) {
                     scraperContext.logger.error(`解析${label}出错！`, error)
-                    return false
+                    return { label, re: false }
+                } finally {
+                    finishedCount++
+                    // 按完成数量推进进度
+                    onProgress(10 + (finishedCount * 85) / parseFuncs.length)
                 }
-            })()
+            })
+        )
 
-            const parseAfterAbortResult = getAbortResult(signal)
-            if (parseAfterAbortResult) return parseAfterAbortResult
+        const parseAfterAbortResult = getAbortResult(signal)
+        if (parseAfterAbortResult) return parseAfterAbortResult
 
-            // 进度条增加
-            onProgress(10 + ((index + 1) * 85) / parseFuncs.length)
-
-            // 解析失败，则跳过解析下一个
+        for (const { label, re } of parseResults) {
             if (re === false) {
                 failed.push(label)
             }
@@ -229,7 +220,7 @@ export function useBatchScraper() {
         if (saveAbortResult) return saveAbortResult
 
         // 保存
-        const videoDir = await saveVideo(video, sourceVideoPath, scraperContext, videoContext)
+        const videoDir = await saveVideo(video, sourceVideoPath, funcs)
 
         onProgress(100)
 

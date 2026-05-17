@@ -346,6 +346,7 @@ export class TransHelper {
      * @param text 要翻译的文本
      * @param format 是否格式化，默认为 true
      * @param streamCallback 翻译过程中每一次流传输的回调，不会对data进行格式化处理
+     * @returns 如果ok为false，则返回格式化后的原文
      */
     static async translate(
         text: string,
@@ -354,7 +355,8 @@ export class TransHelper {
     ): Promise<ITranslateResult> {
         // TODO: 给翻译也添加取消signal
         const settings = settingsStore()
-        if (!settings.translate.enable) return { ok: false, text }
+        if (!settings.translate.enable)
+            return { ok: false, text: format ? TransHelper.formatTranslateText(text) : text }
 
         const re = await translators[settings.translate.translateEngine].func(
             text,

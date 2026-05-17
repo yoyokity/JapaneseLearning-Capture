@@ -1,5 +1,5 @@
 import type { IResultWithError } from '@renderer/helper'
-import type { IScraper, IVideo, IVideoFile } from '@renderer/scraper'
+import type { IScraperVideoFuncs, IVideo, IVideoFile } from '@renderer/scraper'
 import type { IScraperContext, ScraperFuncName } from '@renderer/scraper/hooks/type'
 
 import { useMessage } from '@renderer/components/control/message'
@@ -14,7 +14,6 @@ import { computed, ref } from 'vue'
  */
 export function useEditeScraper() {
     const { toast } = useMessage()
-    let contentCache: unknown
     const globalStates = globalStatesStore()
     const scraperFieldRunning = ref(false)
     const scraperAllRunning = ref(false)
@@ -24,6 +23,8 @@ export function useEditeScraper() {
     const isScraperRunning = computed(
         () => globalStates.batchRunning || scraperFieldRunning.value || scraperAllRunning.value
     )
+
+    let funcs: IScraperVideoFuncs | null = null
 
     /**
      * 获取刮削上下文
@@ -41,39 +42,13 @@ export function useEditeScraper() {
     }
 
     /**
-     * 获取内容缓存
-     * @param scraper 刮削器
-     */
-    function getContext<TContext>(scraper: IScraper<TContext>): TContext {
-        if (contentCache) {
-            return contentCache as TContext
-        }
-
-        const context = scraper.createContext()
-        contentCache = context
-        return context
-    }
-
-    /**
      * 确保内容已获取
      * @param scraperContext 刮削上下文
-     * @param video 视频对象
      */
-    async function ensureContent(
-        scraperContext: IScraperContext,
-        video: IVideo,
-        signal: AbortSignal
-    ) {
+    async function ensureContent(scraperContext: IScraperContext, funcs: IScraperVideoFuncs) {
         try {
-            const context = getContext(scraperContext.scraper)
             scraperContext.logger.log(`获取网页内容中...`)
-            if (
-                !(await scraperContext.scraper.scraperVideoFuncs.getWebContext(
-                    video,
-                    context,
-                    signal
-                ))
-            ) {
+            if (!(await funcs.getWebContext())) {
                 scraperContext.logger.warn(`获取网页内容失败！`)
                 toast.warn(`获取网页内容失败！`)
                 return false
@@ -89,27 +64,19 @@ export function useEditeScraper() {
     /**
      * 执行单个字段解析
      * @param scraperContext 刮削上下文
-     * @param video 视频对象
+     * @param funcs 刮削器方法实例
      * @param funcName 解析函数名称
      * @param label 字段名称
      */
     async function parseField(
         scraperContext: IScraperContext,
-        video: IVideo,
+        funcs: IScraperVideoFuncs,
         funcName: ScraperFuncName,
-        label: string,
-        signal: AbortSignal
+        label: string
     ) {
         try {
             scraperContext.logger.log(`解析${label}...`)
-            const context = getContext(scraperContext.scraper)
-
-            const func = scraperContext.scraper.scraperVideoFuncs[funcName] as (
-                video: IVideo,
-                content: unknown,
-                signal: AbortSignal
-            ) => Promise<boolean | null>
-            return await func(video, context, signal)
+            return (await funcs[funcName]()) as boolean | null
         } catch (error) {
             scraperContext.logger.error(`解析${label}出错！`, error)
             return false
@@ -148,6 +115,9 @@ export function useEditeScraper() {
             return
         }
 
+        // 创建新的刮削器方法实例
+        if (!funcs) funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
+
         const funcConfig = parseFuncs.find((item) => item.name === funcName)
         const logName = funcConfig?.label || funcName
 
@@ -160,7 +130,7 @@ export function useEditeScraper() {
             if (getAbortResult(signal, onProgress)) return
 
             // 先确保有网页内容
-            if (!(await ensureContent(scraperContext, video, signal))) {
+            if (!(await ensureContent(scraperContext, funcs))) {
                 onProgress(100)
                 return
             }
@@ -170,7 +140,7 @@ export function useEditeScraper() {
             onProgress(60)
 
             // 执行解析
-            const success = await parseField(scraperContext, video, funcName, logName, signal)
+            const success = await parseField(scraperContext, funcs, funcName, logName)
             if (getAbortResult(signal, onProgress)) return
 
             if (success === null) {
@@ -191,13 +161,7 @@ export function useEditeScraper() {
             let numHasError = false
 
             try {
-                const context = getContext(scraperContext.scraper)
-                numSuccess =
-                    (await scraperContext.scraper.scraperVideoFuncs.parseNum(
-                        video,
-                        context,
-                        signal
-                    )) ?? false
+                numSuccess = (await funcs.parseNum()) ?? false
             } catch (error) {
                 numHasError = true
                 scraperContext.logger.error(`更新编号出错！`, error)
@@ -239,6 +203,9 @@ export function useEditeScraper() {
             return
         }
 
+        // 创建新的刮削器方法实例
+        if (!funcs) funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
+
         scraperContext.logger.separator()
         scraperContext.logger.log(`开始刮削：`, videoObjFormat(video))
         scraperAllRunning.value = true
@@ -248,7 +215,7 @@ export function useEditeScraper() {
             if (getAbortResult(signal, onProgress)) return
 
             // 先确保有网页内容
-            if (!(await ensureContent(scraperContext, video, signal))) {
+            if (!(await ensureContent(scraperContext, funcs))) {
                 onProgress(100)
                 return
             }
@@ -257,17 +224,29 @@ export function useEditeScraper() {
 
             onProgress(10)
 
+            const currentFuncs = funcs
             const failed: string[] = []
-            for (const [index, { name, label }] of parseFuncs.entries()) {
-                if (getAbortResult(signal, onProgress)) return
+            let finishedCount = 0
 
-                if ((await parseField(scraperContext, video, name, label, signal)) === false) {
+            const parseResults = await Promise.all(
+                parseFuncs.map(async ({ name, label }) => {
+                    if (signal.aborted) return { label, re: false }
+                    const re = await parseField(scraperContext, currentFuncs, name, label)
+
+                    finishedCount++
+                    // 按完成数量推进进度
+                    onProgress(10 + (finishedCount * 90) / parseFuncs.length)
+
+                    return { label, re }
+                })
+            )
+
+            if (getAbortResult(signal, onProgress)) return
+
+            for (const { label, re } of parseResults) {
+                if (re === false) {
                     failed.push(label)
                 }
-
-                if (getAbortResult(signal, onProgress)) return
-
-                onProgress(10 + ((index + 1) * 90) / parseFuncs.length)
             }
 
             if (failed.length === parseFuncs.length) {
@@ -297,14 +276,13 @@ export function useEditeScraper() {
         sourceVideoFile: IVideoFile
     ): Promise<IResultWithError<boolean>> {
         const scraper = Scraper.getScraperInstance(video.scraperName)
-        if (!scraper) {
+        if (!scraper || !funcs) {
             return { error: '未找到对应的刮削器！', hasError: true }
         }
 
         const settings = settingsStore()
-        const context = getContext(scraper)
 
-        const { dir, fileName } = await scraper.scraperVideoFuncs.parseOutput(video, context)
+        const { dir, fileName } = await funcs.parseOutput()
         const scraperPath = settings.scraperPath[video.scraperName]
 
         const videoDir = await Scraper.createDirectory(

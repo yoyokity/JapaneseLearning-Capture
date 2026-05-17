@@ -1,8 +1,7 @@
-import type { IRequestOptions, IResultWithError, Path } from '@renderer/helper'
+import type { IResultWithError, Path } from '@renderer/helper'
 import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper/Video'
-import type { SaveImageOptions } from '@shared'
 
-import { LogHelper, MediaHelper, NetHelper, PathHelper } from '@renderer/helper'
+import { LogHelper, PathHelper } from '@renderer/helper'
 import { Nfo } from '@renderer/scraper/Nfo'
 import { settingsStore } from '@renderer/stores'
 import { isEqual } from 'es-toolkit'
@@ -16,235 +15,143 @@ interface IModuleType {
     }
 }
 
-export interface IScraperVideoFuncs<TContext = unknown> {
+/**
+ * 根据编号源推导视频编号字段类型
+ */
+export type IVideoWithNumSource<TNumSource extends Record<string, string>> = Omit<IVideo, 'num'> & {
+    num: Record<keyof TNumSource, string>
+}
+
+export interface IScraperVideoFuncs {
     /**
      * 0. 获取网页上下文
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false
      */
-    getWebContext: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean>
+    getWebContext: () => Promise<boolean>
     /**
      * 1. 解析大标题
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseTitle: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseTitle: () => Promise<boolean | null>
     /**
      * 2. 解析原始标题
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseOriginaltitle: (
-        video: IVideo,
-        context: TContext,
-        signal: AbortSignal
-    ) => Promise<boolean | null>
+    parseOriginaltitle: () => Promise<boolean | null>
     /**
      * 3. 解析排序标题
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseSorttitle: (
-        video: IVideo,
-        context: TContext,
-        signal: AbortSignal
-    ) => Promise<boolean | null>
+    parseSorttitle: () => Promise<boolean | null>
     /**
      * 4. 解析宣传词
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseTagline: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseTagline: () => Promise<boolean | null>
     /**
      * 5. 解析编号
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseNum: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseNum: () => Promise<boolean | null>
     /**
      * 6. 解析分级
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseMpaa: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseMpaa: () => Promise<boolean | null>
     /**
      * 7. 解析评分
      * @description 以10分为满分
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseRating: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseRating: () => Promise<boolean | null>
     /**
      * 8.解析导演
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseDirector: (
-        video: IVideo,
-        context: TContext,
-        signal: AbortSignal
-    ) => Promise<boolean | null>
+    parseDirector: () => Promise<boolean | null>
     /**
      * 9. 解析演员
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseActor: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseActor: () => Promise<boolean | null>
     /**
      * 10. 解析发行商
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseStudio: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseStudio: () => Promise<boolean | null>
     /**
      * 11. 解析制片商
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseMaker: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseMaker: () => Promise<boolean | null>
     /**
      * 12. 解析影片系列
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseSet: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseSet: () => Promise<boolean | null>
     /**
      * 13. 解析影片标签
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseTag: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseTag: () => Promise<boolean | null>
     /**
      * 14. 解析影片类型
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseGenre: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseGenre: () => Promise<boolean | null>
     /**
      * 15. 解析简介
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parsePlot: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parsePlot: () => Promise<boolean | null>
     /**
      * 16. 解析发行年份
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseYear: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseYear: () => Promise<boolean | null>
     /**
      * 17. 解析首映日期
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parsePremiered: (
-        video: IVideo,
-        context: TContext,
-        signal: AbortSignal
-    ) => Promise<boolean | null>
+    parsePremiered: () => Promise<boolean | null>
     /**
      * 18. 解析上映日期
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseReleasedate: (
-        video: IVideo,
-        context: TContext,
-        signal: AbortSignal
-    ) => Promise<boolean | null>
+    parseReleasedate: () => Promise<boolean | null>
     /**
      * 19. 解析视频封面
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parsePoster: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parsePoster: () => Promise<boolean | null>
     /**
      * 20. 解析视频缩略图
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseThumb: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseThumb: () => Promise<boolean | null>
     /**
      * 21. 解析视频背景图
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseFanart: (video: IVideo, context: TContext, signal: AbortSignal) => Promise<boolean | null>
+    parseFanart: () => Promise<boolean | null>
     /**
      * 22. 解析视频额外背景图
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
-     * @param signal 中断信号，触发中断的话请给函数返回false
      * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
      */
-    parseExtrafanart: (
-        video: IVideo,
-        context: TContext,
-        signal: AbortSignal
-    ) => Promise<boolean | null>
+    parseExtrafanart: () => Promise<boolean | null>
     /**
      * 解析视频输出信息
-     * @param video 视频对象，解析结果直接写入 video
-     * @param context 刮削上下文，用于缓存信息
      * @remarks 是相对路径，最终目录的绝对路径=刮削器输出路径+这个相对路径
      * @returns dir是输出目录的相对路径，fileName是视频文件名
      */
-    parseOutput: (video: IVideo, context: TContext) => Promise<{ dir: string; fileName: string }>
+    parseOutput: () => Promise<{ dir: string; fileName: string }>
 }
 
-export interface IScraper<TContext = unknown> {
+export interface IScraper {
     /**
      * 刮削器名称
      */
     scraperName: string
-    /**
-     * 检查连接
-     */
-    checkConnect: () => Promise<boolean>
     /**
      * 编号源
      * @remarks 刮削器刮削时，信息网站的名称和url
@@ -252,18 +159,12 @@ export interface IScraper<TContext = unknown> {
      */
     numSource: Record<string, string>
     /**
-     * 上下文缓存创建方法
-     */
-    createContext: () => TContext
-    /**
      * 刮削视频信息的方法
      */
-    scraperVideoFuncs: IScraperVideoFuncs<TContext>
+    createScraperVideoFuncs: (video: IVideo, signal: AbortSignal) => IScraperVideoFuncs
 }
 
 export class Scraper {
-    private static downloadImageCache = new Map<string, string>()
-
     /**
      * 刮削器实例对象列表
      */
@@ -289,13 +190,11 @@ export class Scraper {
                 continue
             }
 
-            if (!scraper.checkConnect || typeof scraper.checkConnect !== 'function') {
-                LogHelper.error(`${path} 缺少有效的checkConnect方法，此刮削器加载失败`)
-                continue
-            }
-
-            if (!scraper.scraperVideoFuncs || typeof scraper.scraperVideoFuncs !== 'object') {
-                LogHelper.error(`${path} 缺少有效的scraperVideoFuncs方法，此刮削器加载失败`)
+            if (
+                !scraper.createScraperVideoFuncs ||
+                typeof scraper.createScraperVideoFuncs !== 'function'
+            ) {
+                LogHelper.error(`${path} 缺少有效的createScraperVideoFuncs方法，此刮削器加载失败`)
                 continue
             }
 
@@ -312,19 +211,19 @@ export class Scraper {
     }
 
     /**
-     * 获取当前刮削器路径
-     */
-    static getCurrentScraperPath() {
-        const settings = settingsStore()
-        return settings.scraperPath[settings.currentScraper]
-    }
-
-    /**
      * 获取当前刮削器实例
      */
     static getCurrentScraperInstance() {
         const settings = settingsStore()
         return Scraper.instances.find((scraper) => scraper.scraperName === settings.currentScraper)
+    }
+
+    /**
+     * 获取当前刮削器路径
+     */
+    static getCurrentScraperPath() {
+        const settings = settingsStore()
+        return settings.scraperPath[settings.currentScraper]
     }
 
     /**
@@ -466,98 +365,5 @@ export class Scraper {
             LogHelper.error(`保存刮削结果异常：${errorMessage}`)
             return { error: `保存刮削结果失败！`, hasError: true }
         }
-    }
-
-    /**
-     * 下载图片到临时目录
-     * @remark 每个url的图片只下载一次，后续重复下载直接返回缓存路径
-     * @returns 返回临时图片路径
-     */
-    static async downloadImage(
-        url: string,
-        netOptions?: Omit<IRequestOptions, 'parse' | 'delay'>,
-        saveOptions?: SaveImageOptions
-    ) {
-        const cachePath = this.downloadImageCache.get(url)
-        if (cachePath) return cachePath
-
-        const re = await NetHelper.getImage(url, netOptions)
-        if (!re.ok) {
-            LogHelper.warn(`下载图片失败！:${url}`)
-            return null
-        }
-
-        LogHelper.log(`下载图片成功！:${url}`)
-        const tempPath = await MediaHelper.saveTempImage(re.body, `download_image`, saveOptions)
-        if (tempPath) this.downloadImageCache.set(url, tempPath)
-        return tempPath
-    }
-
-    /**
-     * 下载剧照到临时目录
-     * @remark 每个url的图片只下载一次，后续重复下载直接返回缓存路径
-     * @returns 返回临时图片路径
-     */
-    static async downloadExtrafanart(
-        urls: string[],
-        netOptions?: Omit<IRequestOptions, 'parse' | 'delay'>,
-        saveOptions?: SaveImageOptions
-    ) {
-        if (urls.length === 0) return []
-
-        const results = await Promise.all(
-            urls.map(async (url) => {
-                const cachePath = this.downloadImageCache.get(url)
-                if (cachePath) {
-                    return {
-                        url,
-                        tempPath: cachePath
-                    }
-                }
-
-                const re = await NetHelper.getImage(url, netOptions)
-                if (!re.ok) {
-                    return {
-                        url,
-                        tempPath: null
-                    }
-                }
-
-                const tempPath = await MediaHelper.saveTempImage(
-                    re.body,
-                    `download_extrafanart`,
-                    saveOptions
-                )
-                if (tempPath) this.downloadImageCache.set(url, tempPath)
-
-                return {
-                    url,
-                    tempPath
-                }
-            })
-        )
-
-        const extrafanart: string[] = []
-        const successUrls: string[] = []
-        const failedUrls: string[] = []
-        for (const result of results) {
-            if (result.tempPath) {
-                successUrls.push(result.url)
-                extrafanart.push(result.tempPath)
-                continue
-            }
-
-            failedUrls.push(result.url)
-        }
-
-        if (successUrls.length > 0) {
-            LogHelper.log(`下载${successUrls.length}张剧照成功`)
-        }
-
-        if (failedUrls.length > 0) {
-            LogHelper.warn(`下载${failedUrls.length}张剧照失败`, failedUrls)
-        }
-
-        return extrafanart
     }
 }

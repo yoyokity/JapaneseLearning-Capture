@@ -1,7 +1,6 @@
 import type { IHanimeContext } from './type'
 
-import { EncodeHelper, NetHelper } from '@renderer/helper'
-import { Scraper } from '@renderer/scraper'
+import { EncodeHelper, NetHelper, ScraperHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 import { loggerHanime1 } from './type'
@@ -110,5 +109,5 @@ export async function getPosterHanime1(
     const posterUrl = searchResult?.poster
 
     if (!posterUrl) return null
-    return Scraper.downloadImage(posterUrl, { signal })
+    return ScraperHelper.downloadImage(posterUrl, { signal })
 }
