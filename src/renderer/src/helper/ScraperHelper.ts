@@ -1,5 +1,5 @@
 import type { IRequestOptions } from '@renderer/helper'
-import type { IScraper, IScraperVideoFuncs, IVideo } from '@renderer/scraper'
+import type { IScraper, IScraperVideoValueFuncs, IVideo } from '@renderer/scraper'
 import type { SaveImageOptions } from '@shared'
 
 import { NetHelper } from '@renderer/helper'
@@ -27,19 +27,85 @@ export class ScraperHelper {
         scraperName: string,
         numSource: TNumSource,
         createScraperVideoFuncs: (
-            video: Omit<IVideo, 'num'> & {
-                num: Record<string, string>
-            },
+            video: IVideo,
             signal: AbortSignal
-        ) => IScraperVideoFuncs
+        ) => Omit<IScraperVideoValueFuncs, 'parseNum'> & {
+            parseNum: () => Promise<TNumSource | false | null>
+        }
     ): IScraper {
         return {
             scraperName,
             numSource,
-            createScraperVideoFuncs: createScraperVideoFuncs as (
-                video: IVideo,
-                signal: AbortSignal
-            ) => IScraperVideoFuncs
+            createScraperVideoFuncs: (video, signal) => {
+                const funcs = createScraperVideoFuncs(video, signal)
+                const wrapParseFunc = async <TValue>(
+                    parseFunc: () => Promise<TValue | false | null>,
+                    setValue: (value: TValue) => void
+                ): Promise<boolean | null> => {
+                    const re = await parseFunc()
+                    if (re) {
+                        setValue(re)
+                        return true
+                    }
+
+                    return re as false | null
+                }
+
+                return {
+                    getWebContext: funcs.getWebContext,
+                    parseTitle: () =>
+                        wrapParseFunc(funcs.parseTitle, (value) => (video.title = value)),
+                    parseOriginaltitle: () =>
+                        wrapParseFunc(
+                            funcs.parseOriginaltitle,
+                            (value) => (video.originaltitle = value)
+                        ),
+                    parseSorttitle: () =>
+                        wrapParseFunc(funcs.parseSorttitle, (value) => (video.sorttitle = value)),
+                    parseTagline: () =>
+                        wrapParseFunc(funcs.parseTagline, (value) => (video.tagline = value)),
+                    parseNum: () => wrapParseFunc(funcs.parseNum, (value) => (video.num = value)),
+                    parseMpaa: () =>
+                        wrapParseFunc(funcs.parseMpaa, (value) => (video.mpaa = value)),
+                    parseRating: () =>
+                        wrapParseFunc(funcs.parseRating, (value) => (video.rating = value)),
+                    parseDirector: () =>
+                        wrapParseFunc(funcs.parseDirector, (value) => (video.director = value)),
+                    parseActor: () =>
+                        wrapParseFunc(funcs.parseActor, (value) => (video.actor = value)),
+                    parseStudio: () =>
+                        wrapParseFunc(funcs.parseStudio, (value) => (video.studio = value)),
+                    parseMaker: () =>
+                        wrapParseFunc(funcs.parseMaker, (value) => (video.maker = value)),
+                    parseSet: () => wrapParseFunc(funcs.parseSet, (value) => (video.set = value)),
+                    parseTag: () => wrapParseFunc(funcs.parseTag, (value) => (video.tag = value)),
+                    parseGenre: () =>
+                        wrapParseFunc(funcs.parseGenre, (value) => (video.genre = value)),
+                    parsePlot: () =>
+                        wrapParseFunc(funcs.parsePlot, (value) => (video.plot = value)),
+                    parseYear: () =>
+                        wrapParseFunc(funcs.parseYear, (value) => (video.year = value)),
+                    parsePremiered: () =>
+                        wrapParseFunc(funcs.parsePremiered, (value) => (video.premiered = value)),
+                    parseReleasedate: () =>
+                        wrapParseFunc(
+                            funcs.parseReleasedate,
+                            (value) => (video.releasedate = value)
+                        ),
+                    parsePoster: () =>
+                        wrapParseFunc(funcs.parsePoster, (value) => (video.poster = value)),
+                    parseThumb: () =>
+                        wrapParseFunc(funcs.parseThumb, (value) => (video.thumb = value)),
+                    parseFanart: () =>
+                        wrapParseFunc(funcs.parseFanart, (value) => (video.fanart = value)),
+                    parseExtrafanart: () =>
+                        wrapParseFunc(
+                            funcs.parseExtrafanart,
+                            (value) => (video.extrafanart = value)
+                        ),
+                    parseOutput: funcs.parseOutput
+                }
+            }
         }
     }
 

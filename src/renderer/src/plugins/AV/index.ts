@@ -511,6 +511,7 @@ const useScraper = ScraperHelper.defineScraper(
         })
 
         return {
+            // #region 刮削步骤
             async getWebContext() {
                 if (webContent.javDB) {
                     logger.log('网页内容已获取过，跳过')
@@ -551,7 +552,7 @@ const useScraper = ScraperHelper.defineScraper(
 
                 return true
             },
-            async parseTitle(): Promise<boolean | null> {
+            async parseTitle() {
                 const $ = cheerioLoad(webContent.javDB)
                 let title = $('.current-title').text().trim()
 
@@ -563,11 +564,9 @@ const useScraper = ScraperHelper.defineScraper(
 
                 // 如果文本前面有【xxx】则去掉【xxx】
                 title = title.replace(/^【[^】]*】\s*/, '')
-
-                video.title = title
-                return true
+                return title
             },
-            async parseOriginaltitle(): Promise<boolean | null> {
+            async parseOriginaltitle() {
                 // 使用 EBWH-001-C 这样的格式
                 const $ = cheerioLoad(webContent.javDB)
                 let originaltitle = $('.movie-panel-info span.value')
@@ -579,11 +578,9 @@ const useScraper = ScraperHelper.defineScraper(
 
                 // 加上后缀
                 if (_suffix) originaltitle += `-${_suffix}`
-
-                video.originaltitle = originaltitle
-                return true
+                return originaltitle
             },
-            async parseSorttitle(): Promise<boolean | null> {
+            async parseSorttitle() {
                 // 使用 EBWH-001 这样的格式
                 const $ = cheerioLoad(webContent.javDB)
                 const sorttitle = $('.movie-panel-info span.value')
@@ -593,24 +590,23 @@ const useScraper = ScraperHelper.defineScraper(
                     .trim()
                 if (!sorttitle) return false
 
-                video.sorttitle = sorttitle
-                return true
+                return sorttitle
             },
-            async parseTagline(): Promise<boolean | null> {
+            async parseTagline() {
                 return null
             },
-            async parseNum(): Promise<boolean | null> {
-                if (num.javDB) video.num.javDB = num.javDB
-                if (num.jable) video.num.jable = num.jable
-                if (num.MGS) video.num.MGS = num.MGS
-                if (num.Fanza) video.num.Fanza = num.Fanza
-                return true
+            async parseNum() {
+                return {
+                    javDB: num.javDB,
+                    jable: num.jable,
+                    MGS: num.MGS,
+                    Fanza: num.Fanza
+                }
             },
-            async parseMpaa(): Promise<boolean | null> {
-                video.mpaa = 'JP-18+'
-                return true
+            async parseMpaa() {
+                return 'JP-18+'
             },
-            async parseRating(): Promise<boolean | null> {
+            async parseRating() {
                 const $ = cheerioLoad(webContent.javDB)
                 const text = $('.movie-panel-info .score-stars').parent().text()
                 const rating = text.match(/(?<rating>\d+(?:\.\d*)?)\s*分/)?.groups?.rating
@@ -619,10 +615,9 @@ const useScraper = ScraperHelper.defineScraper(
                 const number = toNumber(rating)
                 if (isNaN(number)) return false
 
-                video.rating = (number * 2).toString()
-                return true
+                return (number * 2).toString()
             },
-            async parseDirector(): Promise<boolean | null> {
+            async parseDirector() {
                 const $ = cheerioLoad(webContent.javDB)
                 const director = $('.movie-panel-info .panel-block')
                     .filter((_, el) => $(el).find('strong').text().includes('導演'))
@@ -631,22 +626,18 @@ const useScraper = ScraperHelper.defineScraper(
                     .trim()
 
                 if (!director) return false
-
-                video.director = director
-                return true
+                return director
             },
-            async parseActor(): Promise<boolean | null> {
+            async parseActor() {
                 if (!(await getActor())) return false
 
-                video.actor = actor!.map((actorObj) => ({
+                return actor!.map((actorObj) => ({
                     name: actorObj.name,
                     role: actorObj.role,
                     imgUrl: actorObj.imgUrl
                 }))
-
-                return true
             },
-            async parseStudio(): Promise<boolean | null> {
+            async parseStudio() {
                 const $ = cheerioLoad(webContent.javDB)
                 const panelBlocks = $('.movie-panel-info .panel-block')
 
@@ -666,11 +657,9 @@ const useScraper = ScraperHelper.defineScraper(
                 }
 
                 if (!studio) return false
-
-                video.studio = studio
-                return true
+                return studio
             },
-            async parseMaker(): Promise<boolean | null> {
+            async parseMaker() {
                 const $ = cheerioLoad(webContent.javDB)
                 const panelBlocks = $('.movie-panel-info .panel-block')
 
@@ -690,11 +679,9 @@ const useScraper = ScraperHelper.defineScraper(
                 }
 
                 if (!maker) return false
-
-                video.maker = maker
-                return true
+                return maker
             },
-            async parseSet(): Promise<boolean | null> {
+            async parseSet() {
                 const $ = cheerioLoad(webContent.javDB)
                 const set = $('.movie-panel-info .panel-block')
                     .filter((_, el) => $(el).find('strong').text().includes('系列'))
@@ -703,11 +690,9 @@ const useScraper = ScraperHelper.defineScraper(
                     .trim()
 
                 if (!set) return false
-
-                video.set = set
-                return true
+                return set
             },
-            async parseTag(): Promise<boolean | null> {
+            async parseTag() {
                 const tags: Set<string> = new Set()
 
                 // jable
@@ -731,10 +716,9 @@ const useScraper = ScraperHelper.defineScraper(
                     .filter((tag) => !!tag)
                     .forEach((tag) => tags.add(TransHelper.translateSC(tag)))
 
-                video.tag = [...tags]
-                return true
+                return [...tags]
             },
-            async parseGenre(): Promise<boolean | null> {
+            async parseGenre() {
                 const genres: Set<string> = new Set()
 
                 // jable
@@ -758,10 +742,9 @@ const useScraper = ScraperHelper.defineScraper(
                     .filter((tag) => !!tag)
                     .forEach((tag) => genres.add(TransHelper.translateSC(tag)))
 
-                video.genre = [...genres]
-                return true
+                return [...genres]
             },
-            async parsePlot(): Promise<boolean | null> {
+            async parsePlot() {
                 let plot = ''
 
                 // 从Mgs获取
@@ -790,11 +773,9 @@ const useScraper = ScraperHelper.defineScraper(
                 }
 
                 if (!plot) return false
-
-                video.plot = plot.trim()
-                return true
+                return plot.trim()
             },
-            async parseYear(): Promise<boolean | null> {
+            async parseYear() {
                 const $ = cheerioLoad(webContent.javDB)
                 const time = $('.movie-panel-info .panel-block')
                     .filter((_, el) => $(el).find('strong').text().includes('日期'))
@@ -803,11 +784,9 @@ const useScraper = ScraperHelper.defineScraper(
                     .trim()
 
                 if (!time) return false
-
-                video.year = dayjs(time).year().toString()
-                return true
+                return dayjs(time).year().toString()
             },
-            async parsePremiered(): Promise<boolean | null> {
+            async parsePremiered() {
                 const $ = cheerioLoad(webContent.javDB)
                 const time = $('.movie-panel-info .panel-block')
                     .filter((_, el) => $(el).find('strong').text().includes('日期'))
@@ -816,11 +795,9 @@ const useScraper = ScraperHelper.defineScraper(
                     .trim()
 
                 if (!time) return false
-
-                video.premiered = dayjs(time).format('YYYY-MM-DD')
-                return true
+                return dayjs(time).format('YYYY-MM-DD')
             },
-            async parseReleasedate(): Promise<boolean | null> {
+            async parseReleasedate() {
                 const $ = cheerioLoad(webContent.javDB)
                 const time = $('.movie-panel-info .panel-block')
                     .filter((_, el) => $(el).find('strong').text().includes('日期'))
@@ -829,11 +806,9 @@ const useScraper = ScraperHelper.defineScraper(
                     .trim()
 
                 if (!time) return false
-
-                video.releasedate = dayjs(time).format('YYYY-MM-DD')
-                return true
+                return dayjs(time).format('YYYY-MM-DD')
             },
-            async parsePoster(): Promise<boolean | null> {
+            async parsePoster() {
                 // 有Fanza直接用Fanza的
                 if (webContent.Fanza) {
                     const posterUrl = webContent.Fanza.packageImage.mediumUrl
@@ -854,8 +829,7 @@ const useScraper = ScraperHelper.defineScraper(
                     )
                     if (posterPath) {
                         logger.log(`下载图片成功！:${posterUrl}`)
-                        video.poster = posterPath
-                        return true
+                        return posterPath
                     }
                 }
 
@@ -869,17 +843,16 @@ const useScraper = ScraperHelper.defineScraper(
                 if (!srcImagePath) return false
 
                 // 默认直接使用大图
-                video.poster = srcImagePath
-                if (!image.smallImgUrl) return true
+                if (!image.smallImgUrl) return srcImagePath
 
                 // 有小图时，再使用模板匹配对大图进行裁剪
                 const templImagePath = await ScraperHelper.downloadImage(image.smallImgUrl, {
                     signal
                 })
-                if (!templImagePath) return true
+                if (!templImagePath) return srcImagePath
 
                 const result = await MediaHelper.templateMatchIamge(srcImagePath, templImagePath)
-                if (signal.aborted || !result) return true
+                if (signal.aborted || !result) return srcImagePath
 
                 // 保存裁剪后的图片到临时文件
                 const path = await MediaHelper.saveTempImage(result.srcImageData.data, `poster`, {
@@ -893,10 +866,9 @@ const useScraper = ScraperHelper.defineScraper(
                 })
                 if (!path) return false
 
-                video.poster = path
-                return true
+                return path
             },
-            async parseThumb(): Promise<boolean | null> {
+            async parseThumb() {
                 // 有Fanza直接用Fanza的
                 if (webContent.Fanza) {
                     const thumbUrl = webContent.Fanza.packageImage.largeUrl
@@ -917,8 +889,7 @@ const useScraper = ScraperHelper.defineScraper(
                     )
                     if (thumbPath) {
                         logger.log(`下载图片成功！:${thumbUrl}`)
-                        video.thumb = thumbPath
-                        return true
+                        return thumbPath
                     }
                 }
 
@@ -942,10 +913,9 @@ const useScraper = ScraperHelper.defineScraper(
                 )
                 if (!thumbPath) return false
 
-                video.thumb = thumbPath
-                return true
+                return thumbPath
             },
-            async parseFanart(): Promise<boolean | null> {
+            async parseFanart() {
                 // 有Fanza直接用Fanza的
                 if (webContent.Fanza) {
                     const fanartUrl = webContent.Fanza.packageImage.largeUrl
@@ -955,8 +925,7 @@ const useScraper = ScraperHelper.defineScraper(
                     })
                     if (fanartPath) {
                         logger.log(`下载图片成功！:${fanartUrl}`)
-                        video.fanart = fanartPath
-                        return true
+                        return fanartPath
                     }
                 }
 
@@ -973,10 +942,9 @@ const useScraper = ScraperHelper.defineScraper(
                 const re = await MediaHelper.superResolutionImage(fanartPath)
                 if (!re) return false
 
-                video.fanart = re
-                return true
+                return re
             },
-            async parseExtrafanart(): Promise<boolean | null> {
+            async parseExtrafanart() {
                 let extrafanarts: string[] = []
 
                 // 有Fanza直接用Fanza的
@@ -1019,8 +987,7 @@ const useScraper = ScraperHelper.defineScraper(
                 // 总汇
                 if (!extrafanarts.length) return false
 
-                video.extrafanart = extrafanarts
-                return true
+                return extrafanarts
             },
             async parseOutput(): Promise<{ dir: string; fileName: string }> {
                 let actor = ''
@@ -1031,6 +998,7 @@ const useScraper = ScraperHelper.defineScraper(
                 const dir = `${actor}/${video.originaltitle}`
                 return { dir, fileName: video.originaltitle }
             }
+            // #endregion
         }
     }
 )

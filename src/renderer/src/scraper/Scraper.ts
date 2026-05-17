@@ -1,5 +1,5 @@
 import type { IResultWithError, Path } from '@renderer/helper'
-import type { IVideo, VideoFileWithoutStats } from '@renderer/scraper/Video'
+import type { IActor, IVideo, VideoFileWithoutStats } from '@renderer/scraper/Video'
 
 import { LogHelper, PathHelper } from '@renderer/helper'
 import { Nfo } from '@renderer/scraper/Nfo'
@@ -16,135 +16,180 @@ interface IModuleType {
 }
 
 /**
- * 根据编号源推导视频编号字段类型
+ * 刮削字段值映射
  */
-export type IVideoWithNumSource<TNumSource extends Record<string, string>> = Omit<IVideo, 'num'> & {
-    num: Record<keyof TNumSource, string>
+interface IScraperVideoFieldValueMap {
+    parseTitle: string
+    parseOriginaltitle: string
+    parseSorttitle: string
+    parseTagline: string
+    parseNum: Record<string, string>
+    parseMpaa: string
+    parseRating: string
+    parseDirector: string
+    parseActor: IActor[]
+    parseStudio: string
+    parseMaker: string
+    parseSet: string
+    parseTag: string[]
+    parseGenre: string[]
+    parsePlot: string
+    parseYear: string
+    parsePremiered: string
+    parseReleasedate: string
+    parsePoster: string
+    parseThumb: string
+    parseFanart: string
+    parseExtrafanart: string[]
 }
 
-export interface IScraperVideoFuncs {
+interface IScraperVideoBaseFuncs {
     /**
-     * 0. 获取网页上下文
+     * 获取网页上下文
      * @returns 解析成功返回true，解析失败或中断触发返回false
      */
     getWebContext: () => Promise<boolean>
-    /**
-     * 1. 解析大标题
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseTitle: () => Promise<boolean | null>
-    /**
-     * 2. 解析原始标题
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseOriginaltitle: () => Promise<boolean | null>
-    /**
-     * 3. 解析排序标题
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseSorttitle: () => Promise<boolean | null>
-    /**
-     * 4. 解析宣传词
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseTagline: () => Promise<boolean | null>
-    /**
-     * 5. 解析编号
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseNum: () => Promise<boolean | null>
-    /**
-     * 6. 解析分级
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseMpaa: () => Promise<boolean | null>
-    /**
-     * 7. 解析评分
-     * @description 以10分为满分
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseRating: () => Promise<boolean | null>
-    /**
-     * 8.解析导演
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseDirector: () => Promise<boolean | null>
-    /**
-     * 9. 解析演员
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseActor: () => Promise<boolean | null>
-    /**
-     * 10. 解析发行商
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseStudio: () => Promise<boolean | null>
-    /**
-     * 11. 解析制片商
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseMaker: () => Promise<boolean | null>
-    /**
-     * 12. 解析影片系列
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseSet: () => Promise<boolean | null>
-    /**
-     * 13. 解析影片标签
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseTag: () => Promise<boolean | null>
-    /**
-     * 14. 解析影片类型
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseGenre: () => Promise<boolean | null>
-    /**
-     * 15. 解析简介
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parsePlot: () => Promise<boolean | null>
-    /**
-     * 16. 解析发行年份
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseYear: () => Promise<boolean | null>
-    /**
-     * 17. 解析首映日期
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parsePremiered: () => Promise<boolean | null>
-    /**
-     * 18. 解析上映日期
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseReleasedate: () => Promise<boolean | null>
-    /**
-     * 19. 解析视频封面
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parsePoster: () => Promise<boolean | null>
-    /**
-     * 20. 解析视频缩略图
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseThumb: () => Promise<boolean | null>
-    /**
-     * 21. 解析视频背景图
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseFanart: () => Promise<boolean | null>
-    /**
-     * 22. 解析视频额外背景图
-     * @returns 解析成功返回true，解析失败或中断触发返回false，解析跳过返回null
-     */
-    parseExtrafanart: () => Promise<boolean | null>
     /**
      * 解析视频输出信息
      * @remarks 是相对路径，最终目录的绝对路径=刮削器输出路径+这个相对路径
      * @returns dir是输出目录的相对路径，fileName是视频文件名
      */
     parseOutput: () => Promise<{ dir: string; fileName: string }>
+}
+
+/**
+ * 刮削器内部原始解析函数
+ * @description 解析成功时返回字段值，外层包装后再写回video
+ */
+export interface IScraperVideoValueFuncs extends IScraperVideoBaseFuncs {
+    /**
+     * 解析大标题
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseTitle: () => Promise<IScraperVideoFieldValueMap['parseTitle'] | false | null>
+    /**
+     * 解析原始标题
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseOriginaltitle: () => Promise<
+        IScraperVideoFieldValueMap['parseOriginaltitle'] | false | null
+    >
+    /**
+     * 解析排序标题
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseSorttitle: () => Promise<IScraperVideoFieldValueMap['parseSorttitle'] | false | null>
+    /**
+     * 解析宣传词
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseTagline: () => Promise<IScraperVideoFieldValueMap['parseTagline'] | false | null>
+    /**
+     * 解析编号
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseNum: () => Promise<IScraperVideoFieldValueMap['parseNum'] | false | null>
+    /**
+     * 解析分级
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseMpaa: () => Promise<IScraperVideoFieldValueMap['parseMpaa'] | false | null>
+    /**
+     * 解析评分
+     * @description 以10分为满分
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseRating: () => Promise<IScraperVideoFieldValueMap['parseRating'] | false | null>
+    /**
+     * 解析导演
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseDirector: () => Promise<IScraperVideoFieldValueMap['parseDirector'] | false | null>
+    /**
+     * 解析演员
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseActor: () => Promise<IScraperVideoFieldValueMap['parseActor'] | false | null>
+    /**
+     * 解析发行商
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseStudio: () => Promise<IScraperVideoFieldValueMap['parseStudio'] | false | null>
+    /**
+     * 解析制片商
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseMaker: () => Promise<IScraperVideoFieldValueMap['parseMaker'] | false | null>
+    /**
+     * 解析影片系列
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseSet: () => Promise<IScraperVideoFieldValueMap['parseSet'] | false | null>
+    /**
+     * 解析影片标签
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseTag: () => Promise<IScraperVideoFieldValueMap['parseTag'] | false | null>
+    /**
+     * 解析影片类型
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseGenre: () => Promise<IScraperVideoFieldValueMap['parseGenre'] | false | null>
+    /**
+     * 解析简介
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parsePlot: () => Promise<IScraperVideoFieldValueMap['parsePlot'] | false | null>
+    /**
+     * 解析发行年份
+     * @example '2026'
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseYear: () => Promise<IScraperVideoFieldValueMap['parseYear'] | false | null>
+    /**
+     * 解析首映日期
+     * @example '2026-01-01'
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parsePremiered: () => Promise<IScraperVideoFieldValueMap['parsePremiered'] | false | null>
+    /**
+     * 解析上映日期
+     * @example '2026-01-01'
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseReleasedate: () => Promise<IScraperVideoFieldValueMap['parseReleasedate'] | false | null>
+    /**
+     * 解析视频封面
+     * @remark 本地路径
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parsePoster: () => Promise<IScraperVideoFieldValueMap['parsePoster'] | false | null>
+    /**
+     * 解析视频缩略图
+     * @remark 本地路径
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseThumb: () => Promise<IScraperVideoFieldValueMap['parseThumb'] | false | null>
+    /**
+     * 解析视频背景图
+     * @remark 本地路径
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseFanart: () => Promise<IScraperVideoFieldValueMap['parseFanart'] | false | null>
+    /**
+     * 解析视频额外背景图
+     * @remark 本地路径
+     * @returns 解析失败或中断触发返回false，解析跳过返回null
+     */
+    parseExtrafanart: () => Promise<IScraperVideoFieldValueMap['parseExtrafanart'] | false | null>
+}
+
+/**
+ * 对外暴露的刮削函数
+ * @description 解析成功时把字段写回video，并返回是否成功
+ */
+export type IScraperVideoFuncs = IScraperVideoBaseFuncs & {
+    [K in keyof IScraperVideoFieldValueMap]: () => Promise<boolean | null>
 }
 
 export interface IScraper {
