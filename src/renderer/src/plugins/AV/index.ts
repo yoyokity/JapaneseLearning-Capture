@@ -1,5 +1,4 @@
-import type { NumResponse } from '@renderer/plugins/AV/fanza.num.type'
-import type { TitleResponse } from '@renderer/plugins/AV/fanza.title.type'
+import type { NumResponse, TitleResponse } from '@renderer/plugins/AV/fanza'
 
 import {
     DebugHelper,
