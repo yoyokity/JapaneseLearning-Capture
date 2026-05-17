@@ -273,12 +273,16 @@ export function useEditeScraper() {
      */
     async function scraperSave(
         video: IVideo,
-        sourceVideoFile: IVideoFile
+        sourceVideoFile: IVideoFile,
+        signal: AbortSignal
     ): Promise<IResultWithError<boolean>> {
-        const scraper = Scraper.getScraperInstance(video.scraperName)
-        if (!scraper || !funcs) {
+        const scraperContext = getScraperContext(video)
+        if (!scraperContext) {
             return { error: '未找到对应的刮削器！', hasError: true }
         }
+
+        // 创建新的刮削器方法实例
+        if (!funcs) funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
 
         const settings = settingsStore()
 

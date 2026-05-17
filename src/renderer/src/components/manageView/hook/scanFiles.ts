@@ -370,7 +370,8 @@ function createNfoCacheData(movie: any): INfoCacheData {
         genre: [],
         poster: normalizeTextValue(movie.poster).trim() || null,
         thumb: normalizeTextValue(movie.thumb).trim() || null,
-        fanart: normalizeTextValue(movie.fanart).trim() || null
+        fanart: normalizeTextValue(movie.fanart).trim() || null,
+        remarks: normalizeTextValue(movie.remarks).trim() || ''
     }
 
     // 处理编号信息

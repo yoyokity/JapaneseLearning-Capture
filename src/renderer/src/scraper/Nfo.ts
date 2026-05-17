@@ -79,7 +79,7 @@ export class Nfo {
         if (video.thumb) root.ele('thumb').txt('thumb.jpg')
         if (video.fanart) root.ele('fanart').txt('fanart.jpg')
 
-        // TODO 加上备注
+        addElement(root, 'remarks')
         return nfo
     }
 

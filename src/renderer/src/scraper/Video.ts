@@ -121,6 +121,10 @@ export interface IVideo {
      * 视频文件的额外背景图路径
      */
     extrafanart: string[]
+    /**
+     * 备注
+     */
+    remarks: string
 }
 
 /**
@@ -202,6 +206,7 @@ export function createVideo(params: Partial<IVideo> = {}): IVideo {
         thumb: null,
         fanart: null,
         extrafanart: [],
+        remarks: '',
         ...params
     }
 

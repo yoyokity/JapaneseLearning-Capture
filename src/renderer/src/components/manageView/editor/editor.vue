@@ -177,10 +177,9 @@ watch(isEditeScraperRunning, (running) => {
  */
 async function onSave() {
     const sourceVideoFile = video
-    const scraper = Scraper.getCurrentScraperInstance()
+    if (isEditeScraperRunning.value) return
 
-    if (!scraper || isEditeScraperRunning.value) return
-
+    const controller = createScraperController()
     normalizeTagGenre()
 
     // 如果视频没有修改，则不保存
@@ -194,11 +193,17 @@ async function onSave() {
     isSaving.value = true
 
     // 保存
-    const re = await scraperSave(newVideo.value, sourceVideoFile)
-    if (re.hasError) {
-        toast.error(`保存失败！${re.error}`)
-        isSaving.value = false
-        return
+    try {
+        const re = await scraperSave(newVideo.value, sourceVideoFile, controller.signal)
+        if (re.hasError) {
+            toast.error(`保存失败！${re.error}`)
+            isSaving.value = false
+            return
+        }
+    } finally {
+        if (currentScraperController.value === controller) {
+            currentScraperController.value = null
+        }
     }
 
     // 重新扫描文件
@@ -921,6 +926,15 @@ onMounted(() => {
                             />
                         </FloatLabel>
                     </div>
+
+                    <h2>
+                        <i class="pi pi-comment section-title-icon" />
+                        其它
+                    </h2>
+                    <FloatLabel variant="on" style="display: flex">
+                        <InputText id="remarks_label" v-model.trim="newVideo.remarks" />
+                        <label for="remarks_label">备注</label>
+                    </FloatLabel>
                 </div>
             </div>
         </Scroll>
