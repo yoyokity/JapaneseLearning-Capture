@@ -1,303 +1,570 @@
-import type { IScraper, IVideo } from '@renderer/scraper'
-import type { IHanimeContext } from './type'
-
-import { LogHelper, MediaHelper, NetHelper, TransHelper } from '@renderer/helper'
 import {
-    dlsiteOptions,
-    getExtrafanartDlsite,
-    getWebContentDlsite
-} from '@renderer/plugins/Hanime/Dlsite'
-import {
-    getExtrafanartFanza,
-    getPosterFanza,
-    getWebContentFanza
-} from '@renderer/plugins/Hanime/Fanza'
-import {
-    getExtrafanartGetchu,
-    getPosterGetchu,
-    getWebContentGetchu
-} from '@renderer/plugins/Hanime/Getchu'
-import { getPosterHanime1, getWebContentHanime1 } from '@renderer/plugins/Hanime/Hanime1'
+    DebugHelper,
+    EncodeHelper,
+    MediaHelper,
+    NetHelper,
+    posterScale,
+    ScraperHelper,
+    thumbScale,
+    TransHelper
+} from '@renderer/helper'
 import { maker_trans } from '@renderer/plugins/Hanime/makerTrans'
 import { load as cheerioLoad } from 'cheerio'
 import { toNumber } from 'es-toolkit/compat'
 
-import { loggerDlsite, loggerGetchu, scraperName } from './type'
+import { loggerDlsite, loggerFanza, loggerGetchu, loggerHanime1, scraperName } from './type'
 
-const hanimeScraper: IScraper<IHanimeContext> = {
+const dlsiteOptions = {
+    headers: {
+        'Upgrade-Insecure-Requests': '1',
+        referer: 'https://www.dlsite.com'
+    }
+}
+
+const fanzaOptions = {
+    headers: {
+        referer: 'https://www.dmm.co.jp/'
+    }
+}
+
+const getchuOptions = {
+    headers: { referer: 'https://www.getchu.com' }
+}
+
+// #region 设置cookie
+NetHelper.setCookie({
+    url: 'https://www.dlsite.com/',
+    domain: 'dlsite.com',
+    value: { adultchecked: '1' }
+})
+
+NetHelper.setCookie({
+    url: 'https://www.dmm.co.jp/',
+    domain: 'dmm.co.jp',
+    value: { age_check_done: '1', ckcy: '1' }
+})
+
+NetHelper.setCookie({
+    url: 'https://www.getchu.com/',
+    domain: 'getchu.com',
+    value: { _gat: '1', getchu_adalt_flag: 'getchu.com' }
+})
+// #endregion
+
+const useScraper = ScraperHelper.defineScraper(
     scraperName,
-    checkConnect: async () => {
-        return true
-    },
-    numSource: {
+    {
         hanime1: 'https://hanime1.me/watch?v={num}',
         getchu: 'https://www.getchu.com/soft.phtml?id={num}&gc=gc',
         dlsite: 'https://www.dlsite.com/pro/work/=/product_id/{num}.html?locale=ja_JP',
         fanza: 'https://www.dmm.co.jp/mono/anime/-/detail/=/cid={num}/'
     },
-    createContext: () => ({
-        超分封面: null,
-        Hanime1SearchResult: {
+    (video, signal: AbortSignal) => {
+        // #region temp变量
+        const Hanime1SearchResult = {
             searched: false,
-            result: null
-        },
-        num: {
+            result: null as { href: string; poster: string | undefined } | null
+        }
+
+        const num = {
             hanime1: '',
             getchu: '',
             dlsite: '',
             fanza: ''
-        },
-        webContent: {
+        }
+
+        const webContent = {
             hanime1: '',
             getchu: '',
             dlsite: '',
             fanza: ''
-        },
-        originaltitle: '',
-        maker: '',
-        tag: []
-    }),
-    scraperVideoFuncs: {
-        getWebContext: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            if (context.webContent.hanime1) {
-                LogHelper.title(scraperName).log('网页内容已获取过，跳过')
-                return true
-            }
+        }
 
-            const searchTitle = video.originaltitle || video.title || video.sorttitle
-            context.num.hanime1 = video.num.hanime1 ?? ''
-            context.num.getchu = video.num.getchu ?? ''
-            context.num.dlsite = video.num.dlsite ?? ''
-            context.num.fanza = video.num.fanza ?? ''
+        let tag: string[] = []
 
-            // 获取webContent
-            await Promise.all([
-                getWebContentHanime1(searchTitle, context, signal),
-                getWebContentGetchu(searchTitle, context, signal),
-                getWebContentDlsite(searchTitle, context, signal),
-                getWebContentFanza(searchTitle, context, signal)
-            ])
+        let posterUrl = ''
+        // #endregion temp变量
 
-            return Boolean(context.webContent.hanime1)
-        },
-        parseTitle: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            let title = $('.video-description-panel').children().eq(1).text().trim()
-            title = TransHelper.translateSC(title)
+        // #region Hanime1网页内容获取
+        async function searchVideoHanime1(searchTitle: string) {
+            if (Hanime1SearchResult.searched) return Hanime1SearchResult.result
 
-            if (!title) return false
+            const result = await (async () => {
+                const url = `https://hanime1.me/search?query=${EncodeHelper.encodeUrl(
+                    EncodeHelper.punctuationsToSpace(searchTitle)
+                )}&genre=${EncodeHelper.encodeUrl('裏番')}`
 
-            video.title = title
-            return true
-        },
-        parseOriginaltitle: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            let originaltitle = $('h3#shareBtn-title').text()
-            originaltitle = originaltitle.split('[中文字幕]')[0].trim()
-
-            if (!originaltitle) return false
-
-            video.originaltitle = originaltitle
-            context.originaltitle = video.originaltitle
-            return true
-        },
-        parseSorttitle: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            if (!context.originaltitle) {
-                if (
-                    !(await hanimeScraper.scraperVideoFuncs.parseOriginaltitle(
-                        video,
-                        context,
-                        signal
-                    ))
-                ) {
-                    return false
+                const res = await NetHelper.get(url, { signal })
+                if (!res.ok) {
+                    loggerHanime1.warn(`获取搜索结果失败`, url)
+                    return null
                 }
-            }
 
-            video.sorttitle = context.originaltitle
-            return true
-        },
-        parseTagline: async () => {
-            return null
-        },
-        parseNum: async (video: IVideo, context: IHanimeContext) => {
-            if (context.num.hanime1) video.num.hanime1 = context.num.hanime1
-            if (context.num.getchu) video.num.getchu = context.num.getchu
-            if (context.num.dlsite) video.num.dlsite = context.num.dlsite
-            if (context.num.fanza) video.num.fanza = context.num.fanza
-            return true
-        },
-        parseMpaa: async (video: IVideo, _context: IHanimeContext) => {
-            video.mpaa = 'JP-18+'
-            return true
-        },
-        parseRating: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            // dlsite
-            if (context.num.dlsite) {
-                loggerDlsite.log(`搜索评分...`)
-
-                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${context.num.dlsite}&cdn_cache_min=1`
-                const webContent = await NetHelper.get(url, { ...dlsiteOptions, signal })
-                if (signal.aborted) return false
-                if (webContent.ok) {
-                    const a = JSON.parse(webContent.body)[context.num.dlsite]
-                    if (a) {
-                        const rating = a.rate_average_2dp
-                        if (rating) {
-                            video.rating = (Number.parseFloat(rating) * 2).toString()
-                            return true
+                const $ = cheerioLoad(res.body)
+                const videoList = $('.home-rows-videos-wrapper > a')
+                    .filter('[href^="https://hanime1.me/watch?v="]')
+                    .toArray()
+                    .map((el) => {
+                        const item = $(el)
+                        return {
+                            href: item.attr('href')?.trim(),
+                            title: item.find('div.home-rows-videos-title').text().trim(),
+                            poster: item.find('img').attr('src')
                         }
-                    }
-                }
-
-                loggerDlsite.warn(`没有找到评分`)
-            } else {
-                loggerDlsite.warn(`找不到dlsite页面，无法获取评分`)
-            }
-
-            return false
-        },
-        parseDirector: async (video: IVideo, context: IHanimeContext) => {
-            // dlsite
-            if (context.webContent.dlsite) {
-                loggerDlsite.log(`搜索导演...`)
-
-                const $ = cheerioLoad(context.webContent.dlsite)
-                const text = $('#work_right_inner').text()
-
-                // 匹配字段中的人名和可选职务
-                interface IDlsiteStaff {
-                    name: string
-                    role?: string
-                }
-
-                const dlsiteStaffCategories = ['シナリオ', 'イラスト', '声優', 'その他'] as const
-                const dlsiteStaffSectionEndCategories = [
-                    ...dlsiteStaffCategories,
-                    '年齢指定',
-                    '作品形式',
-                    'ジャンル'
-                ]
-                const dlsiteStaffRegex = /(?<name>[^/\s()]+)(?:\((?<role>[^)]+)\))?/g
-
-                const staffs: IDlsiteStaff[] = dlsiteStaffCategories.flatMap((category) => {
-                    const categoryIndex = text.indexOf(category)
-                    if (categoryIndex === -1) return []
-
-                    const peopleStartIndex = categoryIndex + category.length
-                    const peopleEndIndex =
-                        dlsiteStaffSectionEndCategories
-                            .filter((item) => item !== category)
-                            .map((item) => text.indexOf(item, peopleStartIndex))
-                            .filter((index) => index !== -1)
-                            .sort((a, b) => a - b)[0] ?? text.length
-                    const peopleText = text.slice(peopleStartIndex, peopleEndIndex)
-
-                    return Array.from(peopleText.matchAll(dlsiteStaffRegex)).flatMap(
-                        (peopleMatch) => {
-                            const name = peopleMatch.groups?.name?.trim()
-                            if (!name) return []
-
-                            const role = peopleMatch.groups?.role?.trim()
-                            return [
-                                {
-                                    name,
-                                    role: role || undefined
-                                }
-                            ]
-                        }
+                    })
+                    .filter(
+                        (
+                            item
+                        ): item is { href: string; title: string; poster: string | undefined } =>
+                            !!item.href && !!item.title && !!item.poster
                     )
-                })
 
-                const director = staffs.find((item) => {
-                    const role = item.role ?? ''
-                    return (
-                        role === '監督' ||
-                        role === '演出' ||
-                        role.startsWith('監督') ||
-                        role.includes('監督') ||
-                        role.includes('演出')
-                    )
-                })
+                loggerHanime1.log(
+                    `搜索到${videoList.length}个番剧作为候选项：`,
+                    url,
+                    videoList.map((item) => item.title)
+                )
 
-                if (director) {
-                    video.director = director.name
-                    return true
+                const match = EncodeHelper.bestMatch(
+                    searchTitle,
+                    videoList.map((item) => item.title)
+                )
+                if (!match) {
+                    loggerHanime1.warn(`未找到匹配的视频`)
+                    return null
                 }
 
-                loggerDlsite.warn(`没有找到导演`)
+                const targetVideo = videoList[match.index]
+                loggerHanime1.log(
+                    `选择第 ${match.index + 1} 个视频: 【${targetVideo.title}】`,
+                    targetVideo.href
+                )
+
+                return { href: targetVideo.href, poster: targetVideo.poster }
+            })()
+
+            Hanime1SearchResult.searched = true
+            Hanime1SearchResult.result = result
+            return result
+        }
+
+        async function getWebContentHanime1(searchTitle: string): Promise<void> {
+            loggerHanime1.log(`开始获取网页内容`)
+
+            // 先使用编号搜索
+            if (num.hanime1) {
+                const url = `https://hanime1.me/watch?v=${num.hanime1}`
+                loggerHanime1.log(`使用编号搜索：${num.hanime1}`)
+
+                const res = await NetHelper.get(url, { signal })
+                if (signal.aborted) return
+                if (res.ok) {
+                    webContent.hanime1 = res.body
+                    loggerHanime1.success(`获取到网页内容`)
+                    return
+                }
+                loggerHanime1.log(`使用编号搜索失败，使用原标题搜索`, url)
             }
 
-            // getchu
-            if (context.webContent.getchu) {
-                loggerGetchu.log(`搜索导演...`)
+            // 如果编号搜索失败，则使用原标题搜索
+            const searchResult = await searchVideoHanime1(searchTitle)
+            if (!searchResult) {
+                loggerHanime1.warn(`获取网页内容失败`)
+                return
+            }
 
-                const $ = cheerioLoad(context.webContent.getchu)
-                const regex1 = /監督([^：]*)：\n?(?<name>[^／\n ]+)/
-                const regex2 = /プロデューサー([^：]*)：(?<name>.*)[\n ]/ // 没有監督时使用制片人
+            // 获取目标视频的webContent
+            const res = await NetHelper.get(searchResult.href, { signal })
+            if (!res.ok) {
+                loggerHanime1.warn(`获取网页内容失败`)
+                return
+            }
 
-                for (const el of $('div#wrapper').find('div.tablebody').toArray()) {
-                    const text = $(el).text()
-                    const director =
-                        text.match(regex1)?.groups?.name.trim() ||
-                        text.match(regex2)?.groups?.name.trim()
+            // 记录num
+            num.hanime1 = searchResult.href.split('watch?v=')[1]
+            webContent.hanime1 = res.body
 
-                    if (director) {
-                        video.director = director
-                        return true
+            loggerHanime1.success(`获取到网页内容`)
+        }
+
+        async function getPosterHanime1(searchTitle: string): Promise<string | null> {
+            const searchResult = await searchVideoHanime1(searchTitle)
+            const posterUrl = searchResult?.poster
+
+            return posterUrl || null
+        }
+        // #endregion Hanime1网页内容获取
+
+        // #region Getchu网页内容获取
+        async function getWebContentGetchu(searchTitle: string): Promise<void> {
+            loggerGetchu.log(`开始获取网页内容`)
+
+            // 获取 Getchu 页面内容
+            async function fetchPage(url: string): Promise<string | null> {
+                const res = await NetHelper.get(url, {
+                    ...getchuOptions,
+                    parse: 'arrayBuffer',
+                    signal
+                })
+                if (!res.ok) {
+                    return null
+                }
+                return EncodeHelper.decodeEucJp(res.body)
+            }
+
+            // 先使用编号搜索
+            if (num.getchu) {
+                const url = `https://www.getchu.com/item/${num.getchu}/?gc=gc`
+                loggerGetchu.log(`使用编号搜索：${num.getchu}`)
+
+                const body = await fetchPage(url)
+                if (signal.aborted) return
+                if (body) {
+                    if (body.includes('年齢認証')) {
+                        loggerGetchu.warn(`成人验证失败，无法获取网页内容`, url)
+                        return
                     }
+
+                    webContent.getchu = body
+                    loggerGetchu.success(`获取到网页内容`)
+                    return
                 }
 
-                loggerGetchu.warn(`没有找到导演`)
+                loggerGetchu.log(`使用编号搜索失败，使用原标题搜索`, url)
             }
 
-            return false
-        },
-        parseActor: async () => {
-            return null
-        },
-        parseStudio: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            let maker = $('a#video-artist-name').text().trim()
-            if (maker in maker_trans) {
-                maker = maker_trans[maker]
+            // 如果编号搜索失败，则使用原标题搜索
+            const searchKeyword = await EncodeHelper.encodeUrlEucJp(searchTitle)
+            const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
+
+            const searchBody = await fetchPage(searchUrl)
+            if (signal.aborted) return
+            if (!searchBody) {
+                loggerGetchu.warn(`获取搜索结果失败`, searchUrl)
+                return
             }
 
-            if (!maker) return false
+            // 在视频列表中找到符合条件的第一个
+            const $ = cheerioLoad(searchBody)
+            const videoList = $('td > a.blueb[href*="/soft.phtml?id="]')
+            const candidates = videoList
+                .toArray()
+                .map((el) => {
+                    const item = $(el)
+                    return {
+                        title: item.text().trim(),
+                        href: item.attr('href')?.trim()
+                    }
+                })
+                .filter(
+                    (item): item is { href: string; title: string } =>
+                        !!item.title && !!item.href && !/box/i.test(item.title)
+                )
 
-            video.studio = maker
-            context.maker = maker
-            return true
-        },
-        parseMaker: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            if (!context.maker) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseStudio(video, context, signal))) {
-                    return false
+            loggerGetchu.log(
+                `搜索到${videoList.length}个番剧作为候选项：`,
+                searchUrl,
+                candidates.map((item) => item.title)
+            )
+
+            const match = EncodeHelper.bestMatch(
+                searchTitle,
+                candidates.map((item) => item.title)
+            )
+            if (!match) {
+                loggerGetchu.warn(`没有找到匹配的番剧`)
+                return
+            }
+
+            const href = candidates[match.index].href
+            const id = href.match(/[?&]id=(?<id>\d+)/)?.groups?.id
+            if (!id) {
+                loggerGetchu.warn(`没有找到匹配的番剧`)
+                return
+            }
+
+            const fullUrl = NetHelper.joinUrl('https://www.getchu.com/item', id, '?gc=gc')
+            loggerGetchu.log(
+                `选择第 ${match.index + 1} 个视频: 【${candidates[match.index].title}】`,
+                fullUrl
+            )
+
+            // 根据href获取webContent
+            const body = await fetchPage(fullUrl)
+            if (signal.aborted) return
+            if (!body) {
+                loggerGetchu.warn(`获取网页内容失败`, fullUrl)
+                return
+            }
+
+            if (body.includes('年齢認証')) {
+                loggerGetchu.warn(`成人验证失败，无法获取网页内容`, fullUrl)
+                return
+            }
+
+            // 记录num
+            num.getchu = id
+            webContent.getchu = body
+
+            loggerGetchu.success(`获取到网页内容`)
+        }
+
+        function getExtrafanartGetchu(): string[] {
+            if (!webContent.getchu) {
+                loggerGetchu.log(`- 没有getchu，无法获取剧照`)
+                return []
+            }
+
+            const $ = cheerioLoad(webContent.getchu)
+            const hrefs = $('div.item-Samplecard a').map((_, el) => $(el).attr('href')?.trim())
+
+            return hrefs
+                .toArray()
+                .filter((href): href is string => !!href)
+                .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
+        }
+
+        function getPosterGetchu() {
+            if (!webContent.getchu) return null
+
+            const $ = cheerioLoad(webContent.getchu)
+            const url = $('table#soft_table')
+                .find('a')
+                .first()
+                .attr('href')
+                ?.replace(/^\.\/ */, '')
+
+            if (!url) return null
+            return NetHelper.joinUrl('https://www.getchu.com/', url)
+        }
+        // #endregion Getchu网页内容获取
+
+        // #region Dlsite网页内容获取
+        async function getWebContentDlsite(searchTitle: string): Promise<void> {
+            loggerDlsite.log(`开始获取网页内容`)
+
+            // 先使用编号搜索
+            if (num.dlsite) {
+                const url = `https://www.dlsite.com/pro/work/=/product_id/${num.dlsite}.html?locale=ja_JP`
+
+                loggerDlsite.log(`使用编号搜索：${num.dlsite}`)
+                const res = await NetHelper.get(url, { ...dlsiteOptions, signal })
+                if (signal.aborted) return
+                if (res.ok) {
+                    webContent.dlsite = res.body
+                    loggerDlsite.success(`获取到网页内容`)
+                    return
                 }
+
+                loggerDlsite.log(`使用编号搜索失败，使用原标题搜索`, url)
             }
 
-            video.maker = context.maker
-            return true
-        },
-        parseSet: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            const titles = $('.single-icon-wrapper.video-playlist-top').children('h4')
+            // 如果编号搜索失败，则使用原标题搜索
+            searchTitle = EncodeHelper.fullToHalf(searchTitle)
+            const keyword = EncodeHelper.encodeUrl(searchTitle).replace(/%20/g, '+')
+            const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
+            const res = await NetHelper.get(searchUrl, { ...dlsiteOptions, signal })
+            if (!res.ok) {
+                loggerDlsite.warn(`获取搜索结果失败`, searchUrl)
+                return
+            }
 
-            // 先获取视频数量，如果只有一个视频就返回null
-            const num = toNumber(titles.last().text().match(/\d+/)?.[0]) ?? 0
-            if (num <= 1) return null
+            // 在视频列表中找到匹配度最高的
+            const $ = cheerioLoad(res.body)
+            const videoList = $('ul#search_result_img_box > li .multiline_truncate a')
+            const candidates = videoList
+                .toArray()
+                .map((el) => {
+                    const item = $(el)
+                    return {
+                        title: item.text().trim(),
+                        href: item.attr('href')?.trim()
+                    }
+                })
+                .filter(
+                    (item): item is { href: string; title: string } =>
+                        !!item.title && !!item.href && !/box/i.test(item.title)
+                )
 
-            // 否则获取系列名
-            let set = titles.first().text()
-            set = set.includes('/') ? set.split('/')[1].trim() : set.trim()
+            loggerDlsite.log(
+                `搜索到${videoList.length}个番剧作为候选项：`,
+                searchUrl,
+                candidates.map((item) => item.title)
+            )
 
-            if (!set) return false
+            const match = EncodeHelper.bestMatch(
+                searchTitle,
+                candidates.map((item) => item.title)
+            )
+            if (!match) {
+                loggerDlsite.warn(`没有找到匹配的番剧`)
+                return
+            }
 
-            video.set = set
-            return true
-        },
-        parseTag: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
+            const href = candidates[match.index].href
+            loggerDlsite.log(
+                `选择第 ${match.index + 1} 个视频: 【${candidates[match.index].title}】`,
+                href
+            )
+
+            // 根据href获取webContent
+            const body = await NetHelper.get(href, { ...dlsiteOptions, signal })
+            if (!body.ok) {
+                loggerDlsite.warn(`获取网页内容失败`, href)
+                return
+            }
+
+            // 记录num
+            num.dlsite = href.split('/product_id/')[1].split('.')[0]
+            webContent.dlsite = body.body
+
+            loggerDlsite.success(`获取到网页内容`)
+        }
+
+        function getExtrafanartDlsite(): string[] {
+            if (!webContent.dlsite) {
+                loggerDlsite.log(`- 没有dlsite，无法获取剧照`)
+                return []
+            }
+
+            const $ = cheerioLoad(webContent.dlsite)
+            const urls = $('.product-slider-data')
+                .children()
+                .map((_, el) => $(el).attr('data-src'))
+                .get()
+                .filter((src) => !src.includes('_main.'))
+                .map((href) => `https:${href.trim()}`)
+
+            return urls
+        }
+        // #endregion Dlsite网页内容获取
+
+        // #region Fanza网页内容获取
+        async function getFanza(url: string) {
+            const res = await NetHelper.get(url, { ...fanzaOptions, signal })
+            if (!res.ok) return res
+
+            if (res.body.includes('18歳未満')) {
+                // 开始绕过验证
+                const $ = cheerioLoad(res.body)
+                const redirectUrl = $('.turtle-component').find('a').attr('href')!
+                return await NetHelper.get(redirectUrl, { signal })
+            }
+
+            return res
+        }
+
+        async function getWebContentFanza(searchTitle: string): Promise<void> {
+            loggerFanza.log(`开始获取网页内容`)
+
+            // 先使用编号搜索
+            if (num.fanza) {
+                const url = `https://www.dmm.co.jp/mono/anime/-/detail/=/cid=${num.fanza}/`
+
+                loggerFanza.log(`使用编号搜索：${num.fanza}`)
+                const res = await getFanza(url)
+                if (signal.aborted) return
+                if (res.ok) {
+                    webContent.fanza = res.body
+                    loggerFanza.success(`获取到网页内容`)
+                    return
+                }
+
+                loggerFanza.log(`使用编号搜索失败，使用原标题搜索`, url)
+            }
+
+            // 如果编号搜索失败，则使用原标题搜索
+            const searchUrl = `https://www.dmm.co.jp/mono/anime/-/search/=/searchstr=${EncodeHelper.encodeUrl(searchTitle)}/`
+            const res = await getFanza(searchUrl)
+            if (signal.aborted) return
+            if (!res.ok) {
+                loggerFanza.warn(`获取搜索结果失败`, searchUrl)
+                return
+            }
+
+            // 在视频列表中找到匹配度最高的
+            const $ = cheerioLoad(res.body)
+            const videoList = $('ul#list p.tmb > a')
+            const candidates = videoList
+                .toArray()
+                .map((el) => {
+                    const item = $(el)
+                    return {
+                        title: item.find('span.txt').text().trim(),
+                        href: item.attr('href')?.trim()
+                    }
+                })
+                .filter(
+                    (item): item is { href: string; title: string } =>
+                        !!item.title && !!item.href && !/box/i.test(item.title)
+                )
+
+            loggerFanza.log(
+                `搜索到${candidates.length}个番剧作为候选项：`,
+                searchUrl,
+                candidates.map((item) => item.title)
+            )
+
+            const match = EncodeHelper.bestMatch(
+                searchTitle,
+                candidates.map((item) => item.title)
+            )
+            if (!match) {
+                loggerFanza.warn(`没有找到匹配的番剧`)
+                return
+            }
+
+            const href = candidates[match.index].href
+            loggerFanza.log(
+                `选择第 ${match.index + 1} 个视频: 【${candidates[match.index].title}】`,
+                href
+            )
+
+            // 根据href获取webContent
+            const detailContent = await NetHelper.get(href, { ...fanzaOptions, signal })
+            if (!detailContent.ok) {
+                loggerFanza.warn(`获取网页内容失败`, href)
+                return
+            }
+
+            // 记录num
+            num.fanza = href.match(/\/cid=(?<id>[^/]+)\//)?.groups?.id || ''
+            webContent.fanza = detailContent.body
+
+            loggerFanza.success(`获取到网页内容`)
+        }
+
+        function getExtrafanartFanza(): string[] {
+            if (!webContent.fanza) {
+                loggerFanza.log(`- 没有fanza，无法获取剧照`)
+                return []
+            }
+
+            const $ = cheerioLoad(webContent.fanza)
+            const urls = $('ul#sample-image-block')
+                .find('li')
+                .filter((_, el) => $(el).find('a').attr('id')?.startsWith('sample') === true)
+                .map((_, el) =>
+                    $(el)
+                        .find('img')
+                        .attr('data-lazy')
+                        // 转为大图
+                        ?.replace(
+                            /(?<prefix>\/digital\/video\/[^/]+\/[^/]+)-(?<index>\d+)\.jpg$/,
+                            '$<prefix>jp-$<index>.jpg'
+                        )
+                )
+                .toArray()
+
+            return urls
+        }
+        // #endregion Fanza网页内容获取
+
+        // #region 字段解析辅助
+        function parseTagValue(): false | string[] {
+            if (tag && tag.length > 0) return tag
+
+            const $ = cheerioLoad(webContent.hanime1)
             const tags: string[] = ['成人动漫']
             $('.single-video-tag a').each((_, el) => {
                 const text = $(el)
@@ -313,208 +580,495 @@ const hanimeScraper: IScraper<IHanimeContext> = {
 
             if (tags.length === 0) return false
 
-            video.tag = tags
-            context.tag = tags
-            return true
-        },
-        parseGenre: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            if (!context.tag.length) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parseTag(video, context, signal))) {
-                    return false
-                }
+            tag = tags
+            return tags
+        }
+
+        const getPosterUrl = DebugHelper.withMutex(async () => {
+            if (posterUrl) return
+
+            // 从fanza获取
+            if (webContent.fanza) {
+                const $ = cheerioLoad(webContent.fanza)
+                posterUrl = $('meta[property="og:image"]').attr('content')?.trim() || ''
+                return
             }
 
-            video.genre = context.tag
-            return true
-        },
-        parsePlot: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            let plot = (() => {
-                // 先看getchu能不能获取
-                if (context.webContent.getchu) {
-                    const $ = cheerioLoad(context.webContent.getchu)
-                    const title =
-                        $('h3')
-                            .toArray()
-                            .find((el) => $(el).text().trim() === 'ストーリー') ||
-                        $('h3')
-                            .toArray()
-                            .find((el) => $(el).text().trim() === '商品紹介')
-                    const plot = $(title)
-                        .next()
-                        .find('span')
-                        .clone() // 克隆，避免修改原始DOM
-                        .find('.navyb') // 找到所有navyb类元素
-                        .remove() // 移除它们
-                        .end() // 回到克隆的span
-                        .text()
-                        .trim()
+            // 从hanime1获取
+            if (webContent.hanime1) {
+                posterUrl =
+                    (await getPosterHanime1(
+                        video.originaltitle || video.title || video.sorttitle
+                    )) || ''
+            }
+        })
+        // #endregion 字段解析辅助
 
-                    if (plot) return plot
+        return {
+            // #region 刮削步骤
+            async getWebContext() {
+                if (webContent.hanime1) {
+                    return true
                 }
 
-                // 用fanza
-                if (context.webContent.fanza) {
-                    const $ = cheerioLoad(context.webContent.fanza)
-                    const plot = $('.wrapper-detailContents').next().next().find('p').text().trim()
+                const searchTitle = video.originaltitle || video.title || video.sorttitle
+                num.hanime1 = video.num.hanime1 ?? ''
+                num.getchu = video.num.getchu ?? ''
+                num.dlsite = video.num.dlsite ?? ''
+                num.fanza = video.num.fanza ?? ''
 
-                    if (plot) return plot
+                // 获取webContent
+                await Promise.all([
+                    getWebContentHanime1(searchTitle),
+                    getWebContentGetchu(searchTitle),
+                    getWebContentDlsite(searchTitle),
+                    getWebContentFanza(searchTitle)
+                ])
+
+                return Boolean(webContent.hanime1)
+            },
+            async parseTitle() {
+                const $ = cheerioLoad(webContent.hanime1)
+                let title = $('.video-description-panel').children().eq(1).text().trim()
+                title = TransHelper.translateSC(title)
+
+                if (!title) return false
+                return title
+            },
+            async parseOriginaltitle() {
+                const $ = cheerioLoad(webContent.hanime1)
+                let value = $('h3#shareBtn-title').text()
+                value = value.split('[中文字幕]')[0].trim()
+
+                return value || false
+            },
+            async parseSorttitle() {
+                const $ = cheerioLoad(webContent.hanime1)
+                let value = $('h3#shareBtn-title').text()
+                value = value.split('[中文字幕]')[0].trim()
+
+                return value || false
+            },
+            async parseTagline() {
+                return null
+            },
+            async parseNum() {
+                return {
+                    hanime1: num.hanime1,
+                    getchu: num.getchu,
+                    dlsite: num.dlsite,
+                    fanza: num.fanza
+                }
+            },
+            async parseMpaa() {
+                return 'JP-18+'
+            },
+            async parseRating() {
+                // dlsite
+                if (num.dlsite) {
+                    loggerDlsite.log(`搜索评分...`)
+
+                    const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${num.dlsite}&cdn_cache_min=1`
+                    const res = await NetHelper.get(url, { ...dlsiteOptions, signal })
+                    if (signal.aborted) return false
+                    if (res.ok) {
+                        const item = JSON.parse(res.body)[num.dlsite]
+                        if (item) {
+                            const rating = item.rate_average_2dp
+                            if (rating) {
+                                return (Number.parseFloat(rating) * 2).toString()
+                            }
+                        }
+                    }
+
+                    loggerDlsite.warn(`没有找到评分`)
+                } else {
+                    loggerDlsite.warn(`找不到dlsite页面，无法获取评分`)
                 }
 
-                // 用dlsite
-                if (context.webContent.dlsite) {
-                    const $ = cheerioLoad(context.webContent.dlsite)
-                    const plot = $('div')
-                        .filter((_i, el) => $(el).text().trim() === '作品内容')
-                        .next()
-                        .text()
-                        .trim()
+                return false
+            },
+            async parseDirector() {
+                // dlsite
+                if (webContent.dlsite) {
+                    loggerDlsite.log(`搜索导演...`)
 
-                    if (plot) return plot
+                    const $ = cheerioLoad(webContent.dlsite)
+                    const text = $('#work_right_inner').text()
+
+                    interface IDlsiteStaff {
+                        name: string
+                        role?: string
+                    }
+
+                    const dlsiteStaffCategories = [
+                        'シナリオ',
+                        'イラスト',
+                        '声優',
+                        'その他'
+                    ] as const
+                    const dlsiteStaffSectionEndCategories = [
+                        ...dlsiteStaffCategories,
+                        '年齢指定',
+                        '作品形式',
+                        'ジャンル'
+                    ]
+                    const dlsiteStaffRegex = /(?<name>[^/\s()]+)(?:\((?<role>[^)]+)\))?/g
+
+                    const staffs: IDlsiteStaff[] = dlsiteStaffCategories.flatMap((category) => {
+                        const categoryIndex = text.indexOf(category)
+                        if (categoryIndex === -1) return []
+
+                        const peopleStartIndex = categoryIndex + category.length
+                        const peopleEndIndex =
+                            dlsiteStaffSectionEndCategories
+                                .filter((item) => item !== category)
+                                .map((item) => text.indexOf(item, peopleStartIndex))
+                                .filter((index) => index !== -1)
+                                .sort((a, b) => a - b)[0] ?? text.length
+                        const peopleText = text.slice(peopleStartIndex, peopleEndIndex)
+
+                        return Array.from(peopleText.matchAll(dlsiteStaffRegex)).flatMap(
+                            (peopleMatch) => {
+                                const name = peopleMatch.groups?.name?.trim()
+                                if (!name) return []
+
+                                const role = peopleMatch.groups?.role?.trim()
+                                return [
+                                    {
+                                        name,
+                                        role: role || undefined
+                                    }
+                                ]
+                            }
+                        )
+                    })
+
+                    const director = staffs.find((item) => {
+                        const role = item.role ?? ''
+                        return (
+                            role === '監督' ||
+                            role === '演出' ||
+                            role.startsWith('監督') ||
+                            role.includes('監督') ||
+                            role.includes('演出')
+                        )
+                    })
+
+                    if (director) {
+                        return director.name
+                    }
+
+                    loggerDlsite.warn(`没有找到导演`)
                 }
 
-                // dlsite也没有的话，用hanime
-                const $ = cheerioLoad(context.webContent.hanime1)
-                let plot = $('div.video-caption-text').text().trim()
+                // getchu
+                if (webContent.getchu) {
+                    loggerGetchu.log(`搜索导演...`)
 
-                plot = plot.split('[中文字幕]')?.pop()?.split('·')?.pop() ?? ''
+                    const $ = cheerioLoad(webContent.getchu)
+                    const regex1 = /監督([^：]*)：\n?(?<name>[^／\n ]+)/
+                    const regex2 = /プロデューサー([^：]*)：(?<name>.*)[\n ]/
 
+                    for (const el of $('div#wrapper').find('div.tablebody').toArray()) {
+                        const text = $(el).text()
+                        const director =
+                            text.match(regex1)?.groups?.name.trim() ||
+                            text.match(regex2)?.groups?.name.trim()
+
+                        if (director) {
+                            return director
+                        }
+                    }
+
+                    loggerGetchu.warn(`没有找到导演`)
+                }
+
+                return false
+            },
+            async parseActor() {
+                return null
+            },
+            async parseStudio() {
+                const $ = cheerioLoad(webContent.hanime1)
+                let value = $('a#video-artist-name').text().trim()
+                if (value in maker_trans) {
+                    value = maker_trans[value]
+                }
+
+                return value || false
+            },
+            async parseMaker() {
+                const $ = cheerioLoad(webContent.hanime1)
+                let value = $('a#video-artist-name').text().trim()
+                if (value in maker_trans) {
+                    value = maker_trans[value]
+                }
+
+                return value || false
+            },
+            async parseSet() {
+                const $ = cheerioLoad(webContent.hanime1)
+                const titles = $('.single-icon-wrapper.video-playlist-top').children('h4')
+
+                // 先获取视频数量，如果只有一个视频就返回null
+                const count = toNumber(titles.last().text().match(/\d+/)?.[0]) ?? 0
+                if (count <= 1) return null
+
+                // 否则获取系列名
+                let set = titles.first().text()
+                set = set.includes('/') ? set.split('/')[1].trim() : set.trim()
+
+                if (!set) return false
+                return set
+            },
+            async parseTag() {
+                return parseTagValue()
+            },
+            async parseGenre() {
+                return parseTagValue()
+            },
+            async parsePlot() {
+                let plot = (() => {
+                    // 先看getchu能不能获取
+                    if (webContent.getchu) {
+                        const $ = cheerioLoad(webContent.getchu)
+                        const title =
+                            $('h3')
+                                .toArray()
+                                .find((el) => $(el).text().trim() === 'ストーリー') ||
+                            $('h3')
+                                .toArray()
+                                .find((el) => $(el).text().trim() === '商品紹介')
+                        const plot = $(title)
+                            .next()
+                            .find('span')
+                            .clone()
+                            .find('.navyb')
+                            .remove()
+                            .end()
+                            .text()
+                            .trim()
+
+                        if (plot) return plot
+                    }
+
+                    // 用fanza
+                    if (webContent.fanza) {
+                        const $ = cheerioLoad(webContent.fanza)
+                        const value = $('.wrapper-detailContents')
+                            .next()
+                            .next()
+                            .find('p')
+                            .text()
+                            .trim()
+
+                        if (value) return value
+                    }
+
+                    // 用dlsite
+                    if (webContent.dlsite) {
+                        const $ = cheerioLoad(webContent.dlsite)
+                        const value = $('div')
+                            .filter((_i, el) => $(el).text().trim() === '作品内容')
+                            .next()
+                            .text()
+                            .trim()
+
+                        if (value) return value
+                    }
+
+                    // dlsite也没有的话，用hanime
+                    const $ = cheerioLoad(webContent.hanime1)
+                    let value = $('div.video-caption-text').text().trim()
+
+                    value = value.split('[中文字幕]')?.pop()?.split('·')?.pop() ?? ''
+
+                    return value
+                })()
+
+                if (signal.aborted) return false
+
+                const re = await TransHelper.translate(plot)
+                plot = re.text
+
+                if (!plot) return false
                 return plot
-            })()
+            },
+            async parseYear() {
+                const $ = cheerioLoad(webContent.hanime1)
+                const text = $('.video-description-panel').children().eq(0).text()
+                const match = text.match(/\d{4}/)
+                const year = match ? match[0] : ''
+                if (!year) return false
 
-            if (signal.aborted) return false
+                return year
+            },
+            async parsePremiered() {
+                const $ = cheerioLoad(webContent.hanime1)
+                const text = $('.video-description-panel').children().eq(0).text()
+                const match = text.match(/\d{4}-\d{2}-\d{2}/)
+                const premiered = match ? match[0] : ''
 
-            // 翻译一下
-            const re = await TransHelper.translate(plot)
-            plot = re.text
+                if (!premiered) return false
+                return premiered
+            },
+            async parseReleasedate() {
+                const $ = cheerioLoad(webContent.hanime1)
+                const text = $('.video-description-panel').children().eq(0).text()
+                const match = text.match(/\d{4}-\d{2}-\d{2}/)
+                const releasedate = match ? match[0] : ''
 
-            if (!plot) return false
+                if (!releasedate) return false
+                return releasedate
+            },
+            async parsePoster() {
+                // 有getchu直接用getchu的
+                const poster = getPosterGetchu()
+                if (poster) {
+                    const posterPath = await ScraperHelper.downloadImage(
+                        poster,
+                        {
+                            signal
+                        },
+                        {
+                            resize: {
+                                maxWidth: posterScale.maxWidth,
+                                maxHeight: posterScale.maxHeight,
+                                minWidth: posterScale.minWidth,
+                                minHeight: posterScale.minHeight
+                            }
+                        }
+                    )
+                    if (posterPath) {
+                        loggerGetchu.log(`下载图片成功！:${poster}`)
+                        return posterPath
+                    }
+                }
 
-            video.plot = plot
-            return true
-        },
-        parseYear: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            const text = $('.video-description-panel').children().eq(0).text()
-            const match = text.match(/\d{4}/)
-            const year = match ? match[0] : ''
-            if (!year) return false
+                // 用其他的
+                await getPosterUrl()
 
-            video.year = year
-            return true
-        },
-        parsePremiered: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            const text = $('.video-description-panel').children().eq(0).text()
-            const match = text.match(/\d{4}-\d{2}-\d{2}/)
-            const premiered = match ? match[0] : ''
+                if (!posterUrl) return false
 
-            if (!premiered) return false
-
-            video.premiered = premiered
-            return true
-        },
-        parseReleasedate: async (video: IVideo, context: IHanimeContext) => {
-            const $ = cheerioLoad(context.webContent.hanime1)
-            const text = $('.video-description-panel').children().eq(0).text()
-            const match = text.match(/\d{4}-\d{2}-\d{2}/)
-            const releasedate = match ? match[0] : ''
-
-            if (!releasedate) return false
-
-            video.releasedate = releasedate
-            return true
-        },
-        parsePoster: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            let poster: string | null = null
-
-            // 从getchu获取
-            if (context.webContent.getchu) {
-                poster = await getPosterGetchu(context, signal)
-            }
-
-            // 从fanza获取
-            if (!poster && context.webContent.fanza) {
-                poster = await getPosterFanza(context, signal)
-            }
-
-            // 没有则从hanime上获取
-            if (!poster) {
-                poster = await getPosterHanime1(
-                    video.originaltitle || video.title || video.sorttitle,
-                    context,
-                    signal
+                const srcImagePath = await ScraperHelper.downloadImage(
+                    posterUrl,
+                    {
+                        signal
+                    },
+                    {
+                        resize: {
+                            maxWidth: posterScale.maxWidth,
+                            maxHeight: posterScale.maxHeight,
+                            minWidth: posterScale.minWidth,
+                            minHeight: posterScale.minHeight
+                        }
+                    }
                 )
-            }
 
-            if (!poster) {
-                return false
-            }
-
-            video.poster = poster
-
-            return true
-        },
-        parseThumb: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            if (!video.poster) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, context, signal))) {
-                    return false
+                return srcImagePath || false
+            },
+            async parseThumb() {
+                // 有getchu直接用getchu的
+                const thumb = getPosterGetchu()
+                if (thumb) {
+                    const posterPath = await ScraperHelper.downloadImage(
+                        thumb,
+                        {
+                            signal
+                        },
+                        {
+                            resize: {
+                                maxWidth: thumbScale.maxWidth,
+                                maxHeight: thumbScale.maxHeight,
+                                minWidth: thumbScale.minWidth,
+                                minHeight: thumbScale.minHeight
+                            }
+                        }
+                    )
+                    if (posterPath) {
+                        loggerGetchu.log(`下载图片成功！:${thumb}`)
+                        return posterPath
+                    }
                 }
-            }
-            const poster = video.poster
-            if (!poster) return false
 
-            if (!context.超分封面) {
-                const re = await MediaHelper.superResolutionImage(poster, true)
-                context.超分封面 = re ?? poster
-            }
+                // 用其他的
+                await getPosterUrl()
 
-            video.thumb = context.超分封面
+                if (!posterUrl) return false
 
-            return true
-        },
-        parseFanart: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            if (!video.poster) {
-                if (!(await hanimeScraper.scraperVideoFuncs.parsePoster(video, context, signal))) {
-                    return false
+                const srcImagePath = await ScraperHelper.downloadImage(
+                    posterUrl,
+                    {
+                        signal
+                    },
+                    {
+                        resize: {
+                            maxWidth: thumbScale.maxWidth,
+                            maxHeight: thumbScale.maxHeight,
+                            minWidth: thumbScale.minWidth,
+                            minHeight: thumbScale.minHeight
+                        }
+                    }
+                )
+
+                return srcImagePath || false
+            },
+            async parseFanart() {
+                // 有getchu直接用getchu的
+                const fanart = getPosterGetchu()
+                if (fanart) {
+                    const posterPath = await ScraperHelper.downloadImage(fanart, {
+                        signal
+                    })
+                    if (posterPath) {
+                        loggerGetchu.log(`下载图片成功！:${fanart}`)
+                        return posterPath
+                    }
                 }
+
+                // 用其他的
+                await getPosterUrl()
+
+                if (!posterUrl) return false
+
+                const srcImagePath = await ScraperHelper.downloadImage(posterUrl, {
+                    signal
+                })
+
+                if (!srcImagePath) return false
+
+                // 超分一下
+                const path = await MediaHelper.superResolutionImage(srcImagePath)
+
+                return path || false
+            },
+            async parseExtrafanart() {
+                // 从fanza获取
+                let extrafanarts = getExtrafanartFanza()
+
+                // 从getchu获取
+                if (extrafanarts.length === 0) {
+                    extrafanarts = getExtrafanartGetchu()
+                }
+
+                // 从dlsite获取
+                if (extrafanarts.length === 0) {
+                    extrafanarts = getExtrafanartDlsite()
+                }
+
+                if (extrafanarts.length === 0) return false
+
+                // 下载
+                return await ScraperHelper.downloadExtrafanart(extrafanarts, { signal })
+            },
+            async parseOutput(): Promise<{ dir: string; fileName: string }> {
+                const dir = `${video.set}/${video.originaltitle}`
+                return { dir, fileName: video.originaltitle }
             }
-            const poster = video.poster
-            if (!poster) return false
-
-            if (!context.超分封面) {
-                const re = await MediaHelper.superResolutionImage(poster, true)
-                context.超分封面 = re ?? poster
-            }
-
-            video.fanart = context.超分封面
-            return true
-        },
-        parseExtrafanart: async (video: IVideo, context: IHanimeContext, signal: AbortSignal) => {
-            // 从fanza获取
-            let extrafanarts = await getExtrafanartFanza(context, signal)
-
-            // 从getchu获取
-            if (extrafanarts.length === 0) {
-                extrafanarts = await getExtrafanartGetchu(context, signal)
-            }
-
-            // 从dlsite获取
-            if (extrafanarts.length === 0) {
-                extrafanarts = await getExtrafanartDlsite(context, signal)
-            }
-
-            if (extrafanarts.length === 0) {
-                return false
-            }
-
-            video.extrafanart = extrafanarts
-            return true
-        },
-        parseOutput: async (video: IVideo) => {
-            const dir = `${video.set}/${video.originaltitle}`
-            return { dir, fileName: video.originaltitle }
+            // #endregion 刮削步骤
         }
     }
-}
+)
 
-export default hanimeScraper
+export default useScraper

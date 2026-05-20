@@ -1,35 +1,6 @@
-import type { NumResponse } from '@renderer/plugins/AV/fanza.num.type'
-import type { Actor } from '@renderer/scraper'
-
 import { LogHelper } from '@renderer/helper'
 
 export const scraperName = 'AV'
-
-export interface IAvContext {
-    num: {
-        JavDB: string
-        jable: string
-        mgs: string
-        fanza: string
-    }
-    webContent: {
-        JavDB: string
-        jable: string
-        mgs: string
-        fanza: NumResponse.PpvContent | null
-    }
-    maker: string
-    tag: string[]
-    /**
-     * 番号后缀，CU、UC、C、U
-     */
-    suffix: string
-    actor: Actor[] | null
-    image: {
-        smallImgUrl: string
-        bigImgUrl: string
-    }
-}
 
 export const logger = LogHelper.title(scraperName)
 
