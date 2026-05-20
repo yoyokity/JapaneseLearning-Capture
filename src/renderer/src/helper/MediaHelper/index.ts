@@ -146,6 +146,45 @@ export class MediaHelper {
     }
 
     /**
+     * 从 ArrayBuffer 中获取图片信息
+     * @param buffer 图片数据
+     * @returns 图片宽度和高度
+     */
+    static async getImageInfoFromArrayBuffer(
+        buffer: ArrayBuffer
+    ): Promise<{ width: number; height: number }> {
+        const blob = new Blob([buffer])
+        const bitmap = await createImageBitmap(blob)
+        const { width, height } = bitmap
+        bitmap.close() // 释放 GPU 资源
+        return { width, height }
+    }
+
+    /**
+     * 从图片URL获取图片信息
+     * @param url 图片URL
+     * @returns 图片宽度和高度
+     */
+    static getImageInfoFromUrl(url: string): Promise<{ width: number; height: number }> {
+        return new Promise((resolve, reject) => {
+            const img = new Image()
+
+            img.onload = () => {
+                resolve({
+                    width: img.naturalWidth,
+                    height: img.naturalHeight
+                })
+            }
+
+            img.onerror = () => {
+                reject(new Error(`无法加载图片: ${url}`))
+            }
+
+            img.src = url // 开始加载
+        })
+    }
+
+    /**
      * 读取媒体信息
      * @param path 媒体文件路径
      * @returns 媒体信息
@@ -353,6 +392,8 @@ export class MediaHelper {
             return null
         }
     }
+
+    // TODO 改成和sharp一样的用法
 }
 
 export class MediaInfo {
