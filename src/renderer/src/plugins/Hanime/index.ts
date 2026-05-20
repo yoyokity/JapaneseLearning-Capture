@@ -125,20 +125,8 @@ const useScraper = ScraperHelper.defineScraper(
                     videoList.map((item) => item.title)
                 )
 
-                const match = EncodeHelper.bestMatch(
-                    searchTitle,
-                    videoList.map((item) => item.title)
-                )
-                if (!match) {
-                    loggerHanime1.warn(`未找到匹配的视频`)
-                    return null
-                }
-
-                const targetVideo = videoList[match.index]
-                loggerHanime1.log(
-                    `选择第 ${match.index + 1} 个视频: 【${targetVideo.title}】`,
-                    targetVideo.href
-                )
+                const targetVideo = videoList[0]
+                loggerHanime1.log(`选择第 1 个视频: 【${targetVideo.title}】`, targetVideo.href)
 
                 return { href: targetVideo.href, poster: targetVideo.poster }
             })()
@@ -309,7 +297,7 @@ const useScraper = ScraperHelper.defineScraper(
             loggerGetchu.success(`获取到网页内容`)
         }
 
-        function getExtrafanartGetchu(): string[] {
+        async function getExtrafanartGetchu(): Promise<string[]> {
             if (!webContent.getchu) {
                 loggerGetchu.log(`- 没有getchu，无法获取剧照`)
                 return []
@@ -318,10 +306,12 @@ const useScraper = ScraperHelper.defineScraper(
             const $ = cheerioLoad(webContent.getchu)
             const hrefs = $('div.item-Samplecard a').map((_, el) => $(el).attr('href')?.trim())
 
-            return hrefs
+            const urls = hrefs
                 .toArray()
                 .filter((href): href is string => !!href)
                 .map((href) => NetHelper.joinUrl('https://www.getchu.com/', href))
+
+            return await ScraperHelper.downloadExtrafanart(urls, { signal, ...getchuOptions })
         }
 
         function getPosterGetchu() {
@@ -421,7 +411,7 @@ const useScraper = ScraperHelper.defineScraper(
             loggerDlsite.success(`获取到网页内容`)
         }
 
-        function getExtrafanartDlsite(): string[] {
+        async function getExtrafanartDlsite(): Promise<string[]> {
             if (!webContent.dlsite) {
                 loggerDlsite.log(`- 没有dlsite，无法获取剧照`)
                 return []
@@ -435,7 +425,7 @@ const useScraper = ScraperHelper.defineScraper(
                 .filter((src) => !src.includes('_main.'))
                 .map((href) => `https:${href.trim()}`)
 
-            return urls
+            return await ScraperHelper.downloadExtrafanart(urls, { signal, ...dlsiteOptions })
         }
         // #endregion Dlsite网页内容获取
 
@@ -534,7 +524,7 @@ const useScraper = ScraperHelper.defineScraper(
             loggerFanza.success(`获取到网页内容`)
         }
 
-        function getExtrafanartFanza(): string[] {
+        async function getExtrafanartFanza(): Promise<string[]> {
             if (!webContent.fanza) {
                 loggerFanza.log(`- 没有fanza，无法获取剧照`)
                 return []
@@ -556,7 +546,7 @@ const useScraper = ScraperHelper.defineScraper(
                 )
                 .toArray()
 
-            return urls
+            return await ScraperHelper.downloadExtrafanart(urls, { signal, ...fanzaOptions })
         }
         // #endregion Fanza网页内容获取
 
@@ -929,7 +919,8 @@ const useScraper = ScraperHelper.defineScraper(
                     const posterPath = await ScraperHelper.downloadImage(
                         poster,
                         {
-                            signal
+                            signal,
+                            ...getchuOptions
                         },
                         {
                             resize: {
@@ -940,10 +931,7 @@ const useScraper = ScraperHelper.defineScraper(
                             }
                         }
                     )
-                    if (posterPath) {
-                        loggerGetchu.log(`下载图片成功！:${poster}`)
-                        return posterPath
-                    }
+                    if (posterPath) return posterPath
                 }
 
                 // 用其他的
@@ -975,7 +963,8 @@ const useScraper = ScraperHelper.defineScraper(
                     const posterPath = await ScraperHelper.downloadImage(
                         thumb,
                         {
-                            signal
+                            signal,
+                            ...getchuOptions
                         },
                         {
                             resize: {
@@ -986,10 +975,7 @@ const useScraper = ScraperHelper.defineScraper(
                             }
                         }
                     )
-                    if (posterPath) {
-                        loggerGetchu.log(`下载图片成功！:${thumb}`)
-                        return posterPath
-                    }
+                    if (posterPath) return posterPath
                 }
 
                 // 用其他的
@@ -1018,12 +1004,15 @@ const useScraper = ScraperHelper.defineScraper(
                 // 有getchu直接用getchu的
                 const fanart = getPosterGetchu()
                 if (fanart) {
-                    const posterPath = await ScraperHelper.downloadImage(fanart, {
-                        signal
-                    })
+                    const posterPath =
+                        (await ScraperHelper.downloadImage(fanart, {
+                            signal,
+                            ...getchuOptions
+                        })) || ''
                     if (posterPath) {
-                        loggerGetchu.log(`下载图片成功！:${fanart}`)
-                        return posterPath
+                        // 超分一下
+                        const path = await MediaHelper.superResolutionImage(posterPath)
+                        return path || false
                     }
                 }
 
@@ -1032,35 +1021,35 @@ const useScraper = ScraperHelper.defineScraper(
 
                 if (!posterUrl) return false
 
-                const srcImagePath = await ScraperHelper.downloadImage(posterUrl, {
-                    signal
-                })
+                const posterPath =
+                    (await ScraperHelper.downloadImage(posterUrl, {
+                        signal
+                    })) || ''
 
-                if (!srcImagePath) return false
+                if (!posterPath) return false
 
                 // 超分一下
-                const path = await MediaHelper.superResolutionImage(srcImagePath)
-
+                const path = await MediaHelper.superResolutionImage(posterPath)
                 return path || false
             },
             async parseExtrafanart() {
-                // 从fanza获取
-                let extrafanarts = getExtrafanartFanza()
-
                 // 从getchu获取
+                let extrafanarts = await getExtrafanartGetchu()
+
+                // 从fanza获取
                 if (extrafanarts.length === 0) {
-                    extrafanarts = getExtrafanartGetchu()
+                    extrafanarts = await getExtrafanartFanza()
                 }
 
                 // 从dlsite获取
                 if (extrafanarts.length === 0) {
-                    extrafanarts = getExtrafanartDlsite()
+                    extrafanarts = await getExtrafanartDlsite()
                 }
 
                 if (extrafanarts.length === 0) return false
 
                 // 下载
-                return await ScraperHelper.downloadExtrafanart(extrafanarts, { signal })
+                return extrafanarts
             },
             async parseOutput(): Promise<{ dir: string; fileName: string }> {
                 const dir = `${video.set}/${video.originaltitle}`
