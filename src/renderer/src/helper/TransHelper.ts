@@ -426,11 +426,25 @@ export class TransHelper {
      * @description 每一句话之间隔一行，同时句首顶格，全部翻译为简体中文，最后将文本中的转义换行符转为普通换行
      */
     static formatTranslateText(text: string) {
-        return Array.from(sentenceSegmenter.segment(text))
+        const segments = Array.from(sentenceSegmenter.segment(text))
             .filter((item): item is NonNullable<typeof item> => Boolean(item))
             .map((item) => item.segment.trim())
             .filter(Boolean)
-            .join('\n\n')
+
+        const mergedSegments: string[] = []
+        for (const segment of segments) {
+            const lastSegment = mergedSegments.at(-1)
+
+            // 不使用 、 作为换行分隔符
+            if (lastSegment?.endsWith('、')) {
+                mergedSegments[mergedSegments.length - 1] = `${lastSegment}${segment}`
+                continue
+            }
+
+            mergedSegments.push(segment)
+        }
+
+        return mergedSegments.join('\n\n')
     }
 }
 

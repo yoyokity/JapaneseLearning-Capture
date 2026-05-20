@@ -460,7 +460,14 @@ export class PathHelper {
         if (!re.hasError) {
             return true
         } else {
-            LogHelper.error(`移动文件或目录失败：`, re.error)
+            LogHelper.error(
+                `移动文件或目录失败：`,
+                {
+                    原路径: sourcePath.toString(),
+                    目标路径: destPath.toString()
+                },
+                re.error
+            )
             return false
         }
     }

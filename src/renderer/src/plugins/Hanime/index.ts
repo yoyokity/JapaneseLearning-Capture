@@ -8,11 +8,18 @@ import {
     thumbScale,
     TransHelper
 } from '@renderer/helper'
-import { maker_trans } from '@renderer/plugins/Hanime/makerTrans'
 import { load as cheerioLoad } from 'cheerio'
 import { toNumber } from 'es-toolkit/compat'
 
-import { loggerDlsite, loggerFanza, loggerGetchu, loggerHanime1, scraperName } from './type'
+import {
+    bannedWord,
+    loggerDlsite,
+    loggerFanza,
+    loggerGetchu,
+    loggerHanime1,
+    maker_trans,
+    scraperName
+} from './type'
 
 const dlsiteOptions = {
     headers: {
@@ -222,7 +229,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const searchKeyword = await EncodeHelper.encodeUrlEucJp(searchTitle)
+            const searchKeyword = await EncodeHelper.encodeUrlEucJp(cutBannedWord(searchTitle))
             const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
 
             const searchBody = await fetchPage(searchUrl)
@@ -351,7 +358,7 @@ const useScraper = ScraperHelper.defineScraper(
 
             // 如果编号搜索失败，则使用原标题搜索
             searchTitle = EncodeHelper.fullToHalf(searchTitle)
-            const keyword = EncodeHelper.encodeUrl(searchTitle).replace(/%20/g, '+')
+            const keyword = EncodeHelper.encodeUrl(cutBannedWord(searchTitle)).replace(/%20/g, '+')
             const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
             const res = await NetHelper.get(searchUrl, { ...dlsiteOptions, signal })
             if (!res.ok) {
@@ -464,7 +471,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const searchUrl = `https://www.dmm.co.jp/mono/anime/-/search/=/searchstr=${EncodeHelper.encodeUrl(searchTitle)}/`
+            const searchUrl = `https://www.dmm.co.jp/mono/anime/-/search/=/searchstr=${EncodeHelper.encodeUrl(cutBannedWord(searchTitle))}/`
             const res = await getFanza(searchUrl)
             if (signal.aborted) return
             if (!res.ok) {
@@ -1061,3 +1068,22 @@ const useScraper = ScraperHelper.defineScraper(
 )
 
 export default useScraper
+
+function cutBannedWord(str: string): string {
+    // 1. 为每个分隔符转义特殊字符（如 . * + 等），然后用 | 拼接成正则
+    const escapedDelimiters = bannedWord.map((d) => escapeRegExp(d))
+    const pattern = new RegExp(escapedDelimiters.join('|'))
+
+    // 2. 找到第一个匹配的分隔符的位置
+    const match = str.match(pattern)
+    if (!match || match.index === undefined) {
+        return str // 没有匹配，返回原字符串
+    }
+
+    // 3. 截取分隔符之前的部分
+    return str.substring(0, match.index)
+}
+
+function escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
