@@ -321,4 +321,14 @@ function openVideoDir() {
     display: flex;
     gap: 0.5rem;
 }
+
+:deep(.info-row) {
+    --p-tag-font-size: calc(1rem - 2px);
+
+    font-size: var(--p-tag-font-size);
+
+    .info-value {
+        line-height: 2;
+    }
+}
 </style>

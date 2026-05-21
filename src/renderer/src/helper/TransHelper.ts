@@ -429,6 +429,9 @@ export class TransHelper {
         const segments = Array.from(sentenceSegmenter.segment(text))
             .filter((item): item is NonNullable<typeof item> => Boolean(item))
             .map((item) => item.segment.trim())
+            // 只有单独的 …… 才作为换行符，后面跟其他标点时不换行
+            .flatMap((segment) => segment.split(/(?<=……)(?![\p{P}\p{S}])/u))
+            .map((segment) => segment.trim())
             .filter(Boolean)
 
         const mergedSegments: string[] = []

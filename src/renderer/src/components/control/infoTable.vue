@@ -269,14 +269,14 @@ watch(collapsibleGroupList, syncOpenGroupMap, {
 
     .info-key {
         white-space: nowrap;
-        padding: 0 0.75rem 0.5rem 0;
+        padding: 0 0.75em 0.5em 0;
         vertical-align: top;
         text-align: end;
     }
 
     .info-value {
         width: 100%;
-        padding: 0 0 0.5rem;
+        padding: 0 0 0.5em;
         user-select: text;
         line-height: 1.75;
         white-space: pre-wrap;
