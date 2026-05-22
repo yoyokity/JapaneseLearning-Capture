@@ -243,7 +243,7 @@ export class MediaHelper {
      * @param srcImagePath 本地源图路径
      * @param templImagePath 本地模板图路径
      */
-    static async templateMatchIamge(
+    static async templateMatchImage(
         srcImagePath: Path | string,
         templImagePath: Path | string
     ): Promise<{
@@ -252,7 +252,6 @@ export class MediaHelper {
         pos: ImageCropPos
     } | null> {
         if (!this.cv) this.cv = (await getOpenCv()).cv
-
         const cv = this.cv
         if (!cv) {
             LogHelper.error('OpenCV 初始化失败')
@@ -281,81 +280,73 @@ export class MediaHelper {
             cv.cvtColor(srcMat, srcGrayMat, cv.COLOR_RGBA2GRAY)
             cv.cvtColor(templMat, templGrayMat, cv.COLOR_RGBA2GRAY)
 
-            const shouldScaleSrc =
-                srcGrayMat.cols >= templGrayMat.cols && srcGrayMat.rows >= templGrayMat.rows
-            const scaleStart = shouldScaleSrc
-                ? 1
-                : Math.min(srcGrayMat.cols / templGrayMat.cols, srcGrayMat.rows / templGrayMat.rows)
-            const scaleEnd = shouldScaleSrc
-                ? Math.max(templGrayMat.cols / srcGrayMat.cols, templGrayMat.rows / srcGrayMat.rows)
-                : scaleStart
-            const scaleCount = scaleStart === scaleEnd ? 1 : 30
-            let bestScale = 1
             let bestMaxVal = Number.NEGATIVE_INFINITY
             let bestMaxLoc = { x: 0, y: 0 }
+            let bestSize = { width: templGrayMat.cols, height: templGrayMat.rows }
+            const scaleByWidth = srcGrayMat.cols / templGrayMat.cols
+            const scaleByHeight = srcGrayMat.rows / templGrayMat.rows
+            const candidates = [
+                {
+                    scale: scaleByWidth,
+                    width: srcGrayMat.cols,
+                    height: Math.round(templGrayMat.rows * scaleByWidth)
+                },
+                {
+                    scale: scaleByHeight,
+                    width: Math.round(templGrayMat.cols * scaleByHeight),
+                    height: srcGrayMat.rows
+                }
+            ].filter(
+                (item, index, list) =>
+                    item.width <= srcGrayMat.cols &&
+                    item.height <= srcGrayMat.rows &&
+                    list.findIndex(
+                        (candidate) =>
+                            candidate.width === item.width && candidate.height === item.height
+                    ) === index
+            )
 
-            for (let i = 0; i < scaleCount; i++) {
-                const scale =
-                    scaleCount === 1
-                        ? scaleStart
-                        : scaleStart - ((scaleStart - scaleEnd) * i) / (scaleCount - 1)
-                const scaledWidth = Math.round(
-                    (shouldScaleSrc ? srcGrayMat.cols : templGrayMat.cols) * scale
-                )
-                const scaledHeight = Math.round(
-                    (shouldScaleSrc ? srcGrayMat.rows : templGrayMat.rows) * scale
-                )
-                const scaledMat = new cv.Mat()
+            for (const candidate of candidates) {
+                const scaledTemplMat = new cv.Mat()
                 const resultMat = new cv.Mat()
 
                 try {
-                    // 谁大缩谁，尽量避免把小图放大后再做模板匹配
+                    // 模板图等比缩放到宽或高与原图一致，再查找其在原图中的位置
                     cv.resize(
-                        shouldScaleSrc ? srcGrayMat : templGrayMat,
-                        scaledMat,
-                        new cv.Size(scaledWidth, scaledHeight),
+                        templGrayMat,
+                        scaledTemplMat,
+                        new cv.Size(candidate.width, candidate.height),
                         0,
                         0,
                         cv.INTER_AREA
                     )
-
-                    if (shouldScaleSrc) {
-                        cv.matchTemplate(scaledMat, templGrayMat, resultMat, cv.TM_CCOEFF_NORMED)
-                    } else {
-                        cv.matchTemplate(srcGrayMat, scaledMat, resultMat, cv.TM_CCOEFF_NORMED)
-                    }
+                    cv.matchTemplate(srcGrayMat, scaledTemplMat, resultMat, cv.TM_CCOEFF_NORMED)
 
                     const { maxLoc, maxVal } = (cv.minMaxLoc as any)(resultMat)
 
                     if (maxVal > bestMaxVal) {
-                        bestScale = scale
                         bestMaxVal = maxVal
                         bestMaxLoc = maxLoc
+                        bestSize = {
+                            width: candidate.width,
+                            height: candidate.height
+                        }
                     }
                 } finally {
-                    scaledMat.delete()
+                    scaledTemplMat.delete()
                     resultMat.delete()
                 }
             }
 
-            const left = shouldScaleSrc ? Math.round(bestMaxLoc.x / bestScale) : bestMaxLoc.x
-            const top = shouldScaleSrc ? Math.round(bestMaxLoc.y / bestScale) : bestMaxLoc.y
-            const width = shouldScaleSrc
-                ? Math.round(templGrayMat.cols / bestScale)
-                : Math.round(templGrayMat.cols * bestScale)
-            const height = shouldScaleSrc
-                ? Math.round(templGrayMat.rows / bestScale)
-                : Math.round(templGrayMat.rows * bestScale)
+            const left = bestMaxLoc.x
+            const top = bestMaxLoc.y
+            const width = bestSize.width
+            const height = bestSize.height
 
             return {
                 srcImageData,
                 templImageData,
-                pos: {
-                    left,
-                    top,
-                    width: Math.min(srcGrayMat.cols - left, width),
-                    height: Math.min(srcGrayMat.rows - top, height)
-                }
+                pos: { left, top, width, height }
             }
         } catch (error) {
             LogHelper.error('图片模板匹配失败', error)

@@ -10,7 +10,8 @@ export const videoExtensions = {
     '.wmv': 'rgb(80, 89, 202)',
     '.flv': 'rgb(170, 70, 211)',
     '.webm': 'rgb(46, 164, 255)',
-    '.m4v': 'rgb(126, 70, 211)'
+    '.m4v': 'rgb(126, 70, 211)',
+    '.rmvb': 'rgb(55, 144, 245)'
 } as const
 
 /**

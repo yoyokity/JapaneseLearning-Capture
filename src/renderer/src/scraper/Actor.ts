@@ -216,12 +216,11 @@ export class Actor implements IActorFull {
      */
     toString() {
         if (this.height || this.born || this.debut) {
-            let text = `${this.name}\n`
-            if (this.height) text += `身高三围: ${this.height}\n`
-            if (this.born) text += `出生日期: ${this.born}\n`
-            if (this.debut) text += `出道时间: ${this.debut}\n`
+            let text = `${this.name}${this.born ? ` (${this.born})` : ''}\n\n`
+            if (this.height) text += `- 身高三围: ${this.height}\n\n`
+            if (this.debut) text += `- 出道时间: ${this.debut}`
 
-            return text
+            return `\n\n----------------\n\n${text}`
         }
 
         return ''

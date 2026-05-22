@@ -55,11 +55,13 @@ export class EncodeHelper {
      * 获取最佳匹配结果
      * @param target 目标文本
      * @param candidates 候选文本列表
+     * @param cutoff 返回最低分，默认50
      * @remarks 忽略字符全角半角的不同
      */
     static bestMatch(
         target: string,
-        candidates: string[]
+        candidates: string[],
+        cutoff = 50
     ): {
         match: string
         index: number
@@ -72,7 +74,7 @@ export class EncodeHelper {
             {
                 returnObjects: true,
                 scorer: token_set_ratio,
-                cutoff: 50,
+                cutoff,
                 limit: 1
             }
         ).at(0)

@@ -54,9 +54,9 @@ NetHelper.setCookie({
 const useScraper = ScraperHelper.defineScraper(
     scraperName,
     {
-        javDB: 'https://javdb.com/v/{num}',
-        jable: 'https://www.jable.com/videos/{num}',
-        MGS: 'https://www.mgstage.com/product/product_detail/{num}',
+        javDB: 'https://javdb.com/v/{num}/',
+        jable: 'https://jable.tv/videos/{num}/',
+        MGS: 'https://www.mgstage.com/product/product_detail/{num}/',
         Fanza: 'https://video.dmm.co.jp/av/content/?id={num}&i3_ref=search&i3_ord=1&i3_pst=1&dmmref=video_search'
     },
     (video, signal: AbortSignal) => {
@@ -92,7 +92,7 @@ const useScraper = ScraperHelper.defineScraper(
         async function getWebContentJavDB(searchTitle: string): Promise<void> {
             // 先使用编号搜索
             if (num.javDB) {
-                const url = `https://javdb.com/v/${num.javDB}`
+                const url = `https://javdb.com/v/${num.javDB}/`
                 const res = await NetHelper.get(url, {
                     signal
                 })
@@ -107,7 +107,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const url = `https://javdb.com/search?q=${EncodeHelper.encodeUrl(searchTitle)}&f=all`
+            const url = `https://javdb.com/search?q=${EncodeHelper.encodeUrl(searchTitle)}&f=all/`
             const res = await NetHelper.get(url, {
                 signal
             })
@@ -198,7 +198,7 @@ const useScraper = ScraperHelper.defineScraper(
         async function getWebContentJable(searchTitle: string): Promise<void> {
             // 先使用编号搜索
             if (num.jable) {
-                const url = `https://www.jable.com/videos/${num.jable}`
+                const url = `https://jable.tv/videos/${num.jable}/`
                 const res = await NetHelper.get(url, {
                     signal
                 })
@@ -292,7 +292,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const url = `https://www.mgstage.com/search/cSearch.php?search_word=${EncodeHelper.encodeUrl(searchTitle.split(/\s+/)[0])}&x=17&y=12&search_shop_id=&type=top`
+            const url = `https://www.mgstage.com/search/cSearch.php?search_word=${EncodeHelper.encodeUrl(searchTitle)}&x=17&y=12&search_shop_id=&type=top/`
             const res = await NetHelper.get(url, {
                 signal
             })
@@ -415,7 +415,8 @@ const useScraper = ScraperHelper.defineScraper(
             // 找到最匹配的视频
             const match = EncodeHelper.bestMatch(
                 searchTitle,
-                contents.map((item) => item.title)
+                contents.map((item) => item.title),
+                80
             )
             if (!match) {
                 loggerFanza.warn(`未找到匹配的视频`)
@@ -518,7 +519,6 @@ const useScraper = ScraperHelper.defineScraper(
                     return true
                 }
 
-                const title = video.originaltitle || video.title || video.sorttitle
                 num.javDB = video.num.javDB ?? ''
                 num.jable = video.num.jable ?? ''
                 num.MGS = video.num.MGS ?? ''
@@ -526,9 +526,14 @@ const useScraper = ScraperHelper.defineScraper(
 
                 // 把番号解析出来
                 let { name = '', suffix = '' } =
-                    title.match(/(?<name>[A-Z]+-\d+)(?:-?(?<suffix>CU|UC|C|U))?/i)?.groups ?? {}
+                    video.title.match(/(?<name>[A-Z]+-\d+)(?:-?(?<suffix>CU|UC|C|U))?/i)?.groups ??
+                    video.originaltitle.match(/(?<name>[A-Z]+-\d+)(?:-?(?<suffix>CU|UC|C|U))?/i)
+                        ?.groups ??
+                    video.sorttitle.match(/(?<name>[A-Z]+-\d+)(?:-?(?<suffix>CU|UC|C|U))?/i)
+                        ?.groups ??
+                    {}
                 if (!name) {
-                    logger.warn(`没有解析到正确的番号：`, title)
+                    logger.warn(`没有解析到正确的番号：`)
                     return false
                 }
 
@@ -536,7 +541,7 @@ const useScraper = ScraperHelper.defineScraper(
                 suffix = suffix.toUpperCase()
 
                 if (suffix) _suffix = suffix
-                logger.success(`成功解析番号：${name}-${suffix}`)
+                logger.success(`成功解析番号：${name}${suffix ? `-${suffix}` : ''}`)
 
                 // 获取webContent
                 await Promise.all([getWebContentJavDB(name), getWebContentJable(name)])
@@ -553,20 +558,6 @@ const useScraper = ScraperHelper.defineScraper(
                 return true
             },
             async parseTitle() {
-                const $ = cheerioLoad(webContent.javDB)
-                let title = $('.current-title').text().trim()
-
-                if (!title) return false
-
-                // 翻译一下
-                const re = await TransHelper.translate(title, false)
-                if (re.ok) title = re.text
-
-                // 如果文本前面有【xxx】则去掉【xxx】
-                title = title.replace(/^【[^】]*】\s*/, '')
-                return title
-            },
-            async parseOriginaltitle() {
                 // 使用 EBWH-001-C 这样的格式
                 const $ = cheerioLoad(webContent.javDB)
                 let originaltitle = $('.movie-panel-info span.value')
@@ -579,6 +570,18 @@ const useScraper = ScraperHelper.defineScraper(
                 // 加上后缀
                 if (_suffix) originaltitle += `-${_suffix}`
                 return originaltitle
+            },
+            async parseOriginaltitle() {
+                const $ = cheerioLoad(webContent.javDB)
+                let title = $('.current-title').text().trim()
+
+                if (!title) return false
+
+                // 翻译一下
+                const re = await TransHelper.translate(remove大括号(title), false)
+                if (re.ok) title = re.text
+
+                return title
             },
             async parseSorttitle() {
                 // 使用 EBWH-001 这样的格式
@@ -716,6 +719,7 @@ const useScraper = ScraperHelper.defineScraper(
                     .filter((tag) => !!tag)
                     .forEach((tag) => tags.add(TransHelper.translateSC(tag)))
 
+                tags.delete('无码破解')
                 return [...tags]
             },
             async parseGenre() {
@@ -742,6 +746,7 @@ const useScraper = ScraperHelper.defineScraper(
                     .filter((tag) => !!tag)
                     .forEach((tag) => genres.add(TransHelper.translateSC(tag)))
 
+                genres.delete('无码破解')
                 return [...genres]
             },
             async parsePlot() {
@@ -751,19 +756,19 @@ const useScraper = ScraperHelper.defineScraper(
                 if (webContent.MGS) {
                     const $ = cheerioLoad(webContent.MGS)
                     const _plot = $('dl#introduction p')
-                        .filter((_, el) => !$(el).hasClass('.more'))
+                        .filter((_, el) => $(el).attr('id') !== 'introduction_all')
                         .text()
                         .trim()
 
                     plot += _plot
-                    plot += '\n\n'
                 } else if (webContent.Fanza) {
                     plot += EncodeHelper.decodeHtmlEntity(webContent.Fanza.description)
-                    plot += '\n\n'
                 }
 
+                plot = remove大括号(plot).trim()
+
                 // 翻译一下
-                plot = (await TransHelper.translate(plot)).text
+                if (plot) plot = (await TransHelper.translate(plot)).text
 
                 // 加上演员信息
                 if (await getActor()) {
@@ -772,8 +777,13 @@ const useScraper = ScraperHelper.defineScraper(
                     })
                 }
 
+                plot = plot.trim()
+
+                if (plot.startsWith('----------------')) plot = plot.replace('----------------', '')
+                plot = plot.trim()
+
                 if (!plot) return false
-                return plot.trim()
+                return plot
             },
             async parseYear() {
                 const $ = cheerioLoad(webContent.javDB)
@@ -851,7 +861,7 @@ const useScraper = ScraperHelper.defineScraper(
                 })
                 if (!templImagePath) return srcImagePath
 
-                const result = await MediaHelper.templateMatchIamge(srcImagePath, templImagePath)
+                const result = await MediaHelper.templateMatchImage(srcImagePath, templImagePath)
                 if (signal.aborted || !result) return srcImagePath
 
                 // 保存裁剪后的图片到临时文件
@@ -995,8 +1005,8 @@ const useScraper = ScraperHelper.defineScraper(
                 if (video.actor.length > 1) actor = '多人'
                 if (video.actor.length === 1) actor = video.actor[0].name
 
-                const dir = `${actor}/${video.originaltitle}`
-                return { dir, fileName: video.originaltitle }
+                const dir = `${actor}/${video.sorttitle}`
+                return { dir, fileName: video.title }
             }
             // #endregion
         }
@@ -1004,3 +1014,7 @@ const useScraper = ScraperHelper.defineScraper(
 )
 
 export default useScraper
+
+function remove大括号(text: string) {
+    return text.replaceAll(/【[^】]*】/g, '')
+}

@@ -118,6 +118,7 @@ const resize = async (input: sharp.Sharp, options: ImageResizeOptions) => {
     return input.resize({
         width: Math.round(width * scaleRatio),
         height: Math.round(height * scaleRatio),
+        fit: 'inside',
         kernel: sharp.kernel.mks2021
     })
 }

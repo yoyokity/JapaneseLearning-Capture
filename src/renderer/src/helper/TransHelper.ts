@@ -447,7 +447,11 @@ export class TransHelper {
             mergedSegments.push(segment)
         }
 
-        return mergedSegments.join('\n\n')
+        return mergedSegments
+            .join('\n\n')
+            .replaceAll(/(?<!\n)“/gu, '\n\n“')
+            .replaceAll(/“\n+/gu, '“')
+            .trim()
     }
 }
 
