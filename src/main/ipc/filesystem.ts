@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { shell } from 'electron'
+import { BrowserWindow, shell } from 'electron'
 import log from 'electron-log'
 import pkg from 'fs-extra'
 import { glob } from 'tinyglobby'
@@ -401,6 +401,17 @@ export function writeLog(type: ILogType, ...params: any[]) {
  */
 export async function openInExplorer(filePath: string) {
     await shell.openPath(path.normalize(filePath))
+    return true
+}
+
+/**
+ * 设置主窗口进度条
+ */
+export function setProgressBar(progress: number) {
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (!mainWindow) return false
+
+    mainWindow.setProgressBar(progress)
     return true
 }
 

@@ -33,6 +33,7 @@ import {
     remove,
     removeEmptyFolders,
     resolve,
+    setProgressBar,
     writeFile,
     writeLog
 } from './filesystem'
@@ -203,6 +204,7 @@ export const appRouter = t.router({
                 })
             )
             .mutation(({ input }) => writeLog(input.type, ...input.params)),
+        setProgressBar: procedure.input(z.number()).mutation(({ input }) => setProgressBar(input)),
         openInExplorer: procedure.input(z.string()).mutation(({ input }) => openInExplorer(input)),
         clearFolder: procedure.input(z.string()).mutation(({ input }) => clearFolder(input)),
         removeEmptyFolders: procedure

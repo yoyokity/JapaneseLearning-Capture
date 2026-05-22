@@ -292,7 +292,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const url = `https://www.mgstage.com/search/cSearch.php?search_word=${EncodeHelper.encodeUrl(searchTitle)}&x=17&y=12&search_shop_id=&type=top/`
+            const url = `https://www.mgstage.com/search/cSearch.php?search_word=${EncodeHelper.encodeUrl(remove大括号(searchTitle))}&x=17&y=12&search_shop_id=&type=top/`
             const res = await NetHelper.get(url, {
                 signal
             })
@@ -389,11 +389,15 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const res = await NetHelper.post(fanzaUrl, getTitleBody(searchTitle.split(/\s+/)[0]), {
-                signal,
-                parse: 'json',
-                delay: 0
-            })
+            const res = await NetHelper.post(
+                fanzaUrl,
+                getTitleBody(remove大括号(searchTitle).split(/\s+/)[0]),
+                {
+                    signal,
+                    parse: 'json',
+                    delay: 0
+                }
+            )
             if (!res.ok) {
                 loggerFanza.warn(`获取内容失败`)
                 return

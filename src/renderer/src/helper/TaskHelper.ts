@@ -1,3 +1,4 @@
+import { ipc } from '@renderer/ipc'
 import { delay } from 'es-toolkit'
 import PQueue from 'p-queue'
 
@@ -211,5 +212,13 @@ export class TaskHelper {
                 error
             }
         }
+    }
+
+    /**
+     * 设置任务栏进度条
+     * @param progress 进度值，0-1
+     */
+    static async setProgressBar(progress: number) {
+        await TaskHelper.tryExecute(() => ipc.filesystem.setProgressBar.mutate(progress))
     }
 }

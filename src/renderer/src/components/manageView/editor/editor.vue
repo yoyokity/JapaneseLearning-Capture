@@ -16,6 +16,7 @@ import {
     LogHelper,
     MediaHelper,
     PathHelper,
+    TaskHelper,
     TransHelper
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
@@ -77,6 +78,11 @@ const addGenreValue = ref('')
 
 // 预览图片
 const previewImage = ref<string | null>(null)
+
+watch(scraperProgress, (newVal) => {
+    if (newVal >= 100) TaskHelper.setProgressBar(-1)
+    else TaskHelper.setProgressBar(newVal / 100)
+})
 
 /**
  * 将标签/类型值规范化为字符串，兼容历史脏数据

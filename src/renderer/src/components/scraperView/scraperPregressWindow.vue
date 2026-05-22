@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TaskHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import ProgressBar from 'primevue/progressbar'
 import Toast from 'primevue/toast'
@@ -18,6 +19,11 @@ const batchProgress = computed(() => {
     if (globalStates.batchTotalCount === 0) return 0
 
     return Math.round((globalStates.batchScrapedCount / globalStates.batchTotalCount) * 100)
+})
+
+watch(batchProgress, (newVal) => {
+    if (newVal >= 100) TaskHelper.setProgressBar(-1)
+    else TaskHelper.setProgressBar(newVal / 100)
 })
 
 /**
