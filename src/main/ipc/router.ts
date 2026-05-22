@@ -1,3 +1,4 @@
+import type { ReadDirectoryOptions } from './filesystem'
 import type { ImageData, ImageResizeOptions, SaveImageOptions } from './media'
 import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
 
@@ -27,7 +28,6 @@ import {
     move,
     openInExplorer,
     readDirectory,
-    readDirectoryOptionsSchema,
     readFile,
     relative,
     remove,
@@ -134,7 +134,7 @@ export const appRouter = t.router({
                 z.object({
                     directory: z.string(),
                     pattern: z.union([z.string(), z.array(z.string())]),
-                    options: readDirectoryOptionsSchema.optional()
+                    options: z.custom<ReadDirectoryOptions>().optional()
                 })
             )
             .query(({ input }) =>

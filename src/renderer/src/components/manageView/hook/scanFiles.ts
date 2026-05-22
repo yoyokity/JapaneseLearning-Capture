@@ -13,7 +13,7 @@ import {
     videoExtensions
 } from '@renderer/helper'
 import { createVideoFile, Scraper } from '@renderer/scraper'
-import { globalStatesStore } from '@renderer/stores'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
 import dayjs from 'dayjs'
 import { useToast } from 'primevue/usetoast'
 import { convert } from 'xmlbuilder2'
@@ -281,6 +281,21 @@ export function useScanFiles() {
          */
         readExtrafanart
     }
+}
+
+export async function preScan() {
+    const settings = settingsStore()
+    const paths = Object.values(settings.scraperPath)
+
+    await Promise.all(
+        paths.map((path) =>
+            PathHelper.readDirectory(path, '**/', {
+                onlyDirectories: true
+            })
+        )
+    )
+
+    LogHelper.debug('预扫描完成')
 }
 
 /**

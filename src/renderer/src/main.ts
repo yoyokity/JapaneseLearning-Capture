@@ -1,5 +1,6 @@
 import App from '@renderer/App.vue'
 import Tooltip from '@renderer/components/control/tooltip'
+import { preScan } from '@renderer/components/manageView/hook'
 import { LogHelper, PathHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
@@ -55,6 +56,9 @@ async function initApp() {
     settings.currentScraper = settings.currentScraper || Scraper.instances[0].scraperName
 
     LogHelper.success('应用初始化完成')
+
+    // 预扫描所有刮削器路径，以加快第一次扫描速度
+    preScan()
 }
 
 initApp()

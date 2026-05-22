@@ -18,42 +18,40 @@ export type ILogType = 'log' | 'error' | 'warn' | 'success' | 'debug'
  */
 export const logTypeSchema = z.enum(['log', 'error', 'warn', 'success', 'debug'])
 
-export const readDirectoryOptionsSchema = z.object({
+export interface ReadDirectoryOptions {
     /**
      * 是否返回文件状态
      * @default false
      */
-    stats: z.boolean().optional(),
+    stats?: boolean
     /**
      * 忽略的文件名
      * @description 一个由 glob 表达式组成的数组，匹配到的文件或目录会被排除在结果之外
      * @default []
      */
-    ignore: z.array(z.string()).optional(),
+    ignore?: string[]
     /**
      * 是否包含隐藏文件
      * @default true
      */
-    dot: z.boolean().optional(),
+    dot?: boolean
     /**
      * 是否跟随符号链接
      * @description 在 macOS 或 Linux 上，有时会创建一个类似“快捷方式”的链接文件。windows上基本没有影响。
      * @default true
      */
-    followSymbolicLinks: z.boolean().optional(),
+    followSymbolicLinks?: boolean
     /**
      * 是否只返回文件
      * @default false
      */
-    onlyFiles: z.boolean().optional(),
+    onlyFiles?: boolean
     /**
      * 是否只返回目录
      * @default false
      */
-    onlyDirectories: z.boolean().optional()
-})
-
-export type ReadDirectoryOptions = z.infer<typeof readDirectoryOptionsSchema>
+    onlyDirectories?: boolean
+}
 
 export interface IStats {
     /**
