@@ -13,8 +13,7 @@
         "build": "npm run build:icons && npm run build:vite",
         "build:vite": "electron-vite build --outDir=dist",
         "build:icons": "electron-icon-builder --input=./resources/mainIcon.png --output=./build -f",
-        "package": "npm run build && electron-forge package",
-        "make ": "npm run build && electron-forge make"
+        "package": "npm run build && electron-forge package"
     },
     "dependencies": {
         "sharp": "^0.34.3"

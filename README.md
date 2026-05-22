@@ -55,23 +55,6 @@ pnpm package
 
 打包完成后会生成 Electron Forge 对应产物。
 
-### 发布构建
-
-如果需要生成平台安装包，可使用 Electron Forge：
-
-```bash
-pnpm make
-```
-
-默认已配置的 maker：
-
-- Windows：`@electron-forge/maker-squirrel`
-- macOS：`@electron-forge/maker-zip`
-- Linux：`@electron-forge/maker-deb`
-- Linux：`@electron-forge/maker-rpm`
-
-> 项目当前 `package.json` 中存在一个脚本名为 `make `（末尾带空格），直接使用不稳定，建议直接执行 `npx electron-forge make`
-
 ## 📢声明
 
 - 本项目不提供任何视频下载，只管理本地资源
