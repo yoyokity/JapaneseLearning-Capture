@@ -1,0 +1,35 @@
+// Font Weight Guide
+// -----------------
+// 100 - thin
+// 200 - extralight
+// 300 - light
+// 400 - regular / normal
+// 500 - medium
+// 600 - semi-bold
+// 700 - bold
+// 800 - extrabold
+// 900 - black / heavy
+
+// Font Face Mixin
+@mixin fontFace($fontName, $fileName, $fontWeight, $fontStyle) {
+    @font-face {
+        font-family: '#{$fontName}';
+        src: url('../assets/#{$fileName}.woff2') format('woff2');
+        font-weight: #{$fontWeight};
+        font-style: #{$fontStyle};
+        font-display: swap;
+    }
+}
+
+// Thin
+@include fontFace('PingFangSC', 'ping-fang-sc-thin', 100, 'normal');
+// Extra Light
+@include fontFace('PingFangSC', 'ping-fang-sc-ultralight', 200, 'normal');
+// Light
+@include fontFace('PingFangSC', 'ping-fang-sc-light', 300, 'normal');
+// Normal
+@include fontFace('PingFangSC', 'ping-fang-sc-regular', 400, 'normal');
+// Medium
+@include fontFace('PingFangSC', 'ping-fang-sc-medium', 500, 'normal');
+// Semi Bold
+@include fontFace('PingFangSC', 'ping-fang-sc-semibold', 600, 'normal');

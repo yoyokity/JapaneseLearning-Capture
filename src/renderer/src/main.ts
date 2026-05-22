@@ -36,6 +36,7 @@ async function initApp() {
         .directive('tooltip', Tooltip)
 
     // 动态导入，确保它是最后加载的样式
+    import('@renderer/style/font.scss')
     import('@renderer/style/main.scss')
     import('@renderer/style/primeVue.scss')
 

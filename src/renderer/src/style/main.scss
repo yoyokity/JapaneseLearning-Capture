@@ -16,16 +16,9 @@
     --success-color: var(--p-green-500);
 }
 
-@font-face {
-    font-family: 'PingFang SC';
-    src: url('../assets/pingfang.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
 :root,
 button {
-    font-family: 'PingFang SC', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
+    font-family: 'PingFangSC', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
 }
 
 html,

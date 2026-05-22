@@ -37,7 +37,8 @@ module.exports = {
             '.VSCodeCounter',
             'eslint.config.js',
             'pnpm-workspace.yaml',
-            'postcss.config.ts'
+            'postcss.config.ts',
+            'tsconfig.web.tsbuildinfo'
         ]
     },
     rebuildConfig: {},
