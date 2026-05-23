@@ -1,8 +1,7 @@
 import { ipc } from '@renderer/ipc'
 import { extract, token_set_ratio } from 'fuzzball'
 
-/** 编码相关 */
-export class EncodeHelper {
+export class StringHelper {
     /**
      * URL 编码
      */
@@ -69,8 +68,8 @@ export class EncodeHelper {
         if (candidates.length === 0) return null
 
         const bestMatch = extract(
-            EncodeHelper.fullToHalf(target),
-            candidates.map((candidate) => EncodeHelper.fullToHalf(candidate)),
+            StringHelper.fullToHalf(target),
+            candidates.map((candidate) => StringHelper.fullToHalf(candidate)),
             {
                 returnObjects: true,
                 scorer: token_set_ratio,
@@ -91,5 +90,12 @@ export class EncodeHelper {
      */
     static punctuationsToSpace(str: string) {
         return str.replace(/[\p{P}\p{S}]/gu, ' ').trim()
+    }
+
+    /**
+     * 移除文本中的方括号内容
+     */
+    static removeBraces(text: string) {
+        return text.replaceAll(/【[^】]*】/g, '')
     }
 }

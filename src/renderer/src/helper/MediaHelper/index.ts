@@ -16,7 +16,7 @@ import type {
 } from '@shared'
 import type { Mat } from '@techstark/opencv-js'
 
-import { EncodeHelper, LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
+import { LogHelper, PathHelper, StringHelper, TaskHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
 import cvModule from '@techstark/opencv-js'
 import { v7 } from 'uuid'
@@ -37,7 +37,7 @@ export class MediaHelper {
                 if (index === 0 && /^[A-Z]:$/i.test(item)) {
                     return item
                 }
-                return EncodeHelper.encodeUrl(item)
+                return StringHelper.encodeUrl(item)
             })
             .join('/')
 
@@ -46,7 +46,7 @@ export class MediaHelper {
             return baseUrl
         }
 
-        return `${baseUrl}?v=${EncodeHelper.encodeUrl(cacheVersion.toString())}`
+        return `${baseUrl}?v=${StringHelper.encodeUrl(cacheVersion.toString())}`
     }
 
     /**

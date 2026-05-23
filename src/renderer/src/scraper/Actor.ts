@@ -1,6 +1,6 @@
 import type { IActor } from '@renderer/scraper'
 
-import { DataHelper, EncodeHelper, NetHelper } from '@renderer/helper'
+import { DataHelper, NetHelper, StringHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
 const gravurefitRequestOptions = {
@@ -81,7 +81,7 @@ export class Actor implements IActorFull {
             .filter((item): item is { href: string; title: string } => !!item.href && !!item.title)
 
         // 找到最佳匹配演员
-        const match = EncodeHelper.bestMatch(
+        const match = StringHelper.bestMatch(
             this.name,
             actorList.map((item) => item.title)
         )
@@ -157,7 +157,7 @@ export class Actor implements IActorFull {
 
         // 没有url则搜索
         const response = await NetHelper.get(
-            `https://javdb.com/search?f=actor&q=${EncodeHelper.encodeUrl(this.name)}`,
+            `https://javdb.com/search?f=actor&q=${StringHelper.encodeUrl(this.name)}`,
             {
                 signal
             }
@@ -178,7 +178,7 @@ export class Actor implements IActorFull {
             })
             .filter((item): item is { href: string; title: string } => !!item.title)
 
-        const bestMatch = EncodeHelper.bestMatch(
+        const bestMatch = StringHelper.bestMatch(
             this.name,
             actorList.map((item) => item.title)
         )

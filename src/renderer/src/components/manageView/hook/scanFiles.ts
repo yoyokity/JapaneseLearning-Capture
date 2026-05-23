@@ -5,10 +5,10 @@ import type { IFile, IStats } from '@shared'
 import { useDisplay } from '@renderer/components/manageView/hook'
 import {
     DataHelper,
-    EncodeHelper,
     imgExtnames,
     LogHelper,
     PathHelper,
+    StringHelper,
     TaskHelper,
     videoExtensions
 } from '@renderer/helper'
@@ -365,11 +365,11 @@ function applyNfoCacheData(video: IVideoFile, data: INfoCacheData): void {
 function createNfoCacheData(movie: any): INfoCacheData {
     const data: INfoCacheData = {
         scraperName: normalizeTextValue(movie.scraperName).trim(),
-        title: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.title)) || '',
-        originaltitle: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.originaltitle)) || '',
-        sorttitle: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.sorttitle)) || '',
-        tagline: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.tagline)) || '',
-        plot: EncodeHelper.decodeHtmlEntity(normalizeTextValue(movie.plot)) || '',
+        title: StringHelper.decodeHtmlEntity(normalizeTextValue(movie.title)) || '',
+        originaltitle: StringHelper.decodeHtmlEntity(normalizeTextValue(movie.originaltitle)) || '',
+        sorttitle: StringHelper.decodeHtmlEntity(normalizeTextValue(movie.sorttitle)) || '',
+        tagline: StringHelper.decodeHtmlEntity(normalizeTextValue(movie.tagline)) || '',
+        plot: StringHelper.decodeHtmlEntity(normalizeTextValue(movie.plot)) || '',
         mpaa: normalizeTextValue(movie.mpaa).trim(),
         rating: normalizeTextValue(movie.rating).trim(),
         director: normalizeTextValue(movie.director).trim(),

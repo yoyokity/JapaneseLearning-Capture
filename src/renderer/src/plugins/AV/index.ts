@@ -2,11 +2,11 @@ import type { NumResponse, TitleResponse } from '@renderer/plugins/AV/fanza'
 
 import {
     DebugHelper,
-    EncodeHelper,
     MediaHelper,
     NetHelper,
     posterScale,
     ScraperHelper,
+    StringHelper,
     thumbScale,
     TransHelper
 } from '@renderer/helper'
@@ -107,7 +107,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const url = `https://javdb.com/search?q=${EncodeHelper.encodeUrl(searchTitle)}&f=all/`
+            const url = `https://javdb.com/search?q=${StringHelper.encodeUrl(searchTitle)}&f=all/`
             const res = await NetHelper.get(url, {
                 signal
             })
@@ -164,7 +164,7 @@ const useScraper = ScraperHelper.defineScraper(
             )
 
             // 选择最佳匹配的视频
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 videoList.map((item) => item.title)
             )
@@ -213,7 +213,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const url = `https://jable.tv/search/${EncodeHelper.encodeUrl(searchTitle)}/`
+            const url = `https://jable.tv/search/${StringHelper.encodeUrl(searchTitle)}/`
             const res = await NetHelper.get(url, {
                 signal
             })
@@ -242,7 +242,7 @@ const useScraper = ScraperHelper.defineScraper(
                 videoList.map((item) => item.title)
             )
 
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 videoList.map((item) => item.title)
             )
@@ -292,7 +292,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const url = `https://www.mgstage.com/search/cSearch.php?search_word=${EncodeHelper.encodeUrl(remove大括号(searchTitle))}&x=17&y=12&search_shop_id=&type=top/`
+            const url = `https://www.mgstage.com/search/cSearch.php?search_word=${StringHelper.encodeUrl(StringHelper.removeBraces(searchTitle))}&x=17&y=12&search_shop_id=&type=top/`
             const res = await NetHelper.get(url, {
                 signal
             })
@@ -325,7 +325,7 @@ const useScraper = ScraperHelper.defineScraper(
             )
 
             // 找到最匹配的视频
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 videoList.map((item) => item.title)
             )
@@ -391,7 +391,7 @@ const useScraper = ScraperHelper.defineScraper(
             // 如果编号搜索失败，则使用原标题搜索
             const res = await NetHelper.post(
                 fanzaUrl,
-                getTitleBody(remove大括号(searchTitle).split(/\s+/)[0]),
+                getTitleBody(StringHelper.removeBraces(searchTitle).split(/\s+/)[0]),
                 {
                     signal,
                     parse: 'json',
@@ -417,7 +417,7 @@ const useScraper = ScraperHelper.defineScraper(
             )
 
             // 找到最匹配的视频
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 contents.map((item) => item.title),
                 80
@@ -582,7 +582,7 @@ const useScraper = ScraperHelper.defineScraper(
                 if (!title) return false
 
                 // 翻译一下
-                const re = await TransHelper.translate(remove大括号(title), false)
+                const re = await TransHelper.translate(StringHelper.removeBraces(title), false)
                 if (re.ok) title = re.text
 
                 return title
@@ -766,10 +766,10 @@ const useScraper = ScraperHelper.defineScraper(
 
                     plot += _plot
                 } else if (webContent.Fanza) {
-                    plot += EncodeHelper.decodeHtmlEntity(webContent.Fanza.description)
+                    plot += StringHelper.decodeHtmlEntity(webContent.Fanza.description)
                 }
 
-                plot = remove大括号(plot).trim()
+                plot = StringHelper.removeBraces(plot).trim()
 
                 // 翻译一下
                 if (plot) plot = (await TransHelper.translate(plot)).text
@@ -1018,7 +1018,3 @@ const useScraper = ScraperHelper.defineScraper(
 )
 
 export default useScraper
-
-function remove大括号(text: string) {
-    return text.replaceAll(/【[^】]*】/g, '')
-}

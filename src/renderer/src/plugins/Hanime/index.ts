@@ -1,10 +1,10 @@
 import {
     DebugHelper,
-    EncodeHelper,
     MediaHelper,
     NetHelper,
     posterScale,
     ScraperHelper,
+    StringHelper,
     thumbScale,
     TransHelper
 } from '@renderer/helper'
@@ -97,9 +97,9 @@ const useScraper = ScraperHelper.defineScraper(
             if (Hanime1SearchResult.searched) return Hanime1SearchResult.result
 
             const result = await (async () => {
-                const url = `https://hanime1.me/search?query=${EncodeHelper.encodeUrl(
-                    EncodeHelper.punctuationsToSpace(searchTitle)
-                )}&genre=${EncodeHelper.encodeUrl('裏番')}`
+                const url = `https://hanime1.me/search?query=${StringHelper.encodeUrl(
+                    StringHelper.punctuationsToSpace(searchTitle)
+                )}&genre=${StringHelper.encodeUrl('裏番')}`
 
                 const res = await NetHelper.get(url, { signal })
                 if (!res.ok) {
@@ -204,7 +204,7 @@ const useScraper = ScraperHelper.defineScraper(
                 if (!res.ok) {
                     return null
                 }
-                return EncodeHelper.decodeEucJp(res.body)
+                return StringHelper.decodeEucJp(res.body)
             }
 
             // 先使用编号搜索
@@ -229,7 +229,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const searchKeyword = await EncodeHelper.encodeUrlEucJp(cutBannedWord(searchTitle))
+            const searchKeyword = await StringHelper.encodeUrlEucJp(cutBannedWord(searchTitle))
             const searchUrl = `https://www.getchu.com/php/search.phtml?aurl=https://www.getchu.com/php/search.phtml&genre=anime_dvd&search_keyword=${searchKeyword}&check_key_dtl=1&submit=&gc=gc`
 
             const searchBody = await fetchPage(searchUrl)
@@ -262,7 +262,7 @@ const useScraper = ScraperHelper.defineScraper(
                 candidates.map((item) => item.title)
             )
 
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 candidates.map((item) => item.title)
             )
@@ -357,8 +357,8 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            searchTitle = EncodeHelper.fullToHalf(searchTitle)
-            const keyword = EncodeHelper.encodeUrl(cutBannedWord(searchTitle)).replace(/%20/g, '+')
+            searchTitle = StringHelper.fullToHalf(searchTitle)
+            const keyword = StringHelper.encodeUrl(cutBannedWord(searchTitle)).replace(/%20/g, '+')
             const searchUrl = `https://www.dlsite.com/pro/fsr/=/language/jp/sex_category[0]/male/keyword/${keyword}/ana_flg/all/order/trend/work_type_category[0]/movie/options_and_or/and/options[0]/JPN/options[1]/CHI/options[2]/CHI_HANS/options[3]/CHI_HANT/options[4]/NM/from/fs.header`
             const res = await NetHelper.get(searchUrl, { ...dlsiteOptions, signal })
             if (!res.ok) {
@@ -389,7 +389,7 @@ const useScraper = ScraperHelper.defineScraper(
                 candidates.map((item) => item.title)
             )
 
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 candidates.map((item) => item.title)
             )
@@ -471,7 +471,7 @@ const useScraper = ScraperHelper.defineScraper(
             }
 
             // 如果编号搜索失败，则使用原标题搜索
-            const searchUrl = `https://www.dmm.co.jp/mono/anime/-/search/=/searchstr=${EncodeHelper.encodeUrl(cutBannedWord(searchTitle))}/`
+            const searchUrl = `https://www.dmm.co.jp/mono/anime/-/search/=/searchstr=${StringHelper.encodeUrl(cutBannedWord(searchTitle))}/`
             const res = await getFanza(searchUrl)
             if (signal.aborted) return
             if (!res.ok) {
@@ -502,7 +502,7 @@ const useScraper = ScraperHelper.defineScraper(
                 candidates.map((item) => item.title)
             )
 
-            const match = EncodeHelper.bestMatch(
+            const match = StringHelper.bestMatch(
                 searchTitle,
                 candidates.map((item) => item.title)
             )
@@ -635,14 +635,14 @@ const useScraper = ScraperHelper.defineScraper(
             async parseOriginaltitle() {
                 const $ = cheerioLoad(webContent.hanime1)
                 let value = $('h3#shareBtn-title').text()
-                value = value.split('[中文字幕]')[0].trim()
+                value = StringHelper.removeBraces(value).split('[中文字幕]')[0].trim()
 
                 return value || false
             },
             async parseSorttitle() {
                 const $ = cheerioLoad(webContent.hanime1)
                 let value = $('h3#shareBtn-title').text()
-                value = value.split('[中文字幕]')[0].trim()
+                value = StringHelper.removeBraces(value).split('[中文字幕]')[0].trim()
 
                 return value || false
             },
@@ -886,7 +886,7 @@ const useScraper = ScraperHelper.defineScraper(
 
                 if (signal.aborted) return false
 
-                const re = await TransHelper.translate(plot)
+                const re = await TransHelper.translate(StringHelper.removeBraces(plot))
                 plot = re.text
 
                 if (!plot) return false

@@ -3,7 +3,7 @@ import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
 import { createConverter } from 'js-opencc'
 
-import { EncodeHelper } from './EncodeHelper'
+import { StringHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
 
 // 句子分段器，用于格式化翻译结果
@@ -76,7 +76,7 @@ const translators = {
             const url = `https://translate.google.${translateOptions.tld}/_/TranslateWebserverUi/data/batchexecute?${searchParams}`
 
             // body
-            const encodedData = EncodeHelper.encodeUrl(
+            const encodedData = StringHelper.encodeUrl(
                 `[[["${translateOptions.rpcids}","[[\\"${s_text}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
             )
             const body = `f.req=${encodedData}&`

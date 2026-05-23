@@ -9,13 +9,13 @@ import ImageEditor from '@renderer/components/manageView/editor/imageEditor.vue'
 import VideoInfo from '@renderer/components/manageView/editor/videoInfo.vue'
 import { useScanFiles } from '@renderer/components/manageView/hook'
 import {
-    EncodeHelper,
     isNumeric,
     isUrl,
     isValidDate,
     LogHelper,
     MediaHelper,
     PathHelper,
+    StringHelper,
     TaskHelper,
     TransHelper
 } from '@renderer/helper'
@@ -261,7 +261,7 @@ function getNumLink(sourceName: string) {
 
     if (!template || !num) return undefined
 
-    return template.replace('{num}', EncodeHelper.encodeUrl(num))
+    return template.replace('{num}', StringHelper.encodeUrl(num))
 }
 
 /**
