@@ -462,15 +462,15 @@ const useScraper = ScraperHelper.defineScraper(
             if (webContent.jable) {
                 const $ = cheerioLoad(webContent.jable)
                 bigImgUrl =
-                    $('.plyr__poster')
-                        .attr('style')
-                        ?.match(/https:.+\.jpg/)?.[0] || ''
+                    $('meta')
+                        .filter((_, el) => $(el).attr('property') === 'og:image')
+                        .attr('content') || bigImgUrl
             }
 
             if (webContent.MGS) {
                 const $ = cheerioLoad(webContent.MGS)
-                smallImgUrl = $('.detail_photo img.enlarge_image').attr('src') || ''
-                bigImgUrl = $('p#package a').attr('href') || ''
+                smallImgUrl = $('.detail_photo img.enlarge_image').attr('src') || smallImgUrl
+                bigImgUrl = $('p#package a').attr('href') || bigImgUrl
             }
 
             image.smallImgUrl = smallImgUrl
@@ -487,7 +487,7 @@ const useScraper = ScraperHelper.defineScraper(
                 .toArray()
                 .map((el) => {
                     const item = $(el)
-                    const name = item.text().trim()
+                    const name = item.text().replace('三上悠亞', '三上悠亜').trim()
                     const gender = item.next().hasClass('male') ? 'male' : 'female'
                     const href = item.attr('href')?.trim()
                     return {
@@ -1004,12 +1004,9 @@ const useScraper = ScraperHelper.defineScraper(
                 return extrafanarts
             },
             async parseOutput(): Promise<{ dir: string; fileName: string }> {
-                let actor = ''
+                const set = video.sorttitle.split('-')[0]
 
-                if (video.actor.length > 1) actor = '多人'
-                if (video.actor.length === 1) actor = video.actor[0].name
-
-                const dir = `${actor}/${video.sorttitle}`
+                const dir = `${set}/${video.sorttitle}`
                 return { dir, fileName: video.title }
             }
             // #endregion

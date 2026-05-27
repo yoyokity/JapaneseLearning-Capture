@@ -68,17 +68,34 @@ export class Actor implements IActorFull {
         if (!response.ok) return false
 
         let $ = cheerioLoad(response.body)
-        const actorList = $('tbody a')
+        const actorList = $('tbody tr')
             .toArray()
-            .map((el) => {
+            .flatMap((el) => {
                 const item = $(el)
-                const href = item.attr('href')?.trim()
-                return {
-                    href: href ? NetHelper.joinUrl('https://www.gravurefit.com/', href) : undefined,
-                    title: item.text().trim()
-                }
+                const nameLink = item.find('td').eq(0).find('a').eq(0)
+                const href = nameLink.attr('href')?.trim()
+                const title = nameLink.text().trim()
+
+                if (!href || !title) return []
+
+                const fullHref = NetHelper.joinUrl('https://www.gravurefit.com/', href)
+                const aliasText = item.find('td').eq(2).text().trim()
+                const aliasList = aliasText
+                    .split('/')
+                    .map((alias) => alias.trim())
+                    .filter(Boolean)
+
+                return [
+                    {
+                        href: fullHref,
+                        title
+                    },
+                    ...aliasList.map((alias) => ({
+                        href: fullHref,
+                        title: alias
+                    }))
+                ]
             })
-            .filter((item): item is { href: string; title: string } => !!item.href && !!item.title)
 
         // 找到最佳匹配演员
         const match = StringHelper.bestMatch(

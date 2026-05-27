@@ -426,8 +426,8 @@ onMounted(() => {
                         variant="on"
                         style="display: flex"
                     >
-                        <InputText id="title_num" v-model.trim="newVideo.num[value]" />
-                        <label for="title_num">{{ value }}</label>
+                        <InputText :id="`title_num_${value}`" v-model.trim="newVideo.num[value]" />
+                        <label :for="`title_num_${value}`">{{ value }}</label>
                         <Button
                             v-tooltip="'打开链接'"
                             :disabled="isScraperRunning || !getNumLink(value)"
@@ -493,8 +493,8 @@ onMounted(() => {
                     </FloatLabel>
 
                     <FloatLabel variant="on" style="display: flex">
-                        <InputText id="sort_title_label" v-model.trim="newVideo.set" />
-                        <label for="sort_title_label">影片系列</label>
+                        <InputText id="set_label" v-model.trim="newVideo.set" />
+                        <label for="set_label">影片系列</label>
                         <Button
                             v-tooltip="'搜索'"
                             :disabled="isScraperRunning"
@@ -573,7 +573,7 @@ onMounted(() => {
                     <div style="display: flex">
                         <div style="flex: 1; gap: 1rem; display: flex; flex-direction: column">
                             <div
-                                v-for="actor in newVideo.actor"
+                                v-for="(actor, index) in newVideo.actor"
                                 :key="actor.imgUrl"
                                 class="flex-input"
                             >
@@ -591,22 +591,28 @@ onMounted(() => {
                                     "
                                 />
                                 <FloatLabel variant="on">
-                                    <InputText id="mpaa_label" v-model.trim="actor.name" />
-                                    <label for="mpaa_label">演员</label>
+                                    <InputText
+                                        :id="`actor_name_${index}`"
+                                        v-model.trim="actor.name"
+                                    />
+                                    <label :for="`actor_name_${index}`">演员</label>
                                 </FloatLabel>
 
                                 <FloatLabel variant="on">
-                                    <InputText id="mpaa_label" v-model.trim="actor.role" />
-                                    <label for="mpaa_label">扮演角色</label>
+                                    <InputText
+                                        :id="`actor_role_${index}`"
+                                        v-model.trim="actor.role"
+                                    />
+                                    <label :for="`actor_role_${index}`">扮演角色</label>
                                 </FloatLabel>
 
                                 <FloatLabel style="flex: 2" variant="on">
                                     <InputText
-                                        id="rating_label"
+                                        :id="`actor_img_url_${index}`"
                                         v-model.trim="actor.imgUrl"
                                         :invalid="actor.imgUrl ? !isUrl(actor.imgUrl) : false"
                                     />
-                                    <label for="rating_label">图像链接</label>
+                                    <label :for="`actor_img_url_${index}`">图像链接</label>
                                 </FloatLabel>
                             </div>
                             <!-- 添加演员 -->
@@ -632,18 +638,24 @@ onMounted(() => {
                                     "
                                 />
                                 <FloatLabel variant="on">
-                                    <InputText id="mpaa_label" v-model.trim="addActorValue.name" />
-                                    <label for="mpaa_label">演员</label>
+                                    <InputText
+                                        id="add_actor_name_label"
+                                        v-model.trim="addActorValue.name"
+                                    />
+                                    <label for="add_actor_name_label">演员</label>
                                 </FloatLabel>
 
                                 <FloatLabel variant="on">
-                                    <InputText id="mpaa_label" v-model.trim="addActorValue.role" />
-                                    <label for="mpaa_label">扮演角色</label>
+                                    <InputText
+                                        id="add_actor_role_label"
+                                        v-model.trim="addActorValue.role"
+                                    />
+                                    <label for="add_actor_role_label">扮演角色</label>
                                 </FloatLabel>
 
                                 <FloatLabel style="flex: 2" variant="on">
                                     <InputText
-                                        id="rating_label"
+                                        id="add_actor_img_url_label"
                                         v-model.trim="addActorValue.imgUrl"
                                         :invalid="
                                             addActorValue.imgUrl
@@ -651,7 +663,7 @@ onMounted(() => {
                                                 : false
                                         "
                                     />
-                                    <label for="rating_label">图像链接</label>
+                                    <label for="add_actor_img_url_label">图像链接</label>
                                 </FloatLabel>
                             </div>
                         </div>
@@ -849,11 +861,11 @@ onMounted(() => {
                     <div class="flex-input">
                         <FloatLabel variant="on" style="display: flex">
                             <InputText
-                                id="mpaa_label"
+                                id="studio_label"
                                 v-model.trim="newVideo.studio"
                                 style="flex: 1"
                             />
-                            <label for="mpaa_label">发行商</label>
+                            <label for="studio_label">发行商</label>
                             <Button
                                 v-tooltip="'搜索'"
                                 :disabled="isScraperRunning"
@@ -866,11 +878,11 @@ onMounted(() => {
 
                         <FloatLabel variant="on" style="display: flex">
                             <InputText
-                                id="rating_label"
+                                id="maker_label"
                                 v-model.trim="newVideo.maker"
                                 style="flex: 1"
                             />
-                            <label for="rating_label">制片商</label>
+                            <label for="maker_label">制片商</label>
                             <Button
                                 v-tooltip="'搜索'"
                                 :disabled="isScraperRunning"
@@ -907,7 +919,7 @@ onMounted(() => {
                             style="display: flex"
                         >
                             <InputText
-                                id="mpaa_label"
+                                id="releasedate_label"
                                 v-model.trim="newVideo.releasedate"
                                 style="flex: 1"
                                 :invalid="
@@ -921,7 +933,7 @@ onMounted(() => {
                                     }
                                 "
                             />
-                            <label for="mpaa_label">上映日期</label>
+                            <label for="releasedate_label">上映日期</label>
                             <Button
                                 v-tooltip="'搜索'"
                                 :disabled="isScraperRunning"
