@@ -82,6 +82,9 @@ app.on('window-all-closed', () => {
 })
 
 // 程序退出时清理 temp 文件夹
-app.on('will-quit', () => {
-    fs.rmSync(app.getPath('temp'), { recursive: true, force: true })
+app.on('quit', () => {
+    try {
+        console.log('清除temp')
+        fs.rmSync(app.getPath('temp'), { recursive: true, force: true })
+    } catch {}
 })

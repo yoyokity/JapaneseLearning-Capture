@@ -615,12 +615,12 @@ const useScraper = ScraperHelper.defineScraper(
                 num.fanza = video.num.fanza ?? ''
 
                 // 获取webContent
-                await Promise.all([
-                    getWebContentHanime1(searchTitle),
-                    getWebContentGetchu(searchTitle),
-                    getWebContentDlsite(searchTitle),
-                    getWebContentFanza(searchTitle)
-                ])
+                const funcs: Promise<void>[] = []
+                if (num.hanime1 !== '-') funcs.push(getWebContentHanime1(searchTitle))
+                if (num.getchu !== '-') funcs.push(getWebContentGetchu(searchTitle))
+                if (num.dlsite !== '-') funcs.push(getWebContentDlsite(searchTitle))
+                if (num.fanza !== '-') funcs.push(getWebContentFanza(searchTitle))
+                await Promise.all(funcs)
 
                 return Boolean(webContent.hanime1)
             },

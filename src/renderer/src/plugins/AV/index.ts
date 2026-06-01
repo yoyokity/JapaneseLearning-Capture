@@ -446,12 +446,14 @@ const useScraper = ScraperHelper.defineScraper(
 
         /**
          * 获取大图和小图的链接到上下文中
+         * @param smallImgUrl 小图链接，如果传入，会优先使用传入的链接
+         * @param bigImgUrl 大图链接，如果传入，会优先使用传入的链接
          */
-        function getPosterUrl() {
+        function getPosterUrl(smallImgUrl: string = '', bigImgUrl: string = '') {
             if (image.smallImgUrl || image.bigImgUrl) return
 
-            let smallImgUrl = ''
-            let bigImgUrl = ''
+            const _smallImgUrl = smallImgUrl
+            const _bigImgUrl = bigImgUrl
 
             if (webContent.javDB) {
                 const $ = cheerioLoad(webContent.javDB)
@@ -473,8 +475,8 @@ const useScraper = ScraperHelper.defineScraper(
                 bigImgUrl = $('p#package a').attr('href') || bigImgUrl
             }
 
-            image.smallImgUrl = smallImgUrl
-            image.bigImgUrl = bigImgUrl
+            image.smallImgUrl = _smallImgUrl || smallImgUrl
+            image.bigImgUrl = _bigImgUrl || bigImgUrl
         }
 
         const getActor = DebugHelper.withMutex(async () => {
@@ -548,7 +550,10 @@ const useScraper = ScraperHelper.defineScraper(
                 logger.success(`成功解析番号：${name}${suffix ? `-${suffix}` : ''}`)
 
                 // 获取webContent
-                await Promise.all([getWebContentJavDB(name), getWebContentJable(name)])
+                const funcs: Promise<void>[] = []
+                if (num.javDB !== '-') funcs.push(getWebContentJavDB(name))
+                if (num.jable !== '-') funcs.push(getWebContentJable(name))
+                await Promise.all(funcs)
 
                 if (!webContent.javDB) return false
 
@@ -556,7 +561,10 @@ const useScraper = ScraperHelper.defineScraper(
                 const $ = cheerioLoad(webContent.javDB)
                 const _title = $('.current-title').text().trim()
                 if (_title) {
-                    await Promise.all([getWebContentMgs(_title), getWebContentFanza(_title)])
+                    const funcs: Promise<void>[] = []
+                    if (num.MGS !== '-') funcs.push(getWebContentMgs(_title))
+                    if (num.Fanza !== '-') funcs.push(getWebContentFanza(_title))
+                    await Promise.all(funcs)
                 }
 
                 return true
@@ -823,32 +831,48 @@ const useScraper = ScraperHelper.defineScraper(
                 return dayjs(time).format('YYYY-MM-DD')
             },
             async parsePoster() {
+                let useFanzaImg = false
+
                 // 有Fanza直接用Fanza的
                 if (webContent.Fanza) {
                     const posterUrl = webContent.Fanza.packageImage.mediumUrl
 
-                    const posterPath = await ScraperHelper.downloadImage(
-                        posterUrl,
-                        {
-                            signal
-                        },
-                        {
-                            resize: {
-                                maxWidth: posterScale.maxWidth,
-                                maxHeight: posterScale.maxHeight,
-                                minWidth: posterScale.minWidth,
-                                minHeight: posterScale.minHeight
+                    const imageInfo = await MediaHelper.getImageInfoFromUrl(posterUrl)
+                    if (imageInfo.height > 600 && imageInfo.width > 600) {
+                        // 图片尺寸符合要求，直接保存
+                        const posterPath = await ScraperHelper.downloadImage(
+                            posterUrl,
+                            {
+                                signal
+                            },
+                            {
+                                resize: {
+                                    maxWidth: posterScale.maxWidth,
+                                    maxHeight: posterScale.maxHeight,
+                                    minWidth: posterScale.minWidth,
+                                    minHeight: posterScale.minHeight
+                                }
                             }
+                        )
+                        if (posterPath) {
+                            logger.log(`下载图片成功！:${posterUrl}`)
+                            return posterPath
                         }
-                    )
-                    if (posterPath) {
-                        logger.log(`下载图片成功！:${posterUrl}`)
-                        return posterPath
                     }
+
+                    useFanzaImg = true
                 }
 
                 // 从其他地方获取
-                getPosterUrl()
+                if (useFanzaImg) {
+                    getPosterUrl(
+                        webContent.Fanza!.packageImage.mediumUrl,
+                        webContent.Fanza!.packageImage.largeUrl
+                    )
+                } else {
+                    getPosterUrl()
+                }
+
                 if (!image.bigImgUrl) return false
 
                 const srcImagePath = await ScraperHelper.downloadImage(image.bigImgUrl, {
