@@ -1,8 +1,16 @@
+allowBuilds:
+  '@parcel/watcher': true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  phantomjs-prebuilt: true
+  sharp: true
+  unrs-resolver: true
 onlyBuiltDependencies:
-    - '@parcel/watcher'
-    - electron
-    - electron-winstaller
-    - esbuild
-    - phantomjs-prebuilt
-    - sharp
-    - unrs-resolver
+  - '@parcel/watcher'
+  - electron
+  - electron-winstaller
+  - esbuild
+  - phantomjs-prebuilt
+  - sharp
+  - unrs-resolver

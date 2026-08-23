@@ -9,7 +9,6 @@ import {
     TransHelper
 } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
-import { toNumber } from 'es-toolkit/compat'
 
 import {
     bannedWord,
@@ -626,7 +625,7 @@ const useScraper = ScraperHelper.defineScraper(
             },
             async parseTitle() {
                 const $ = cheerioLoad(webContent.hanime1)
-                let title = $('.video-description-panel').children().eq(1).text().trim()
+                let title = $('.video-description-panel').children().eq(2).text().trim()
                 title = TransHelper.translateSC(title)
 
                 if (!title) return false
@@ -806,14 +805,13 @@ const useScraper = ScraperHelper.defineScraper(
             },
             async parseSet() {
                 const $ = cheerioLoad(webContent.hanime1)
-                const titles = $('.single-icon-wrapper.video-playlist-top').children('h4')
 
-                // 先获取视频数量，如果只有一个视频就返回null
-                const count = toNumber(titles.last().text().match(/\d+/)?.[0]) ?? 0
-                if (count <= 1) return null
+                // 获取视频数量，如果只有一个视频就返回null
+                const videoCount = $('[id="playlist-scroll"]:last').children().length
+                if (videoCount <= 1) return null
 
                 // 否则获取系列名
-                let set = titles.first().text()
+                let set = $('[id="playlist-top-block"]:last h4 a').text().trim()
                 set = set.includes('/') ? set.split('/')[1].trim() : set.trim()
 
                 if (!set) return false

@@ -17,7 +17,12 @@ import Select from 'primevue/select'
 import { useDialog } from 'primevue/usedialog'
 import { computed, ref } from 'vue'
 
-import { useFileAppendRemove, useFileChecked, useScraperStartCancel } from './hook'
+import {
+    useFileAppendRemove,
+    useFileChecked,
+    useFileRefreshError,
+    useScraperStartCancel
+} from './hook'
 
 interface IContextMenuRef {
     /**
@@ -58,6 +63,8 @@ const {
 } = useFileAppendRemove(fileList, fileInputRef)
 
 const { isAllChecked, toggleAllFilesChecked } = useFileChecked(fileList)
+
+const { hasErrorFiles, refreshErrorFiles } = useFileRefreshError(fileList)
 
 const { handleStart, handleCancel } = useScraperStartCancel(fileList)
 
@@ -218,6 +225,13 @@ function showFileEditor(item: FileItem) {
                     icon="pi pi-trash"
                     :disabled="globalStates.batchRunning"
                     @click="clearFiles"
+                />
+                <TextButton
+                    v-if="hasErrorFiles"
+                    v-tooltip.right="'将所有失败文件重置为初始状态'"
+                    icon="pi pi-refresh"
+                    :disabled="globalStates.batchRunning"
+                    @click="refreshErrorFiles"
                 />
                 <TextButton
                     v-if="fileList.length !== 0"
