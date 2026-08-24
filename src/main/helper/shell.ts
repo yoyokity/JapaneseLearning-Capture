@@ -11,7 +11,7 @@ interface LineCallback {
     (data: string): void
 }
 
-class CmdHandle {
+export class CmdHandle {
     private child: ChildProcess
     private _dataOutput = ''
     private _errorOutput = ''
@@ -40,6 +40,13 @@ class CmdHandle {
                 this._onExit(code, this._dataOutput, this._errorOutput)
             }
         })
+    }
+
+    /**
+     * 终止子进程
+     */
+    kill(): boolean {
+        return this.child.kill()
     }
 
     /**

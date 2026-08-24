@@ -1016,7 +1016,7 @@ onMounted(() => {
         background-color: transparent;
 
         :deep(.p-progressbar-value) {
-            background: var(--p-primary-color);
+            background-color: var(--p-primary-color);
         }
     }
 

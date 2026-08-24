@@ -146,6 +146,57 @@ export class MediaHelper {
     }
 
     /**
+     * 使用 ffmpeg 重编码音频（视频流复制）
+     * @param options.inputPath 输入文件路径
+     * @param options.outputPath 输出文件路径
+     * @param options.codec 音频编码格式，例如 'aac'
+     * @param options.sampleRate 采样率，例如 48000
+     * @param options.bitrate 码率，例如 '320k'
+     * @param options.onProgress 进度回调，参数为 0-1，读取不到总时长时为 -1
+     * @param options.onCancelRegister 注册取消函数，调用后会终止 ffmpeg 并结束订阅，结果以 false 结束
+     * @returns 是否成功
+     */
+    static reencodeAudio(options: {
+        inputPath: Path | string
+        outputPath: Path | string
+        codec: string
+        sampleRate: number
+        bitrate: string
+        onProgress?: (progress: number) => void
+        onCancelRegister?: (cancel: () => void) => void
+    }): Promise<boolean> {
+        return new Promise((resolve) => {
+            const subscription = ipc.media.reencodeAudio.subscribe(
+                {
+                    inputPath: options.inputPath.toString(),
+                    outputPath: options.outputPath.toString(),
+                    codec: options.codec,
+                    sampleRate: options.sampleRate,
+                    bitrate: options.bitrate
+                },
+                {
+                    onData(payload) {
+                        options.onProgress?.(payload.progress)
+                    },
+                    onError(error) {
+                        LogHelper.error(`音频重编码失败：`, error)
+                        resolve(false)
+                    },
+                    onComplete() {
+                        resolve(true)
+                    }
+                }
+            )
+
+            // 取消订阅不会触发任何回调（onError/onComplete 均不执行），这里主动结束 Promise
+            options.onCancelRegister?.(() => {
+                subscription.unsubscribe()
+                resolve(false)
+            })
+        })
+    }
+
+    /**
      * 从 ArrayBuffer 中获取图片信息
      * @param buffer 图片数据
      * @returns 图片宽度和高度

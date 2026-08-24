@@ -28,5 +28,11 @@ import Toast from 'primevue/toast'
         font-weight: normal;
         margin-right: auto;
     }
+
+    .note {
+        font-size: 0.75rem;
+        color: var(--p-text-muted-color);
+        max-width: 15rem;
+    }
 }
 </style>

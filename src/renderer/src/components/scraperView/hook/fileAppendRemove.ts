@@ -1,7 +1,7 @@
 import type { Path } from '@renderer/helper'
 import type { Ref } from 'vue'
 
-import { PathHelper, videoExtensions } from '@renderer/helper'
+import { PathHelper } from '@renderer/helper'
 import { ref } from 'vue'
 
 import { FileItem } from './type'
@@ -14,15 +14,6 @@ export function useFileAppendRemove(
     fileInputRef: Ref<HTMLInputElement | null>
 ) {
     const isDragging = ref(false)
-
-    /**
-     * 判断文件是否为支持的视频格式
-     * @param filePath 文件路径
-     */
-    function isVideoFile(filePath: Path) {
-        const ext = filePath.extname.toLowerCase()
-        return Object.keys(videoExtensions).includes(ext)
-    }
 
     /**
      * 处理拖拽进入和悬停状态
@@ -56,7 +47,7 @@ export function useFileAppendRemove(
             if (!filePath) continue
 
             const path = PathHelper.newPath(filePath)
-            if (!isVideoFile(path)) continue
+            if (!PathHelper.isVideoFile(path)) continue
 
             nextFiles.push(new FileItem(path))
         }

@@ -325,7 +325,16 @@ export class PathHelper {
     }
 
     /**
-     * 删除文件或目录
+     * 判断文件是否为支持的视频格式
+     * @param filePath 文件路径
+     */
+    static isVideoFile(filePath: Path | string): boolean {
+        const ext = (filePath instanceof Path ? filePath : new Path(filePath)).extname.toLowerCase()
+        return Object.keys(videoExtensions).includes(ext)
+    }
+
+    /**
+     * 删除文件或目录到回收站
      * @remarks 用时 <10ms
      * @returns 目标是否已不存在
      */

@@ -37,7 +37,14 @@ import {
     writeFile,
     writeLog
 } from './filesystem'
-import { readImage, readMediaInfo, resizeImage, saveImage, superResolutionImage } from './media'
+import {
+    createReencodeAudioStream,
+    readImage,
+    readMediaInfo,
+    resizeImage,
+    saveImage,
+    superResolutionImage
+} from './media'
 import {
     aiStartOptionsSchema,
     clearCache,
@@ -243,7 +250,26 @@ export const appRouter = t.router({
                     anime: z.boolean().optional()
                 })
             )
-            .mutation(({ input }) => superResolutionImage(input.imagePath, input.anime))
+            .mutation(({ input }) => superResolutionImage(input.imagePath, input.anime)),
+        reencodeAudio: procedure
+            .input(
+                z.object({
+                    inputPath: z.string(),
+                    outputPath: z.string(),
+                    codec: z.string(),
+                    sampleRate: z.number().int(),
+                    bitrate: z.string()
+                })
+            )
+            .subscription(({ input }) =>
+                createReencodeAudioStream(
+                    input.inputPath,
+                    input.outputPath,
+                    input.codec,
+                    input.sampleRate,
+                    input.bitrate
+                )
+            )
     }),
     net: t.router({
         get: procedure

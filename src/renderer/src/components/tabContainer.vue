@@ -2,11 +2,13 @@
 import ManageView from '@renderer/components/manageView/manageView.vue'
 import ScraperView from '@renderer/components/scraperView/scraperView.vue'
 import SettingsView from '@renderer/components/settingsView/settingsView.vue'
+import ToolsView from '@renderer/components/toolsView/toolsView.vue'
 import { ref } from 'vue'
 
 const tabs = [
     { id: 'scraper', name: '刮削', icon: 'pi pi-search', component: ScraperView },
     { id: 'manage', name: '管理', icon: 'pi pi-folder', component: ManageView },
+    { id: 'tools', name: '工具', icon: 'pi pi-wrench', component: ToolsView },
     { id: 'settings', name: '设置', icon: 'pi pi-cog', component: SettingsView }
 ]
 const activeTab = ref('scraper')

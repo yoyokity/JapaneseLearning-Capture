@@ -216,6 +216,7 @@ function createVideoTrackInfo(track: VideoTrack | undefined): InfoItem {
         宽高: formatResolution(track?.Width, track?.Height, track?.DisplayAspectRatio),
         码率: formatBitRate(track?.BitRate),
         帧率: formatFrameRate(track?.FrameRate, track?.FrameRate_Mode),
+        帧数: track?.FrameCount || '',
         色彩空间: track?.ColorSpace || '',
         色度抽样: track?.ChromaSubsampling || '',
         位深: formatBitDepth(track?.BitDepth),
@@ -236,6 +237,7 @@ function createAudioTrackInfo(track: AudioTrack | undefined): InfoItem {
         声道: formatChannels(track?.Channels, track?.ChannelLayout),
         采样率: formatSamplingRate(track?.SamplingRate),
         帧率: formatFrameRate(track?.FrameRate, ''),
+        帧数: track?.FrameCount || '',
         压缩模式: formatCompressionMode(track?.Compression_Mode),
         语言: track?.Language || '',
         流大小: formatStreamSize(track?.StreamSize)
@@ -249,6 +251,7 @@ const infoData = computed<Record<string, InfoItem[]>>(() => ({
         createInfoItem('加入时间', joinTimeText.value),
         createInfoItem('编辑时间', changeTimeText.value),
         createInfoItem('文件大小', formatFileSize(props.video.size)),
+        createInfoItem('总帧数', generalTrack.value?.FrameCount || ''),
         createInfoItem('总码率', formatBitRate(generalTrack.value?.OverallBitRate)),
         createInfoItem('时长', formatDuration(generalTrack.value?.Duration))
     ],

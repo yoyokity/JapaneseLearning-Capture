@@ -10,6 +10,7 @@ export type {
     ImageData,
     ImageDataInfo,
     ImageResizeOptions,
+    IReencodeAudioProgress,
     SaveImageOptions
 } from '../ipc/media'
 export type {
