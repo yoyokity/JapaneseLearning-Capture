@@ -115,8 +115,7 @@ export function useEditeScraper() {
             return
         }
 
-        // 创建新的刮削器方法实例
-        if (!funcs) funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
+        funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
 
         const funcConfig = parseFuncs.find((item) => item.name === funcName)
         const logName = funcConfig?.label || funcName
@@ -203,8 +202,8 @@ export function useEditeScraper() {
             return
         }
 
-        // 创建新的刮削器方法实例
-        if (!funcs) funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
+        // 每次都重建实例：插件闭包会缓存网页内容等状态，复用会导致改编号后重刮不生效
+        funcs = scraperContext.scraper.createScraperVideoFuncs(video, signal)
 
         scraperContext.logger.separator()
         scraperContext.logger.log(`开始刮削：`, videoObjFormat(video))

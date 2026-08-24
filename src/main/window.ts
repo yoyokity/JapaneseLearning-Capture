@@ -5,7 +5,7 @@ import { is } from '@electron-toolkit/utils'
 import { BrowserWindow, shell } from 'electron'
 import ElectronStore from 'electron-store'
 
-const iconPath = resolve(__dirname, '../../resources/mainIcon.png')
+const iconPath = resolve(import.meta.dirname, '../../resources/mainIcon.png')
 
 export function createWindow() {
     // 保存窗口配置
@@ -48,7 +48,7 @@ export function createWindow() {
         minHeight: 500,
         icon: iconPath, // 为所有平台添加图标
         webPreferences: {
-            preload: join(__dirname, '../preload/index.js'),
+            preload: join(import.meta.dirname, '../preload/index.js'),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: false,
@@ -85,7 +85,7 @@ export function createWindow() {
         // 开发环境中自动打开DevTools
         mainWindow.webContents.openDevTools({ mode: 'undocked' })
     } else {
-        mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+        mainWindow.loadFile(join(import.meta.dirname, '../renderer/index.html'))
         // 注册F12快捷键，在生产环境打开DevTools
         mainWindow.webContents.on('before-input-event', (_, input) => {
             if (input.key === 'F12') {

@@ -1,3 +1,4 @@
+import type { OutputInfo, Sharp } from 'sharp'
 import type { CmdHandle } from '../helper/shell'
 
 import * as fs from 'node:fs'
@@ -77,13 +78,13 @@ export interface ImageDataInfo {
      * @remark 这个数据传入saveImage是无效的
      */
     rawData: ArrayBuffer
-    info: sharp.OutputInfo
+    info: OutputInfo
 }
 
 /**
  * 按配置等比缩放图片
  */
-const resize = async (input: sharp.Sharp, options: ImageResizeOptions) => {
+const resize = async (input: Sharp, options: ImageResizeOptions) => {
     if (!options) return input
 
     const metadata = await input.metadata()

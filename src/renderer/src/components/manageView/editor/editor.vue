@@ -421,7 +421,7 @@ onMounted(() => {
                         )"
                         :key="value"
                         v-tooltip.top="
-                            '作品在刮削网站的编号。\n获取作品页面时，有编号就直接进入该页面，否则会先用原标题进行搜索。'
+                            '作品在刮削网站的编号。\n\n获取作品页面时，有编号就直接进入该页面，否则会先用原标题进行搜索。\n\n* 如果不要这个刮削源，可以只输入 -'
                         "
                         variant="on"
                         style="display: flex"
@@ -513,6 +513,7 @@ onMounted(() => {
                         <Textarea
                             id="plot_label"
                             v-model.trim="newVideo.plot"
+                            :disabled="isTranslatingPlot"
                             auto-resize
                             rows="5"
                             style="width: 100%"

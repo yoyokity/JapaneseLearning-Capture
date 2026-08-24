@@ -323,7 +323,7 @@ export class TransHelper {
      */
     static async init() {
         if (!this.traditionalToSimpleConverter) {
-            this.traditionalToSimpleConverter = await createConverter({ from: 't', to: 'cn' })
+            this.traditionalToSimpleConverter = await createConverter({ from: 't', to: 'cn' }, [])
         }
     }
 

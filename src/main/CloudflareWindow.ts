@@ -3,7 +3,7 @@ import type { IVerifyCookies } from './ipc/net'
 import { resolve } from 'node:path'
 import { BrowserWindow } from 'electron'
 
-const iconPath = resolve(__dirname, '../../resources/mainIcon.png')
+const iconPath = resolve(import.meta.dirname, '../../resources/mainIcon.png')
 
 let cfWindow: BrowserWindow | null = null
 

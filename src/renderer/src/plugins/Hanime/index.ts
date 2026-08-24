@@ -892,7 +892,7 @@ const useScraper = ScraperHelper.defineScraper(
             },
             async parseYear() {
                 const $ = cheerioLoad(webContent.hanime1)
-                const text = $('.video-description-panel').children().eq(0).text()
+                const text = $('.video-description-panel').children().eq(1).text()
                 const match = text.match(/\d{4}/)
                 const year = match ? match[0] : ''
                 if (!year) return false
@@ -901,7 +901,7 @@ const useScraper = ScraperHelper.defineScraper(
             },
             async parsePremiered() {
                 const $ = cheerioLoad(webContent.hanime1)
-                const text = $('.video-description-panel').children().eq(0).text()
+                const text = $('.video-description-panel').children().eq(1).text()
                 const match = text.match(/\d{4}-\d{2}-\d{2}/)
                 const premiered = match ? match[0] : ''
 
@@ -910,7 +910,7 @@ const useScraper = ScraperHelper.defineScraper(
             },
             async parseReleasedate() {
                 const $ = cheerioLoad(webContent.hanime1)
-                const text = $('.video-description-panel').children().eq(0).text()
+                const text = $('.video-description-panel').children().eq(1).text()
                 const match = text.match(/\d{4}-\d{2}-\d{2}/)
                 const releasedate = match ? match[0] : ''
 

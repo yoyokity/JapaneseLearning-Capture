@@ -1,3 +1,6 @@
+nodeLinker: hoisted
+blockExoticSubdeps: false
+
 allowBuilds:
   '@parcel/watcher': true
   electron: true
