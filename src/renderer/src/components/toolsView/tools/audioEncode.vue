@@ -1,13 +1,15 @@
 <script lang="ts" setup>
+import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
-import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
+import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { LogHelper, MediaHelper, PathHelper } from '@renderer/helper'
+import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 /** 可选的音频编码格式 */
 const codecOptions = ['aac', 'mp3']
@@ -43,6 +45,17 @@ const inputFileName = computed(() =>
 )
 
 /**
+ * 记录输入文件路径
+ * @param filePath 文件绝对路径
+ */
+function setInputFile(filePath: string) {
+    const path = PathHelper.newPath(filePath)
+    if (!PathHelper.isVideoFile(path)) return
+
+    inputPath.value = path.toString()
+}
+
+/**
  * 添加文件并记录输入路径
  * @param file 文件
  */
@@ -50,13 +63,21 @@ async function appendFile(file: File) {
     if (running.value) return
 
     const filePath = await PathHelper.getPathForFile(file)
-    if (!filePath) return
-
-    const path = PathHelper.newPath(filePath)
-    if (!PathHelper.isVideoFile(path)) return
-
-    inputPath.value = path.toString()
+    if (filePath) setInputFile(filePath)
 }
+
+// 消费其他视图通过右键菜单送来的编码请求：每次都放入该文件
+const { pendingAudioEncode } = storeToRefs(toolsStore())
+watch(
+    pendingAudioEncode,
+    (pending) => {
+        if (!pending) return
+
+        setInputFile(pending.path)
+        pendingAudioEncode.value = null
+    },
+    { immediate: true }
+)
 
 /**
  * 打开文件选择窗口
@@ -189,16 +210,26 @@ async function startEncode() {
         return
     }
 
-    // 源文件移入回收站，由输出文件代替
+    // 源文件移入回收站，输出文件改名接替源文件
     if (!(await PathHelper.remove(input))) {
         logger.warn('编码完成，但源文件移入回收站失败：', input.toString())
         notify('warn', '音频编码完成', '源文件移入回收站失败')
         return
     }
 
+    // 输出统一为mkv容器，改名为「源主名.mkv」（源本身是mkv时即原文件名）
+    const finalPath = input.parent.join(`${input.basename}.mkv`).toString()
+    const renamed = finalPath === outputPath || (await PathHelper.move(outputPath, finalPath))
+
     inputPath.value = ''
-    logger.success('编码完成，源文件已移入回收站：', outputPath)
-    notify('success', '音频编码完成')
+
+    if (renamed) {
+        logger.success('编码完成，输出文件已接替源文件：', finalPath)
+        notify('success', '音频编码完成')
+    } else {
+        logger.error('编码完成，但输出文件改名失败，保留_encode后缀：', outputPath)
+        notify('warn', '音频编码完成', '输出文件改名失败，保留_encode后缀')
+    }
 }
 </script>
 
@@ -241,13 +272,13 @@ async function startEncode() {
                     @change="handleFileSelect"
                 />
 
-                <SettingsLine description="重编码音频流，视频与其他轨道直接复制" title="编码格式">
+                <InputLine description="重编码音频流，视频与其他轨道直接复制" title="编码格式">
                     <template #right>
                         <Select v-model="codec" :disabled="running" :options="codecOptions" />
                     </template>
-                </SettingsLine>
+                </InputLine>
 
-                <SettingsLine title="采样率">
+                <InputLine title="采样率">
                     <template #right>
                         <InputNumber
                             v-model="sampleRate"
@@ -259,9 +290,9 @@ async function startEncode() {
                             show-buttons
                         />
                     </template>
-                </SettingsLine>
+                </InputLine>
 
-                <SettingsLine title="码率">
+                <InputLine title="码率">
                     <template #right>
                         <InputNumber
                             v-model="bitrate"
@@ -274,7 +305,7 @@ async function startEncode() {
                             show-buttons
                         />
                     </template>
-                </SettingsLine>
+                </InputLine>
 
                 <div class="actions">
                     <Button

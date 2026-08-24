@@ -2,8 +2,10 @@
 import ManageView from '@renderer/components/manageView/manageView.vue'
 import ScraperView from '@renderer/components/scraperView/scraperView.vue'
 import SettingsView from '@renderer/components/settingsView/settingsView.vue'
+import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import ToolsView from '@renderer/components/toolsView/toolsView.vue'
-import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { ref, watch } from 'vue'
 
 const tabs = [
     { id: 'scraper', name: '刮削', icon: 'pi pi-search', component: ScraperView },
@@ -21,6 +23,12 @@ function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
     activeTab.value = tabId
 }
+
+// 右键菜单发起音频编码时切换到工具页
+const { pendingAudioEncode } = storeToRefs(toolsStore())
+watch(pendingAudioEncode, (pending) => {
+    if (pending) switchTab('tools')
+})
 </script>
 
 <template>

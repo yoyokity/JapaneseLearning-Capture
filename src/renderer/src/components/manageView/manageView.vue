@@ -8,6 +8,7 @@ import { useMessage } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import { useDisplay, useScanFiles } from '@renderer/components/manageView/hook'
 import VideoCard from '@renderer/components/manageView/videoCard.vue'
+import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
@@ -24,6 +25,7 @@ const { runScanFiles } = useScanFiles()
 const display = useDisplay()
 const settings = settingsStore()
 const globalStates = globalStatesStore()
+const tools = toolsStore()
 const message = useMessage()
 
 const cm = ref()
@@ -81,8 +83,30 @@ const menuItems = ref([
         }
     },
     {
+        separator: true
+    },
+    {
+        label: '工具',
+        icon: 'pi pi-wrench',
+        items: [
+            {
+                label: '音频编码',
+                icon: 'pi pi-volume-up',
+                command: () => {
+                    if (currentVideo.value) {
+                        tools.openInAudioEncode(currentVideo.value.path)
+                    }
+                }
+            }
+        ]
+    },
+    {
+        separator: true
+    },
+    {
         label: '移动到回收站',
         icon: 'pi pi-trash',
+        class: 'danger-item',
         command: () => {
             if (currentVideo.value)
                 message.confirmDialog.yesOrNo('确认移动到回收站吗？', async () => {
@@ -577,5 +601,17 @@ onUnmounted(() => {
 .manage-view-fade-enter-to,
 .manage-view-fade-leave-from {
     opacity: 1;
+}
+</style>
+
+<style lang="scss">
+.p-contextmenu .danger-item .p-contextmenu-item-label,
+.p-contextmenu .danger-item .p-contextmenu-item-icon {
+    color: var(--p-red-500) !important;
+}
+
+// 菜单分隔线上下留白加大
+.p-contextmenu .p-contextmenu-separator {
+    margin: 0.5rem 0;
 }
 </style>

@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import InfoTable from '@renderer/components/control/infoTable.vue'
+import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
+import InputLineItem from '@renderer/components/control/inputLine/inputLineItem.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
-import SettingsLine from '@renderer/components/settingsView/settingsLine.vue'
-import SettingsLineItem from '@renderer/components/settingsView/settingsLineItem.vue'
 import { DeepseekReasoningEffortArray, LogHelper, PathHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
@@ -143,7 +143,7 @@ function openTempPath() {
                 <div v-if="activeTab === 'settings'" key="settings" class="settings-tab-content">
                     <h1 style="margin-top: 0">输出目录</h1>
 
-                    <SettingsLine
+                    <InputLine
                         v-for="scraper in Scraper.instances"
                         :key="scraper.scraperName"
                         :title="scraper.scraperName"
@@ -154,7 +154,7 @@ function openTempPath() {
                                 type="text"
                             />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
                     <p class="settings-view-description">
                         为每个刮削器设置的单独的输出路径。如果使用相对路径，则在app根目录下创建对应文件夹
@@ -162,7 +162,7 @@ function openTempPath() {
 
                     <h1>网络</h1>
 
-                    <SettingsLine icon="pi pi-hourglass" title="连接超时（秒）">
+                    <InputLine icon="pi pi-hourglass" title="连接超时（秒）">
                         <template #right>
                             <InputNumber
                                 v-model.trim="settings.net.timeout"
@@ -171,9 +171,9 @@ function openTempPath() {
                                 show-buttons
                             />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine
+                    <InputLine
                         description="连接失败后，重连的次数"
                         icon="pi pi-sync"
                         title="重连次数"
@@ -186,9 +186,9 @@ function openTempPath() {
                                 show-buttons
                             />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine
+                    <InputLine
                         description="同一个网站中，每次请求之间的时间间隔不小于此值，以免触发反爬"
                         icon="pi pi-clock"
                         title="最小请求间隔时间（毫秒）"
@@ -203,34 +203,34 @@ function openTempPath() {
                                 show-buttons
                             />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine :collapsible="true" icon="pi pi-globe" title="网络代理">
-                        <SettingsLineItem title="启用">
+                    <InputLine :collapsible="true" icon="pi pi-globe" title="网络代理">
+                        <InputLineItem title="启用">
                             <ToggleSwitch v-model="settings.proxy.enable" />
-                        </SettingsLineItem>
-                        <SettingsLineItem title="主机">
+                        </InputLineItem>
+                        <InputLineItem title="主机">
                             <InputText v-model.trim="settings.proxy.host" type="text" />
-                        </SettingsLineItem>
-                        <SettingsLineItem title="端口">
+                        </InputLineItem>
+                        <InputLineItem title="端口">
                             <InputNumber
                                 v-model.trim="settings.proxy.port"
                                 :max="65535"
                                 :min="1"
                                 :use-grouping="false"
                             />
-                        </SettingsLineItem>
-                    </SettingsLine>
+                        </InputLineItem>
+                    </InputLine>
 
                     <h1>翻译</h1>
 
-                    <SettingsLine icon="pi pi-language" title="启用">
+                    <InputLine icon="pi pi-language" title="启用">
                         <template #right>
                             <ToggleSwitch v-model="settings.translate.enable" />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine
+                    <InputLine
                         description="当一次AI翻译失败后，会自动调用谷歌翻译，再次翻译这段内容"
                         icon="pi pi-sync"
                         title="AI翻译失败后用谷歌翻译"
@@ -238,9 +238,9 @@ function openTempPath() {
                         <template #right>
                             <ToggleSwitch v-model="settings.translate.retryWithGoogle" />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine icon="pi pi-microchip" title="翻译引擎">
+                    <InputLine icon="pi pi-microchip" title="翻译引擎">
                         <template #right>
                             <Select
                                 v-model="settings.translate.translateEngine"
@@ -252,9 +252,9 @@ function openTempPath() {
                                 "
                             />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine
+                    <InputLine
                         ref="translateEngineConfigRef"
                         :collapsible="true"
                         :description="
@@ -268,7 +268,7 @@ function openTempPath() {
                     >
                         <!-- #region openai配置  -->
                         <div v-if="settings.translate.translateEngine === 'openai'">
-                            <SettingsLineItem title="API Key">
+                            <InputLineItem title="API Key">
                                 <Button
                                     as="a"
                                     href="https://platform.openai.com/api-keys"
@@ -281,14 +281,14 @@ function openTempPath() {
                                     v-model.trim="settings.translate.openai.apiKey"
                                     type="text"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="Base URL">
+                            </InputLineItem>
+                            <InputLineItem title="Base URL">
                                 <InputText
                                     v-model.trim="settings.translate.openai.baseURL"
                                     type="text"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="模型">
+                            </InputLineItem>
+                            <InputLineItem title="模型">
                                 <Button
                                     as="a"
                                     href="https://platform.openai.com/docs/models"
@@ -301,13 +301,13 @@ function openTempPath() {
                                     v-model.trim="settings.translate.openai.model"
                                     type="text"
                                 />
-                            </SettingsLineItem>
+                            </InputLineItem>
                         </div>
                         <!-- #endregion openai配置 -->
 
                         <!-- #region deepseek配置  -->
                         <div v-if="settings.translate.translateEngine === 'deepseek'">
-                            <SettingsLineItem title="API Key">
+                            <InputLineItem title="API Key">
                                 <Button
                                     as="a"
                                     href="https://platform.deepseek.com/api_keys"
@@ -320,8 +320,8 @@ function openTempPath() {
                                     v-model.trim="settings.translate.deepseek.apiKey"
                                     type="text"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="模型">
+                            </InputLineItem>
+                            <InputLineItem title="模型">
                                 <Button
                                     as="a"
                                     href="https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
@@ -334,22 +334,22 @@ function openTempPath() {
                                     v-model.trim="settings.translate.deepseek.model"
                                     type="text"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="思考模式">
+                            </InputLineItem>
+                            <InputLineItem title="思考模式">
                                 <ToggleSwitch v-model="settings.translate.deepseek.thinking" />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="思考强度">
+                            </InputLineItem>
+                            <InputLineItem title="思考强度">
                                 <Select
                                     v-model="settings.translate.deepseek.reasoningEffort"
                                     :options="DeepseekReasoningEffortArray as any"
                                 />
-                            </SettingsLineItem>
+                            </InputLineItem>
                         </div>
                         <!-- #endregion deepseek配置 -->
 
                         <!-- #region gemini配置  -->
                         <div v-if="settings.translate.translateEngine === 'gemini'">
-                            <SettingsLineItem title="API Key">
+                            <InputLineItem title="API Key">
                                 <Button
                                     as="a"
                                     href="https://aistudio.google.com/app/apikey"
@@ -362,8 +362,8 @@ function openTempPath() {
                                     v-model.trim="settings.translate.gemini.apiKey"
                                     type="text"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="模型">
+                            </InputLineItem>
+                            <InputLineItem title="模型">
                                 <Button
                                     v-tooltip.top="
                                         '不建议更换，默认的这个模型，免费、量大管饱、速度还快'
@@ -379,20 +379,20 @@ function openTempPath() {
                                     v-model.trim="settings.translate.gemini.model"
                                     type="text"
                                 />
-                            </SettingsLineItem>
+                            </InputLineItem>
                         </div>
                         <!-- #endregion gemini配置 -->
 
                         <!-- #region LLM配置  -->
                         <div v-if="settings.translate.translateEngine === 'localLLM'">
-                            <SettingsLineItem title="主机">
+                            <InputLineItem title="主机">
                                 <InputText
                                     v-model.trim="settings.translate.localLLM.host"
                                     type="text"
                                     @change="fetchLLMModels"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="端口">
+                            </InputLineItem>
+                            <InputLineItem title="端口">
                                 <InputNumber
                                     v-model.trim="settings.translate.localLLM.port"
                                     :max="65535"
@@ -400,8 +400,8 @@ function openTempPath() {
                                     :use-grouping="false"
                                     @change="fetchLLMModels"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="模型">
+                            </InputLineItem>
+                            <InputLineItem title="模型">
                                 <Message
                                     v-if="
                                         settings.translate.translateEngine === 'localLLM' &&
@@ -415,15 +415,15 @@ function openTempPath() {
                                     v-model="settings.translate.localLLM.model"
                                     :options="llmModels"
                                 />
-                            </SettingsLineItem>
-                            <SettingsLineItem title="">
+                            </InputLineItem>
+                            <InputLineItem title="">
                                 <Button @click="openLlmInfo"> 使用说明 </Button>
-                            </SettingsLineItem>
+                            </InputLineItem>
                         </div>
                         <!-- #endregion LLM配置 -->
-                    </SettingsLine>
+                    </InputLine>
 
-                    <SettingsLine
+                    <InputLine
                         description="测试输入文本，看看翻译器是否正常工作"
                         icon="pi pi-check"
                         title="测试当前引擎"
@@ -441,7 +441,7 @@ function openTempPath() {
                                 @blur="testText || (testText = testDefaultText)"
                             />
                         </template>
-                    </SettingsLine>
+                    </InputLine>
                 </div>
 
                 <!--info-->

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import AudioEncode from '@renderer/components/toolsView/tools/audioEncode.vue'
-import Blank from '@renderer/components/toolsView/tools/blank.vue'
-import { computed, ref } from 'vue'
+import { toolsStore } from '@renderer/components/toolsView/toolsStore'
+import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 
 /** 工具列表 */
 const tools = [
@@ -9,15 +10,10 @@ const tools = [
         id: 'audioEncode',
         name: '音频编码',
         component: AudioEncode
-    },
-    {
-        id: 'blank',
-        name: '空白工具',
-        component: Blank
     }
 ]
 
-const activeToolId = ref(tools[0]?.id ?? '')
+const { activeToolId } = storeToRefs(toolsStore())
 
 const activeTool = computed(() => tools.find((tool) => tool.id === activeToolId.value))
 
