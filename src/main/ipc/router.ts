@@ -45,6 +45,7 @@ import {
     saveImage,
     superResolutionImage
 } from './media'
+import { getSuperResolutionModels } from './models'
 import {
     aiStartOptionsSchema,
     clearCache,
@@ -243,6 +244,7 @@ export const appRouter = t.router({
             )
             .mutation(({ input }) => resizeImage(input.imageData, input.options)),
         readMediaInfo: procedure.input(z.string()).query(({ input }) => readMediaInfo(input)),
+        getSuperResolutionModels: procedure.query(() => getSuperResolutionModels()),
         superResolutionImage: procedure
             .input(
                 z.object({

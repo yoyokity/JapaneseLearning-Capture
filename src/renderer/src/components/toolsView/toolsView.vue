@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import AudioEncode from '@renderer/components/toolsView/tools/audioEncode.vue'
+import ImageSuperResolution from '@renderer/components/toolsView/tools/imageSuperResolution.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
@@ -10,6 +11,11 @@ const tools = [
         id: 'audioEncode',
         name: '音频编码',
         component: AudioEncode
+    },
+    {
+        id: 'imageSuperResolution',
+        name: '图片超分',
+        component: ImageSuperResolution
     }
 ]
 

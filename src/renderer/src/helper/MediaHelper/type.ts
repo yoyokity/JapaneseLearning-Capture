@@ -126,10 +126,7 @@ export interface IMediaInfoTextTrack {
 
 /** MediaInfo 轨道 */
 export type IMediaInfoTrack =
-    | IMediaInfoGeneralTrack
-    | IMediaInfoVideoTrack
-    | IMediaInfoAudioTrack
-    | IMediaInfoTextTrack
+    IMediaInfoGeneralTrack | IMediaInfoVideoTrack | IMediaInfoAudioTrack | IMediaInfoTextTrack
 
 /** MediaInfo 媒体信息 */
 export interface IMediaInfoMedia {

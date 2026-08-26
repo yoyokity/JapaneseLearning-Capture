@@ -2,7 +2,7 @@ import type { OutputInfo, Sharp } from 'sharp'
 import type { CmdHandle } from '../helper/shell'
 
 import * as fs from 'node:fs'
-import { join } from 'node:path'
+import { extname, join } from 'node:path'
 import { observable } from '@trpc/server/observable'
 import { app } from 'electron'
 import sharp from 'sharp'
@@ -11,6 +11,7 @@ import { v7 } from 'uuid'
 import { appPath } from '../globalStates'
 import { loadOnnxModel, upscaleImage } from '../helper/onnx'
 import { Cmd } from '../helper/shell'
+import { loadModelFileMap } from './models'
 
 /**
  * sharp支持读取的图像数据类型，也包括本地路径文本
@@ -190,18 +191,6 @@ export async function readMediaInfo(path: string) {
 }
 
 /**
- * 模型名 → 模型文件名映射（tools/models/models.json），进程内缓存
- */
-let modelFileMap: Record<string, string> | undefined
-const loadModelFileMap = async (): Promise<Record<string, string>> => {
-    if (!modelFileMap) {
-        const jsonPath = join(appPath.extraResource, 'tools/models/models.json')
-        modelFileMap = JSON.parse(await fs.promises.readFile(jsonPath, 'utf-8')) as Record<string, string>
-    }
-    return modelFileMap
-}
-
-/**
  * 超分图片（onnx）
  * @param imagePath 输入图片路径
  * @param modelName 模型名，需存在于 tools/models/models.json 映射中（如 HSRv3 / GTv6 / RealESRGAN_plus）
@@ -210,40 +199,51 @@ const loadModelFileMap = async (): Promise<Record<string, string>> => {
  */
 export async function superResolutionImage(imagePath: string, modelName: string): Promise<string> {
     const modelMap = await loadModelFileMap()
-    const modelFile = modelMap[modelName]
+    const modelFile = modelMap[modelName]?.file
     if (!modelFile) {
         throw new Error(`未知超分模型: ${modelName}。可用模型: ${Object.keys(modelMap).join(', ')}`)
     }
 
-    // 等比缩放到最长边 1280 以内
-    const sourceImageData = await fs.promises.readFile(imagePath)
-    const inputImage = await resize(sharp(sourceImageData), {
-        maxHeight: 1280,
-        maxWidth: 1280,
-        minWidth: -1,
-        minHeight: -1
-    })
+    // 先复制源文件到临时输入副本再超分：源文件只在复制瞬间被读取，之后与源文件完全隔离
+    const tempInputPath = join(
+        app.getPath('temp'),
+        `${v7()}_super_resolution_input${extname(imagePath) || '.jpg'}`
+    )
+    await fs.promises.copyFile(imagePath, tempInputPath)
 
-    // 奇数边在超分时裁掉 1px，超分后不还原
-
-    // 超分推理（模型会话常驻缓存，切换模型或退出时才会释放，方便批量处理复用）
-    const modelPath = join(appPath.extraResource, 'tools/models', modelFile)
-    const model = await loadOnnxModel(modelPath)
-    const upscaled = await upscaleImage(model, inputImage)
-
-    // 输出最长边不超过 3840，保存 jpeg
-    const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
-    const outputImage = await resize(
-        sharp(upscaled.data, { raw: { width: upscaled.width, height: upscaled.height, channels: 3 } }),
-        {
-            maxHeight: 3840,
-            maxWidth: 3840,
+    try {
+        // 等比缩放到最长边 1280 以内
+        const inputImage = await resize(sharp(tempInputPath), {
+            maxHeight: 1280,
+            maxWidth: 1280,
             minWidth: -1,
             minHeight: -1
-        }
-    )
-    await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
-    return tempResultPath
+        })
+
+        // 超分推理（模型会话常驻缓存，切换模型或退出时才会释放，方便批量处理复用）
+        const modelPath = join(appPath.extraResource, 'tools/models', modelFile)
+        const model = await loadOnnxModel(modelPath)
+        const upscaled = await upscaleImage(model, inputImage)
+
+        // 输出最长边不超过 3840，保存 jpeg
+        const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
+        const outputImage = await resize(
+            sharp(upscaled.data, {
+                raw: { width: upscaled.width, height: upscaled.height, channels: 3 }
+            }),
+            {
+                maxHeight: 3840,
+                maxWidth: 3840,
+                minWidth: -1,
+                minHeight: -1
+            }
+        )
+        await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
+        return tempResultPath
+    } finally {
+        // 清理临时输入副本
+        await fs.promises.rm(tempInputPath, { force: true }).catch(() => {})
+    }
 }
 
 /**

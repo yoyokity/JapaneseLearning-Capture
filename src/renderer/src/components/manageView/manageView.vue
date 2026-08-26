@@ -21,6 +21,9 @@ import ToggleButton from 'primevue/togglebutton'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { onMounted, onUnmounted, ref } from 'vue'
 
+// 筛选面板
+type FilterPanel = 'tag' | 'sort'
+
 const { runScanFiles } = useScanFiles()
 const display = useDisplay()
 const settings = settingsStore()
@@ -31,36 +34,7 @@ const message = useMessage()
 const cm = ref()
 const currentVideo = ref<IVideoFile | null>(null)
 const isSortActive = ref(false)
-
-// 筛选面板
-type FilterPanel = 'tag' | 'sort'
 const activeFilterPanel = ref<FilterPanel | null>(null)
-function toggleFilterPanel(panel: FilterPanel) {
-    activeFilterPanel.value = activeFilterPanel.value === panel ? null : panel
-}
-
-/**
- * 切换标签选中状态
- * @param tag 标签
- */
-function toggleCurrentTag(tag: string) {
-    if (display.currentTagField.includes(tag)) {
-        display.currentTagField = display.currentTagField.filter((value) => value !== tag)
-        return
-    }
-
-    display.currentTagField.push(tag)
-}
-
-/**
- * 判断视频是否存在编号
- * @param video 视频
- */
-function hasVideoNum(video: IVideoFile) {
-    return Object.values(video.num || {}).some(
-        (value) => typeof value === 'string' && value.trim() !== ''
-    )
-}
 
 // 右键菜单项
 const menuItems = ref([
@@ -120,6 +94,37 @@ const menuItems = ref([
     }
 ])
 
+/**
+ * 切换筛选面板
+ * @param panel 面板类型
+ */
+function toggleFilterPanel(panel: FilterPanel) {
+    activeFilterPanel.value = activeFilterPanel.value === panel ? null : panel
+}
+
+/**
+ * 切换标签选中状态
+ * @param tag 标签
+ */
+function toggleCurrentTag(tag: string) {
+    if (display.currentTagField.includes(tag)) {
+        display.currentTagField = display.currentTagField.filter((value) => value !== tag)
+        return
+    }
+
+    display.currentTagField.push(tag)
+}
+
+/**
+ * 判断视频是否存在编号
+ * @param video 视频
+ */
+function hasVideoNum(video: IVideoFile) {
+    return Object.values(video.num || {}).some(
+        (value) => typeof value === 'string' && value.trim() !== ''
+    )
+}
+
 // 重新选择目录后，清除文件列表
 function clearFiles(e: SelectChangeEvent) {
     if (e.value !== settings.currentScraper) {
@@ -168,7 +173,7 @@ function handleMouseBackAction(event: MouseEvent) {
 /**
  * 处理卡片点击
  */
-function handleCardClick(item: ManageCardItem, _event: MouseEvent) {
+function handleCardClick(item: ManageCardItem) {
     if (item.type === 'series') {
         display.currentSetField = item.name
         hideMenuOnScroll()
@@ -347,11 +352,7 @@ onUnmounted(() => {
                                     : hasVideoNum(item.video)
                             "
                             :on-click="
-                                item.type === 'series'
-                                    ? (_, event) => {
-                                          handleCardClick(item, event)
-                                      }
-                                    : undefined
+                                item.type === 'series' ? () => handleCardClick(item) : undefined
                             "
                             @contextmenu="(event: MouseEvent) => handleCardContextmenu(item, event)"
                         />
@@ -608,10 +609,5 @@ onUnmounted(() => {
 .p-contextmenu .danger-item .p-contextmenu-item-label,
 .p-contextmenu .danger-item .p-contextmenu-item-icon {
     color: var(--p-red-500) !important;
-}
-
-// 菜单分隔线上下留白加大
-.p-contextmenu .p-contextmenu-separator {
-    margin: 0.5rem 0;
 }
 </style>

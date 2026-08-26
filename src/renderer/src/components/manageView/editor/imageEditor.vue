@@ -3,11 +3,13 @@ import type { IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
 
 import { useMessage } from '@renderer/components/control/message'
 import VideoImage from '@renderer/components/control/videoImage.vue'
+import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { isUrl, MediaHelper, NetHelper, PathHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
-import { computed, ref } from 'vue'
+import Menu from 'primevue/menu'
+import { computed, inject, ref } from 'vue'
 import { Waterfall } from 'vue-waterfall-plugin-next'
 
 interface IProps {
@@ -24,14 +26,35 @@ const emit = defineEmits<{
     'update:previewImage': [value: string | null]
 }>()
 
-const globalStates = globalStatesStore()
-const message = useMessage()
-
+/** 主图字段的显示名称 */
 const imageLabels: Record<'poster' | 'fanart' | 'thumb', string> = {
     poster: '封面',
     thumb: '缩略图',
     fanart: '背景'
 }
+
+/** 剧照右键菜单项 */
+const extrafanartContextMenuItems = [
+    {
+        label: '删除当前剧照',
+        icon: 'pi pi-trash',
+        command: removeCurrentExtrafanart
+    }
+]
+
+const globalStates = globalStatesStore()
+const message = useMessage()
+const tools = toolsStore()
+/** 编辑对话框引用，跳转工具页时需要关闭它 */
+const dialogRef = inject('dialogRef') as { value?: { close: () => void } } | null
+
+const waterfallRef = ref<{ renderer: () => void } | null>(null)
+const extrafanartContextMenu = ref()
+const currentExtrafanart = ref<string | null>(null)
+
+/** 「更多」菜单目标图片类型 */
+const moreMenuTarget = ref<'poster' | 'fanart' | 'thumb' | null>(null)
+const moreMenuRef = ref()
 
 const video = computed({
     get: () => props.video,
@@ -47,23 +70,34 @@ const previewImage = computed({
     }
 })
 
-const waterfallRef = ref<{ renderer: () => void } | null>(null)
-const extrafanartContextMenu = ref()
-const currentExtrafanart = ref<string | null>(null)
-
-const extrafanartContextMenuItems = [
+/** 「更多」菜单项 */
+const moreMenuItems = computed(() => [
     {
-        label: '删除当前剧照',
-        icon: 'pi pi-trash',
+        label: '搜索',
+        icon: 'pi pi-search',
+        disabled: props.buttondisable,
         command: () => {
-            removeCurrentExtrafanart()
+            if (moreMenuTarget.value) onScrapeImage(moreMenuTarget.value)
+        }
+    },
+    {
+        label: '从剪切板添加',
+        icon: 'pi pi-clipboard',
+        command: () => {
+            if (moreMenuTarget.value) addImageFromClipboard(moreMenuTarget.value)
+        }
+    },
+    { separator: true },
+    {
+        label: '超分当前图片',
+        icon: 'pi pi-sparkles',
+        command: () => {
+            if (moreMenuTarget.value) superResolutionImage(moreMenuTarget.value)
         }
     }
-]
+])
 
-/**
- * 剧照瀑布流数据
- */
+/** 剧照瀑布流数据 */
 const extrafanartList = computed(() =>
     (video.value.extrafanart || []).map((item, index) => ({
         id: index,
@@ -133,14 +167,15 @@ function handleDrag(e: DragEvent, action: 'enter' | 'leave' | 'over') {
     e.preventDefault()
 
     if (!(e.currentTarget instanceof HTMLElement)) return
+    const target = e.currentTarget
 
     if (action === 'enter') {
-        e.currentTarget.classList.add('dragover')
+        target.classList.add('dragover')
         return
     }
 
-    if (action === 'leave' && !e.currentTarget.contains(e.relatedTarget as Node)) {
-        e.currentTarget.classList.remove('dragover')
+    if (action === 'leave' && !target.contains(e.relatedTarget as Node)) {
+        target.classList.remove('dragover')
     }
 }
 
@@ -178,25 +213,32 @@ function updateVideoImage(
 }
 
 /**
+ * 保存临时图片并加入对应图片字段
+ * @param data 图片数据
+ * @param imageType 图片类型
+ */
+async function saveAndAddImage(
+    data: ArrayBuffer,
+    imageType: 'poster' | 'fanart' | 'thumb' | 'extrafanart'
+) {
+    const imagePath = await MediaHelper.saveTempImage(data, `${video.value.title}_${imageType}`)
+    if (imagePath) updateVideoImage(imageType, imagePath)
+}
+
+/**
  * 从剪切板中读取图片并添加
  * @param imageType 图片类型
  */
 async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 'extrafanart') {
     try {
-        const clipboardText = (await navigator.clipboard.readText()).trim()
         // 优先处理URL
+        const clipboardText = (await navigator.clipboard.readText()).trim()
         if (clipboardText && isUrl(clipboardText)) {
             const url = new URL(clipboardText)
             if (url.protocol === 'http:' || url.protocol === 'https:') {
                 const re = await NetHelper.getImage(clipboardText)
                 if (re.ok) {
-                    const imagePath = await MediaHelper.saveTempImage(
-                        re.body,
-                        `${video.value.title}_${imageType}`
-                    )
-                    if (!imagePath) return
-
-                    updateVideoImage(imageType, imagePath)
+                    await saveAndAddImage(re.body, imageType)
                     return
                 }
             }
@@ -212,13 +254,7 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
             const data = await MediaHelper.readImage(path)
             if (!data) return
 
-            const imagePath = await MediaHelper.saveTempImage(
-                data.data,
-                `${video.value.title}_${imageType}`
-            )
-            if (!imagePath) return
-
-            updateVideoImage(imageType, imagePath)
+            await saveAndAddImage(data.data, imageType)
             return
         }
 
@@ -237,13 +273,7 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
                 }
             }
 
-            const imagePath = await MediaHelper.saveTempImage(
-                await blob.arrayBuffer(),
-                `${video.value.title}_${imageType}`
-            )
-            if (!imagePath) return
-
-            updateVideoImage(imageType, imagePath)
+            await saveAndAddImage(await blob.arrayBuffer(), imageType)
             return
         }
 
@@ -254,22 +284,26 @@ async function addImageFromClipboard(imageType: 'poster' | 'fanart' | 'thumb' | 
 }
 
 /**
- * 超分当前图片并更新
+ * 显示「更多」菜单
+ * @param event 鼠标事件
  * @param imageType 图片类型
  */
-async function handleSuperResolutionImage(imageType: 'poster' | 'fanart' | 'thumb') {
-    message.confirmDialog.yesOrNo('是否超分当前图片?', async () => {
-        const imagePath = video.value[imageType]
-        if (!imagePath) return
+function showMoreMenu(event: MouseEvent, imageType: 'poster' | 'fanart' | 'thumb') {
+    moreMenuTarget.value = imageType
+    moreMenuRef.value?.toggle(event)
+}
 
-        const tempImagePath = await MediaHelper.superResolutionImage(imagePath)
-        if (!tempImagePath) return
+/**
+ * 跳转到图片超分工具并放入当前图片
+ * @param imageType 图片类型
+ */
+function superResolutionImage(imageType: 'poster' | 'fanart' | 'thumb') {
+    const imagePath = video.value[imageType]
+    if (!imagePath) return
 
-        video.value = {
-            ...video.value,
-            [imageType]: tempImagePath
-        }
-    })
+    tools.openInImageSuperResolution(imagePath)
+    // 跳转到超分工具后关闭编辑对话框
+    dialogRef?.value?.close()
 }
 
 /**
@@ -321,25 +355,12 @@ function clearAllExtrafanart() {
                         {{ imageLabels[label as 'poster' | 'fanart' | 'thumb'] }}
                     </h2>
                     <Button
-                        v-tooltip="'1、左键点击从剪切板中读取并添加\n2、右键点击超分当前图片'"
-                        class="add-button"
-                        icon="pi pi-plus"
+                        v-tooltip="'更多'"
+                        icon="pi pi-ellipsis-h"
                         variant="outlined"
                         style="height: fit-content"
                         size="small"
-                        @click="addImageFromClipboard(label as 'poster' | 'fanart' | 'thumb')"
-                        @contextmenu.prevent="
-                            handleSuperResolutionImage(label as 'poster' | 'fanart' | 'thumb')
-                        "
-                    />
-                    <Button
-                        v-tooltip="'搜索'"
-                        :disabled="buttondisable"
-                        icon="pi pi-search"
-                        variant="outlined"
-                        style="height: fit-content"
-                        size="small"
-                        @click="onScrapeImage(label as 'poster' | 'fanart' | 'thumb')"
+                        @click="showMoreMenu($event, label as 'poster' | 'fanart' | 'thumb')"
                     />
                 </div>
 
@@ -390,7 +411,7 @@ function clearAllExtrafanart() {
                     variant="outlined"
                     style="height: fit-content"
                     size="small"
-                    @click="props.scraperField('parseExtrafanart')"
+                    @click="scraperField('parseExtrafanart')"
                 />
                 <Button
                     v-tooltip="'清空所有剧照'"
@@ -445,6 +466,8 @@ function clearAllExtrafanart() {
 
             <ContextMenu ref="extrafanartContextMenu" :model="extrafanartContextMenuItems" />
         </div>
+
+        <Menu ref="moreMenuRef" :model="moreMenuItems" popup />
 
         <!-- 预览图 -->
         <Teleport to="body">

@@ -1,5 +1,14 @@
 {
-    "HSRv3": "2x_HSR_V3_compact_fp16_op18.onnx",
-    "GTv6": "2xGTv6-cel_dynamic.onnx",
-    "RealESRGAN_plus": "RealESRGAN_x2plus.onnx"
+    "GTv6": {
+        "file": "2xGTv6-cel_dynamic.onnx",
+        "description": "高保真动漫风格（动漫默认）"
+    },
+    "HSRv3": {
+        "file": "2x_HSR_V3_compact_fp16_op18.onnx",
+        "description": "动漫强修复，会有明显涂抹效果，仅适用于瑕疵明显的图片"
+    },
+    "RealESRGAN_plus": {
+        "file": "RealESRGAN_x2plus.onnx",
+        "description": "通用写实（真人默认）"
+    }
 }

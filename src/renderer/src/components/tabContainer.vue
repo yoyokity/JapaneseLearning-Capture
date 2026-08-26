@@ -7,12 +7,16 @@ import ToolsView from '@renderer/components/toolsView/toolsView.vue'
 import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 
+/** 标签页配置 */
 const tabs = [
     { id: 'scraper', name: '刮削', icon: 'pi pi-search', component: ScraperView },
     { id: 'manage', name: '管理', icon: 'pi pi-folder', component: ManageView },
     { id: 'tools', name: '工具', icon: 'pi pi-wrench', component: ToolsView },
     { id: 'settings', name: '设置', icon: 'pi pi-cog', component: SettingsView }
 ]
+
+const { pendingRequestCount } = storeToRefs(toolsStore())
+
 const activeTab = ref('scraper')
 
 /**
@@ -24,11 +28,8 @@ function switchTab(tabId: string) {
     activeTab.value = tabId
 }
 
-// 右键菜单发起音频编码时切换到工具页
-const { pendingAudioEncode } = storeToRefs(toolsStore())
-watch(pendingAudioEncode, (pending) => {
-    if (pending) switchTab('tools')
-})
+// 其他视图发起工具请求（音频编码/图片超分等）时切换到工具页
+watch(pendingRequestCount, () => switchTab('tools'))
 </script>
 
 <template>

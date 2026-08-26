@@ -3,7 +3,7 @@ import Tooltip from '@renderer/components/control/tooltip'
 import { preScan } from '@renderer/components/manageView/hook'
 import { LogHelper, PathHelper, TransHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
-import { settingsStore } from '@renderer/stores'
+import { globalStatesStore, settingsStore } from '@renderer/stores'
 import { theme } from '@renderer/style/theme'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
@@ -54,6 +54,12 @@ async function initApp() {
 
     // 初始化当前刮削器缺省值为第一个刮削器
     settings.currentScraper = settings.currentScraper || Scraper.instances[0].scraperName
+
+    // 加载所有可用超分模型到全局状态并打印
+    const globalStates = globalStatesStore()
+    await globalStates.modelNamesLoaded
+    const modelNames = globalStates.modelNames.map((model) => model.name)
+    LogHelper.debug(`可用超分模型（${modelNames.length}）：${modelNames.join(', ')}`)
 
     LogHelper.success('应用初始化完成')
 

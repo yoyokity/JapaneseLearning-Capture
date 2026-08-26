@@ -513,7 +513,9 @@ const useScraper = ScraperHelper.defineScraper(
             )
             if (signal.aborted) return false
 
-            actor = actorObjs.sort((a, b) => (a.gender === 'female' ? 0 : 1) - (b.gender === 'female' ? 0 : 1))
+            actor = actorObjs.sort(
+                (a, b) => (a.gender === 'female' ? 0 : 1) - (b.gender === 'female' ? 0 : 1)
+            )
             return true
         })
 

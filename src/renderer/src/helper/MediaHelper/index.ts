@@ -147,6 +147,7 @@ export class MediaHelper {
 
     /**
      * 使用 ffmpeg 重编码音频（视频流复制）
+     * @param options 重编码选项
      * @param options.inputPath 输入文件路径
      * @param options.outputPath 输出文件路径
      * @param options.codec 音频编码格式，例如 'aac'
@@ -165,18 +166,21 @@ export class MediaHelper {
         onProgress?: (progress: number) => void
         onCancelRegister?: (cancel: () => void) => void
     }): Promise<boolean> {
+        const { inputPath, outputPath, codec, sampleRate, bitrate, onProgress, onCancelRegister } =
+            options
+
         return new Promise((resolve) => {
             const subscription = ipc.media.reencodeAudio.subscribe(
                 {
-                    inputPath: options.inputPath.toString(),
-                    outputPath: options.outputPath.toString(),
-                    codec: options.codec,
-                    sampleRate: options.sampleRate,
-                    bitrate: options.bitrate
+                    inputPath: inputPath.toString(),
+                    outputPath: outputPath.toString(),
+                    codec,
+                    sampleRate,
+                    bitrate
                 },
                 {
                     onData(payload) {
-                        options.onProgress?.(payload.progress)
+                        onProgress?.(payload.progress)
                     },
                     onError(error) {
                         LogHelper.error(`音频重编码失败：`, error)
@@ -189,7 +193,7 @@ export class MediaHelper {
             )
 
             // 取消订阅不会触发任何回调（onError/onComplete 均不执行），这里主动结束 Promise
-            options.onCancelRegister?.(() => {
+            onCancelRegister?.(() => {
                 subscription.unsubscribe()
                 resolve(false)
             })

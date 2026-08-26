@@ -26,6 +26,12 @@ button {
     display: none !important;
 }
 
+// 菜单分隔线上下留白加大
+.p-contextmenu .p-contextmenu-separator,
+.p-menu-separator {
+    margin: 0.25rem 0;
+}
+
 .p-scrolltop.p-button {
     inset-block-end: 1rem !important;
     inset-inline-end: 1rem !important;

@@ -295,15 +295,15 @@ export async function upscaleImage(
     const height = rawHeight ?? 0
 
     // 奇数边裁掉 1px（右/下边），避免模型内部 Reshape 报错
-    let image = inputImage
-    if (width % 2 === 1 || height % 2 === 1) {
-        image = image.extract({
-            left: 0,
-            top: 0,
-            width: width - (width % 2),
-            height: height - (height % 2)
-        })
-    }
+    const image =
+        width % 2 === 1 || height % 2 === 1
+            ? inputImage.extract({
+                  left: 0,
+                  top: 0,
+                  width: width - (width % 2),
+                  height: height - (height % 2)
+              })
+            : inputImage
 
     // 转 RGB，归一化到 [0, 1]，NCHW 排布
     const { data, info } = await image
@@ -315,25 +315,27 @@ export async function upscaleImage(
     const srcH = info.height
     const n = srcW * srcH
     const inputData = new Float32Array(n * 3)
-    for (let i = 0; i < n; i++) {
-        inputData[i] = (data[i * 3] ?? 0) / 255
-        inputData[n + i] = (data[i * 3 + 1] ?? 0) / 255
-        inputData[n * 2 + i] = (data[i * 3 + 2] ?? 0) / 255
+    for (let c = 0; c < 3; c++) {
+        for (let i = 0; i < n; i++) {
+            inputData[c * n + i] = (data[i * 3 + c] ?? 0) / 255
+        }
     }
 
     // 补边到 ALIGN 倍数（边缘像素复制），推理后按实际放大比例裁回
     const align = 8
-    const padH = srcH + ((-srcH) % align)
-    const padW = srcW + ((-srcW) % align)
+    const padH = srcH + (-srcH % align)
+    const padW = srcW + (-srcW % align)
     let padded = inputData
     if (padH !== srcH || padW !== srcW) {
         padded = new Float32Array(padH * padW * 3)
         for (let c = 0; c < 3; c++) {
+            const dstOffset = c * padH * padW
+            const srcOffset = c * srcH * srcW
             for (let i = 0; i < padH; i++) {
                 const si = Math.min(i, srcH - 1)
                 for (let j = 0; j < padW; j++) {
-                    const sj = Math.min(j, srcW - 1)
-                    padded[c * padH * padW + i * padW + j] = inputData[c * srcH * srcW + si * srcW + sj] ?? 0
+                    padded[dstOffset + i * padW + j] =
+                        inputData[srcOffset + si * srcW + Math.min(j, srcW - 1)] ?? 0
                 }
             }
         }
@@ -368,7 +370,10 @@ export async function upscaleImage(
         for (let i = 0; i < cropH; i++) {
             for (let j = 0; j < cropW; j++) {
                 const value = outFloat[c * outH * outW + i * outW + j] ?? 0
-                outRaw[(i * cropW + j) * 3 + c] = Math.max(0, Math.min(255, Math.round(value * 255)))
+                outRaw[(i * cropW + j) * 3 + c] = Math.max(
+                    0,
+                    Math.min(255, Math.round(value * 255))
+                )
             }
         }
     }
