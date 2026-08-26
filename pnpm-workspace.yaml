@@ -6,6 +6,7 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+  onnxruntime-node: true
   phantomjs-prebuilt: true
   sharp: true
   unrs-resolver: true
@@ -17,3 +18,6 @@ onlyBuiltDependencies:
   - phantomjs-prebuilt
   - sharp
   - unrs-resolver
+minimumReleaseAgeExclude:
+  - onnxruntime-common@1.29.0
+  - onnxruntime-node@1.29.0

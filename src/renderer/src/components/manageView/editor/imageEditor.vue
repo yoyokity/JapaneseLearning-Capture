@@ -262,7 +262,7 @@ async function handleSuperResolutionImage(imageType: 'poster' | 'fanart' | 'thum
         const imagePath = video.value[imageType]
         if (!imagePath) return
 
-        const tempImagePath = await MediaHelper.superResolutionImage(imagePath, true)
+        const tempImagePath = await MediaHelper.superResolutionImage(imagePath)
         if (!tempImagePath) return
 
         video.value = {

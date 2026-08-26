@@ -17,6 +17,7 @@
         "package": "npm run build && electron-forge package"
     },
     "dependencies": {
+        "onnxruntime-node": "^1.29.0",
         "sharp": "^0.35.3"
     },
     "devDependencies": {

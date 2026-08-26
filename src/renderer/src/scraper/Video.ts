@@ -107,14 +107,17 @@ export interface IVideo {
     releasedate: string
     /**
      * 视频文件的封面路径
+     * @remarks 900-1500左右的图片
      */
     poster: string | null
     /**
      * 视频文件的缩略图路径
+     * @remarks 720-960左右的图片
      */
     thumb: string | null
     /**
      * 视频文件的背景图路径
+     * @remarks 超大图片
      */
     fanart: string | null
     /**

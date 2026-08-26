@@ -1,0 +1,5 @@
+{
+    "HSRv3": "2x_HSR_V3_compact_fp16_op18.onnx",
+    "GTv6": "2xGTv6-cel_dynamic.onnx",
+    "RealESRGAN_plus": "RealESRGAN_x2plus.onnx"
+}

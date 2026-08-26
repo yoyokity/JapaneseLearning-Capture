@@ -5,7 +5,8 @@ module.exports = {
         icon: 'build/icons/icon.ico',
         overwrite: true,
         asar: {
-            unpack: '{**/node_modules/@img/**,**/node_modules/sharp/**}'
+            unpack:
+                '{**/node_modules/@img/**,**/node_modules/sharp/**,**/node_modules/onnxruntime-node/**}',
         },
         win32metadata: {
             ProductName: 'Japanese Learning Capture'

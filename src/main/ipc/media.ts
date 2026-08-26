@@ -9,6 +9,7 @@ import sharp from 'sharp'
 import { v7 } from 'uuid'
 
 import { appPath } from '../globalStates'
+import { loadOnnxModel, upscaleImage } from '../helper/onnx'
 import { Cmd } from '../helper/shell'
 
 /**
@@ -189,58 +190,60 @@ export async function readMediaInfo(path: string) {
 }
 
 /**
- * 超分图片
+ * 模型名 → 模型文件名映射（tools/models/models.json），进程内缓存
  */
-export async function superResolutionImage(imagePath: string, anime: boolean = false) {
-    // 保存图片到 temp
-    const tempPath = app.getPath('temp')
+let modelFileMap: Record<string, string> | undefined
+const loadModelFileMap = async (): Promise<Record<string, string>> => {
+    if (!modelFileMap) {
+        const jsonPath = join(appPath.extraResource, 'tools/models/models.json')
+        modelFileMap = JSON.parse(await fs.promises.readFile(jsonPath, 'utf-8')) as Record<string, string>
+    }
+    return modelFileMap
+}
 
-    const tempFileId = v7()
-    const tempImageBefore = join(tempPath, `${tempFileId}_realesrgan_before.png`)
-    const tempImageAfter = join(tempPath, `${tempFileId}_realesrgan_after.png`)
-    const tempResultPath = join(tempPath, `${tempFileId}_super_resolution.jpg`)
+/**
+ * 超分图片（onnx）
+ * @param imagePath 输入图片路径
+ * @param modelName 模型名，需存在于 tools/models/models.json 映射中（如 HSRv3 / GTv6 / RealESRGAN_plus）
+ * @returns 超分后的本地图片路径
+ * @remark 输入最长边缩放到 1280 以内，输出最长边不超过 3840；奇数边会裁掉 1px 再超分，返回时也不还原
+ */
+export async function superResolutionImage(imagePath: string, modelName: string): Promise<string> {
+    const modelMap = await loadModelFileMap()
+    const modelFile = modelMap[modelName]
+    if (!modelFile) {
+        throw new Error(`未知超分模型: ${modelName}。可用模型: ${Object.keys(modelMap).join(', ')}`)
+    }
+
+    // 等比缩放到最长边 1280 以内
     const sourceImageData = await fs.promises.readFile(imagePath)
-
     const inputImage = await resize(sharp(sourceImageData), {
         maxHeight: 1280,
         maxWidth: 1280,
         minWidth: -1,
         minHeight: -1
     })
-    await inputImage.toFile(tempImageBefore)
 
-    const ars = [
-        '-i',
-        tempImageBefore,
-        '-o',
-        tempImageAfter,
-        '-n',
-        anime ? 'realesrgan-x4plus-anime' : 'realesrgan-x4plus'
-    ]
+    // 奇数边在超分时裁掉 1px，超分后不还原
 
-    const realesrganPath = join(
-        appPath.extraResource,
-        'tools/realesrgan/realesrgan-ncnn-vulkan.exe'
+    // 超分推理（模型会话常驻缓存，切换模型或退出时才会释放，方便批量处理复用）
+    const modelPath = join(appPath.extraResource, 'tools/models', modelFile)
+    const model = await loadOnnxModel(modelPath)
+    const upscaled = await upscaleImage(model, inputImage)
+
+    // 输出最长边不超过 3840，保存 jpeg
+    const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
+    const outputImage = await resize(
+        sharp(upscaled.data, { raw: { width: upscaled.width, height: upscaled.height, channels: 3 } }),
+        {
+            maxHeight: 3840,
+            maxWidth: 3840,
+            minWidth: -1,
+            minHeight: -1
+        }
     )
-
-    return await new Promise<string>((resolve, reject) => {
-        const realesrgan = new Cmd(realesrganPath)
-        const cmd = realesrgan.run(ars)
-        cmd.onExit(async (code, text) => {
-            if (code === 0) {
-                const outputImage = await resize(sharp(tempImageAfter), {
-                    maxHeight: 3840,
-                    maxWidth: 3840,
-                    minWidth: -1,
-                    minHeight: -1
-                })
-                await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
-                resolve(tempResultPath)
-            } else {
-                reject(new Error(text))
-            }
-        })
-    })
+    await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
+    return tempResultPath
 }
 
 /**

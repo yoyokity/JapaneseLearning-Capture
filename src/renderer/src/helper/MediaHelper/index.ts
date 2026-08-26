@@ -115,13 +115,13 @@ export class MediaHelper {
     /**
      * 超分辨率处理图片并返回临时图片路径
      * @param imagePath 原图路径
-     * @param anime 是否为动漫图片，默认false
+     * @param modelName 模型名（HSRv3 / GTv6 / RealESRGAN_plus），默认RealESRGAN_plus
      * @returns 超分后的本地图片路径
-     * @remarks 输出的图片任意一边的长度不会高于3840
+     * @remarks 输出的图片任意一边的长度不会高于3840；奇数边会裁掉1px再超分
      */
     static async superResolutionImage(
         imagePath: Path | string,
-        anime: boolean = false
+        modelName: string = 'RealESRGAN_plus'
     ): Promise<string | null> {
         const re = await TaskHelper.queueWithInterval(
             {
@@ -132,7 +132,7 @@ export class MediaHelper {
                     async () =>
                         await ipc.media.superResolutionImage.mutate({
                             imagePath: imagePath.toString(),
-                            anime
+                            modelName
                         })
                 )
         )
