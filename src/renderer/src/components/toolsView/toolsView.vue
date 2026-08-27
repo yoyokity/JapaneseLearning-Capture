@@ -8,14 +8,14 @@ import { computed } from 'vue'
 /** 工具列表 */
 const tools = [
     {
-        id: 'audioEncode',
-        name: '音频编码',
-        component: AudioEncode
-    },
-    {
         id: 'imageSuperResolution',
         name: '图片超分',
         component: ImageSuperResolution
+    },
+    {
+        id: 'audioEncode',
+        name: '音频编码',
+        component: AudioEncode
     }
 ]
 

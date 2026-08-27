@@ -17,11 +17,11 @@ const logger = LogHelper.title('tool').title('图片超分')
 
 const toast = useToast()
 const globalStates = globalStatesStore()
-const { pendingSuperResolution } = storeToRefs(toolsStore())
+const { pendingSuperResolution, superResolutionModelName } = storeToRefs(toolsStore())
 const { setPreviewImage, setPreviewImageDiff } = usePreviewImage()
 
 const inputPath = ref('')
-const modelName = ref('')
+const sourceImagePath = ref('')
 /** 超分前的原图快照路径，用于与结果对比 */
 const originalSnapshot = ref<string | null>(null)
 /** 是否已完成超分（用于展示结果区） */
@@ -41,6 +41,7 @@ function setInputFile(filePath: string) {
     if (!imgExtnames.includes(path.extname.toLowerCase())) return
 
     inputPath.value = path.toString()
+    sourceImagePath.value = path.toString()
     originalSnapshot.value = null
     superResolved.value = false
 }
@@ -99,8 +100,8 @@ function openModelPath() {
 
 /** 打开当前图片所在目录 */
 function openImagePath() {
-    if (!inputPath.value) return
-    PathHelper.openInExplorer(PathHelper.newPath(inputPath.value).parent)
+    if (!sourceImagePath.value) return
+    PathHelper.openInExplorer(PathHelper.newPath(sourceImagePath.value).parent)
 }
 
 /** 点击图片预览：未超分时单图预览，超分后点击任一图都对比预览 */
@@ -114,7 +115,7 @@ function previewClick() {
 
 /** 开始超分：结果直接覆盖源文件（需要原图时用「还原原图」从快照恢复） */
 async function startSuperResolution() {
-    if (running.value || !inputPath.value || !modelName.value) return
+    if (running.value || !inputPath.value || !superResolutionModelName.value) return
 
     const input = PathHelper.newPath(inputPath.value)
 
@@ -125,11 +126,11 @@ async function startSuperResolution() {
     await PathHelper.copy(input, originalSnapshot.value)
 
     running.value = true
-    logger.log('开始超分：', input.toString(), `（模型：${modelName.value}）`)
+    logger.log('开始超分：', input.toString(), `（模型：${superResolutionModelName.value}）`)
 
     const [tempResultPath] = await MediaHelper.superResolutionImage(
         [input.toString()],
-        modelName.value
+        superResolutionModelName.value
     )
     running.value = false
 
@@ -192,8 +193,8 @@ watch(
     () => globalStates.modelNames,
     (models) => {
         if (!models.length) return
-        if (!models.some((model) => model.name === modelName.value)) {
-            modelName.value = models[0]!.name
+        if (!models.some((model) => model.name === superResolutionModelName.value)) {
+            superResolutionModelName.value = models[0]!.name
         }
     },
     { immediate: true }
@@ -205,7 +206,7 @@ watch(
         <!-- 工具头部 -->
         <div class="tab-header">
             <h3>图片超分</h3>
-            <p class="note">原图超过1920，将自动缩放到1920再进行超分</p>
+            <p class="note">输出图片最大尺寸为3840，超过将自动缩放</p>
         </div>
         <Scroll class="tool-body">
             <div class="content">
@@ -242,24 +243,44 @@ watch(
                 >
                     <div class="compare">
                         <div class="compare-item">
-                            <div class="compare-label">{{ superResolved ? '超分前' : '原图' }}</div>
-                            <VideoImage
-                                :path="originalSnapshot || inputPath"
-                                image-loading="eager"
-                                :image-style="{ objectFit: 'contain' }"
-                                class="compare-image"
-                                @click="previewClick"
-                            />
+                            <div class="compare-label">原图</div>
+                            <div class="compare-preview">
+                                <VideoImage
+                                    :path="originalSnapshot || inputPath"
+                                    image-loading="eager"
+                                    :image-style="{
+                                        objectFit: 'contain',
+                                        width: 'auto',
+                                        height: 'auto',
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        display: 'block'
+                                    }"
+                                    border-radius="calc(var(--border-radius) * 2)"
+                                    class="compare-image"
+                                    @click="previewClick"
+                                />
+                            </div>
                         </div>
                         <div v-if="superResolved" class="compare-item">
-                            <div class="compare-label">超分后</div>
-                            <VideoImage
-                                :path="inputPath"
-                                image-loading="eager"
-                                :image-style="{ objectFit: 'contain' }"
-                                class="compare-image"
-                                @click="previewClick"
-                            />
+                            <div class="compare-label">超分</div>
+                            <div class="compare-preview">
+                                <VideoImage
+                                    :path="inputPath"
+                                    image-loading="eager"
+                                    :image-style="{
+                                        objectFit: 'contain',
+                                        width: 'auto',
+                                        height: 'auto',
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        display: 'block'
+                                    }"
+                                    border-radius="calc(var(--border-radius) * 2)"
+                                    class="compare-image"
+                                    @click="previewClick"
+                                />
+                            </div>
                         </div>
                     </div>
                     <!-- 拖入新文件的虚线提示层 -->
@@ -274,7 +295,7 @@ watch(
                     <template #right>
                         <div class="model-select">
                             <Select
-                                v-model="modelName"
+                                v-model="superResolutionModelName"
                                 :disabled="running"
                                 :options="globalStates.modelNames"
                                 option-label="name"
@@ -321,7 +342,7 @@ watch(
                         @click="restoreOriginal"
                     />
                     <Button
-                        :disabled="running || !inputPath || !modelName"
+                        :disabled="running || !inputPath || !superResolutionModelName"
                         :loading="running"
                         icon="pi pi-sparkles"
                         label="开始超分"
@@ -450,10 +471,20 @@ watch(
     text-align: center;
 }
 
-.compare-image {
+.compare-preview {
     flex: 1;
     min-height: 0;
-    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.compare-image {
+    flex: 0 1 auto;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
     cursor: pointer;
 }
 

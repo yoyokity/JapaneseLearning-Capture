@@ -195,7 +195,7 @@ export async function readMediaInfo(path: string) {
  * @param imagePaths 输入图片路径数组
  * @param modelName 模型名，需存在于 tools/models/models.json 映射中（如 HSRv3 / GTv6 / RealESRGAN_plus）
  * @returns 超分后的本地图片路径数组，单张失败的项为 null
- * @remark 每张图最长边缩放到 1280 以内，输出最长边不超过 3840；奇数边会裁掉 1px 再超分，返回时也不还原。
+ * @remark 输出最长边不超过 3840；奇数边会裁掉 1px 再超分，返回时也不还原。
  *         一次任务内复用同一会话批量推理，任务结束后释放会话归还推理内存
  */
 export async function superResolutionImage(
@@ -223,15 +223,7 @@ export async function superResolutionImage(
             try {
                 await fs.promises.copyFile(imagePath, tempInputPath)
 
-                // 等比缩放到最长边 1920 以内
-                const inputImage = await resize(sharp(tempInputPath), {
-                    maxHeight: 1920,
-                    maxWidth: 1920,
-                    minWidth: -1,
-                    minHeight: -1
-                })
-
-                const upscaled = await upscaleImage(model, inputImage)
+                const upscaled = await upscaleImage(model, sharp(tempInputPath))
 
                 // 输出最长边不超过 3840，保存 jpeg
                 const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
