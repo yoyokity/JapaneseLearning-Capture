@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
+import { usePreviewImage } from '@renderer/components/control/previewImage'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import VideoImage from '@renderer/components/control/videoImage.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
@@ -10,13 +11,14 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { v7 } from 'uuid'
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const logger = LogHelper.title('tool').title('图片超分')
 
 const toast = useToast()
 const globalStates = globalStatesStore()
 const { pendingSuperResolution } = storeToRefs(toolsStore())
+const { setPreviewImage, setPreviewImageDiff } = usePreviewImage()
 
 const inputPath = ref('')
 const modelName = ref('')
@@ -27,11 +29,6 @@ const superResolved = ref(false)
 const isDragging = ref(false)
 const running = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
-
-/** 已选文件的文件名 */
-const inputFileName = computed(() =>
-    inputPath.value ? PathHelper.newPath(inputPath.value).filename : ''
-)
 
 /** 弹出结果提示 */
 function notify(severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail?: string) {
@@ -106,6 +103,15 @@ function openImagePath() {
     PathHelper.openInExplorer(PathHelper.newPath(inputPath.value).parent)
 }
 
+/** 点击图片预览：未超分时单图预览，超分后点击任一图都对比预览 */
+function previewClick() {
+    if (superResolved.value && originalSnapshot.value) {
+        setPreviewImageDiff({ before: originalSnapshot.value, after: inputPath.value })
+    } else {
+        setPreviewImage(originalSnapshot.value || inputPath.value)
+    }
+}
+
 /** 开始超分：结果直接覆盖源文件（需要原图时用「还原原图」从快照恢复） */
 async function startSuperResolution() {
     if (running.value || !inputPath.value || !modelName.value) return
@@ -121,7 +127,10 @@ async function startSuperResolution() {
     running.value = true
     logger.log('开始超分：', input.toString(), `（模型：${modelName.value}）`)
 
-    const tempResultPath = await MediaHelper.superResolutionImage(input.toString(), modelName.value)
+    const [tempResultPath] = await MediaHelper.superResolutionImage(
+        [input.toString()],
+        modelName.value
+    )
     running.value = false
 
     if (!tempResultPath) {
@@ -196,11 +205,13 @@ watch(
         <!-- 工具头部 -->
         <div class="tab-header">
             <h3>图片超分</h3>
+            <p class="note">原图超过1920，将自动缩放到1920再进行超分</p>
         </div>
         <Scroll class="tool-body">
             <div class="content">
-                <!-- 文件选择/拖放区域 -->
+                <!-- 文件选择/拖放区域：未输入文件时占满剩余空间 -->
                 <div
+                    v-if="!inputPath"
                     :class="{ dragging: isDragging, disabled: running }"
                     class="drop-zone"
                     @click="openFileSelect"
@@ -209,9 +220,8 @@ watch(
                     @dragover.prevent
                     @drop.prevent="handleDrop"
                 >
-                    <i v-if="!inputPath" class="pi pi-image" />
-                    <span v-if="inputPath">{{ inputFileName }}</span>
-                    <span v-else>点击选择或拖入图片文件</span>
+                    <i class="pi pi-image" />
+                    <span>点击选择或拖入图片文件</span>
                 </div>
                 <input
                     ref="fileInputRef"
@@ -221,6 +231,45 @@ watch(
                     @change="handleFileSelect"
                 />
 
+                <!-- 图片显示区：输入文件后代替拖放区，超分完成后并排显示对比结果 -->
+                <div
+                    v-if="inputPath"
+                    class="result-section"
+                    @dragenter.prevent="handleDragEnter"
+                    @dragleave="handleDragLeave"
+                    @dragover.prevent
+                    @drop.prevent="handleDrop"
+                >
+                    <div class="compare">
+                        <div class="compare-item">
+                            <div class="compare-label">{{ superResolved ? '超分前' : '原图' }}</div>
+                            <VideoImage
+                                :path="originalSnapshot || inputPath"
+                                image-loading="eager"
+                                :image-style="{ objectFit: 'contain' }"
+                                class="compare-image"
+                                @click="previewClick"
+                            />
+                        </div>
+                        <div v-if="superResolved" class="compare-item">
+                            <div class="compare-label">超分后</div>
+                            <VideoImage
+                                :path="inputPath"
+                                image-loading="eager"
+                                :image-style="{ objectFit: 'contain' }"
+                                class="compare-image"
+                                @click="previewClick"
+                            />
+                        </div>
+                    </div>
+                    <!-- 拖入新文件的虚线提示层 -->
+                    <div v-show="isDragging" class="drop-overlay">
+                        <i class="pi pi-image" />
+                        <span>松开以替换图片</span>
+                    </div>
+                </div>
+
+                <!-- 底部控件区 -->
                 <InputLine title="超分模型">
                     <template #right>
                         <div class="model-select">
@@ -245,22 +294,24 @@ watch(
                 </InputLine>
 
                 <div class="actions">
-                    <Button
-                        icon="pi pi-folder-open"
-                        label="打开模型目录"
-                        severity="secondary"
-                        :disabled="running"
-                        @click="openModelPath"
-                    />
-                    <Button
-                        v-if="inputPath"
-                        icon="pi pi-folder-open"
-                        label="打开图片目录"
-                        severity="secondary"
-                        style="margin-right: auto"
-                        :disabled="running"
-                        @click="openImagePath"
-                    />
+                    <div style="margin-right: auto; display: flex; gap: 0.75rem">
+                        <Button
+                            icon="pi pi-folder-open"
+                            label="打开模型目录"
+                            severity="secondary"
+                            :disabled="running"
+                            @click="openModelPath"
+                        />
+                        <Button
+                            v-if="inputPath"
+                            icon="pi pi-folder-open"
+                            label="打开图片目录"
+                            severity="secondary"
+                            :disabled="running"
+                            @click="openImagePath"
+                        />
+                    </div>
+
                     <Button
                         v-if="superResolved && originalSnapshot"
                         :disabled="running"
@@ -276,30 +327,6 @@ watch(
                         label="开始超分"
                         @click="startSuperResolution"
                     />
-                </div>
-
-                <!-- 图片显示区：选中图片即显示原图，超分完成后并排显示对比结果 -->
-                <div v-if="inputPath" class="result-section">
-                    <div class="compare">
-                        <div class="compare-item">
-                            <div class="compare-label">{{ superResolved ? '超分前' : '原图' }}</div>
-                            <VideoImage
-                                :path="originalSnapshot || inputPath"
-                                image-loading="eager"
-                                :image-style="{ objectFit: 'contain' }"
-                                class="compare-image"
-                            />
-                        </div>
-                        <div v-if="superResolved" class="compare-item">
-                            <div class="compare-label">超分后</div>
-                            <VideoImage
-                                :path="inputPath"
-                                image-loading="eager"
-                                :image-style="{ objectFit: 'contain' }"
-                                class="compare-image"
-                            />
-                        </div>
-                    </div>
                 </div>
             </div>
         </Scroll>
@@ -320,19 +347,28 @@ watch(
     min-height: 0;
 }
 
+// 内容撑满滚动区域，支持内部弹性布局
+:deep(.scroller-content) {
+    height: 100%;
+}
+
 .content {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     padding: 1.25rem;
 }
 
 .drop-zone {
-    width: 100%;
-    height: 8rem;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
     cursor: pointer;
     color: var(--p-text-muted-color);
     border: 0.125rem dashed var(--p-surface-300);
@@ -362,17 +398,40 @@ watch(
 }
 
 .actions {
-    margin-top: 1.5rem;
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
 }
 
 .result-section {
-    margin-top: 1.5rem;
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.drop-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-surface-100) 85%, transparent);
+    border: 0.125rem dashed var(--p-primary-color);
+    border-radius: var(--border-radius);
+    pointer-events: none;
+
+    i {
+        font-size: 1.5rem;
+    }
 }
 
 .compare {
+    flex: 1;
+    min-height: 0;
     display: flex;
     gap: 1rem;
 }
@@ -380,6 +439,8 @@ watch(
 .compare-item {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .compare-label {
@@ -390,8 +451,10 @@ watch(
 }
 
 .compare-image {
+    flex: 1;
+    min-height: 0;
     width: 100%;
-    height: 20rem;
+    cursor: pointer;
 }
 
 .model-select {

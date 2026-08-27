@@ -2,6 +2,7 @@
 import type { IScraperVideoFuncs, IVideoFile } from '@renderer/scraper'
 
 import { useMessage } from '@renderer/components/control/message'
+import { usePreviewImage } from '@renderer/components/control/previewImage'
 import VideoImage from '@renderer/components/control/videoImage.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { isUrl, MediaHelper, NetHelper, PathHelper } from '@renderer/helper'
@@ -16,14 +17,12 @@ interface IProps {
     video: IVideoFile
     scraperField: (funcName: keyof IScraperVideoFuncs) => void
     buttondisable: boolean
-    previewImage: string | null
 }
 
 const props = defineProps<IProps>()
 
 const emit = defineEmits<{
     'update:video': [value: IVideoFile]
-    'update:previewImage': [value: string | null]
 }>()
 
 /** 主图字段的显示名称 */
@@ -45,6 +44,7 @@ const extrafanartContextMenuItems = [
 const globalStates = globalStatesStore()
 const message = useMessage()
 const tools = toolsStore()
+const { setPreviewImage } = usePreviewImage()
 /** 编辑对话框引用，跳转工具页时需要关闭它 */
 const dialogRef = inject('dialogRef') as { value?: { close: () => void } } | null
 
@@ -60,13 +60,6 @@ const video = computed({
     get: () => props.video,
     set: (value: IVideoFile) => {
         emit('update:video', value)
-    }
-})
-
-const previewImage = computed({
-    get: () => props.previewImage,
-    set: (value: string | null) => {
-        emit('update:previewImage', value)
     }
 })
 
@@ -105,14 +98,6 @@ const extrafanartList = computed(() =>
         src: MediaHelper.toLocalFileUrl(item, globalStates.imageCacheVersion)
     }))
 )
-
-/**
- * 同步预览图到父组件
- * @param value 预览图数据
- */
-function setPreviewImage(value: string | null) {
-    previewImage.value = value
-}
 
 /**
  * 图片加载后重排瀑布流，确保按原图比例显示
@@ -468,32 +453,6 @@ function clearAllExtrafanart() {
         </div>
 
         <Menu ref="moreMenuRef" :model="moreMenuItems" popup />
-
-        <!-- 预览图 -->
-        <Teleport to="body">
-            <Transition mode="out-in" name="fade">
-                <div v-if="previewImage" class="preview-image-modal" @click="setPreviewImage(null)">
-                    <VideoImage
-                        :path="previewImage"
-                        image-loading="eager"
-                        image-decoding="sync"
-                        :image-style="{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain'
-                        }"
-                        :style="{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            width: '90vw',
-                            height: '90vh'
-                        }"
-                        border-radius="none"
-                    />
-                </div>
-            </Transition>
-        </Teleport>
     </div>
 </template>
 
@@ -583,35 +542,5 @@ function clearAllExtrafanart() {
             transform: scale(1.2);
         }
     }
-}
-
-.preview-image-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: color-mix(in srgb, var(--p-surface-900) 80%, transparent);
-    color: var(--p-mask-color);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(16px);
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-.fade-enter-to,
-.fade-leave-from {
-    opacity: 1;
 }
 </style>

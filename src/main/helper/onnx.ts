@@ -70,6 +70,8 @@ const createSession = async (modelPath: string, providers: OnnxProvider[]) => {
     const { InferenceSession } = await loadOnnxRuntime()
     return InferenceSession.create(modelPath, {
         executionProviders: providers,
+        // 关闭 CPU 内存 arena：推理分配的内存即时归还系统，避免任务后 RSS 维持峰值（换取少量推理性能）
+        enableCpuMemArena: false,
         // 只记录错误级别日志，避免 GPU 初始化的警告刷屏
         logSeverityLevel: 3
     })

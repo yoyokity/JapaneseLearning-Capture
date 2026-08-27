@@ -1,5 +1,4 @@
-- 安装环境包用`vp add <package-name>`，给子项目安装环境包就加上`--filter <project-name>`
-- 使用tailwind来写css
+- 思考过程使用中文
 - 不要运行类型检查：tsc、eslint、prettier、diff等
 - 需要用到搜索引擎，优先找tavily mcp工具来进行搜索（如果有的话）
 - 不要自动构建，不要自动调试

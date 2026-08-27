@@ -113,16 +113,16 @@ export class MediaHelper {
     }
 
     /**
-     * 超分辨率处理图片并返回临时图片路径
-     * @param imagePath 原图路径
+     * 批量超分辨率处理图片并返回临时图片路径数组
+     * @param imagePaths 原图路径数组
      * @param modelName 模型名（HSRv3 / GTv6 / RealESRGAN_plus），默认RealESRGAN_plus
-     * @returns 超分后的本地图片路径
+     * @returns 超分后的本地图片路径数组，单张失败的项为 null
      * @remarks 输出的图片任意一边的长度不会高于3840；奇数边会裁掉1px再超分
      */
     static async superResolutionImage(
-        imagePath: Path | string,
+        imagePaths: (Path | string)[],
         modelName: string = 'RealESRGAN_plus'
-    ): Promise<string | null> {
+    ): Promise<(string | null)[]> {
         const re = await TaskHelper.queueWithInterval(
             {
                 taskName: 'super-resolution-image'
@@ -131,7 +131,7 @@ export class MediaHelper {
                 await TaskHelper.tryExecute(
                     async () =>
                         await ipc.media.superResolutionImage.mutate({
-                            imagePath: imagePath.toString(),
+                            imagePaths: imagePaths.map((path) => path.toString()),
                             modelName
                         })
                 )
@@ -141,7 +141,7 @@ export class MediaHelper {
             return re.result
         } else {
             LogHelper.error(`超分辨率处理图片失败：`, re.error)
-            return null
+            return imagePaths.map(() => null)
         }
     }
 

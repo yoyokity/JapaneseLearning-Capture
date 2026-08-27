@@ -18,6 +18,4 @@ onlyBuiltDependencies:
   - phantomjs-prebuilt
   - sharp
   - unrs-resolver
-minimumReleaseAgeExclude:
-  - onnxruntime-common@1.29.0
-  - onnxruntime-node@1.29.0
+minimumReleaseAge: 720

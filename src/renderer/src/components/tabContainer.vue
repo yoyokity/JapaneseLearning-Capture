@@ -98,6 +98,7 @@ watch(pendingRequestCount, () => switchTab('tools'))
     border-radius: var(--border-radius);
     transition: all 0.3s var(--animation-type);
     position: relative;
+    font-weight: 500;
 
     &.active {
         background-color: var(--p-surface-200);

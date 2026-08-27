@@ -76,9 +76,6 @@ const addActorValue = ref<IActor>({
 const addTagValue = ref('')
 const addGenreValue = ref('')
 
-// 预览图片
-const previewImage = ref<string | null>(null)
-
 watch(scraperProgress, (newVal) => {
     if (newVal >= 100) TaskHelper.setProgressBar(-1)
     else TaskHelper.setProgressBar(newVal / 100)
@@ -216,8 +213,7 @@ async function onSave() {
     await delay(500)
     await runScanFiles()
 
-    // 先关闭弹窗并清空预览，释放旧图片文件引用
-    previewImage.value = null
+    // 先关闭弹窗，释放旧图片文件引用
     isSaving.value = false
     toast.success('保存成功！')
     dialogRef.value.close(newVideo.value)
@@ -964,7 +960,6 @@ onMounted(() => {
             <div class="content">
                 <ImageEditor
                     v-model:video="newVideo"
-                    v-model:preview-image="previewImage"
                     :buttondisable="isScraperRunning"
                     :scraper-field="runScraperField"
                 />

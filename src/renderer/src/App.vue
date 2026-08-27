@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { PreviewImage } from '@renderer/components/control/previewImage'
 import ScraperPregressWindow from '@renderer/components/scraperView/scraperPregressWindow.vue'
 import TabContainer from '@renderer/components/tabContainer.vue'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -12,6 +13,7 @@ import Toast from 'primevue/toast'
     <DynamicDialog />
     <ConfirmDialog :closable="false" :draggable="false"> </ConfirmDialog>
     <ScraperPregressWindow />
+    <PreviewImage />
 </template>
 
 <style lang="scss">

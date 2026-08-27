@@ -979,7 +979,7 @@ const useScraper = ScraperHelper.defineScraper(
                 if (!fanartPath) return false
 
                 // 超分一下
-                const re = await MediaHelper.superResolutionImage(fanartPath)
+                const [re] = await MediaHelper.superResolutionImage([fanartPath])
                 if (!re) return false
 
                 return re

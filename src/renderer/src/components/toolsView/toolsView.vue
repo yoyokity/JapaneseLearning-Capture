@@ -78,6 +78,7 @@ function switchTool(toolId: string) {
     position: relative;
     width: 100%;
     height: 3.5rem;
+    font-weight: 500;
     flex-shrink: 0;
     display: flex;
     justify-content: center;
