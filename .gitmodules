@@ -1,0 +1,3 @@
+[submodule "image-polish"]
+	path = image-polish
+	url = https://github.com/yoyokity/image-polish.git
