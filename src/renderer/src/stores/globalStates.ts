@@ -7,23 +7,28 @@ import { ref } from 'vue'
 
 /**
  * 内置超分模型（硬编码，name 供展示，path 为 image-polish/models 目录下的 .onnx 文件名）
- * @remark 仅当本地 models 目录中存在对应文件时才展示；未写在此处的模型文件会以文件名（不带后缀）自动补充为模型名，且无说明
+ * @remark 仅当本地 models 目录中存在对应文件时才展示（path 为空的非AI修复选项始终展示）；未写在此处的模型文件会以文件名（不带后缀）自动补充为模型名，且无说明
  */
 const BUILTIN_SUPER_RESOLUTION_MODELS: SuperResolutionModel[] = [
     {
         name: 'RealESRGAN_plus',
         path: 'RealESRGAN_x2plus.onnx',
-        description: '通用写实（真人默认）'
+        description: 'x2 通用写实（真人默认）'
     },
     {
         name: 'GTv6',
         path: '2xGTv6-cel_dynamic.onnx',
-        description: '高保真动漫风格（动漫默认）'
+        description: 'x2 高保真动漫风格（动漫默认）'
     },
     {
         name: 'HSRv3',
         path: '2x_HSR_V3_compact_fp16_op18.onnx',
-        description: '动漫强修复，会有明显涂抹效果，仅适用于瑕疵明显的图片'
+        description: 'x2 动漫强修复，会有明显涂抹效果，仅适用于瑕疵明显的图片'
+    },
+    {
+        name: '非ai修复',
+        path: '',
+        description: 'x1 纯图片瑕疵修复'
     }
 ]
 
@@ -67,9 +72,9 @@ export const globalStatesStore = defineStore('globalStates', () => {
     const modelNamesLoaded: Promise<void> = (async () => {
         try {
             const modelFiles = await ipc.media.getSuperResolutionModels.query()
-            // 硬编码中本地缺失的模型不展示
-            const builtinModels = BUILTIN_SUPER_RESOLUTION_MODELS.filter((model) =>
-                modelFiles.includes(model.path.replace(/\.onnx$/, ''))
+            // 硬编码中本地缺失的模型不展示（path 为空的非AI修复选项始终展示）
+            const builtinModels = BUILTIN_SUPER_RESOLUTION_MODELS.filter(
+                (model) => !model.path || modelFiles.includes(model.path.replace(/\.onnx$/, ''))
             )
             // 本地存在但未硬编码的模型，按文件名去后缀作为模型名与 path
             const extraModels = modelFiles

@@ -119,11 +119,11 @@ async function startSuperResolution() {
 
     const input = PathHelper.newPath(inputPath.value)
 
-    // 以模型文件名作为执行参数（name 仅用于展示，path 才是 models 目录下的 .onnx 文件名）
+    // 以模型文件名作为执行参数（name 仅用于展示，path 才是 models 目录下的 .onnx 文件名，非AI修复为 ''）
     const modelPath = globalStates.modelNames.find(
         (model) => model.name === superResolutionModelName.value
     )?.path
-    if (!modelPath) {
+    if (modelPath === undefined) {
         notify('error', '未知超分模型', '详见日志')
         return
     }

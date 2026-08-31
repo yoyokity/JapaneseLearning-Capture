@@ -190,21 +190,37 @@ export async function readMediaInfo(path: string) {
 }
 
 /**
- * 调用 imagepolish 处理单张图片（超分）
- * @param inputPath 输入图片路径
- * @param outputPath 输出图片路径（jpeg）
- * @param modelFilePath 模型文件绝对路径
+ * 调用 imagepolish 批量处理图片
+ * @param inputPaths 输入图片路径数组
+ * @param modelFilePath 模型文件绝对路径，为空时仅执行非AI修复链
+ * @remark 批量模式下 -o 会被忽略，每张输出为 <输入路径>_output.<同扩展名>
  */
-const runImagePolish = (inputPath: string, outputPath: string, modelFilePath: string) =>
+const runImagePolish = (inputPaths: string[], modelFilePath: string) =>
     new Promise<void>((resolve, reject) => {
-        const cmd = new Cmd(join(imagePolishDir(), 'imagepolish.exe')).run([
-            '-i',
-            inputPath,
-            '-o',
-            outputPath,
-            '--model',
-            modelFilePath
-        ])
+        // 共用滤镜链，AI 与非AI仅 aa/sharpen/grain 强度不同，AI 额外在 dehalo 后接 --model
+        const args: string[] = []
+        for (const inputPath of inputPaths) {
+            args.push('-i', inputPath)
+        }
+        args.push(
+            '--denoise',
+            '6',
+            '--deband',
+            'range=12,y=60,cbcr=24',
+            '--deband',
+            'range=24,y=40,cbcr=16',
+            '--aa',
+            modelFilePath ? '1' : '2',
+            '--sharpen',
+            modelFilePath ? '0.8' : '0.9',
+            '--dehalo'
+        )
+        if (modelFilePath) {
+            args.push('--model', modelFilePath)
+        }
+        args.push('--grain', modelFilePath ? '15' : '10')
+
+        const cmd = new Cmd(join(imagePolishDir(), 'imagepolish.exe')).run(args)
         cmd.onExit((code, _stdout, stderr) => {
             if (code === 0) {
                 resolve()
@@ -217,30 +233,55 @@ const runImagePolish = (inputPath: string, outputPath: string, modelFilePath: st
 /**
  * 批量超分图片（imagepolish）
  * @param imagePaths 输入图片路径数组
- * @param modelPath 模型文件名（image-polish/models 目录下的 .onnx 文件名）
+ * @param modelPath 模型文件名（image-polish/models 目录下的 .onnx 文件名，空串表示非AI修复）
  * @returns 超分后的本地图片路径数组，单张失败的项为 null
- * @remark 输出最长边不超过 3840；奇数边会裁掉 1px 再超分，返回时也不还原
  */
 export async function superResolutionImage(
     imagePaths: string[],
     modelPath: string
 ): Promise<(string | null)[]> {
-    const modelFilePath = join(imagePolishDir(), 'models', modelPath)
-    if (!fs.existsSync(modelFilePath)) {
+    const modelFilePath = modelPath ? join(imagePolishDir(), 'models', modelPath) : ''
+    if (modelPath && !fs.existsSync(modelFilePath)) {
         throw new Error(`未知超分模型文件: ${modelPath}`)
     }
 
-    const results: (string | null)[] = []
+    const results = Array.from({ length: imagePaths.length }).fill(null) as (string | null)[]
 
-    for (const imagePath of imagePaths) {
-        // 先转成 PNG 临时输入副本再超分（imagepolish 仅通过 stb_image 读取，webp 等需先转码；源文件只在转换瞬间被读取，之后与源文件完全隔离）
-        const tempInputPath = join(app.getPath('temp'), `${v7()}_super_resolution_input.png`)
-        const rawResultPath = join(app.getPath('temp'), `${v7()}_super_resolution_raw.jpg`)
-        const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
+    // 统一转成 PNG 临时输入副本（imagepolish 仅通过 stb_image 读取，webp 等需先转码；源文件只在转换瞬间被读取，之后与源文件完全隔离）
+    const inputs: { index: number; path: string }[] = []
+    for (const [index, imagePath] of imagePaths.entries()) {
         try {
+            const tempInputPath = join(
+                app.getPath('temp'),
+                `${v7()}_super_resolution_input_${index}.png`
+            )
             await sharp(imagePath).removeAlpha().png().toFile(tempInputPath)
-            await runImagePolish(tempInputPath, rawResultPath, modelFilePath)
+            inputs.push({ index, path: tempInputPath })
+        } catch (error) {
+            console.warn(`[super-resolution] 单张超分失败：${imagePath}`, error)
+        }
+    }
 
+    try {
+        // 一次调用批量处理，避免每张重新启动进程重复加载 GPU 与模型
+        if (inputs.length) {
+            await runImagePolish(
+                inputs.map((item) => item.path),
+                modelFilePath
+            )
+        }
+    } catch (error) {
+        console.warn('[super-resolution] 批量超分失败', error)
+        await Promise.all(
+            inputs.map((item) => fs.promises.rm(item.path, { force: true }).catch(() => {}))
+        )
+        return results
+    }
+
+    for (const { index, path: tempInputPath } of inputs) {
+        // 批量模式下输出为 <输入>_output.<同扩展名>
+        const rawResultPath = tempInputPath.replace(/\.png$/, '_output.png')
+        try {
             // 输出最长边不超过 3840，保存 jpeg
             const outputImage = await resize(sharp(rawResultPath), {
                 maxHeight: 3840,
@@ -248,11 +289,11 @@ export async function superResolutionImage(
                 minWidth: -1,
                 minHeight: -1
             })
+            const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
             await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
-            results.push(tempResultPath)
+            results[index] = tempResultPath
         } catch (error) {
-            console.warn(`[super-resolution] 单张超分失败：${imagePath}`, error)
-            results.push(null)
+            console.warn(`[super-resolution] 单张超分失败：${imagePaths[index]}`, error)
         } finally {
             // 清理临时输入副本与中间结果
             await fs.promises.rm(tempInputPath, { force: true }).catch(() => {})
