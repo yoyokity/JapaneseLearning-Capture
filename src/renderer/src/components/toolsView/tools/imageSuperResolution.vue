@@ -137,10 +137,7 @@ async function startSuperResolution() {
     running.value = true
     logger.log('开始超分：', input.toString(), `（模型：${superResolutionModelName.value}）`)
 
-    const [tempResultPath] = await MediaHelper.superResolutionImage(
-        [input.toString()],
-        modelPath
-    )
+    const [tempResultPath] = await MediaHelper.superResolutionImage([input.toString()], modelPath)
     running.value = false
 
     if (!tempResultPath) {

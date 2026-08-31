@@ -28,7 +28,9 @@ export async function getSuperResolutionModels(): Promise<string[]> {
     const dir = join(imagePolishDir(), 'models')
     try {
         const files = await fs.promises.readdir(dir)
-        return files.filter((file) => file.endsWith('.onnx')).map((file) => file.replace(/\.onnx$/, ''))
+        return files
+            .filter((file) => file.endsWith('.onnx'))
+            .map((file) => file.replace(/\.onnx$/, ''))
     } catch {
         // 目录不存在时返回空列表，前端仅展示硬编码模型
         return []
