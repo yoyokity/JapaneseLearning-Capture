@@ -95,7 +95,7 @@ function handleDragLeave(e: DragEvent) {
 
 /** 打开超分模型目录 */
 function openModelPath() {
-    PathHelper.openInExplorer(PathHelper.arsrPath.extraResource.join('tools/models'))
+    PathHelper.openInExplorer(PathHelper.arsrPath.extraResource.join('tools/image-polish/models'))
 }
 
 /** 打开当前图片所在目录 */
@@ -119,6 +119,15 @@ async function startSuperResolution() {
 
     const input = PathHelper.newPath(inputPath.value)
 
+    // 以模型文件名作为执行参数（name 仅用于展示，path 才是 models 目录下的 .onnx 文件名）
+    const modelPath = globalStates.modelNames.find(
+        (model) => model.name === superResolutionModelName.value
+    )?.path
+    if (!modelPath) {
+        notify('error', '未知超分模型', '详见日志')
+        return
+    }
+
     // 快照当前原图用于对比（fs 复制，避免以路径打开源文件滞留句柄）
     originalSnapshot.value = PathHelper.tempPath
         .join(`${v7()}super-resolution-original.${input.extname}`)
@@ -130,7 +139,7 @@ async function startSuperResolution() {
 
     const [tempResultPath] = await MediaHelper.superResolutionImage(
         [input.toString()],
-        superResolutionModelName.value
+        modelPath
     )
     running.value = false
 

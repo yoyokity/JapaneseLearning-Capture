@@ -10,3 +10,5 @@ out
 /data
 .VSCodeCounter/
 *.tsbuildinfo
+.zcode
+tools/image-polish/

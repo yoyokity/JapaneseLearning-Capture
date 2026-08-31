@@ -2,16 +2,15 @@ import type { OutputInfo, Sharp } from 'sharp'
 import type { CmdHandle } from '../helper/shell'
 
 import * as fs from 'node:fs'
-import { extname, join } from 'node:path'
+import { join } from 'node:path'
 import { observable } from '@trpc/server/observable'
 import { app } from 'electron'
 import sharp from 'sharp'
 import { v7 } from 'uuid'
 
 import { appPath } from '../globalStates'
-import { disposeOnnxModel, loadOnnxModel, upscaleImage } from '../helper/onnx'
 import { Cmd } from '../helper/shell'
-import { loadModelFileMap } from './models'
+import { imagePolishDir } from './models'
 
 /**
  * sharp支持读取的图像数据类型，也包括本地路径文本
@@ -191,68 +190,76 @@ export async function readMediaInfo(path: string) {
 }
 
 /**
- * 批量超分图片（onnx）
+ * 调用 imagepolish 处理单张图片（超分）
+ * @param inputPath 输入图片路径
+ * @param outputPath 输出图片路径（jpeg）
+ * @param modelFilePath 模型文件绝对路径
+ */
+const runImagePolish = (inputPath: string, outputPath: string, modelFilePath: string) =>
+    new Promise<void>((resolve, reject) => {
+        const cmd = new Cmd(join(imagePolishDir(), 'imagepolish.exe')).run([
+            '-i',
+            inputPath,
+            '-o',
+            outputPath,
+            '--model',
+            modelFilePath
+        ])
+        cmd.onExit((code, _stdout, stderr) => {
+            if (code === 0) {
+                resolve()
+            } else {
+                reject(new Error(stderr || `imagepolish exited with code ${code}`))
+            }
+        })
+    })
+
+/**
+ * 批量超分图片（imagepolish）
  * @param imagePaths 输入图片路径数组
- * @param modelName 模型名，需存在于 tools/models/models.json 映射中（如 HSRv3 / GTv6 / RealESRGAN_plus）
+ * @param modelPath 模型文件名（image-polish/models 目录下的 .onnx 文件名）
  * @returns 超分后的本地图片路径数组，单张失败的项为 null
- * @remark 输出最长边不超过 3840；奇数边会裁掉 1px 再超分，返回时也不还原。
- *         一次任务内复用同一会话批量推理，任务结束后释放会话归还推理内存
+ * @remark 输出最长边不超过 3840；奇数边会裁掉 1px 再超分，返回时也不还原
  */
 export async function superResolutionImage(
     imagePaths: string[],
-    modelName: string
+    modelPath: string
 ): Promise<(string | null)[]> {
-    const modelMap = await loadModelFileMap()
-    const modelFile = modelMap[modelName]?.file
-    if (!modelFile) {
-        throw new Error(`未知超分模型: ${modelName}。可用模型: ${Object.keys(modelMap).join(', ')}`)
+    const modelFilePath = join(imagePolishDir(), 'models', modelPath)
+    if (!fs.existsSync(modelFilePath)) {
+        throw new Error(`未知超分模型文件: ${modelPath}`)
     }
 
-    const modelPath = join(appPath.extraResource, 'tools/models', modelFile)
-    try {
-        // 任务内复用同一模型会话
-        const model = await loadOnnxModel(modelPath)
-        const results: (string | null)[] = []
+    const results: (string | null)[] = []
 
-        for (const imagePath of imagePaths) {
-            // 先复制源文件到临时输入副本再超分：源文件只在复制瞬间被读取，之后与源文件完全隔离
-            const tempInputPath = join(
-                app.getPath('temp'),
-                `${v7()}_super_resolution_input${extname(imagePath) || '.jpg'}`
-            )
-            try {
-                await fs.promises.copyFile(imagePath, tempInputPath)
+    for (const imagePath of imagePaths) {
+        // 先转成 PNG 临时输入副本再超分（imagepolish 仅通过 stb_image 读取，webp 等需先转码；源文件只在转换瞬间被读取，之后与源文件完全隔离）
+        const tempInputPath = join(app.getPath('temp'), `${v7()}_super_resolution_input.png`)
+        const rawResultPath = join(app.getPath('temp'), `${v7()}_super_resolution_raw.jpg`)
+        const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
+        try {
+            await sharp(imagePath).removeAlpha().png().toFile(tempInputPath)
+            await runImagePolish(tempInputPath, rawResultPath, modelFilePath)
 
-                const upscaled = await upscaleImage(model, sharp(tempInputPath))
-
-                // 输出最长边不超过 3840，保存 jpeg
-                const tempResultPath = join(app.getPath('temp'), `${v7()}_super_resolution.jpg`)
-                const outputImage = await resize(
-                    sharp(upscaled.data, {
-                        raw: { width: upscaled.width, height: upscaled.height, channels: 3 }
-                    }),
-                    {
-                        maxHeight: 3840,
-                        maxWidth: 3840,
-                        minWidth: -1,
-                        minHeight: -1
-                    }
-                )
-                await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
-                results.push(tempResultPath)
-            } catch (error) {
-                console.warn(`[super-resolution] 单张超分失败：${imagePath}`, error)
-                results.push(null)
-            } finally {
-                // 清理临时输入副本
-                await fs.promises.rm(tempInputPath, { force: true }).catch(() => {})
-            }
+            // 输出最长边不超过 3840，保存 jpeg
+            const outputImage = await resize(sharp(rawResultPath), {
+                maxHeight: 3840,
+                maxWidth: 3840,
+                minWidth: -1,
+                minHeight: -1
+            })
+            await outputImage.jpeg({ quality: 92 }).toFile(tempResultPath)
+            results.push(tempResultPath)
+        } catch (error) {
+            console.warn(`[super-resolution] 单张超分失败：${imagePath}`, error)
+            results.push(null)
+        } finally {
+            // 清理临时输入副本与中间结果
+            await fs.promises.rm(tempInputPath, { force: true }).catch(() => {})
+            await fs.promises.rm(rawResultPath, { force: true }).catch(() => {})
         }
-        return results
-    } finally {
-        // 任务完成释放模型会话，归还推理内存
-        await disposeOnnxModel(modelPath)
     }
+    return results
 }
 
 /**

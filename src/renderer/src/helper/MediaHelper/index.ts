@@ -115,13 +115,13 @@ export class MediaHelper {
     /**
      * 批量超分辨率处理图片并返回临时图片路径数组
      * @param imagePaths 原图路径数组
-     * @param modelName 模型名（HSRv3 / GTv6 / RealESRGAN_plus），默认RealESRGAN_plus
+     * @param modelPath 模型文件名（image-polish/models 目录下的 .onnx 文件名），默认 RealESRGAN_x2plus.onnx
      * @returns 超分后的本地图片路径数组，单张失败的项为 null
      * @remarks 输出的图片任意一边的长度不会高于3840；奇数边会裁掉1px再超分
      */
     static async superResolutionImage(
         imagePaths: (Path | string)[],
-        modelName: string = 'RealESRGAN_plus'
+        modelPath: string = 'RealESRGAN_x2plus.onnx'
     ): Promise<(string | null)[]> {
         const re = await TaskHelper.queueWithInterval(
             {
@@ -132,7 +132,7 @@ export class MediaHelper {
                     async () =>
                         await ipc.media.superResolutionImage.mutate({
                             imagePaths: imagePaths.map((path) => path.toString()),
-                            modelName
+                            modelPath
                         })
                 )
         )

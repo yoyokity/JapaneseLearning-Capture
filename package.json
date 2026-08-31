@@ -9,15 +9,15 @@
     "scripts": {
         "type-check": "vue-tsc --noEmit -p tsconfig.web.json",
         "lint": "eslint . --fix && prettier . --write --experimental-cli",
-        "start": "chcp 65001 && electron-vite preview --outDir=dist",
-        "dev": "chcp 65001 && electron-vite dev --outDir=dist",
-        "build": "npm run build:icons && npm run build:vite",
+        "start": "npm run build:image-polish && chcp 65001 && electron-vite preview --outDir=dist",
+        "dev": "npm run build:image-polish && chcp 65001 && electron-vite dev --outDir=dist",
+        "build": "npm run build:icons && npm run build:vite && npm run build:image-polish",
         "build:vite": "electron-vite build --outDir=dist",
         "build:icons": "electron-icon-builder --input=./resources/mainIcon.png --output=./build -f",
+        "build:image-polish": "cd image-polish && python build.py && xcopy /E /I /Y out ..\\tools\\image-polish",
         "package": "npm run build && electron-forge package"
     },
     "dependencies": {
-        "onnxruntime-node": "^1.29.0",
         "sharp": "^0.35.4"
     },
     "devDependencies": {

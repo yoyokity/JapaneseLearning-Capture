@@ -1016,7 +1016,7 @@ const useScraper = ScraperHelper.defineScraper(
                         })) || ''
                     if (posterPath) {
                         // 超分一下
-                        const [path] = await MediaHelper.superResolutionImage([posterPath], 'GTv6')
+                        const [path] = await MediaHelper.superResolutionImage([posterPath], '2xGTv6-cel_dynamic.onnx')
                         return path || false
                     }
                 }
@@ -1034,7 +1034,7 @@ const useScraper = ScraperHelper.defineScraper(
                 if (!posterPath) return false
 
                 // 超分一下
-                const [path] = await MediaHelper.superResolutionImage([posterPath], 'GTv6')
+                const [path] = await MediaHelper.superResolutionImage([posterPath], '2xGTv6-cel_dynamic.onnx')
                 return path || false
             },
             async parseExtrafanart() {

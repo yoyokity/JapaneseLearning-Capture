@@ -16,7 +16,7 @@ export default defineConfig({
     main: {
         build: {
             rollupOptions: {
-                external: ['electron', 'sharp', /^@img\/.*/, /^onnxruntime/],
+                external: ['electron', 'sharp', /^@img\/.*/],
                 output: {
                     format: 'es'
                 }

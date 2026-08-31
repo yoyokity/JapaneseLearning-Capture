@@ -13,7 +13,7 @@ export type {
     IReencodeAudioProgress,
     SaveImageOptions
 } from '../ipc/media'
-export type { ModelFileInfo, SuperResolutionModel } from '../ipc/models'
+export type { SuperResolutionModel } from '../ipc/models'
 export type {
     CookiesSetDetails,
     IAiOptions,

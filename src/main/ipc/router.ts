@@ -249,10 +249,10 @@ export const appRouter = t.router({
             .input(
                 z.object({
                     imagePaths: z.array(z.string()),
-                    modelName: z.string()
+                    modelPath: z.string()
                 })
             )
-            .mutation(({ input }) => superResolutionImage(input.imagePaths, input.modelName)),
+            .mutation(({ input }) => superResolutionImage(input.imagePaths, input.modelPath)),
         reencodeAudio: procedure
             .input(
                 z.object({
