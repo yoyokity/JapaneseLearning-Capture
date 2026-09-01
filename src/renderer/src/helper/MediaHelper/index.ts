@@ -113,36 +113,40 @@ export class MediaHelper {
     }
 
     /**
-     * 批量超分辨率处理图片并返回临时图片路径数组
+     * 批量超分辨率处理图片（订阅模式，返回结果数组）
      * @param imagePaths 原图路径数组
      * @param modelPath 模型文件名（image-polish/models 目录下的 .onnx 文件名），默认 RealESRGAN_x2plus.onnx
+     * @param onProgress 进度回调 0-1
      * @returns 超分后的本地图片路径数组，单张失败的项为 null
      * @remarks 输出的图片任意一边的长度不会高于3840；奇数边会裁掉1px再超分
      */
     static async superResolutionImage(
         imagePaths: (Path | string)[],
-        modelPath: string = 'RealESRGAN_x2plus.onnx'
+        modelPath: string = 'RealESRGAN_x2plus.onnx',
+        onProgress?: (progress: number) => void
     ): Promise<(string | null)[]> {
-        const re = await TaskHelper.queueWithInterval(
-            {
-                taskName: 'super-resolution-image'
-            },
-            async () =>
-                await TaskHelper.tryExecute(
-                    async () =>
-                        await ipc.media.superResolutionImage.mutate({
-                            imagePaths: imagePaths.map((path) => path.toString()),
-                            modelPath
-                        })
-                )
-        )
+        const paths = imagePaths.map((path) => path.toString())
 
-        if (!re.hasError) {
-            return re.result
-        } else {
-            LogHelper.error(`超分辨率处理图片失败：`, re.error)
-            return imagePaths.map(() => null)
-        }
+        return await new Promise((resolve) => {
+            ipc.media.superResolutionImage.subscribe(
+                { imagePaths: paths, modelPath },
+                {
+                    // 中途回调为进度，最后携带结果数组
+                    onData(payload) {
+                        if (payload.results) {
+                            resolve(payload.results)
+                            return
+                        }
+                        onProgress?.(payload.progress)
+                    },
+                    onError(error) {
+                        LogHelper.error(`超分辨率处理图片失败：`, error)
+                        resolve(imagePaths.map(() => null))
+                    },
+                    onComplete() {}
+                }
+            )
+        })
     }
 
     /**

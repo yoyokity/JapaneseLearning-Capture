@@ -193,9 +193,14 @@ export async function readMediaInfo(path: string) {
  * 调用 imagepolish 批量处理图片
  * @param inputPaths 输入图片路径数组
  * @param modelFilePath 模型文件绝对路径，为空时仅执行非AI修复链
+ * @param onOk 每处理完一张图片（stdout 输出一行 "ok:"）时的回调，参数为已完成的张数
  * @remark 批量模式下 -o 会被忽略，每张输出为 <输入路径>_output.<同扩展名>
  */
-const runImagePolish = (inputPaths: string[], modelFilePath: string) =>
+const runImagePolish = (
+    inputPaths: string[],
+    modelFilePath: string,
+    onOk?: (doneCount: number) => void
+) =>
     new Promise<void>((resolve, reject) => {
         // 共用滤镜链，AI 与非AI仅 aa/sharpen/grain 强度不同，AI 额外在 dehalo 后接 --model
         const args: string[] = []
@@ -221,6 +226,21 @@ const runImagePolish = (inputPaths: string[], modelFilePath: string) =>
         args.push('--grain', modelFilePath ? '15' : '10')
 
         const cmd = new Cmd(join(imagePolishDir(), 'imagepolish.exe')).run(args)
+
+        // imagepolish 每完成一张会在 stdout 输出一行 "ok:"（已实时 flush），按行统计已完成张数
+        let pendingText = ''
+        let doneCount = 0
+        cmd.onOutputLine((text) => {
+            pendingText += text
+            const lines = pendingText.split('\n')
+            pendingText = lines.pop() ?? ''
+            for (const line of lines) {
+                if (line.startsWith('ok:')) {
+                    onOk?.(++doneCount)
+                }
+            }
+        })
+
         cmd.onExit((code, _stdout, stderr) => {
             if (code === 0) {
                 resolve()
@@ -234,11 +254,13 @@ const runImagePolish = (inputPaths: string[], modelFilePath: string) =>
  * 批量超分图片（imagepolish）
  * @param imagePaths 输入图片路径数组
  * @param modelPath 模型文件名（image-polish/models 目录下的 .onnx 文件名，空串表示非AI修复）
+ * @param onProgress 进度回调 0-1，每处理完一张图片递增 1/总数
  * @returns 超分后的本地图片路径数组，单张失败的项为 null
  */
 export async function superResolutionImage(
     imagePaths: string[],
-    modelPath: string
+    modelPath: string,
+    onProgress?: (progress: number) => void
 ): Promise<(string | null)[]> {
     const modelFilePath = modelPath ? join(imagePolishDir(), 'models', modelPath) : ''
     if (modelPath && !fs.existsSync(modelFilePath)) {
@@ -265,9 +287,11 @@ export async function superResolutionImage(
     try {
         // 一次调用批量处理，避免每张重新启动进程重复加载 GPU 与模型
         if (inputs.length) {
+            // 批处理进度按 stdout 的 "ok:" 行推进，每完成一张递增 1/总数
             await runImagePolish(
                 inputs.map((item) => item.path),
-                modelFilePath
+                modelFilePath,
+                (doneCount) => onProgress?.(doneCount / inputs.length)
             )
         }
     } catch (error) {
@@ -301,6 +325,43 @@ export async function superResolutionImage(
         }
     }
     return results
+}
+
+/**
+ * 超分进度信息
+ */
+export interface ISuperResolutionProgress {
+    /**
+     * 总进度 0-1
+     */
+    progress: number
+    /**
+     * 全部完成后的结果数组（仅最后一次回调携带）
+     */
+    results?: (string | null)[]
+}
+
+/**
+ * 订阅式批量超分，逐张推进度并在全部完成后回传结果数组
+ */
+export function createSuperResolutionImageStream(imagePaths: string[], modelPath: string) {
+    return observable<ISuperResolutionProgress>((emit) => {
+        void (async () => {
+            try {
+                const results = await superResolutionImage(imagePaths, modelPath, (progress) => {
+                    emit.next({ progress })
+                })
+                emit.next({ progress: 1, results })
+                emit.complete()
+            } catch (error) {
+                emit.error(error instanceof Error ? error : new Error(String(error)))
+            }
+        })()
+
+        return {
+            unsubscribe() {}
+        }
+    })
 }
 
 /**

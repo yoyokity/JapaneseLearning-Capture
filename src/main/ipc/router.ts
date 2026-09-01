@@ -39,11 +39,11 @@ import {
 } from './filesystem'
 import {
     createReencodeAudioStream,
+    createSuperResolutionImageStream,
     readImage,
     readMediaInfo,
     resizeImage,
-    saveImage,
-    superResolutionImage
+    saveImage
 } from './media'
 import { getSuperResolutionModels } from './models'
 import {
@@ -252,7 +252,9 @@ export const appRouter = t.router({
                     modelPath: z.string()
                 })
             )
-            .mutation(({ input }) => superResolutionImage(input.imagePaths, input.modelPath)),
+            .subscription(({ input }) =>
+                createSuperResolutionImageStream(input.imagePaths, input.modelPath)
+            ),
         reencodeAudio: procedure
             .input(
                 z.object({
