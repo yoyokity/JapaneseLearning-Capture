@@ -13,6 +13,11 @@ const avfanRequestOptions = {
 }
 
 const DATA_NAME = '#actor-data'
+// 数据版本，递增即失效
+const DATA_VERSION = 1
+
+// 启动时清理旧版本数据
+void DataHelper.deleteStores(DATA_NAME, `${DATA_NAME}-${DATA_VERSION}`)
 
 // 匹配 background-image 中的图片链接
 const backgroundImageRegex = /url\((?<url>[^)]+)\)/
@@ -168,7 +173,10 @@ export class Actor implements IActorFull {
      * 从数据库中获取演员信息
      */
     private async get(): Promise<boolean> {
-        const data = await DataHelper.get<IActorFull>(DATA_NAME, this.name)
+        const data = await DataHelper.get<IActorFull>(
+            `${DATA_NAME}-${DATA_VERSION}`,
+            this.name
+        )
         if (!data) return false
 
         this.imgUrl = data.imgUrl || ''
@@ -195,6 +203,6 @@ export class Actor implements IActorFull {
             born: this.born,
             debut: this.debut
         }
-        await DataHelper.set(DATA_NAME, this.name, data)
+        await DataHelper.set(`${DATA_NAME}-${DATA_VERSION}`, this.name, data)
     }
 }

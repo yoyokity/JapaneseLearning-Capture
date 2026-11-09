@@ -24,6 +24,9 @@ import { load as cheerioLoad } from 'cheerio'
 import dayjs from 'dayjs'
 import { isNaN, toNumber } from 'es-toolkit/compat'
 
+// 匹配末尾的方括号标记，如 [BAD END]
+const trailingBracketRegex = /\[[^\]]*\]$/
+
 // #region 设置cookie
 NetHelper.setCookie({
     url: 'https://javdb.com/',
@@ -773,6 +776,9 @@ const useScraper = ScraperHelper.defineScraper(
                 }
 
                 plot = StringHelper.removeBraces(plot).trim()
+
+                // 去掉末尾的方括号标记，如 [BAD END]
+                plot = plot.replace(trailingBracketRegex, '').trim()
 
                 // 翻译一下
                 if (plot) plot = (await TransHelper.translate(plot)).text

@@ -202,7 +202,7 @@ const useScraper = ScraperHelper.defineScraper(
                 .find('dd a')
                 .toArray()
                 .map((el) => $(el).text().trim())
-                .filter(Boolean)
+                .filter((name) => name && !/[?？]/.test(name))
 
             if (!actorNames.length) return false
 
@@ -315,10 +315,13 @@ const useScraper = ScraperHelper.defineScraper(
                 }
 
                 // 否则用番号或标题搜索
-                const searchText = video.title || video.sorttitle || video.originaltitle
                 const keyword =
-                    searchText.match(videoNumRegex)?.groups?.num ||
-                    StringHelper.removeBraces(searchText).trim()
+                    video.title.match(videoNumRegex)?.groups?.num ||
+                    video.originaltitle.match(videoNumRegex)?.groups?.num ||
+                    video.sorttitle.match(videoNumRegex)?.groups?.num ||
+                    StringHelper.removeBraces(
+                        video.title || video.sorttitle || video.originaltitle
+                    ).trim()
                 if (!keyword) {
                     logger.warn(`没有可用于搜索的番号或标题`)
                     return false
@@ -345,8 +348,13 @@ const useScraper = ScraperHelper.defineScraper(
 
             // #region 原标题
             async parseOriginaltitle() {
-                const title = getTitle()
+                let title = getTitle()
                 if (!title) return false
+
+                // 翻译一下
+                const re = await TransHelper.translate(StringHelper.removeBraces(title), false)
+                if (re.ok) title = re.text
+
                 return title
             },
             // #endregion
@@ -446,15 +454,16 @@ const useScraper = ScraperHelper.defineScraper(
             // #region 简介
             async parsePlot() {
                 let plot = getStoryText()
-                if (!plot) return false
 
-                plot = StringHelper.removeBraces(plot).trim()
+                if (plot) {
+                    plot = StringHelper.removeBraces(plot).trim()
 
-                // 去掉末尾的方括号标记，如 [BAD END]
-                plot = plot.replace(trailingBracketRegex, '').trim()
+                    // 去掉末尾的方括号标记，如 [BAD END]
+                    plot = plot.replace(trailingBracketRegex, '').trim()
 
-                // 翻译一下
-                if (plot) plot = (await TransHelper.translate(plot)).text
+                    // 翻译一下
+                    if (plot) plot = (await TransHelper.translate(plot)).text
+                }
 
                 // 加上演员信息
                 if (await getActor()) {
@@ -585,8 +594,10 @@ const useScraper = ScraperHelper.defineScraper(
 
             // #region 输出
             async parseOutput(): Promise<{ dir: string; fileName: string }> {
-                const dir = `${scraperName}/${video.sorttitle || video.originaltitle}`
-                return { dir, fileName: video.originaltitle || video.title }
+                const set = video.sorttitle.split('-')[0]
+
+                const dir = `${set}/${video.sorttitle}`
+                return { dir, fileName: video.title }
             }
             // #endregion
         }

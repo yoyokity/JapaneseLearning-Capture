@@ -150,6 +150,34 @@ export class DataHelper {
     }
 
     /**
+     * 删除旧表
+     * @param prefix 表名前缀
+     * @param keep 保留的表名
+     */
+    static async deleteStores(prefix: string, keep: string): Promise<boolean> {
+        try {
+            const db = await this.getDBConnection()
+            const storeNames = Array.from(db.objectStoreNames).filter(
+                (name) => name.startsWith(prefix) && name !== keep
+            )
+            if (storeNames.length === 0) return true
+
+            const version = db.version + 1
+            db.close()
+            if (this._db === db) this._db = null
+
+            this._db = await this.openDB(undefined, version, (upgradeDb) => {
+                for (const name of storeNames) upgradeDb.deleteObjectStore(name)
+            })
+
+            return true
+        } catch (error) {
+            LogHelper.error('删除旧表失败:', error)
+            return false
+        }
+    }
+
+    /**
      * 初始化数据库连接
      * @description 每次刮削启动时调用此方法建立数据库连接
      * @remarks 编写刮削器的时候不需要调用此方法
@@ -225,10 +253,17 @@ export class DataHelper {
 
     /**
      * 打开IndexedDB数据库
+     * @param storeName 表名
+     * @param version 版本号
+     * @param onUpgrade 升级回调
      * @returns 返回打开的数据库连接
      * @private
      */
-    private static openDB(storeName?: string, version?: number): Promise<IDBDatabase> {
+    private static openDB(
+        storeName?: string,
+        version?: number,
+        onUpgrade?: (db: IDBDatabase) => void
+    ): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const request = version
                 ? indexedDB.open(this.DB_NAME, version)
@@ -265,6 +300,8 @@ export class DataHelper {
                 if (storeName && !db.objectStoreNames.contains(storeName)) {
                     db.createObjectStore(storeName, { keyPath: 'key' })
                 }
+
+                onUpgrade?.(db)
             }
         })
     }

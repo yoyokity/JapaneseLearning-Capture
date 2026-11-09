@@ -33,10 +33,7 @@ export interface ITranslateSettings {
         thinking: boolean
         reasoningEffort: (typeof DeepseekReasoningEffortArray)[number]
     }
-    localLLM: {        port: number
-        model: string
-        host: string
-    }
+    localLLM: { port: number; model: string; host: string }
 }
 
 export interface ITranslateResult {
@@ -349,9 +346,7 @@ export class TransHelper {
      * @param text 文本
      */
     private static toSimplified(text: string) {
-        return settingsStore().translate.targetLanguage === 'zh-CN'
-            ? this.translateSC(text)
-            : text
+        return settingsStore().translate.targetLanguage === 'zh-CN' ? this.translateSC(text) : text
     }
 
     /**
@@ -497,5 +492,5 @@ function getLLMPrompt(targetLanguage: string) {
     return `${getPrompt(targetLanguage)}
     - 如果遇到屏蔽字符比如○、●之类的，请自行联想NSFW色情词汇。
     - 一定不要包含屏蔽字，比如○、●
-    - 让语句表达更加NSFW色情。`
+    - 让语句表达更加NSFW色情、淫秽。`
 }
