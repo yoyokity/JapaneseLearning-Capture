@@ -487,30 +487,23 @@ const useScraper = ScraperHelper.defineScraper(
                 .filter((_, el) => $(el).find('strong').text().includes('演員'))
                 .find('.value a')
                 .toArray()
-                .map((el) => {
+                .flatMap((el) => {
                     const item = $(el)
                     const name = item.text().replace('三上悠亞', '三上悠亜').trim()
-                    const gender = item.next().hasClass('male') ? 'male' : 'female'
-                    const href = item.attr('href')?.trim()
-                    return {
-                        name,
-                        gender,
-                        href: href ? NetHelper.joinUrl('https://www.javdb.com/', href) : undefined
-                    }
+                    if (!name) return []
+
+                    const gender: 'male' | 'female' = item.next().hasClass('male')
+                        ? 'male'
+                        : 'female'
+                    return [{ name, gender }]
                 })
-                .filter(
-                    (item): item is { href: string; name: string; gender: 'male' | 'female' } =>
-                        !!item.href && !!item.name && !!item.gender
-                )
 
             if (!actors.length) return false
 
             const actorObjs = actors.map((actor) => new Actor(actor.name, actor.gender))
 
             // 查询演员详情
-            await Promise.all(
-                actorObjs.map((actorObj, index) => actorObj.search(signal, actors[index].href))
-            )
+            await Promise.all(actorObjs.map((actorObj) => actorObj.search(signal)))
             if (signal.aborted) return false
 
             actor = actorObjs.sort(

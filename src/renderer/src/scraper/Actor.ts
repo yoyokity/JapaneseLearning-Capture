@@ -3,15 +3,19 @@ import type { IActor } from '@renderer/scraper'
 import { DataHelper, NetHelper, StringHelper } from '@renderer/helper'
 import { load as cheerioLoad } from 'cheerio'
 
-const gravurefitRequestOptions = {
+const avfanUrl = 'https://avfan.mixh.jp'
+
+const avfanRequestOptions = {
     headers: {
         'content-type': 'application/x-www-form-urlencoded',
-        Origin: 'https://www.gravurefit.com',
-        Referer: 'https://www.gravurefit.com/searchp/'
+        Referer: `${avfanUrl}/`
     }
 }
 
 const DATA_NAME = '#actor-data'
+
+// 匹配 background-image 中的图片链接
+const backgroundImageRegex = /url\((?<url>[^)]+)\)/
 
 export interface IActorFull extends IActor {
     /**
@@ -50,182 +54,99 @@ export class Actor implements IActorFull {
     }
 
     /**
-     * 在gravurefit中获取演员信息
+     * 在avfan中搜索演员信息
      */
-    private async searchGravurefit(signal: AbortSignal): Promise<boolean> {
-        // 先搜索演员列表
+    private async searchAvfan(signal: AbortSignal): Promise<boolean> {
+        // 搜索演员
         const formData = new URLSearchParams()
         formData.append('search', this.name)
+        formData.append('sno', '0')
 
-        const response = await NetHelper.post(
-            'https://www.gravurefit.com/searchp/',
+        const searchResponse = await NetHelper.post(
+            `${avfanUrl}/archives/top/search.php`,
             formData.toString(),
             {
                 signal,
-                ...gravurefitRequestOptions
+                ...avfanRequestOptions
             }
         )
-        if (!response.ok) return false
+        if (!searchResponse.ok) return false
 
-        let $ = cheerioLoad(response.body)
-        const actorList = $('tbody tr')
+        let $ = cheerioLoad(searchResponse.body)
+        const actor = $('a.girls')
             .toArray()
-            .flatMap((el) => {
+            .map((el) => {
                 const item = $(el)
-                const nameLink = item.find('td').eq(0).find('a').eq(0)
-                const href = nameLink.attr('href')?.trim()
-                const title = nameLink.text().trim()
+                const href = item.attr('href')?.trim()
+                const name = item.find('.a_name').text().trim()
+                const style = item.find('.search_card').attr('style') || ''
+                const imgUrl =
+                    StringHelper.decodeHtmlEntity(style).match(backgroundImageRegex)?.groups?.url
+                        ?.trim() || ''
 
-                if (!href || !title) return []
-
-                const fullHref = NetHelper.joinUrl('https://www.gravurefit.com/', href)
-                const aliasText = item.find('td').eq(2).text().trim()
-                const aliasList = aliasText
-                    .split('/')
-                    .map((alias) => alias.trim())
-                    .filter(Boolean)
-
-                return [
-                    {
-                        href: fullHref,
-                        title
-                    },
-                    ...aliasList.map((alias) => ({
-                        href: fullHref,
-                        title: alias
-                    }))
-                ]
+                return { href, name, imgUrl }
             })
+            // 有头像的才是有效结果，选择第一个非默认头像的演员
+            .find(
+                (item) =>
+                    item.href && item.name && item.imgUrl && !item.imgUrl.includes('noimg.jpg')
+            )
 
-        // 找到最佳匹配演员
-        const match = StringHelper.bestMatch(
-            this.name,
-            actorList.map((item) => item.title)
-        )
-        if (!match) return false
+        if (!actor?.href) return false
 
         // 转到演员页面
-        const actorResponse = await NetHelper.get(actorList[match.index].href, {
-            signal
-        })
+        const actorResponse = await NetHelper.get(actor.href, { signal })
         if (!actorResponse.ok) return false
 
         // 解析演员信息
         $ = cheerioLoad(actorResponse.body)
-        const data = $('section tbody tr')
-            .toArray()
-            .map((el) => {
-                const item = $(el)
-                return {
-                    key: item.find('th').text().trim(),
-                    value: item.find('td').text().trim()
-                }
-            })
-            .filter((item): item is { key: string; value: string } => !!item.key && !!item.value)
+        const data = new Map<string, string>()
+        $('dl#status dt').each((_, el) => {
+            const key = $(el).text().replace(/\s/g, '')
+            const value = $(el).next('dd').text().trim()
+            if (key && value) data.set(key, value)
+        })
 
-        for (const { key, value } of data) {
-            if (key.includes('身長')) {
-                this.height = value
-                continue
-            }
-
-            if (key.includes('生年月日')) {
-                this.born = value.match(/(\d{4}年\d{1,2}月\d{1,2}日)/)?.[1] || ''
-                continue
-            }
-
-            if (key.includes('デビュー')) {
-                this.debut = value
-                continue
-            }
+        // 忽略未知信息（站点用 × 表示）
+        const normalizeValue = (value?: string) => {
+            if (!value || value.includes('×')) return undefined
+            return value
         }
 
+        const height = ['身長', 'ＢＷＨ', 'カップ']
+            .map((key) => normalizeValue(data.get(key)))
+            .filter(Boolean)
+            .join(' ')
+        this.height = height || undefined
+        this.born = normalizeValue(data.get('誕生日'))
+        this.debut = normalizeValue(data.get('debut'))
+
         // 获取演员头像
-        const imgUrl = $('div.photopc img').attr('src')?.trim()
-        if (imgUrl) this.imgUrl = NetHelper.joinUrl('https://www.gravurefit.com/', imgUrl)
+        const imgUrl = $('header img#timg').attr('src')?.trim()
+        this.imgUrl = imgUrl ? StringHelper.decodeHtmlEntity(imgUrl) : actor.imgUrl
 
         return true
     }
 
     /**
-     * 在javdb中获取演员头像
+     * 搜索演员信息，数据库中存在则直接拿取 (注意是异步函数)
+     * @param {AbortSignal} signal 取消信号
      */
-    private async searchJavDB(
-        signal: AbortSignal,
-        javDB_url: string | null = null
-    ): Promise<boolean> {
-        // 如果有javdb_url，直接从演员页面获取头像
-        if (javDB_url) {
-            const response = await NetHelper.get(javDB_url, {
-                signal
-            })
-            if (signal.aborted) return false
-            if (response.ok) {
-                const $ = cheerioLoad(response.body)
-                const img = $('span.avatar')
-                    .attr('style')
-                    ?.match(/https:.+\.jpg/)?.[0]
+    async search(signal: AbortSignal): Promise<void> {
+        // 检查数据库中是否已有完整信息
+        if (await this.get()) return
 
-                if (img) this.imgUrl = img
-            }
+        const complete = await this.searchAvfan(signal)
 
-            return true
-        }
-
-        // 没有url则搜索
-        const response = await NetHelper.get(
-            `https://javdb.com/search?f=actor&q=${StringHelper.encodeUrl(this.name)}`,
-            {
-                signal
-            }
-        )
-        if (!response.ok) return false
-
-        const $ = cheerioLoad(response.body)
-        const actorList = $('div#actors a')
-            .toArray()
-            .map((el) => {
-                const item = $(el)
-                const href = item.find('img.avatar').attr('src')?.trim()
-
-                return {
-                    href: href?.includes('actor_unknow') ? '' : href,
-                    title: item.find('strong').text().trim()
-                }
-            })
-            .filter((item): item is { href: string; title: string } => !!item.title)
-
-        const bestMatch = StringHelper.bestMatch(
-            this.name,
-            actorList.map((item) => item.title)
-        )
-
-        if (bestMatch) {
-            this.imgUrl = actorList[bestMatch.index].href || ''
-            return true
-        }
-
-        return false
+        // 信息不完整时不缓存，站点更新后可重新获取
+        if (complete && this.hasCompleteInfo()) await this.set()
     }
 
     /**
-     * 搜索演员信息，数据库中存在则直接拿取 (注意是异步函数)
-     * @param {AbortSignal} signal 取消信号
-     * @param {string|null} javDB_url 演员的javdb完整链接，忽略则根据名字搜索
+     * 判断演员信息是否完整
      */
-    async search(signal: AbortSignal, javDB_url: string | null = null): Promise<void> {
-        // 检查数据库中是否已有演员信息
-        if (await this.get()) return
-
-        // 检查演员信息是否完整
-        const complete =
-            this.gender === 'male'
-                ? await this.searchJavDB(signal, javDB_url)
-                : (await this.searchGravurefit(signal)) &&
-                  (await this.searchJavDB(signal, javDB_url))
-
-        // 存储演员信息到数据库
-        if (complete) await this.set()
+    private hasCompleteInfo() {
+        return Boolean(this.imgUrl && this.height && this.born && this.debut)
     }
 
     /**
@@ -248,16 +169,17 @@ export class Actor implements IActorFull {
      */
     private async get(): Promise<boolean> {
         const data = await DataHelper.get<IActorFull>(DATA_NAME, this.name)
-        if (data) {
-            this.imgUrl = data.imgUrl || ''
-            this.role = data.role || ''
-            this.gender = data.gender || 'female'
-            this.height = data.height || ''
-            this.born = data.born || ''
-            this.debut = data.debut || ''
-            return true
-        }
-        return false
+        if (!data) return false
+
+        this.imgUrl = data.imgUrl || ''
+        this.role = data.role || ''
+        this.gender = data.gender || 'female'
+        this.height = data.height || ''
+        this.born = data.born || ''
+        this.debut = data.debut || ''
+
+        // 信息不完整时重新获取
+        return this.hasCompleteInfo()
     }
 
     /**
