@@ -149,7 +149,8 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
-            streamCallback?: TStreamCallback
+            streamCallback?: TStreamCallback,
+            customSystem?: string
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
@@ -158,7 +159,7 @@ const translators = {
                 apiKey: settings.translate.openai.apiKey,
                 model: settings.translate.openai.model,
                 baseURL: settings.translate.openai.baseURL,
-                system: getGptPrompt(targetLanguage),
+                system: customSystem ?? getGptPrompt(targetLanguage),
                 prompt: s_text,
                 providerOptions: {
                     openai: {
@@ -192,7 +193,8 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = 'zh-CN',
-            streamCallback?: TStreamCallback
+            streamCallback?: TStreamCallback,
+            customSystem?: string
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
@@ -200,7 +202,7 @@ const translators = {
                 provider: 'deepseek',
                 apiKey: settings.translate.deepseek.apiKey,
                 model: settings.translate.deepseek.model,
-                system: getDeepSeekPrompt(targetLanguage),
+                system: customSystem ?? getDeepSeekPrompt(targetLanguage),
                 prompt: s_text,
                 providerOptions: {
                     deepseek: settings.translate.deepseek.thinking
@@ -237,7 +239,8 @@ const translators = {
         func: async (
             s_text: string,
             targetLanguage = '简体中文',
-            streamCallback?: TStreamCallback
+            streamCallback?: TStreamCallback,
+            customSystem?: string
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
@@ -246,7 +249,7 @@ const translators = {
                 apiKey: 'local-llm',
                 model: settings.translate.localLLM.model,
                 baseURL: `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1`,
-                system: getLLMPrompt(targetLanguage),
+                system: customSystem ?? getLLMPrompt(targetLanguage),
                 prompt: s_text,
                 callback: streamCallback,
                 timeout: 30 * 1000 // 预留充分时间，方便llm加载
@@ -331,14 +334,59 @@ export class TransHelper {
                 streamCallback
             )
 
-            googleRe.text = TransHelper.translateSC(googleRe.text)
+            googleRe.text = TransHelper.toSimplified(googleRe.text)
             return format
                 ? { ...googleRe, text: TransHelper.formatTranslateText(googleRe.text) }
                 : googleRe
         }
 
-        re.text = TransHelper.translateSC(re.text)
+        re.text = TransHelper.toSimplified(re.text)
         return format ? { ...re, text: TransHelper.formatTranslateText(re.text) } : re
+    }
+
+    /**
+     * 按语言转简体
+     * @param text 文本
+     */
+    private static toSimplified(text: string) {
+        return settingsStore().translate.targetLanguage === 'zh-CN'
+            ? this.translateSC(text)
+            : text
+    }
+
+    /**
+     * 使用指定提示词翻译
+     * @param text 文本
+     * @param system 系统提示词
+     */
+    static async translateWithSystem(text: string, system: string): Promise<ITranslateResult> {
+        const settings = settingsStore()
+        if (!settings.translate.enable) return { ok: false, text }
+
+        const engine = settings.translate.translateEngine
+
+        // 谷歌翻译不支持自定义提示词
+        if (engine === 'google') return this.translate(text, false)
+
+        const re = await translators[engine].func(
+            text,
+            settings.translate.targetLanguage,
+            undefined,
+            system
+        )
+        re.text = TransHelper.toSimplified(re.text)
+        return re
+    }
+
+    /**
+     * 谷歌翻译
+     * @param text 文本
+     */
+    static async translateByGoogle(text: string): Promise<ITranslateResult> {
+        const settings = settingsStore()
+        const re = await translators.google.func(text, settings.translate.targetLanguage)
+        re.text = TransHelper.toSimplified(re.text)
+        return re
     }
 
     /**

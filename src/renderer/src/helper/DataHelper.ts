@@ -51,6 +51,34 @@ export class DataHelper {
     }
 
     /**
+     * 批量写入数据
+     * @param name 表名
+     * @param entries 键值对
+     */
+    static async setMany(name: string, entries: [string, any][]): Promise<boolean> {
+        if (entries.length === 0) return true
+
+        try {
+            const db = await this.getDBConnection(name)
+            const transaction = db.transaction(name, 'readwrite')
+            const store = transaction.objectStore(name)
+
+            return new Promise((resolve) => {
+                transaction.oncomplete = () => resolve(true)
+                transaction.onerror = () => {
+                    LogHelper.error('批量写入失败:', transaction.error)
+                    resolve(false)
+                }
+
+                for (const [key, value] of entries) store.put({ key, value })
+            })
+        } catch (error) {
+            LogHelper.error('批量写入失败:', error)
+            return false
+        }
+    }
+
+    /**
      * 从IndexedDB获取数据
      * @param name 表名
      * @param key 数据的键
@@ -82,6 +110,42 @@ export class DataHelper {
         } catch (error) {
             LogHelper.error('获取数据时发生错误:', error)
             return null
+        }
+    }
+
+    /**
+     * 批量读取数据
+     * @param name 表名
+     * @param keys 键数组
+     */
+    static async getMany<T = any>(name: string, keys: string[]): Promise<(T | null)[]> {
+        if (keys.length === 0) return []
+
+        try {
+            const db = await this.getDBConnection(name)
+            const transaction = db.transaction(name, 'readonly')
+            const store = transaction.objectStore(name)
+
+            return new Promise((resolve) => {
+                const values: (T | null)[] = keys.map(() => null)
+
+                transaction.oncomplete = () => resolve(values)
+                transaction.onerror = () => {
+                    LogHelper.error('批量读取失败:', transaction.error)
+                    resolve(values)
+                }
+
+                keys.forEach((key, index) => {
+                    const request = store.get(key)
+
+                    request.onsuccess = () => {
+                        values[index] = request.result ? request.result.value : null
+                    }
+                })
+            })
+        } catch (error) {
+            LogHelper.error('批量读取失败:', error)
+            return keys.map(() => null)
         }
     }
 

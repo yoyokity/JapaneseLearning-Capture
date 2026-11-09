@@ -1,4 +1,5 @@
 export * from './Actor'
 export * from './Nfo'
 export * from './Scraper'
+export * from './Tag'
 export * from './Video'

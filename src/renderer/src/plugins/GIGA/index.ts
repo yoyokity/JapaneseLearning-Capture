@@ -10,7 +10,7 @@ import {
     thumbScale,
     TransHelper
 } from '@renderer/helper'
-import { Actor } from '@renderer/scraper'
+import { Actor, translateTags } from '@renderer/scraper'
 import { load as cheerioLoad } from 'cheerio'
 import dayjs from 'dayjs'
 
@@ -431,7 +431,7 @@ const useScraper = ScraperHelper.defineScraper(
             async parseTag() {
                 const tags = getTags('ジャンルタグ')
                 if (!tags.length) return false
-                return tags
+                return await translateTags(tags)
             },
             // #endregion
 
@@ -439,7 +439,7 @@ const useScraper = ScraperHelper.defineScraper(
             async parseGenre() {
                 const genres = getTags('キャラクタータグ')
                 if (!genres.length) return false
-                return genres
+                return await translateTags(genres)
             },
             // #endregion
 
