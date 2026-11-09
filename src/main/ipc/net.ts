@@ -1,5 +1,4 @@
 import { createDeepSeek } from '@ai-sdk/deepseek'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { observable } from '@trpc/server/observable'
 import { streamText } from 'ai'
@@ -361,7 +360,7 @@ export interface IAiStartOptions {
     /**
      * AI 提供商
      */
-    provider: 'openai' | 'deepseek' | 'gemini'
+    provider: 'openai' | 'deepseek'
     /**
      * API Key
      */
@@ -406,7 +405,7 @@ export interface IAiOptions extends IAiStartOptions {
  * AI 启动参数结构
  */
 export const aiStartOptionsSchema = z.object({
-    provider: z.enum(['openai', 'deepseek', 'gemini']),
+    provider: z.enum(['openai', 'deepseek']),
     apiKey: z.string(),
     model: z.string(),
     baseURL: z.string().optional(),
@@ -462,17 +461,6 @@ function aiFetch(input: RequestInfo | URL, init?: RequestInit) {
  * @param options AI 配置
  */
 function getAiModel(options: IAiStartOptions) {
-    // openai
-    if (options.provider === 'openai') {
-        const provider = createOpenAI({
-            apiKey: options.apiKey,
-            fetch: aiFetch,
-            ...(options.baseURL ? { baseURL: options.baseURL } : {})
-        })
-
-        return provider(options.model)
-    }
-
     // deepseek
     if (options.provider === 'deepseek') {
         const provider = createDeepSeek({
@@ -483,10 +471,10 @@ function getAiModel(options: IAiStartOptions) {
         return provider(options.model)
     }
 
-    // gemini
-    const provider = createGoogleGenerativeAI({
+    const provider = createOpenAI({
         apiKey: options.apiKey,
-        fetch: aiFetch
+        fetch: aiFetch,
+        ...(options.baseURL ? { baseURL: options.baseURL } : {})
     })
 
     return provider(options.model)

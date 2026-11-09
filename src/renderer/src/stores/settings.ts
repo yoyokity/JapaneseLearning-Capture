@@ -61,17 +61,15 @@ export const settingsStore = defineStore(
             openai: {
                 apiKey: '',
                 model: 'gpt-5.4',
-                baseURL: 'https://api.openai.com/v1'
+                baseURL: 'https://api.openai.com/v1',
+                thinking: true,
+                reasoningEffort: 'high'
             },
             deepseek: {
                 apiKey: '',
-                model: 'deepseek-v4-flash',
+                model: 'deepseek-flash',
                 thinking: true,
                 reasoningEffort: 'max'
-            },
-            gemini: {
-                apiKey: '',
-                model: 'gemini-2.5-flash-lite'
             },
             localLLM: {
                 host: '127.0.0.1',

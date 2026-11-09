@@ -13,6 +13,7 @@ const sentenceSegmenter = new Segmenter('zh-CN', {
 
 export type TranslateEngine = keyof typeof translators
 export type TranslateTargetLanguage = 'zh-CN' | 'zh-TW'
+export const OpenAIReasoningEffortArray = ['low', 'high', 'max'] as const
 export const DeepseekReasoningEffortArray = ['high', 'max'] as const
 export interface ITranslateSettings {
     enable: boolean
@@ -23,6 +24,8 @@ export interface ITranslateSettings {
         apiKey: string
         model: string
         baseURL: string
+        thinking: boolean
+        reasoningEffort: (typeof OpenAIReasoningEffortArray)[number]
     }
     deepseek: {
         apiKey: string
@@ -30,12 +33,7 @@ export interface ITranslateSettings {
         thinking: boolean
         reasoningEffort: (typeof DeepseekReasoningEffortArray)[number]
     }
-    gemini: {
-        apiKey: string
-        model: string
-    }
-    localLLM: {
-        port: number
+    localLLM: {        port: number
         model: string
         host: string
     }
@@ -155,7 +153,6 @@ const translators = {
         ): Promise<ITranslateResult> => {
             const settings = settingsStore()
 
-            // TODO：添加推理强度设置
             const result = await NetHelper.ai({
                 provider: 'openai',
                 apiKey: settings.translate.openai.apiKey,
@@ -163,6 +160,13 @@ const translators = {
                 baseURL: settings.translate.openai.baseURL,
                 system: getGptPrompt(targetLanguage),
                 prompt: s_text,
+                providerOptions: {
+                    openai: {
+                        reasoningEffort: settings.translate.openai.thinking
+                            ? settings.translate.openai.reasoningEffort
+                            : 'none'
+                    }
+                },
                 callback: streamCallback
             })
             const text = result.text.trim()
@@ -220,52 +224,6 @@ const translators = {
                     }
                 } catch (e) {
                     LogHelper.error(`deepseek翻译返回内容解析失败：`, text, e)
-                }
-            }
-
-            // 翻译失败则原文返回
-            return { ok: false, text: s_text }
-        }
-    },
-
-    gemini: {
-        description:
-            '除非你电脑跑不动本地llm，同时想用免费api，否则不推荐使用。因为很多敏感词不给翻译（失败自动改用google机器翻译）',
-        func: async (
-            s_text: string,
-            targetLanguage = 'zh-CN',
-            streamCallback?: TStreamCallback
-        ): Promise<ITranslateResult> => {
-            const settings = settingsStore()
-
-            const result = await NetHelper.ai({
-                provider: 'gemini',
-                apiKey: settings.translate.gemini.apiKey,
-                model: settings.translate.gemini.model,
-                system: getGeminiPrompt(targetLanguage),
-                prompt: s_text,
-                providerOptions: {
-                    google: {
-                        safetySettings: [
-                            {
-                                category: 'HARM_CATEGORY_UNSPECIFIED',
-                                threshold: 'BLOCK_NONE'
-                            }
-                        ]
-                    }
-                },
-                callback: streamCallback
-            })
-            const text = result.text.trim()
-
-            if (text) {
-                try {
-                    return {
-                        ok: true,
-                        text
-                    }
-                } catch (e) {
-                    LogHelper.error(`gemini翻译返回内容解析失败：`, text, e)
                 }
             }
 
@@ -466,14 +424,6 @@ function getPrompt(targetLanguage: string) {
     - 如果遇到英文片假名，结合语境判断是翻译成英文原文还是翻译成${targetLanguage}，一定不要保留原有的日文片假名。
     - 人名使用中文音译。
     - 自行优化排版。`
-}
-
-/**
- * gemini的提示词
- */
-function getGeminiPrompt(targetLanguage: string) {
-    return `${getPrompt(targetLanguage)}
-    - 淫秽词汇自行使用更加全年龄的表达。`
 }
 
 /**

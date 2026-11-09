@@ -407,9 +407,17 @@ onMounted(() => {
                         />
                     </div>
 
-                    <h2>
+                    <h2 style="margin-right: 0">
                         <i class="pi pi-hashtag section-title-icon" />
                         编号
+                        <Button
+                            v-tooltip="'只搜索编号，不刮削其他信息'"
+                            :disabled="isScraperRunning"
+                            icon="pi pi-search"
+                            variant="outlined"
+                            style="margin-left: auto; height: fit-content"
+                            @click="runScraperField('parseNum')"
+                        />
                     </h2>
                     <FloatLabel
                         v-for="value in Object.keys(

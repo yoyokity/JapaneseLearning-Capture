@@ -4,7 +4,13 @@ import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import InputLineItem from '@renderer/components/control/inputLine/inputLineItem.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
-import { DeepseekReasoningEffortArray, LogHelper, PathHelper, TransHelper } from '@renderer/helper'
+import {
+    DeepseekReasoningEffortArray,
+    LogHelper,
+    OpenAIReasoningEffortArray,
+    PathHelper,
+    TransHelper
+} from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
@@ -302,6 +308,15 @@ function openTempPath() {
                                     type="text"
                                 />
                             </InputLineItem>
+                            <InputLineItem title="思考模式">
+                                <ToggleSwitch v-model="settings.translate.openai.thinking" />
+                            </InputLineItem>
+                            <InputLineItem title="思考强度">
+                                <Select
+                                    v-model="settings.translate.openai.reasoningEffort"
+                                    :options="OpenAIReasoningEffortArray as any"
+                                />
+                            </InputLineItem>
                         </div>
                         <!-- #endregion openai配置 -->
 
@@ -346,42 +361,6 @@ function openTempPath() {
                             </InputLineItem>
                         </div>
                         <!-- #endregion deepseek配置 -->
-
-                        <!-- #region gemini配置  -->
-                        <div v-if="settings.translate.translateEngine === 'gemini'">
-                            <InputLineItem title="API Key">
-                                <Button
-                                    as="a"
-                                    href="https://aistudio.google.com/app/apikey"
-                                    target="_blank"
-                                    variant="link"
-                                >
-                                    获取API Key
-                                </Button>
-                                <InputText
-                                    v-model.trim="settings.translate.gemini.apiKey"
-                                    type="text"
-                                />
-                            </InputLineItem>
-                            <InputLineItem title="模型">
-                                <Button
-                                    v-tooltip.top="
-                                        '不建议更换，默认的这个模型，免费、量大管饱、速度还快'
-                                    "
-                                    as="a"
-                                    href="https://ai.google.dev/gemini-api/docs/models"
-                                    target="_blank"
-                                    variant="link"
-                                >
-                                    查看全部模型
-                                </Button>
-                                <InputText
-                                    v-model.trim="settings.translate.gemini.model"
-                                    type="text"
-                                />
-                            </InputLineItem>
-                        </div>
-                        <!-- #endregion gemini配置 -->
 
                         <!-- #region LLM配置  -->
                         <div v-if="settings.translate.translateEngine === 'localLLM'">

@@ -22,7 +22,6 @@
     },
     "devDependencies": {
         "@ai-sdk/deepseek": "^3.0.32",
-        "@ai-sdk/google": "^4.0.51",
         "@ai-sdk/openai": "^4.0.47",
         "@antfu/eslint-config": "^9.3.0",
         "@cloudimage/before-after": "^1.0.4",
