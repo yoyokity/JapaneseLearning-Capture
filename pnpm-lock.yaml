@@ -15,9 +15,6 @@ importers:
       '@ai-sdk/deepseek':
         specifier: ^3.0.32
         version: 3.0.32(zod@4.4.3)
-      '@ai-sdk/google':
-        specifier: ^4.0.51
-        version: 4.0.51(zod@4.4.3)
       '@ai-sdk/openai':
         specifier: ^4.0.47
         version: 4.0.47(zod@4.4.3)
@@ -221,12 +218,6 @@ packages:
 
   '@ai-sdk/gateway@4.0.64':
     resolution: {integrity: sha512-iayK1z11I0b3sgbP3j6eKQypfpwO5Fbtaq1Mkwv7YxwGQG1YTNr5QAjyYsSfqyf/58WUOLWz2cTBpk+ExZVgpw==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/google@4.0.51':
-    resolution: {integrity: sha512-VAVXFtmMwrMDWgWzONew3yBFuE+ktfPJQn554+bOgUspNSMqIAm6PJRU6Mdd4M+4xCUAJi5H5tVtFF0+Je+Eog==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -6045,12 +6036,6 @@ snapshots:
       '@ai-sdk/provider': 4.0.8
       '@ai-sdk/provider-utils': 5.0.30(zod@4.4.3)
       '@vercel/oidc': 3.2.0
-      zod: 4.4.3
-
-  '@ai-sdk/google@4.0.51(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.8
-      '@ai-sdk/provider-utils': 5.0.30(zod@4.4.3)
       zod: 4.4.3
 
   '@ai-sdk/openai@4.0.47(zod@4.4.3)':

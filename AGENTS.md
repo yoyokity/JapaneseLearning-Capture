@@ -1,7 +1,6 @@
 - 思考过程使用中文
-- 不要运行类型检查：tsc、eslint、prettier、diff等
+- 类型检查使用 pnpm run lint:check 命令
 - 需要用到搜索引擎，优先找tavily mcp工具来进行搜索（如果有的话）
-- 不要自动构建，不要自动调试
 
 # 项目通用规则
 
