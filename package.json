@@ -14,9 +14,10 @@
         }
     },
     "scripts": {
-        "prepare": "vp config --no-agent",
+        "prepare": "vp config --no-agent && install-electron",
         "lint:check": "eslint . && vue-tsc --noEmit -p tsconfig.web.json",
         "lint:fix": "eslint . --fix && prettier . --write --experimental-cli",
+        "audit:check": "pnpm audit --prod",
         "start": "npm run build:image-polish && chcp 65001 && electron-vite preview --outDir=dist",
         "dev": "npm run build:image-polish && chcp 65001 && electron-vite dev --outDir=dist",
         "build": "npm run build:icons && npm run build:vite && npm run build:image-polish",
@@ -26,7 +27,7 @@
         "package": "pnpm run build && electron-forge package"
     },
     "dependencies": {
-        "sharp": "^0.35.4"
+        "sharp": "^0.35.5"
     },
     "devDependencies": {
         "7zip-bin": "^5.2.0",
@@ -44,8 +45,8 @@
         "@formatjs/intl-segmenter": "^12.2.13",
         "@primeuix/themes": "^2.0.3",
         "@techstark/opencv-js": "5.0.0-release.1",
-        "@trpc/client": "10.45.2",
-        "@trpc/server": "10.45.2",
+        "@trpc/client": "10.45.4",
+        "@trpc/server": "10.45.4",
         "@tsconfig/strictest": "^2.0.8",
         "@types/fs-extra": "^11.0.4",
         "@types/node": "^24",
@@ -56,8 +57,8 @@
         "cheerio": "^1.2.0",
         "cssnano": "^8.0.9",
         "dayjs": "^1.11.23",
-        "dompurify": "^3.4.14",
-        "electron": "43.4.1",
+        "dompurify": "^3.4.17",
+        "electron": "43.8.7",
         "electron-icon-builder": "^2.0.1",
         "electron-log": "^5.4.4",
         "electron-store": "^11.0.2",
@@ -95,6 +96,6 @@
         "vue-tsc": "^3.3.11",
         "vue-waterfall-plugin-next": "^3.0.1",
         "xmlbuilder2": "^4.0.3",
-        "zod": "^4.4.3"
+        "zod": "^4.6.7"
     }
 }
