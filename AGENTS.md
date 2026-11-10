@@ -1,5 +1,5 @@
 - 思考过程使用中文
-- 类型检查使用 pnpm run lint:check 命令
+- 类型检查使用 pnpm lint:check（或 vp run lint:check）命令
 - 需要用到搜索引擎，优先找tavily mcp工具来进行搜索（如果有的话）
 
 # 项目通用规则

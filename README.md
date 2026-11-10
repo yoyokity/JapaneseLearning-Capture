@@ -18,8 +18,24 @@
 
 建议环境：
 
-- Node.js 20+
-- pnpm 10+
+- Node.js 24+
+- pnpm 11+
+
+### 命令行入口
+
+项目已引入 Vite+（`vp`）作为统一入口，以下命令与 pnpm 等价：
+
+```bash
+vp install      # pnpm install
+vp run dev      # pnpm dev
+vp run build    # pnpm build
+vp run start    # pnpm start
+vp run package  # pnpm package
+```
+
+构建由 electron-vite 完成，请勿使用 `vp dev` / `vp build` / `vp check`。
+
+Git 提交前会通过 `vp staged` 自动执行 lint 修复与格式化，需要跳过时使用 `VP_GIT_HOOKS=0 git commit`。
 
 ### 安装依赖
 

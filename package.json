@@ -14,8 +14,8 @@
         }
     },
     "scripts": {
-        "type-check": "vue-tsc --noEmit -p tsconfig.web.json",
-        "lint:check": "eslint .",
+        "prepare": "vp config --no-agent",
+        "lint:check": "eslint . && vue-tsc --noEmit -p tsconfig.web.json",
         "lint:fix": "eslint . --fix && prettier . --write --experimental-cli",
         "start": "npm run build:image-polish && chcp 65001 && electron-vite preview --outDir=dist",
         "dev": "npm run build:image-polish && chcp 65001 && electron-vite dev --outDir=dist",
@@ -89,6 +89,7 @@
         "uuid": "^14.0.2",
         "vite": "^8.2.2",
         "vite-plugin-vue-devtools": "^8.2.1",
+        "vite-plus": "^1.5.1",
         "vite-svg-loader": "^5.1.2",
         "vue": "^3.5.41",
         "vue-tsc": "^3.3.11",

@@ -14,7 +14,6 @@ import type {
     ImageResizeOptions,
     SaveImageOptions
 } from '@shared'
-import type { Mat } from '@techstark/opencv-js'
 
 import { LogHelper, PathHelper, StringHelper, TaskHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
@@ -266,36 +265,6 @@ export class MediaHelper {
     }
 
     private static cv: typeof cvModule | null = null
-
-    /**
-     * 将 Mat 转成 PNG 格式的 ArrayBuffer
-     * @param mat OpenCV Mat
-     * @returns PNG 格式的 ArrayBuffer 数据
-     */
-    private static async matToArrayBuffer(mat: Mat): Promise<ArrayBuffer | null> {
-        if (!this.cv) this.cv = (await getOpenCv()).cv
-
-        const cv = this.cv
-        if (!cv) {
-            LogHelper.error('OpenCV 初始化失败')
-            return null
-        }
-
-        const canvas = document.createElement('canvas')
-        canvas.width = mat.cols
-        canvas.height = mat.rows
-        cv.imshow(canvas, mat)
-
-        const blob = await new Promise<Blob | null>((resolve) =>
-            canvas.toBlob(resolve, 'image/png')
-        )
-        if (!blob) {
-            LogHelper.error('图片转 Blob 失败')
-            return null
-        }
-
-        return await blob.arrayBuffer()
-    }
 
     /**
      * 查找模板图在源图中的位置

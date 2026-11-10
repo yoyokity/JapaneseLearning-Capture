@@ -61,13 +61,10 @@ module.exports = {
                 options.outputPaths[index] = target
 
                 await fs.promises.rm(path.join(outDir, 'JapLC-x64.7z'), { force: true })
-                execFileSync(path7za, [
-                    'a',
-                    '-mx=5',
-                    '-md=32m',
-                    'JapLC-x64.7z',
-                    'JapLC'
-                ], { cwd: outDir, stdio: 'inherit' })
+                execFileSync(path7za, ['a', '-mx=5', '-md=32m', 'JapLC-x64.7z', 'JapLC'], {
+                    cwd: outDir,
+                    stdio: 'inherit'
+                })
             }
         }
     },

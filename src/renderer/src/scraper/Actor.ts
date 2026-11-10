@@ -86,8 +86,9 @@ export class Actor implements IActorFull {
                 const name = item.find('.a_name').text().trim()
                 const style = item.find('.search_card').attr('style') || ''
                 const imgUrl =
-                    StringHelper.decodeHtmlEntity(style).match(backgroundImageRegex)?.groups?.url
-                        ?.trim() || ''
+                    StringHelper.decodeHtmlEntity(style)
+                        .match(backgroundImageRegex)
+                        ?.groups?.url?.trim() || ''
 
                 return { href, name, imgUrl }
             })
@@ -173,10 +174,7 @@ export class Actor implements IActorFull {
      * 从数据库中获取演员信息
      */
     private async get(): Promise<boolean> {
-        const data = await DataHelper.get<IActorFull>(
-            `${DATA_NAME}-${DATA_VERSION}`,
-            this.name
-        )
+        const data = await DataHelper.get<IActorFull>(`${DATA_NAME}-${DATA_VERSION}`, this.name)
         if (!data) return false
 
         this.imgUrl = data.imgUrl || ''
