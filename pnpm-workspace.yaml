@@ -3,6 +3,7 @@ blockExoticSubdeps: false
 
 allowBuilds:
   '@parcel/watcher': true
+  '7zip-bin': true
   electron: true
   electron-winstaller: true
   esbuild: true
@@ -12,6 +13,7 @@ allowBuilds:
   unrs-resolver: true
 onlyBuiltDependencies:
   - '@parcel/watcher'
+  - 7zip-bin
   - electron
   - electron-winstaller
   - esbuild

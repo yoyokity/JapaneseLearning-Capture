@@ -1,11 +1,18 @@
 {
     "name": "japanese-learning-capture",
     "type": "module",
-    "version": "2.0.1",
+    "version": "2.1.0",
     "packageManager": "pnpm@11.5.2",
     "description": "日语学习资料的刮削、管理工具🤪",
     "author": "yoyokity",
     "main": "./dist/main/index.js",
+    "devEngines": {
+        "runtime": {
+            "name": "node",
+            "version": "24.22.2",
+            "onFail": "download"
+        }
+    },
     "scripts": {
         "type-check": "vue-tsc --noEmit -p tsconfig.web.json",
         "lint:check": "eslint .",
@@ -16,12 +23,13 @@
         "build:vite": "electron-vite build --outDir=dist",
         "build:icons": "electron-icon-builder --input=./resources/mainIcon.png --output=./build -f",
         "build:image-polish": "cd image-polish && python build.py && xcopy /E /I /Y out ..\\tools\\image-polish",
-        "package": "npm run build && electron-forge package"
+        "package": "pnpm run build && electron-forge package"
     },
     "dependencies": {
         "sharp": "^0.35.4"
     },
     "devDependencies": {
+        "7zip-bin": "^5.2.0",
         "@ai-sdk/deepseek": "^3.0.32",
         "@ai-sdk/openai": "^4.0.47",
         "@antfu/eslint-config": "^9.3.0",
