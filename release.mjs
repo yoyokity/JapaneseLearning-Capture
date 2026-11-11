@@ -200,7 +200,7 @@ writeFileSync(
     [
         '### 📥 下载',
         '',
-        `**普通用户请下载 [JapLC-x64.7z](https://github.com/${REPO}/releases/download/${version}/JapLC-x64.7z)，解压即可使用。**`,
+        `**请下载 [JapLC-x64.7z](https://github.com/${REPO}/releases/download/${version}/JapLC-x64.7z)，解压即可使用。**`,
         '',
         '---',
         '',
