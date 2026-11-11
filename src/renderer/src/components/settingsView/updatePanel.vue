@@ -117,9 +117,7 @@ function applyUpdate() {
                     {{
                         update.state.status === 'extracting'
                             ? '正在解压…'
-                            : update.state.stage === 'sevenZip'
-                              ? '正在下载更新组件…'
-                              : `${formatFileSize(update.state.received)} / ${formatFileSize(update.state.total)}`
+                            : `${formatFileSize(update.state.received)} / ${formatFileSize(update.state.total)}`
                     }}
                 </span>
             </div>

@@ -36,7 +36,7 @@ if (toolsArchives.length !== 1) {
     process.exit(1)
 }
 
-const assets = ['JapLC-x64.7z', 'JapLC-app-x64.7z', toolsArchives[0], '7za.exe']
+const assets = ['JapLC-x64.7z', 'JapLC-app-x64.7z', toolsArchives[0]]
 const missing = assets.filter((name) => !existsSync(join(outDir, name)))
 if (missing.length > 0) {
     console.error(`缺少发布资产：${missing.join(', ')}，请先执行 pnpm package`)
@@ -199,8 +199,7 @@ const manifest = {
     notes,
     assets: {
         app: { name: 'JapLC-app-x64.7z', ...fileInfo(join(outDir, 'JapLC-app-x64.7z')) },
-        tools: { name: toolsArchives[0], ...fileInfo(join(outDir, toolsArchives[0])) },
-        sevenZip: { name: '7za.exe', ...fileInfo(join(outDir, '7za.exe')) }
+        tools: { name: toolsArchives[0], ...fileInfo(join(outDir, toolsArchives[0])) }
     }
 }
 const manifestPath = join(outDir, 'latest.json')

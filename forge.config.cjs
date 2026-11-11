@@ -89,8 +89,6 @@ module.exports = {
                 // 解压器放在 resources 根，避免被 tools 更新包覆盖
                 const resourcesDir = path.join(target, 'resources')
                 await fs.promises.copyFile(path7za, path.join(resourcesDir, '7za.exe'))
-                // 同时输出到 out 根，供发布时作为独立资产上传（旧版本升级首次需要）
-                await fs.promises.copyFile(path7za, path.join(outDir, '7za.exe'))
 
                 // 写入 tools 版本标记，更新时与 release 资产名中的 hash 比对，未变化则跳过下载
                 const toolsDir = path.join(resourcesDir, 'tools')

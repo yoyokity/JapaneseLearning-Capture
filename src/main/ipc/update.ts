@@ -63,8 +63,6 @@ export interface IUpdateInfo {
     toolsAsset: (IUpdateAsset & { hash: string }) | null
     /** 是否需要更新 tools */
     needTools: boolean
-    /** 解压器资产，本地已有解压器时为 null（旧版本升级时首次需要） */
-    sevenZipAsset: IUpdateAsset | null
 }
 
 /**
@@ -79,7 +77,7 @@ export interface IUpdateState {
     /** 当前状态 */
     status: UpdateStatus
     /** 正在下载的包 */
-    stage: 'app' | 'tools' | 'sevenZip' | null
+    stage: 'app' | 'tools' | null
     /** 已下载字节数 */
     received: number
     /** 总字节数 */
@@ -101,7 +99,6 @@ interface ILatestManifest {
     assets: {
         app: { name: string; size: number; sha256: string }
         tools: { name: string; size: number; sha256: string }
-        sevenZip: { name: string; size: number; sha256: string }
     }
 }
 
@@ -148,13 +145,10 @@ function escapeBatPath(value: string) {
 }
 
 /**
- * 获取解压器路径，优先使用包内自带的；旧版本没有自带时使用首次更新下载的那份
+ * 获取随包携带的解压器路径
  */
 function getSevenZipPath() {
-    const bundledPath = join(appPath.extraResource, '7za.exe')
-    if (existsSync(bundledPath)) return bundledPath
-
-    return join(app.getPath('userData'), '7za.exe')
+    return join(appPath.extraResource, '7za.exe')
 }
 
 /**
@@ -238,7 +232,7 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
     }
     if (compareVersion(manifest.version, app.getVersion()) <= 0) return null
 
-    const { app: appAsset, tools: toolsAsset, sevenZip: sevenZipAsset } = manifest.assets
+    const { app: appAsset, tools: toolsAsset } = manifest.assets
     if (!appAsset?.name || !appAsset.sha256) {
         throw new Error('更新清单格式无效')
     }
@@ -248,7 +242,6 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
     const toolsMatch = TOOLS_ASSET_PATTERN.exec(toolsAsset?.name ?? '')
     const { hash: remoteToolsHash = '' } = toolsMatch?.groups ?? {}
     const needTools = Boolean(toolsMatch) && remoteToolsHash !== readLocalToolsHash()
-    const hasSevenZip = existsSync(getSevenZipPath())
 
     lastChecked = {
         version: manifest.version,
@@ -270,16 +263,7 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
                       hash: remoteToolsHash
                   }
                 : null,
-        needTools,
-        sevenZipAsset:
-            hasSevenZip || !sevenZipAsset?.name
-                ? null
-                : {
-                      name: sevenZipAsset.name,
-                      url: downloadUrl(sevenZipAsset.name),
-                      size: sevenZipAsset.size,
-                      sha256: sevenZipAsset.sha256
-                  }
+        needTools
     }
 
     return lastChecked
@@ -436,12 +420,9 @@ export async function startDownload(version: string) {
 
     downloadTask = (async () => {
         try {
-            // 旧版本包里没有解压器，首次更新需要先下载
+            // 解压器随主程序包分发，缺失说明安装目录不完整
             if (!existsSync(getSevenZipPath())) {
-                if (!info.sevenZipAsset) {
-                    throw new Error('缺少解压组件，请重新检查更新')
-                }
-                await downloadAsset(info.sevenZipAsset, 'sevenZip', getSevenZipPath())
+                throw new Error('缺少解压组件，请手动下载最新版本')
             }
 
             const appArchive = await downloadAsset(info.appAsset, 'app')

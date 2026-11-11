@@ -110,8 +110,8 @@
 
 1. `pnpm package`（必须重新打包，脚本会校验产物是否早于构建结果）
 2. `pnpm release`（创建 draft，自动写入并上传 `latest.json`）
-3. `gh release view <version> --json assets` 确认 5 个资产齐全：
-   `JapLC-x64.7z`、`JapLC-app-x64.7z`、`JapLC-tools-<hash>-x64.7z`、`7za.exe`、`latest.json`
+3. `gh release view <version> --json assets` 确认 4 个资产齐全：
+   `JapLC-x64.7z`、`JapLC-app-x64.7z`、`JapLC-tools-<hash>-x64.7z`、`latest.json`
 4. `pnpm release --publish`（draft 完整时只转正式发布，不重新上传）
 5. 验证：
     - `gh release view <version>` 显示 Latest
