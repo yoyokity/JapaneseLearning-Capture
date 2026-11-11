@@ -19,6 +19,7 @@ const draft = !process.argv.includes('--publish')
 const dryRun = process.argv.includes('--dry-run')
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'))
 const outDir = 'out'
+const REPO = 'yoyokity/JapaneseLearning-Capture'
 
 if (!existsSync(outDir)) {
     console.error('未找到 out 目录，请先执行 pnpm package')
@@ -185,12 +186,28 @@ if (hasCustomNotes) {
     rmSync(notesFile, { force: true })
 }
 
-// 读取发布说明，写入更新清单
+// 读取发布说明，用于应用内展示（不含下载引导）
 const rawNotes = runGh(['release', 'view', version, '--json', 'body', '--jq', '.body'], {
     stdio: 'pipe',
     encoding: 'utf8'
 })
 const notes = rawNotes.trim() === 'null' ? '' : rawNotes
+
+// 发布页顶部插入全量包下载引导，增量包不展示给普通用户
+const releasePagePath = join(outDir, 'release-page.md')
+writeFileSync(
+    releasePagePath,
+    [
+        '### 📥 下载',
+        '',
+        `**普通用户请下载 [JapLC-x64.7z](https://github.com/${REPO}/releases/download/${version}/JapLC-x64.7z)，解压即可使用。**`,
+        '',
+        '---',
+        '',
+        notes
+    ].join('\n')
+)
+runGh(['release', 'edit', version, '--notes-file', releasePagePath])
 
 const manifest = {
     version,
