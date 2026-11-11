@@ -1,8 +1,10 @@
 import type { ReadDirectoryOptions } from './filesystem'
 import type { ImageData, ImageResizeOptions, SaveImageOptions } from './media'
 import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
+import type { IUpdateState } from './update'
 
 import { initTRPC } from '@trpc/server'
+import { observable } from '@trpc/server/observable'
 import { app } from 'electron'
 import superjson from 'superjson'
 import { z } from 'zod'
@@ -60,6 +62,14 @@ import {
     setCookie,
     setProxy
 } from './net'
+import {
+    applyUpdate,
+    checkUpdate,
+    getUpdateError,
+    getUpdateState,
+    onUpdateStateChange,
+    startDownload
+} from './update'
 
 const t = initTRPC.create({ transformer: superjson })
 
@@ -100,6 +110,22 @@ export const appRouter = t.router({
         userPath: procedure.query(() => app.getPath('userData')),
         logsPath: procedure.query(() => app.getPath('logs')),
         tempPath: procedure.query(() => app.getPath('temp'))
+    }),
+    update: t.router({
+        lastError: procedure.query(() => getUpdateError()),
+        check: procedure.mutation(() => checkUpdate()),
+        startDownload: procedure
+            .input(z.object({ version: z.string() }))
+            .mutation(({ input }) => startDownload(input.version)),
+        progress: procedure.subscription(() =>
+            observable<IUpdateState>((emit) => {
+                emit.next(getUpdateState())
+                return {
+                    unsubscribe: onUpdateStateChange((state) => emit.next(state))
+                }
+            })
+        ),
+        apply: procedure.mutation(() => applyUpdate())
     }),
     filesystem: t.router({
         isExist: procedure.input(z.string()).query(({ input }) => isExist(input)),

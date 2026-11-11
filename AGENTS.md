@@ -79,3 +79,45 @@
 - 注释尽可能简洁
 - 函数方法也添加文档注释
 - 写vue hook函数或者defineStore函数时，最后导出的return内部的每个字段加上文档注释
+
+# GitHub Release 发布
+
+## 前置检查
+
+1. `git status` 必须干净且已推送到远端（release 的 tag 指向远端 commit，未推送的提交不会进包）
+2. `pnpm lint:check` 通过
+3. 取最后发布版本，`package.json` 的 version 必须严格大于它；否则询问用户要改成什么版本号：
+   `gh api repos/yoyokity/JapaneseLearning-Capture/releases/latest --jq '.tag_name'`
+4. 版本号使用 semver，不带 `v` 前缀（程序下载地址直接拼 tag）
+
+## 发布说明
+
+- 用 `git log <最后版本>..HEAD --no-merges` 获取改动
+- 写入 `out/release-notes.md`，中文 markdown
+- 只写用户可见的内容，按 `### ✨ 新功能` / `### 🔧 改进` / `### 🐛 修复` 分组，没有的组省略
+- 不写构建、重构、依赖升级、开发工具相关
+- 示例：
+
+> ### ✨ 新功能
+>
+> - **应用内更新**：关于页支持检查、下载并安装新版本，重启后自动替换程序文件，用户数据目录保持不变。
+>
+> ### 🔧 改进
+>
+> - 主程序更新包不再包含工具包，日常更新下载量从 288MB 降到约 167MB。
+
+## 执行
+
+1. `pnpm package`（必须重新打包，脚本会校验产物是否早于构建结果）
+2. `pnpm release`（创建 draft，自动写入并上传 `latest.json`）
+3. `gh release view <version> --json assets` 确认 5 个资产齐全：
+   `JapLC-x64.7z`、`JapLC-app-x64.7z`、`JapLC-tools-<hash>-x64.7z`、`7za.exe`、`latest.json`
+4. `pnpm release --publish`（draft 完整时只转正式发布，不重新上传）
+5. 验证：
+    - `gh release view <version>` 显示 Latest
+    - `curl -s https://github.com/yoyokity/JapaneseLearning-Capture/releases/latest/download/latest.json` 中的 version 与发布版本一致
+
+## 环境
+
+- gh 可能不在 Git Bash 的 PATH，在 cmd/PowerShell 中执行，或使用完整路径 `"C:\Program Files\GitHub CLI\gh.exe"`
+- 需要代理时先设置 `HTTPS_PROXY`，gh 直连 github.com 会超时

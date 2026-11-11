@@ -7,6 +7,7 @@ import { createIPCHandler } from 'electron-trpc/main'
 import { appPath } from './globalStates'
 import { createDirectory } from './ipc/filesystem'
 import { appRouter } from './ipc/router'
+import { consumeUpdateError, restorePendingUpdate } from './ipc/update'
 import { createWindow } from './window'
 
 // 预注册本地文件协议，确保渲染进程可识别
@@ -35,6 +36,10 @@ app.setPath('logs', join(appPath.root, 'data', 'logs'))
 app.setPath('temp', join(appPath.root, 'data', 'temp'))
 
 createDirectory(app.getPath('temp'))
+
+// 读取上次更新失败标记，并恢复已下载完成但未应用的更新
+consumeUpdateError()
+restorePendingUpdate()
 
 app.whenReady().then(() => {
     const ipcHandler = createIPCHandler({ router: appRouter })

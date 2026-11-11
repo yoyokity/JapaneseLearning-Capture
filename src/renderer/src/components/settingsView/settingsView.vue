@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import InfoTable from '@renderer/components/control/infoTable.vue'
 import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import InputLineItem from '@renderer/components/control/inputLine/inputLineItem.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
+import UpdatePanel from '@renderer/components/settingsView/updatePanel.vue'
 import {
     DeepseekReasoningEffortArray,
     LogHelper,
@@ -22,11 +22,6 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 import { ref } from 'vue'
-
-const appName = __APP_NAME__
-    .replace(/-/g, ' ') // 把短横线变成空格
-    .replace(/\b\w/g, (char) => char.toUpperCase()) // 每个单词首字母大写
-const appVersion = __APP_VERSION__
 
 const settings = settingsStore()
 const translateEngineConfigRef = ref()
@@ -421,16 +416,19 @@ function openTempPath() {
                             />
                         </template>
                     </InputLine>
+
+                    <h1>更新</h1>
+
+                    <InputLine icon="pi pi-cloud-download" title="自动检查更新">
+                        <template #right>
+                            <ToggleSwitch v-model="settings.update.autoCheck" />
+                        </template>
+                    </InputLine>
                 </div>
 
                 <!--info-->
                 <div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
-                    <InfoTable
-                        :info="{
-                            default: [{ 应用名: appName }, { 版本号: appVersion }]
-                        }"
-                        style="margin-bottom: 3rem"
-                    />
+                    <UpdatePanel />
 
                     <!-- 路径操作按钮 -->
                     <div style="display: flex; gap: 0.5rem; flex-direction: column; width: 10rem">

@@ -84,6 +84,14 @@ export const settingsStore = defineStore(
         const manageViewSortReverse = ref(true)
         const manageViewTagsMatchAll = ref(true)
 
+        // 更新
+        const update = reactive({
+            /**
+             * 启动时自动检查更新
+             */
+            autoCheck: true
+        })
+
         return {
             proxy,
             net,
@@ -91,6 +99,10 @@ export const settingsStore = defineStore(
              * 翻译设置
              */
             translate,
+            /**
+             * 更新设置
+             */
+            update,
             /**
              * 刮削器路径设置
              */
