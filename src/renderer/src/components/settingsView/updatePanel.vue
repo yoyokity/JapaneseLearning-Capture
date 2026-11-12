@@ -244,5 +244,11 @@ function applyUpdate() {
         font-size: 0.75rem;
         color: var(--p-red-500);
     }
+
+    .release-notes {
+        :deep(.markdown-body) {
+            font-size: 0.875rem;
+        }
+    }
 }
 </style>

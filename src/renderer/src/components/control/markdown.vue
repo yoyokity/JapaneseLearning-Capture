@@ -21,6 +21,7 @@ const html = computed(() => marked.parse(props.content) as string)
 
 <style lang="scss" scoped>
 .markdown-body {
+    font-family: inherit; // 覆盖 github-markdown-css 自带字体栈，跟随全局苹方
     user-select: text;
     color: var(--p-text-color);
 
