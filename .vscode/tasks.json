@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "lint:fix",
+            "detail": "修复代码风格问题并格式化",
+            "type": "shell",
+            "command": "pnpm exec vp run lint:fix",
+            "problemMatcher": []
+        },
+        {
+            "label": "audit:check",
+            "detail": "检查生产依赖的安全漏洞",
+            "type": "shell",
+            "command": "pnpm exec vp run audit:check",
+            "problemMatcher": []
+        },
+        {
+            "label": "dev",
+            "detail": "启动开发环境",
+            "type": "shell",
+            "command": "pnpm exec vp run dev",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "package",
+            "detail": "构建并打包应用",
+            "type": "shell",
+            "command": "pnpm exec vp run package",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}

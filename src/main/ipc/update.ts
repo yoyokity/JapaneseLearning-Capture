@@ -53,15 +53,25 @@ export interface IUpdateAsset {
 }
 
 /**
+ * 单个版本的更新说明
+ */
+export interface IReleaseNote {
+    /** 版本号 */
+    version: string
+    /** 发布时间 */
+    publishedAt: string
+    /** 更新说明（markdown） */
+    notes: string
+}
+
+/**
  * 检查到的更新信息
  */
 export interface IUpdateInfo {
     /** 新版本号 */
     version: string
-    /** 更新日志（markdown） */
-    notes: string
-    /** 发布时间 */
-    publishedAt: string
+    /** 各版本说明，新版本在前 */
+    releases: IReleaseNote[]
     /** 主程序更新包 */
     appAsset: IUpdateAsset
     /** tools 更新包，无需更新时为 null */
@@ -101,6 +111,8 @@ interface ILatestManifest {
     tag: string
     date?: string
     notes?: string
+    /** 各版本 tag，新版本在前 */
+    versions?: string[]
     assets: {
         app: { name: string; size: number; sha256: string }
         tools: { name: string; size: number; sha256: string }
@@ -218,6 +230,31 @@ export function onUpdateStateChange(listener: (state: IUpdateState) => void) {
     }
 }
 
+/** 下载指定版本清单 */
+async function fetchReleaseNote(tag: string): Promise<IReleaseNote | null> {
+    // 只接受标准版本号
+    if (!/^\d+\.\d+\.\d+$/.test(tag)) return null
+
+    try {
+        const response = await net.fetch(`${DOWNLOAD_BASE}/${tag}/latest.json`, {
+            signal: AbortSignal.timeout(15_000)
+        })
+        if (!response.ok) return null
+
+        const manifest = (await response.json()) as ILatestManifest
+        // 版本必须一致
+        if (manifest.version !== tag) return null
+
+        return {
+            version: manifest.version,
+            publishedAt: manifest.date ?? '',
+            notes: manifest.notes ?? ''
+        }
+    } catch {
+        return null
+    }
+}
+
 /**
  * 检查更新清单中的最新版本
  */
@@ -248,10 +285,27 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
     const { hash: remoteToolsHash = '' } = toolsMatch?.groups ?? {}
     const needTools = Boolean(toolsMatch) && remoteToolsHash !== readLocalToolsHash()
 
+    // 最新取自清单，其余逐个下载
+    const versions = [...new Set([manifest.version, ...(manifest.versions ?? [])])]
+        .filter((tag) => compareVersion(tag, app.getVersion()) > 0)
+        .sort((a, b) => compareVersion(b, a))
+    const releases = (
+        await Promise.all(
+            versions.map((tag) =>
+                tag === manifest.version
+                    ? {
+                          version: tag,
+                          publishedAt: manifest.date ?? '',
+                          notes: manifest.notes ?? ''
+                      }
+                    : fetchReleaseNote(tag)
+            )
+        )
+    ).filter((item): item is IReleaseNote => item !== null)
+
     lastChecked = {
         version: manifest.version,
-        notes: manifest.notes ?? '',
-        publishedAt: manifest.date ?? '',
+        releases,
         appAsset: {
             name: appAsset.name,
             url: downloadUrl(appAsset.name),

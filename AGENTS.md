@@ -1,5 +1,5 @@
 - 思考过程使用中文
-- 类型检查使用 pnpm lint:check（或 vp run lint:check）命令
+- 类型检查使用 vp run lint:check 命令
 - 需要用到搜索引擎，优先找tavily mcp工具来进行搜索（如果有的话）
 
 # 项目通用规则
@@ -85,7 +85,7 @@
 ## 前置检查
 
 1. `git status` 必须干净且已推送到远端（release 的 tag 指向远端 commit，未推送的提交不会进包）
-2. `pnpm lint:check` 通过
+2. `vp run lint:check` 通过
 3. 取最后发布版本，`package.json` 的 version 必须严格大于它；否则询问用户要改成什么版本号：
    `gh api repos/yoyokity/JapaneseLearning-Capture/releases/latest --jq '.tag_name'`
 4. 版本号使用 semver，不带 `v` 前缀（程序下载地址直接拼 tag）
@@ -96,7 +96,7 @@
 - 写入 `out/release-notes.md`，中文 markdown
 - 只写用户可见的内容，按 `### ✨ 新功能` / `### 🔧 改进` / `### 🐛 修复` 分组，没有的组省略
 - 不写构建、重构、依赖升级、开发工具相关
-- 发布页顶部的「📥 下载」引导由 `release.mjs` 自动插入（指向全量包），说明里不要重复写下载链接
+- 发布页顶部的「📥 下载」引导由 `scripts/release.ts` 自动插入（指向全量包），说明里不要重复写下载链接
 - 不要提 `JapLC-app-x64.7z` / `JapLC-tools-*.7z`，这两个是应用内更新用的，用户只需要全量包
 - 示例：
 
@@ -110,11 +110,11 @@
 
 ## 执行
 
-1. `pnpm package`（必须重新打包，脚本会校验产物是否早于构建结果）
-2. `pnpm release`（创建 draft，自动写入并上传 `latest.json`）
+1. `vp run package`（必须重新打包，脚本会校验产物是否早于构建结果）
+2. `vp run release`（创建 draft，自动写入并上传 `latest.json`）
 3. `gh release view <version> --json assets` 确认 4 个资产齐全：
    `JapLC-x64.7z`、`JapLC-app-x64.7z`、`JapLC-tools-<hash>-x64.7z`、`latest.json`
-4. `pnpm release --publish`（draft 完整时只转正式发布，不重新上传）
+4. `vp run release --publish`（draft 完整时只转正式发布，不重新上传）
 5. 验证：
     - `gh release view <version>` 显示 Latest
     - `curl -s https://github.com/yoyokity/JapaneseLearning-Capture/releases/latest/download/latest.json` 中的 version 与发布版本一致

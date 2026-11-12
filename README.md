@@ -19,3 +19,15 @@
 - 本项目不提供任何视频下载，只管理本地资源
 - 本项目和项目成果仅供技术，学术交流和electron性能测试使用
 - 永久开源免费
+
+## 🛠️构建
+
+只需[安装 vp](https://viteplus.dev/guide/)，Node.js 与 pnpm 会按项目声明自动准备。
+
+```bash
+vp install      # 安装依赖
+vp run dev      # 启动开发环境
+vp run package  # 构建并打包到 out/
+```
+
+发布流程见 `AGENTS.md`。

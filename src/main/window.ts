@@ -65,10 +65,23 @@ export function createWindow() {
         mainWindow.show()
     })
 
-    // 用默认浏览器打开外部链接
+    /** 用系统浏览器打开 http(s) 链接 */
+    function openExternal(url: string) {
+        if (/^https?:\/\//i.test(url)) {
+            void shell.openExternal(url)
+        }
+    }
+
+    // 用默认浏览器打开新窗口链接
     mainWindow.webContents.setWindowOpenHandler((details) => {
-        shell.openExternal(details.url)
+        openExternal(details.url)
         return { action: 'deny' }
+    })
+
+    // 阻止窗口内导航
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+        event.preventDefault()
+        openExternal(url)
     })
 
     // 监听窗口关闭事件，保存窗口大小和位置

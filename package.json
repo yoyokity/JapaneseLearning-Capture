@@ -1,7 +1,7 @@
 {
     "name": "japanese-learning-capture",
     "type": "module",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "packageManager": "pnpm@11.5.2",
     "description": "日语学习资料的刮削、管理工具🤪",
     "author": "yoyokity",
@@ -14,18 +14,7 @@
         }
     },
     "scripts": {
-        "prepare": "vp config --no-agent && install-electron",
-        "lint:check": "eslint . && tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
-        "lint:fix": "eslint . --fix && prettier . --write --experimental-cli",
-        "audit:check": "pnpm audit --prod",
-        "start": "npm run build:image-polish && chcp 65001 && electron-vite preview --outDir=dist",
-        "dev": "npm run build:image-polish && chcp 65001 && electron-vite dev --outDir=dist",
-        "build": "npm run build:icons && npm run build:vite && npm run build:image-polish",
-        "build:vite": "electron-vite build --outDir=dist",
-        "build:icons": "electron-icon-builder --input=./resources/mainIcon.png --output=./build -f",
-        "build:image-polish": "cd image-polish && python build.py && xcopy /E /I /Y out ..\\tools\\image-polish",
-        "package": "pnpm run build && electron-forge package",
-        "release": "node release.mjs"
+        "prepare": "vp config --no-agent && install-electron"
     },
     "dependencies": {
         "sharp": "^0.35.5"
