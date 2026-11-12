@@ -91,6 +91,7 @@ function omitUndefined<T extends Record<string, any>>(value: T): T {
 export const appRouter = t.router({
     check: procedure.query(() => true),
     app: t.router({
+        isPackaged: procedure.query(() => app.isPackaged),
         appPath: procedure.query(() => appPath.root),
         arsrPath: procedure
             .output(

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import Markdown from '@renderer/components/control/markdown.vue'
 import { useMessage } from '@renderer/components/control/message'
+import { PathHelper } from '@renderer/helper'
 import { updateStore } from '@renderer/stores'
 import dayjs from 'dayjs'
 import Button from 'primevue/button'
@@ -48,6 +49,27 @@ function formatFileSize(size: number) {
 }
 
 /**
+ * 打开应用根目录
+ */
+function openAppPath() {
+    PathHelper.openInExplorer(PathHelper.appPath)
+}
+
+/**
+ * 打开临时目录
+ */
+function openTempPath() {
+    PathHelper.openInExplorer(PathHelper.tempPath)
+}
+
+/**
+ * 打开日志文件
+ */
+function openLogsFile() {
+    PathHelper.openInExplorer(PathHelper.logsPath.join('main.log'))
+}
+
+/**
  * 手动检查更新
  */
 async function checkUpdate() {
@@ -84,34 +106,65 @@ function applyUpdate() {
 
 <template>
     <div class="update-panel">
-        <!-- 版本与检查 -->
-        <div class="version-line">
-            <span class="version">当前版本 {{ appVersion }}</span>
+        <!-- 路径操作 -->
+        <div class="path-actions">
+            <Button icon="pi pi-folder-open" label="打开根目录" @click="openAppPath" />
             <Button
-                :loading="update.checking"
-                label="检查更新"
-                size="small"
-                variant="outlined"
-                @click="checkUpdate"
+                icon="pi pi-folder-open"
+                label="打开临时目录"
+                severity="secondary"
+                @click="openTempPath"
+            />
+            <Button
+                icon="pi pi-folder-open"
+                label="打开日志文件"
+                severity="secondary"
+                @click="openLogsFile"
             />
         </div>
 
-        <!-- 新版本信息 -->
-        <template v-if="update.info">
-            <div class="release-header">
-                <Tag :value="`新版本 ${update.info.version}`" severity="success" />
-                <span class="release-date">{{ releaseDate }}</span>
+        <!-- 版本与操作 -->
+        <div class="panel-box version-block">
+            <div class="version-line">
+                <div class="version-info">
+                    <template v-if="update.state.status === 'ready' && update.state.targetVersion">
+                        <span class="ready-text">
+                            已下载 {{ update.state.targetVersion }}，重启后生效
+                        </span>
+                    </template>
+                    <template v-else-if="update.info">
+                        <Tag :value="`新版本 ${update.info.version}`" severity="success" />
+                        <span class="release-date">{{ releaseDate }}</span>
+                    </template>
+                    <span v-else class="current-version">当前版本 {{ appVersion }}</span>
+                </div>
+
+                <div v-if="!busy">
+                    <Button
+                        v-if="update.state.status === 'ready'"
+                        label="重启并安装"
+                        severity="success"
+                        @click="applyUpdate"
+                    />
+                    <Button
+                        v-else-if="update.info"
+                        :disabled="!update.canDownload"
+                        label="下载并更新"
+                        @click="download"
+                    />
+                    <Button
+                        v-else
+                        :loading="update.checking"
+                        label="检查更新"
+                        size="small"
+                        variant="outlined"
+                        @click="checkUpdate"
+                    />
+                </div>
             </div>
 
-            <!-- 更新日志 -->
-            <div v-if="update.info.notes" class="release-notes">
-                <Markdown :content="update.info.notes" />
-            </div>
-        </template>
-
-        <!-- 下载/安装操作，上次下载完成但未应用时也显示 -->
-        <div v-if="update.info || update.state.status === 'ready'" class="actions">
-            <div v-if="busy" class="progress-area">
+            <!-- 下载进度 -->
+            <div v-if="busy" class="progress-row">
                 <ProgressBar :show-value="false" :value="progressPercent" />
                 <span class="progress-text">
                     {{
@@ -121,23 +174,16 @@ function applyUpdate() {
                     }}
                 </span>
             </div>
-            <template v-else-if="update.state.status === 'ready'">
-                <span v-if="update.state.targetVersion" class="ready-text">
-                    已下载 {{ update.state.targetVersion }}，重启后生效
-                </span>
-                <Button label="重启并安装" severity="success" @click="applyUpdate" />
-            </template>
-            <Button
-                v-else
-                :disabled="update.state.status === 'applying'"
-                label="下载并更新"
-                @click="download"
-            />
+
+            <p v-if="update.state.status === 'error'" class="error-text">
+                {{ update.state.error }}
+            </p>
         </div>
 
-        <p v-if="update.state.status === 'error'" class="error-text">
-            {{ update.state.error }}
-        </p>
+        <!-- 更新日志 -->
+        <div v-if="update.info?.notes" class="panel-box release-notes">
+            <Markdown :content="update.info.notes" />
+        </div>
     </div>
 </template>
 
@@ -146,10 +192,25 @@ function applyUpdate() {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    margin-bottom: 2rem;
-    padding: 1rem;
-    border: var(--separator);
-    border-radius: var(--border-radius);
+
+    .panel-box {
+        padding: 1rem;
+        border: var(--separator);
+        border-radius: var(--border-radius);
+    }
+
+    .path-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .version-block {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
 
     .version-line {
         display: flex;
@@ -158,49 +219,25 @@ function applyUpdate() {
         gap: 1rem;
     }
 
-    .version {
-        color: var(--p-text-muted-color);
-    }
-
-    .release-header {
+    .version-info {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 0.75rem;
     }
 
-    .release-date {
-        font-size: 0.75rem;
-        color: var(--p-text-muted-color);
-    }
-
-    .release-notes {
-        max-height: 20rem;
-        overflow: auto;
-        padding-right: 0.5rem;
-    }
-
-    .actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: flex-start;
-    }
-
-    .progress-area {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .progress-text {
-        font-size: 0.75rem;
-        color: var(--p-text-muted-color);
-    }
-
+    .current-version,
+    .release-date,
+    .progress-text,
     .ready-text {
         font-size: 0.75rem;
         color: var(--p-text-muted-color);
+    }
+
+    .progress-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
     }
 
     .error-text {

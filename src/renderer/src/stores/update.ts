@@ -10,6 +10,8 @@ export const updateStore = defineStore('update', () => {
     const info = ref<IUpdateInfo | null>(null)
     /** 是否正在检查更新 */
     const checking = ref(false)
+    /** 是否为打包环境，开发模式下不能执行更新 */
+    const canDownload = ref(true)
     /** 下载/安装状态 */
     const state = ref<IUpdateState>({
         status: 'idle',
@@ -42,6 +44,10 @@ export const updateStore = defineStore('update', () => {
 
     // 启动即订阅，恢复上次下载完成但未应用的状态
     watchProgress()
+
+    void ipc.app.isPackaged.query().then((value) => {
+        canDownload.value = value
+    })
 
     /**
      * 检查更新
@@ -84,6 +90,10 @@ export const updateStore = defineStore('update', () => {
          * 是否正在检查更新
          */
         checking,
+        /**
+         * 是否为打包环境，开发模式下不能执行更新
+         */
+        canDownload,
         /**
          * 下载/安装状态
          */

@@ -8,7 +8,6 @@ import {
     DeepseekReasoningEffortArray,
     LogHelper,
     OpenAIReasoningEffortArray,
-    PathHelper,
     TransHelper
 } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
@@ -102,18 +101,6 @@ function openLlmInfo() {
             fetchLLMModels()
         }
     })
-}
-
-function openAppPath() {
-    PathHelper.openInExplorer(PathHelper.appPath)
-}
-
-function openLogsFile() {
-    PathHelper.openInExplorer(PathHelper.logsPath.join('main.log'))
-}
-
-function openTempPath() {
-    PathHelper.openInExplorer(PathHelper.tempPath)
 }
 </script>
 
@@ -429,23 +416,6 @@ function openTempPath() {
                 <!--info-->
                 <div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
                     <UpdatePanel />
-
-                    <!-- 路径操作按钮 -->
-                    <div style="display: flex; gap: 0.5rem; flex-direction: column; width: 10rem">
-                        <Button icon="pi pi-folder-open" label="打开根目录" @click="openAppPath" />
-                        <Button
-                            icon="pi pi-folder-open"
-                            label="打开临时目录"
-                            severity="secondary"
-                            @click="openTempPath"
-                        />
-                        <Button
-                            icon="pi pi-folder-open"
-                            label="打开日志文件"
-                            severity="secondary"
-                            @click="openLogsFile"
-                        />
-                    </div>
                 </div>
             </transition>
         </Scroll>
