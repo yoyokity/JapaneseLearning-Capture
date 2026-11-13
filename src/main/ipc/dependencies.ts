@@ -298,7 +298,9 @@ export async function installDependency(id: string) {
             rmSync(archivePath, { force: true })
             setState({ status: 'done', received: 0, total: 0 })
         } catch (error) {
+            // 标记 id，前端据此结束排队任务
             setState({
+                id,
                 status: 'error',
                 error: error instanceof Error ? error.message : String(error)
             })

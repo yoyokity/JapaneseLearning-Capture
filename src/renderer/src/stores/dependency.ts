@@ -26,6 +26,8 @@ export const dependencyStore = defineStore('dependency', () => {
         total: 0,
         error: null
     })
+    /** 排队中的依赖 id */
+    const queued = ref(new Set<string>())
 
     /** 是否已订阅 */
     let watching = false
@@ -122,6 +124,10 @@ export const dependencyStore = defineStore('dependency', () => {
          * 安装状态
          */
         state,
+        /**
+         * 排队中的依赖 id
+         */
+        queued,
         /**
          * 检查依赖状态
          */

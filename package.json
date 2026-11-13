@@ -1,7 +1,7 @@
 {
     "name": "japanese-learning-capture",
     "type": "module",
-    "version": "2.2.3",
+    "version": "2.2.4",
     "packageManager": "pnpm@11.5.2",
     "description": "日语学习资料的刮削、管理工具🤪",
     "author": "yoyokity",
@@ -10,7 +10,7 @@
         "runtime": {
             "name": "node",
             "version": "24.22.2",
-            "onFail": "download"
+            "onFail": "ignore"
         }
     },
     "scripts": {

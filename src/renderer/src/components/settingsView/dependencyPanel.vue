@@ -2,9 +2,10 @@
 import type { IDependencyInfo } from '@shared'
 
 import { useMessage } from '@renderer/components/control/message'
-import { LogHelper, PathHelper } from '@renderer/helper'
+import { LogHelper, PathHelper, TaskHelper } from '@renderer/helper'
 import { dependencyStore } from '@renderer/stores'
 import { useIntervalFn } from '@vueuse/core'
+import { delay } from 'es-toolkit'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Tag from 'primevue/tag'
@@ -66,16 +67,37 @@ async function refresh() {
 }
 
 /**
- * 安装依赖
+ * 等待依赖安装结束
+ * @param id 依赖 id
+ */
+async function waitInstall(id: string) {
+    const deadline = Date.now() + 15 * 60 * 1000
+
+    while (Date.now() < deadline) {
+        const { id: currentId, status } = dependency.state
+        if (currentId === id && (status === 'done' || status === 'error')) return
+        await delay(500)
+    }
+}
+
+/**
+ * 加入下载队列
  * @param item 依赖信息
  */
-async function installDependency(item: IDependencyInfo) {
-    try {
-        await dependency.install(item.id)
-        toast.info(`已开始下载 ${item.name}`)
-    } catch (error) {
-        toast.error(error instanceof Error ? error.message : '开始下载失败')
-    }
+function installDependency(item: IDependencyInfo) {
+    if (dependency.queued.has(item.id)) return
+    dependency.queued.add(item.id)
+
+    void TaskHelper.queueWithInterval({ taskName: 'dependency-install' }, async () => {
+        try {
+            await dependency.install(item.id)
+            await waitInstall(item.id)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : '开始下载失败')
+        } finally {
+            dependency.queued.delete(item.id)
+        }
+    })
 }
 
 /**
@@ -123,21 +145,12 @@ useIntervalFn(
                         <Tag :value="getStatus(item).label" :severity="getStatus(item).severity" />
                     </div>
                     <span class="dependency-desc">{{ item.description }}</span>
-                    <span
-                        v-if="
-                            dependency.canInstall &&
-                            (item.version || item.latestVersion || item.size)
-                        "
-                        class="dependency-version"
-                    >
-                        <template v-if="item.version">本地 {{ item.version }}</template>
-                        <template v-if="item.version && item.latestVersion"> · </template>
-                        <template v-if="item.latestVersion">最新 {{ item.latestVersion }}</template>
-                        <template v-if="item.size"> · {{ formatFileSize(item.size) }}</template>
-                    </span>
                 </div>
 
-                <div v-if="installingId !== item.id" class="dependency-actions">
+                <div
+                    v-if="installingId !== item.id && !dependency.queued.has(item.id)"
+                    class="dependency-actions"
+                >
                     <Button
                         v-if="
                             dependency.canInstall &&
@@ -145,7 +158,7 @@ useIntervalFn(
                         "
                         :icon="item.installed ? 'pi pi-refresh' : 'pi pi-download'"
                         :label="getActionLabel(item)"
-                        :disabled="!dependency.remoteOk || installingId !== null"
+                        :disabled="!dependency.remoteOk"
                         size="small"
                         @click="installDependency(item)"
                     />
@@ -158,6 +171,12 @@ useIntervalFn(
                         @click="openPath(item)"
                     />
                 </div>
+                <span
+                    v-else-if="dependency.queued.has(item.id) && installingId !== item.id"
+                    class="queue-text"
+                >
+                    排队中…
+                </span>
             </div>
 
             <div v-if="installingId === item.id" class="progress-row">
@@ -216,15 +235,16 @@ useIntervalFn(
             color: var(--p-text-muted-color);
         }
 
-        .dependency-version {
-            font-size: 0.75rem;
-            color: var(--p-text-muted-color);
-        }
-
         .dependency-actions {
             display: flex;
             flex-shrink: 0;
             gap: 0.5rem;
+        }
+
+        .queue-text {
+            font-size: 0.75rem;
+            color: var(--p-text-muted-color);
+            flex-shrink: 0;
         }
 
         .progress-row {
