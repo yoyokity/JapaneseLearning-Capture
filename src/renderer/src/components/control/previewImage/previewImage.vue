@@ -4,6 +4,7 @@ import type { CIBeforeAfterInstance } from '@cloudimage/before-after'
 import CIBeforeAfter from '@cloudimage/before-after'
 import { MediaHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
+import { useEventListener } from '@vueuse/core'
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import { usePreviewImage } from '.'
@@ -61,12 +62,14 @@ function handleWheel(e: WheelEvent) {
     )
 }
 
+// 捕获阶段拦截滚轮，先于查看器自身的缩放监听
+useEventListener(containerRef, 'wheel', handleWheel, { capture: true, passive: false })
+
 /**
  * 创建对比查看器
  */
 function createViewer() {
     const container = containerRef.value!
-    container.addEventListener('wheel', handleWheel, { capture: true, passive: false })
 
     viewer = new CIBeforeAfter(container, {
         beforeSrc: beforeSrc.value,

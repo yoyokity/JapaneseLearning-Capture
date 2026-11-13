@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { TaskHelper } from '@renderer/helper'
 import { globalStatesStore } from '@renderer/stores'
+import { useTimeoutFn } from '@vueuse/core'
 import ProgressBar from 'primevue/progressbar'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
@@ -8,7 +9,6 @@ import { computed, onBeforeUnmount, watch } from 'vue'
 
 const globalStates = globalStatesStore()
 const toast = useToast()
-let hideTimer: ReturnType<typeof setTimeout> | null = null
 const toastGroup = 'scraper-progress'
 const toastSummary = '批量刮削中'
 
@@ -46,35 +46,27 @@ function hideToast() {
     toast.removeGroup(toastGroup)
 }
 
+/** 批量结束后延迟隐藏提示 */
+const { start: scheduleHide, stop: cancelHide } = useTimeoutFn(hideToast, 1000, {
+    immediate: false
+})
+
 watch(
     () => globalStates.batchRunning,
     (batchRunning) => {
-        if (hideTimer) {
-            clearTimeout(hideTimer)
-            hideTimer = null
-        }
+        cancelHide()
 
         if (batchRunning) {
             showToast()
             return
         }
 
-        hideTimer = setTimeout(() => {
-            hideToast()
-            hideTimer = null
-        }, 1000)
+        scheduleHide()
     },
     { immediate: true }
 )
 
-onBeforeUnmount(() => {
-    if (hideTimer) {
-        clearTimeout(hideTimer)
-        hideTimer = null
-    }
-
-    hideToast()
-})
+onBeforeUnmount(hideToast)
 </script>
 
 <template>

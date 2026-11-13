@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRafFn } from '@vueuse/core'
 import Lenis from 'lenis'
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 
@@ -16,19 +17,9 @@ withDefaults(defineProps<IProps>(), {
 const scroller = ref<HTMLElement>()
 const content = ref<HTMLElement>()
 let lenis: Lenis | null = null
-let rafId = 0
 
-/**
- * 启动 Lenis 动画帧循环，否则鼠标滚轮事件不会驱动滚动
- */
-function startLenisRaf() {
-    const raf = (time: number) => {
-        lenis?.raf(time)
-        rafId = requestAnimationFrame(raf)
-    }
-
-    rafId = requestAnimationFrame(raf)
-}
+/** 外部持续驱动 Lenis，否则鼠标滚轮事件不会产生滚动 */
+const { resume } = useRafFn(({ timestamp }) => lenis?.raf(timestamp), { immediate: false })
 
 onMounted(() => {
     nextTick(() => {
@@ -40,17 +31,12 @@ onMounted(() => {
                 smoothWheel: true
             })
 
-            startLenisRaf()
+            resume()
         }
     })
 })
 
 onUnmounted(() => {
-    if (rafId) {
-        cancelAnimationFrame(rafId)
-        rafId = 0
-    }
-
     lenis?.destroy() // 组件卸载时清理
     lenis = null
 })

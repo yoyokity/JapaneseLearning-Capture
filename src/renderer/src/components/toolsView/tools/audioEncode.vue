@@ -3,6 +3,7 @@ import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { LogHelper, MediaHelper, PathHelper } from '@renderer/helper'
+import { promiseTimeout } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
@@ -144,7 +145,7 @@ function stopEncode() {
  */
 async function removePartialOutput(outputPath: string) {
     for (let i = 0; i < 10; i++) {
-        if (i > 0) await new Promise((resolve) => setTimeout(resolve, 200))
+        if (i > 0) await promiseTimeout(200)
         if (await PathHelper.remove(outputPath)) return true
     }
 

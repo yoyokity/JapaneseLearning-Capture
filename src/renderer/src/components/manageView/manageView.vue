@@ -12,6 +12,7 @@ import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { PathHelper } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore, VideoSortTypeList } from '@renderer/stores'
+import { useEventListener } from '@vueuse/core'
 import { delay } from 'es-toolkit'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
@@ -19,7 +20,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import ToggleButton from 'primevue/togglebutton'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 
 // 筛选面板
 type FilterPanel = 'tag' | 'sort'
@@ -192,13 +193,7 @@ function handleCardContextmenu(item: ManageCardItem, event: MouseEvent) {
     showMenu(event, item.video)
 }
 
-onMounted(() => {
-    window.addEventListener('mouseup', handleMouseBackAction)
-})
-
-onUnmounted(() => {
-    window.removeEventListener('mouseup', handleMouseBackAction)
-})
+useEventListener(window, 'mouseup', handleMouseBackAction)
 </script>
 
 <template>

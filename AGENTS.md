@@ -33,6 +33,8 @@
 
 - 使用最现代化、最新、最简洁的写法
 
+- 优先使用vueuse
+
 - 定义Props使用`withDefaults(defineProps<IProps>(), {})`或`defineProps<IProps>()`的形式
 
 - <template> 和 <style> 中使用props对象可以直接写字段而不用在前面加props.

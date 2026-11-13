@@ -22,6 +22,7 @@ import {
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { useEditeScraper } from '@renderer/scraper/hooks/useEditeScraper'
 import { settingsStore } from '@renderer/stores'
+import { useEventListener } from '@vueuse/core'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
 import { delay, isEqual } from 'es-toolkit'
@@ -34,7 +35,7 @@ import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
-import { inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { inject, nextTick, onMounted, ref, watch } from 'vue'
 
 dayjs.extend(duration)
 
@@ -308,13 +309,7 @@ function handleMouseBackAction(event: MouseEvent) {
 
 const mediaInfo = ref<MediaInfo | null>(null)
 
-onMounted(() => {
-    window.addEventListener('mouseup', handleMouseBackAction)
-})
-
-onUnmounted(() => {
-    window.removeEventListener('mouseup', handleMouseBackAction)
-})
+useEventListener(window, 'mouseup', handleMouseBackAction)
 
 onMounted(() => {
     newVideo.value = cloneDeep(video) // 深拷贝，避免响应式对象引用问题
