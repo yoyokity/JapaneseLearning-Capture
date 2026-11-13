@@ -21,7 +21,7 @@ import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 const OPENAI_API_KEYS_URL = 'https://platform.openai.com/api-keys'
 const OPENAI_MODELS_URL = 'https://platform.openai.com/docs/models'
@@ -32,6 +32,7 @@ const testDefaultText = 'こんにちは世界'
 const settings = settingsStore()
 const dependency = dependencyStore()
 const translateEngineConfigRef = ref()
+const proxyConfigRef = ref()
 const llmModels = ref<string[]>([])
 const testText = ref(testDefaultText)
 const testTranslateLoading = ref(false)
@@ -48,6 +49,15 @@ const activeTab = ref('settings')
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
     activeTab.value = tabId
+}
+
+/**
+ * 跳转到网络代理设置
+ */
+async function openProxySetting() {
+    activeTab.value = 'settings'
+    await nextTick()
+    proxyConfigRef.value?.open()
 }
 
 // 获取LLM模型列表
@@ -136,6 +146,14 @@ watch(
                 </div>
             </div>
             <div
+                v-if="activeTab === 'dependency' || activeTab === 'info'"
+                class="tab-tip"
+                @click="openProxySetting"
+            >
+                <i class="pi pi-github" />
+                <span>下载源为 GitHub，配置代理可加速</span>
+            </div>
+            <div
                 :style="{
                     transform: `translateX(${tabs.findIndex((tab) => tab.id === activeTab) * 5}rem)`
                 }"
@@ -209,7 +227,12 @@ watch(
                         </template>
                     </InputLine>
 
-                    <InputLine :collapsible="true" icon="pi pi-globe" title="网络代理">
+                    <InputLine
+                        ref="proxyConfigRef"
+                        :collapsible="true"
+                        icon="pi pi-globe"
+                        title="网络代理"
+                    >
                         <InputLineItem title="启用">
                             <ToggleSwitch v-model="settings.proxy.enable" />
                         </InputLineItem>
@@ -469,6 +492,22 @@ watch(
             display: flex;
             align-items: center;
             gap: 0.25rem;
+        }
+    }
+
+    .tab-tip {
+        margin-left: auto;
+        padding-right: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+        color: var(--p-text-muted-color);
+        cursor: pointer;
+        transition: color 0.3s var(--animation-type);
+
+        &:hover {
+            color: var(--p-primary-color);
         }
     }
 

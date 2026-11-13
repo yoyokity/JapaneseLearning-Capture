@@ -5,7 +5,7 @@ import ScraperPregressWindow from '@renderer/components/scraperView/scraperPregr
 import TabContainer from '@renderer/components/tabContainer.vue'
 import { LogHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
-import { dependencyStore, settingsStore, updateStore } from '@renderer/stores'
+import { settingsStore, updateStore } from '@renderer/stores'
 import ConfirmDialog from 'primevue/confirmdialog'
 import DynamicDialog from 'primevue/dynamicdialog'
 import Toast from 'primevue/toast'
@@ -13,7 +13,6 @@ import { onMounted } from 'vue'
 
 const settings = settingsStore()
 const update = updateStore()
-const dependency = dependencyStore()
 const { toast } = useMessage()
 
 onMounted(() => {
@@ -24,22 +23,6 @@ onMounted(() => {
             if (error) toast.error(error)
         })
         .catch((error) => LogHelper.error('读取更新失败标记失败', error))
-
-    // 延迟检查必需依赖
-    setTimeout(async () => {
-        try {
-            const missing = (await dependency.refresh()).filter(
-                (item) => item.required && !item.installed
-            )
-            if (missing.length > 0) {
-                toast.warn(
-                    `缺少必需组件：${missing.map((item) => item.name).join('、')}，请在 设置 → 依赖 中下载`
-                )
-            }
-        } catch (error) {
-            LogHelper.error('检查依赖失败', error)
-        }
-    }, 3000)
 
     if (!settings.update.autoCheck) return
 
