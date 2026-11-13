@@ -66,17 +66,16 @@ export const globalStatesStore = defineStore('globalStates', () => {
     const modelNames = ref<SuperResolutionModel[]>([])
 
     /**
-     * 模型列表加载任务（store 首次实例化时自动开始，供启动流程等待加载完成）
-     * @description 先检测本地 models 目录，硬编码清单仅保留本地存在的模型；其余本地模型以文件名去后缀为模型名，无说明
+     * 加载超分模型列表
      */
-    const modelNamesLoaded: Promise<void> = (async () => {
+    async function loadModelNames() {
         try {
             const modelFiles = await ipc.media.getSuperResolutionModels.query()
-            // 硬编码中本地缺失的模型不展示（path 为空的非AI修复选项始终展示）
+            // 本地缺失模型不展示
             const builtinModels = BUILTIN_SUPER_RESOLUTION_MODELS.filter(
                 (model) => !model.path || modelFiles.includes(model.path.replace(/\.onnx$/, ''))
             )
-            // 本地存在但未硬编码的模型，按文件名去后缀作为模型名与 path
+            // 补充本地其他模型
             const extraModels = modelFiles
                 .filter(
                     (file) =>
@@ -87,7 +86,12 @@ export const globalStatesStore = defineStore('globalStates', () => {
         } catch (error) {
             LogHelper.error('加载可用超分模型失败', error)
         }
-    })()
+    }
+
+    /**
+     * 模型列表加载任务
+     */
+    const modelNamesLoaded: Promise<void> = loadModelNames()
 
     return {
         /**
@@ -98,6 +102,10 @@ export const globalStatesStore = defineStore('globalStates', () => {
          * 模型列表加载任务
          */
         modelNamesLoaded,
+        /**
+         * 重新加载模型列表
+         */
+        reloadModelNames: loadModelNames,
 
         /**
          * 已刮削数量

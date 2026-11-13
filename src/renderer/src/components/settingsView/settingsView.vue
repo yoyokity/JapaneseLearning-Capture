@@ -2,6 +2,7 @@
 import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import InputLineItem from '@renderer/components/control/inputLine/inputLineItem.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
+import DependencyPanel from '@renderer/components/settingsView/dependencyPanel.vue'
 import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import UpdatePanel from '@renderer/components/settingsView/updatePanel.vue'
 import {
@@ -22,10 +23,15 @@ import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
 import { ref } from 'vue'
 
+const OPENAI_API_KEYS_URL = 'https://platform.openai.com/api-keys'
+const OPENAI_MODELS_URL = 'https://platform.openai.com/docs/models'
+const DEEPSEEK_API_KEYS_URL = 'https://platform.deepseek.com/api_keys'
+const DEEPSEEK_PRICING_URL = 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing'
+const testDefaultText = 'こんにちは世界'
+
 const settings = settingsStore()
 const translateEngineConfigRef = ref()
 const llmModels = ref<string[]>([])
-const testDefaultText = 'こんにちは世界'
 const testText = ref(testDefaultText)
 const testTranslateLoading = ref(false)
 const toast = useToast()
@@ -33,6 +39,7 @@ const dialog = useDialog()
 
 const tabs = [
     { id: 'settings', name: '设置', icon: 'pi pi-cog' },
+    { id: 'dependency', name: '依赖', icon: 'pi pi-box' },
     { id: 'info', name: '关于', icon: 'pi pi-info-circle' }
 ]
 const activeTab = ref('settings')
@@ -259,7 +266,7 @@ function openLlmInfo() {
                             <InputLineItem title="API Key">
                                 <Button
                                     as="a"
-                                    href="https://platform.openai.com/api-keys"
+                                    :href="OPENAI_API_KEYS_URL"
                                     target="_blank"
                                     variant="link"
                                 >
@@ -279,7 +286,7 @@ function openLlmInfo() {
                             <InputLineItem title="模型">
                                 <Button
                                     as="a"
-                                    href="https://platform.openai.com/docs/models"
+                                    :href="OPENAI_MODELS_URL"
                                     target="_blank"
                                     variant="link"
                                 >
@@ -307,7 +314,7 @@ function openLlmInfo() {
                             <InputLineItem title="API Key">
                                 <Button
                                     as="a"
-                                    href="https://platform.deepseek.com/api_keys"
+                                    :href="DEEPSEEK_API_KEYS_URL"
                                     target="_blank"
                                     variant="link"
                                 >
@@ -321,7 +328,7 @@ function openLlmInfo() {
                             <InputLineItem title="模型">
                                 <Button
                                     as="a"
-                                    href="https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
+                                    :href="DEEPSEEK_PRICING_URL"
                                     target="_blank"
                                     variant="link"
                                 >
@@ -411,6 +418,15 @@ function openLlmInfo() {
                             <ToggleSwitch v-model="settings.update.autoCheck" />
                         </template>
                     </InputLine>
+                </div>
+
+                <!--dependency-->
+                <div
+                    v-else-if="activeTab === 'dependency'"
+                    key="dependency"
+                    class="settings-tab-content"
+                >
+                    <DependencyPanel />
                 </div>
 
                 <!--info-->

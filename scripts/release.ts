@@ -26,19 +26,36 @@ if (!existsSync(outDir)) {
     process.exit(1)
 }
 
-// tools 包名带 hash，必须唯一
-const toolsArchives = readdirSync(outDir).filter((name) =>
-    /^JapLC-tools-[0-9a-f]{8}-x64\.7z$/.test(name)
-)
-const toolsArchive = toolsArchives[0]
-if (toolsArchives.length !== 1 || !toolsArchive) {
-    console.error(
-        `out 目录中应恰好有一个 tools 包，实际找到 ${toolsArchives.length} 个，请重新执行 vp run package`
-    )
+// 依赖包名须唯一
+const DEPENDENCY_IDS = ['ffmpeg', 'image-polish', 'mediainfo']
+const DEPENDENCY_ASSET_PATTERN = /^JapLC-dep-(?<id>[a-z-]+)-(?<hash>[0-9a-f]{8})-x64\.7z$/
+const dependencyArchives = new Map<string, string>()
+for (const name of readdirSync(outDir)) {
+    const { id = '' } = DEPENDENCY_ASSET_PATTERN.exec(name)?.groups ?? {}
+    if (!id) continue
+    if (dependencyArchives.has(id)) {
+        console.error(`out 目录中存在多个 ${id} 依赖包，请重新执行 vp run package`)
+        process.exit(1)
+    }
+    dependencyArchives.set(id, name)
+}
+const missingDependencies = DEPENDENCY_IDS.filter((id) => !dependencyArchives.has(id))
+if (missingDependencies.length > 0) {
+    console.error(`缺少依赖包：${missingDependencies.join(', ')}，请先执行 vp run package`)
     process.exit(1)
 }
+// 未登记依赖包告警
+const unknownDependencies = [...dependencyArchives.keys()].filter(
+    (id) => !DEPENDENCY_IDS.includes(id)
+)
+if (unknownDependencies.length > 0) {
+    console.warn(`out 目录中存在未登记依赖包：${unknownDependencies.join(', ')}，将不会上传`)
+}
 
-const assets = ['JapLC-x64.7z', 'JapLC-app-x64.7z', toolsArchive]
+const assets = [
+    'JapLC-app-x64.7z',
+    ...DEPENDENCY_IDS.map((id) => dependencyArchives.get(id) as string)
+]
 const missing = assets.filter((name) => !existsSync(join(outDir, name)))
 if (missing.length > 0) {
     console.error(`缺少发布资产：${missing.join(', ')}，请先执行 vp run package`)
@@ -202,7 +219,7 @@ writeFileSync(
     [
         '### 📥 下载',
         '',
-        `**请下载 [JapLC-x64.7z](https://github.com/${REPO}/releases/download/${version}/JapLC-x64.7z)，解压即可使用。**`,
+        `**请下载 [JapLC-app-x64.7z](https://github.com/${REPO}/releases/download/${version}/JapLC-app-x64.7z)，解压即可使用。首次启动后请在「设置 → 依赖」中下载必需组件。**`,
         '',
         '---',
         '',
@@ -238,7 +255,12 @@ const manifest = {
     versions,
     assets: {
         app: { name: 'JapLC-app-x64.7z', ...fileInfo(join(outDir, 'JapLC-app-x64.7z')) },
-        tools: { name: toolsArchive, ...fileInfo(join(outDir, toolsArchive)) }
+        dependencies: Object.fromEntries(
+            DEPENDENCY_IDS.map((id) => {
+                const name = dependencyArchives.get(id) as string
+                return [id, { name, ...fileInfo(join(outDir, name)) }]
+            })
+        )
     }
 }
 const manifestPath = join(outDir, 'latest.json')

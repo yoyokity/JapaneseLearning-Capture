@@ -5,7 +5,7 @@ const path = require('node:path')
 const { path7za } = require('7zip-bin')
 
 /**
- * 递归计算目录内容 hash，取前 8 位作为 tools 版本
+ * 目录 hash 取前 8 位
  * @param {string} dirPath 目录路径
  */
 function hashDirectory(dirPath) {
@@ -40,7 +40,6 @@ module.exports = {
         win32metadata: {
             ProductName: 'Japanese Learning Capture'
         },
-        extraResource: ['tools'],
         ignore: [
             /^\/src/,
             /^\/build/,
@@ -77,7 +76,7 @@ module.exports = {
     },
     rebuildConfig: {},
     hooks: {
-        // 打包完成后改名、写入更新元信息，并压缩为全量/主程序/tools 三个包
+        // 打包后改名并压缩
         postPackage: async (_forgeConfig, options) => {
             for (const [index, outputPath] of options.outputPaths.entries()) {
                 const outDir = path.dirname(outputPath)
@@ -86,52 +85,44 @@ module.exports = {
                 await fs.promises.rename(outputPath, target)
                 options.outputPaths[index] = target
 
-                // 解压器放在 resources 根，避免被 tools 更新包覆盖
+                // 解压器放 resources
                 const resourcesDir = path.join(target, 'resources')
                 await fs.promises.copyFile(path7za, path.join(resourcesDir, '7za.exe'))
 
-                // 写入 tools 版本标记，更新时与 release 资产名中的 hash 比对，未变化则跳过下载
-                const toolsDir = path.join(resourcesDir, 'tools')
-                const toolsHash = hashDirectory(toolsDir)
-                await fs.promises.writeFile(path.join(toolsDir, '.version'), toolsHash)
-
-                const toolsArchiveName = `JapLC-tools-${toolsHash}-x64.7z`
                 for (const name of await fs.promises.readdir(outDir)) {
                     if (
                         name === 'JapLC-x64.7z' ||
                         name === 'JapLC-app-x64.7z' ||
+                        (name.startsWith('JapLC-dep-') && name.endsWith('.7z')) ||
                         (name.startsWith('JapLC-tools-') && name.endsWith('.7z'))
                     ) {
                         await fs.promises.rm(path.join(outDir, name), { force: true })
                     }
                 }
 
-                const archiveOptions = { cwd: outDir, stdio: 'inherit' }
-                // 全量包，供新用户首次安装
-                execFileSync(
-                    path7za,
-                    ['a', '-mx=5', '-md=32m', 'JapLC-x64.7z', 'JapLC'],
-                    archiveOptions
-                )
-                // 主程序包，排除 tools
-                execFileSync(
-                    path7za,
-                    [
-                        'a',
-                        '-mx=5',
-                        '-md=32m',
-                        'JapLC-app-x64.7z',
-                        'JapLC',
-                        '-x!JapLC\\resources\\tools'
-                    ],
-                    archiveOptions
-                )
-                // tools 包，仅在 hash 变化时下载
-                execFileSync(
-                    path7za,
-                    ['a', '-mx=5', '-md=32m', toolsArchiveName, 'JapLC\\resources\\tools'],
-                    archiveOptions
-                )
+                // 主程序包
+                execFileSync(path7za, ['a', '-mx=5', '-md=32m', 'JapLC-app-x64.7z', 'JapLC'], {
+                    cwd: outDir,
+                    stdio: 'inherit'
+                })
+
+                // 各依赖单独打包
+                const toolsDir = path.join(__dirname, 'tools')
+                for (const id of await fs.promises.readdir(toolsDir)) {
+                    // 跳过隐藏项
+                    if (id.startsWith('.')) continue
+
+                    const dependencyDir = path.join(toolsDir, id)
+                    if (!(await fs.promises.stat(dependencyDir)).isDirectory()) continue
+
+                    const hash = hashDirectory(dependencyDir)
+                    const archiveName = `JapLC-dep-${id}-${hash}-x64.7z`
+                    execFileSync(
+                        path7za,
+                        ['a', '-mx=5', '-md=32m', path.join(outDir, archiveName), id],
+                        { cwd: toolsDir, stdio: 'inherit' }
+                    )
+                }
             }
         }
     },

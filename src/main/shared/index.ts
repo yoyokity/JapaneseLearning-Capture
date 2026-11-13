@@ -1,4 +1,10 @@
 export type {
+    DependencyInstallStatus,
+    IDependencyInfo,
+    IDependencyList,
+    IDependencyState
+} from '../ipc/dependencies'
+export type {
     FormatInputPathObject,
     IFile,
     ILogType,

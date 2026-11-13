@@ -1,3 +1,4 @@
+import type { IDependencyState } from './dependencies'
 import type { ReadDirectoryOptions } from './filesystem'
 import type { ImageData, ImageResizeOptions, SaveImageOptions } from './media'
 import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
@@ -11,6 +12,12 @@ import { z } from 'zod'
 
 import { openCloudflareWindow } from '../CloudflareWindow'
 import { appPath } from '../globalStates'
+import {
+    getDependencies,
+    getDependencyState,
+    installDependency,
+    onDependencyStateChange
+} from './dependencies'
 import {
     appendFile,
     basename,
@@ -127,6 +134,20 @@ export const appRouter = t.router({
             })
         ),
         apply: procedure.mutation(() => applyUpdate())
+    }),
+    dependency: t.router({
+        list: procedure.query(() => getDependencies()),
+        install: procedure
+            .input(z.object({ id: z.string() }))
+            .mutation(({ input }) => installDependency(input.id)),
+        progress: procedure.subscription(() =>
+            observable<IDependencyState>((emit) => {
+                emit.next(getDependencyState())
+                return {
+                    unsubscribe: onDependencyStateChange((state) => emit.next(state))
+                }
+            })
+        )
     }),
     filesystem: t.router({
         isExist: procedure.input(z.string()).query(({ input }) => isExist(input)),

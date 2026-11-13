@@ -11,8 +11,10 @@ import { downloadFile } from '../helper/download'
 const REPO = 'yoyokity/JapaneseLearning-Capture'
 /** 更新清单地址，走 GitHub 下载 CDN，不消耗 API 配额 */
 const LATEST_MANIFEST_URL = `https://github.com/${REPO}/releases/latest/download/latest.json`
-const DOWNLOAD_BASE = `https://github.com/${REPO}/releases/download`
-const TOOLS_ASSET_PATTERN = /^JapLC-tools-(?<hash>[0-9a-f]{8})-x64\.7z$/
+/** 发布资产下载根地址 */
+export const DOWNLOAD_BASE = `https://github.com/${REPO}/releases/download`
+/** 清单缓存时长（毫秒） */
+const MANIFEST_CACHE_TTL = 5_000
 /** 未应用的更新保留时长，超过后清理以释放磁盘 */
 const PENDING_UPDATE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
 const execFileAsync = promisify(execFile)
@@ -53,10 +55,6 @@ export interface IUpdateInfo {
     releases: IReleaseNote[]
     /** 主程序更新包 */
     appAsset: IUpdateAsset
-    /** tools 更新包，无需更新时为 null */
-    toolsAsset: (IUpdateAsset & { hash: string }) | null
-    /** 是否需要更新 tools */
-    needTools: boolean
 }
 
 /**
@@ -71,7 +69,7 @@ export interface IUpdateState {
     /** 当前状态 */
     status: UpdateStatus
     /** 正在下载的包 */
-    stage: 'app' | 'tools' | null
+    stage: 'app' | null
     /** 已下载字节数 */
     received: number
     /** 总字节数 */
@@ -85,7 +83,7 @@ export interface IUpdateState {
 /**
  * 更新清单（发布时生成的 latest.json）
  */
-interface ILatestManifest {
+export interface ILatestManifest {
     version: string
     tag: string
     date?: string
@@ -94,7 +92,8 @@ interface ILatestManifest {
     versions?: string[]
     assets: {
         app: { name: string; size: number; sha256: string }
-        tools: { name: string; size: number; sha256: string }
+        /** 各依赖包，旧版清单可能没有 */
+        dependencies?: Record<string, { name: string; size: number; sha256: string }>
     }
 }
 
@@ -115,6 +114,8 @@ let lastChecked: IUpdateInfo | null = null
 let downloadTask: Promise<void> | null = null
 /** 上次更新失败的原因 */
 let lastUpdateError: string | null = null
+/** 清单缓存 */
+let manifestCache: { time: number; promise: Promise<ILatestManifest | null> } | null = null
 
 /**
  * 更新目录，不能放在 temp（退出时会被清空）
@@ -143,19 +144,8 @@ function escapeBatPath(value: string) {
 /**
  * 获取随包携带的解压器路径
  */
-function getSevenZipPath() {
+export function getSevenZipPath() {
     return join(appPath.extraResource, '7za.exe')
-}
-
-/**
- * 读取本地 tools 版本标记
- */
-function readLocalToolsHash() {
-    try {
-        return readFileSync(join(appPath.extraResource, 'tools', '.version'), 'utf8').trim()
-    } catch {
-        return ''
-    }
 }
 
 /**
@@ -235,9 +225,28 @@ async function fetchReleaseNote(tag: string): Promise<IReleaseNote | null> {
 }
 
 /**
- * 检查更新清单中的最新版本
+ * 请求最新清单，短时缓存
+ * @returns 清单，404 表示暂无
  */
-export async function checkUpdate(): Promise<IUpdateInfo | null> {
+export function fetchLatestManifest(): Promise<ILatestManifest | null> {
+    if (manifestCache && Date.now() - manifestCache.time < MANIFEST_CACHE_TTL) {
+        return manifestCache.promise
+    }
+
+    const promise = requestLatestManifest()
+    manifestCache = { time: Date.now(), promise }
+    // 失败不缓存
+    void promise.catch(() => {
+        manifestCache = null
+    })
+
+    return promise
+}
+
+/**
+ * 请求最新清单
+ */
+async function requestLatestManifest(): Promise<ILatestManifest | null> {
     const response = await net.fetch(LATEST_MANIFEST_URL, {
         signal: AbortSignal.timeout(15_000)
     })
@@ -247,22 +256,28 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
         throw new Error(`获取更新清单失败（${response.status}）`)
     }
 
-    const manifest = (await response.json()) as ILatestManifest
+    return (await response.json()) as ILatestManifest
+}
+
+/**
+ * 检查更新清单中的最新版本
+ */
+export async function checkUpdate(): Promise<IUpdateInfo | null> {
+    const manifest = await fetchLatestManifest()
+    // 最新 release 尚未附带清单时视为无更新
+    if (!manifest) return null
+
     if (!manifest.version || !manifest.tag || !manifest.assets?.app) {
         throw new Error('更新清单格式无效')
     }
     if (compareVersion(manifest.version, app.getVersion()) <= 0) return null
 
-    const { app: appAsset, tools: toolsAsset } = manifest.assets
+    const appAsset = manifest.assets.app
     if (!appAsset?.name || !appAsset.sha256) {
         throw new Error('更新清单格式无效')
     }
 
     const downloadUrl = (name: string) => `${DOWNLOAD_BASE}/${manifest.tag}/${name}`
-
-    const toolsMatch = TOOLS_ASSET_PATTERN.exec(toolsAsset?.name ?? '')
-    const { hash: remoteToolsHash = '' } = toolsMatch?.groups ?? {}
-    const needTools = Boolean(toolsMatch) && remoteToolsHash !== readLocalToolsHash()
 
     // 最新取自清单，其余逐个下载
     const versions = [...new Set([manifest.version, ...(manifest.versions ?? [])])]
@@ -290,18 +305,7 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
             url: downloadUrl(appAsset.name),
             size: appAsset.size,
             sha256: appAsset.sha256
-        },
-        toolsAsset:
-            needTools && toolsMatch && toolsAsset
-                ? {
-                      name: toolsAsset.name,
-                      url: downloadUrl(toolsAsset.name),
-                      size: toolsAsset.size,
-                      sha256: toolsAsset.sha256,
-                      hash: remoteToolsHash
-                  }
-                : null,
-        needTools
+        }
     }
 
     return lastChecked
@@ -364,19 +368,11 @@ export async function startDownload(version: string) {
             }
 
             const appArchive = await downloadUpdateAsset(info.appAsset, 'app')
-            const toolsArchive =
-                info.needTools && info.toolsAsset
-                    ? await downloadUpdateAsset(info.toolsAsset, 'tools')
-                    : ''
 
             setState({ status: 'extracting', stage: null, received: 0, total: 0 })
             await extractArchive(appArchive, join(updateDir, 'staging', 'app'))
-            if (toolsArchive) {
-                await extractArchive(toolsArchive, join(updateDir, 'staging', 'tools'))
-            }
 
             rmSync(appArchive, { force: true })
-            if (toolsArchive) rmSync(toolsArchive, { force: true })
 
             // 记录目标版本，重启后据此判断更新是否已生效
             writeFileSync(join(updateDir, 'ready'), info.version)
@@ -406,7 +402,6 @@ export async function applyUpdate() {
     const exePath = app.getPath('exe')
     const updateDir = getUpdateDir()
     const stagingApp = join(updateDir, 'staging', 'app', 'JapLC')
-    const stagingTools = join(updateDir, 'staging', 'tools', 'JapLC', 'resources', 'tools')
     const toolsTarget = join(installDir, 'resources', 'tools')
     const errorLogPath = join(updateDir, 'update-error.log')
 
@@ -420,23 +415,16 @@ export async function applyUpdate() {
         '@echo off',
         // 等待主进程退出并释放文件占用
         'ping 127.0.0.1 -n 4 >nul',
+        // tools 由依赖页独立安装，更新主程序时不能删除
         `robocopy "${escapeBatPath(stagingApp)}" "${escapeBatPath(installDir)}" /MIR /XD "${escapeBatPath(join(installDir, 'data'))}" "${escapeBatPath(toolsTarget)}" /R:5 /W:2 /NFL /NDL /NJH /NJS`,
-        'if errorlevel 8 goto failed'
-    ]
-    if (existsSync(stagingTools)) {
-        lines.push(
-            `robocopy "${escapeBatPath(stagingTools)}" "${escapeBatPath(toolsTarget)}" /MIR /R:5 /W:2 /NFL /NDL /NJH /NJS`,
-            'if errorlevel 8 goto failed'
-        )
-    }
-    lines.push(
+        'if errorlevel 8 goto failed',
         `start "" "${escapeBatPath(exePath)}"`,
         'exit 0',
         ':failed',
         `echo 更新文件替换失败（错误码 %errorlevel%），安装目录可能不完整，请手动下载最新版本 > "${escapeBatPath(errorLogPath)}"`,
         `start "" "${escapeBatPath(exePath)}"`,
         'exit 0'
-    )
+    ]
 
     const batPath = join(updateDir, 'apply.bat')
     // cmd 按系统代码页解析 bat，含中文路径时必须以 GBK 写入

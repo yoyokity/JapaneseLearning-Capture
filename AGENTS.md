@@ -98,8 +98,8 @@
 - 写入 `out/release-notes.md`，中文 markdown
 - 只写用户可见的内容，按 `### ✨ 新功能` / `### 🔧 改进` / `### 🐛 修复` 分组，没有的组省略
 - 不写构建、重构、依赖升级、开发工具相关
-- 发布页顶部的「📥 下载」引导由 `scripts/release.ts` 自动插入（指向全量包），说明里不要重复写下载链接
-- 不要提 `JapLC-app-x64.7z` / `JapLC-tools-*.7z`，这两个是应用内更新用的，用户只需要全量包
+- 发布页顶部的「📥 下载」引导由 `scripts/release.ts` 自动插入（指向 app 包），说明里不要重复写下载链接
+- 不要提依赖包（`JapLC-dep-*.7z`），它们由应用内「设置 → 依赖」下载，用户只需下载 `JapLC-app-x64.7z`
 - 示例：
 
 > ### ✨ 新功能
@@ -108,14 +108,14 @@
 >
 > ### 🔧 改进
 >
-> - 主程序更新包不再包含工具包，日常更新下载量从 288MB 降到约 167MB。
+> - 下载包不再包含工具组件，首次启动后按需在「设置 → 依赖」中下载。
 
 ## 执行
 
 1. `vp run package`（必须重新打包，脚本会校验产物是否早于构建结果）
 2. `vp run release`（创建 draft，自动写入并上传 `latest.json`）
-3. `gh release view <version> --json assets` 确认 4 个资产齐全：
-   `JapLC-x64.7z`、`JapLC-app-x64.7z`、`JapLC-tools-<hash>-x64.7z`、`latest.json`
+3. `gh release view <version> --json assets` 确认 5 个资产齐全：
+   `JapLC-app-x64.7z`、`JapLC-dep-ffmpeg-<hash>-x64.7z`、`JapLC-dep-image-polish-<hash>-x64.7z`、`JapLC-dep-mediainfo-<hash>-x64.7z`、`latest.json`
 4. `vp run release --publish`（draft 完整时只转正式发布，不重新上传）
 5. 验证：
     - `gh release view <version>` 显示 Latest
