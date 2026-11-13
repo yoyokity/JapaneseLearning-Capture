@@ -2,12 +2,13 @@
 import type { IDependencyInfo } from '@shared'
 
 import { useMessage } from '@renderer/components/control/message'
-import { PathHelper } from '@renderer/helper'
+import { LogHelper, PathHelper } from '@renderer/helper'
 import { dependencyStore } from '@renderer/stores'
+import { useIntervalFn } from '@vueuse/core'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Tag from 'primevue/tag'
-import { computed, onMounted, watch } from 'vue'
+import { computed, watch } from 'vue'
 
 const dependency = dependencyStore()
 const { toast } = useMessage()
@@ -59,9 +60,8 @@ function formatFileSize(size: number) {
 async function refresh() {
     try {
         await dependency.refresh()
-        if (!dependency.remoteOk) toast.warn('无法获取依赖版本信息，请检查网络或代理设置')
-    } catch {
-        toast.error('检查依赖失败，请检查网络或代理设置')
+    } catch (error) {
+        LogHelper.error('检查依赖失败', error)
     }
 }
 
@@ -101,34 +101,19 @@ watch(
     }
 )
 
-onMounted(refresh)
+// 停留在本页时每 5 秒自动检查
+useIntervalFn(
+    () => {
+        if (dependency.checking) return
+        void refresh()
+    },
+    5000,
+    { immediateCallback: true }
+)
 </script>
 
 <template>
     <div class="dependency-panel">
-        <div class="panel-box header-box">
-            <div class="header-line">
-                <div class="header-info">
-                    <span class="header-title">必需依赖</span>
-                    <span class="header-desc">
-                        {{
-                            dependency.canInstall
-                                ? '缺失时相关功能不可用，下载完成后立即生效'
-                                : '开发模式使用项目根 tools 目录'
-                        }}
-                    </span>
-                </div>
-                <Button
-                    icon="pi pi-refresh"
-                    label="重新检查"
-                    severity="secondary"
-                    size="small"
-                    :loading="dependency.checking"
-                    @click="refresh"
-                />
-            </div>
-        </div>
-
         <div v-for="item in dependency.items" :key="item.id" class="panel-box dependency-item">
             <div class="dependency-line">
                 <div class="dependency-info">
@@ -199,31 +184,6 @@ onMounted(refresh)
         padding: 1rem;
         border: var(--separator);
         border-radius: var(--border-radius);
-    }
-
-    .header-box {
-        .header-line {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-
-        .header-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .header-title {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .header-desc {
-            font-size: 0.75rem;
-            color: var(--p-text-muted-color);
-        }
     }
 
     .dependency-item {

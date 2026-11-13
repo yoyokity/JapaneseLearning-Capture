@@ -171,6 +171,20 @@ export function onDependencyStateChange(listener: (state: IDependencyState) => v
 }
 
 /**
+ * 获取本地依赖状态
+ */
+export function getLocalDependencies(): IDependencyInfo[] {
+    return DEPENDENCIES.map((dependency) => ({
+        ...dependency,
+        installed: isInstalled(dependency),
+        version: readLocalVersion(dependency.id),
+        latestVersion: '',
+        updateAvailable: false,
+        size: 0
+    }))
+}
+
+/**
  * 获取依赖状态
  */
 export async function getDependencies(): Promise<IDependencyList> {
@@ -185,19 +199,16 @@ export async function getDependencies(): Promise<IDependencyList> {
     }
 
     const dependencies = manifest?.assets?.dependencies
-    const items = DEPENDENCIES.map((dependency) => {
-        const asset = dependencies?.[dependency.id]
+    const items = getLocalDependencies().map((item) => {
+        const asset = dependencies?.[item.id]
         // 从包名取版本
         const { hash = '' } = DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
-        const version = readLocalVersion(dependency.id)
 
         return {
-            ...dependency,
-            installed: isInstalled(dependency),
-            version,
+            ...item,
             latestVersion: hash,
             // 版本未知时不提示更新
-            updateAvailable: Boolean(version && hash && version !== hash),
+            updateAvailable: Boolean(item.version && hash && item.version !== hash),
             size: asset?.size ?? 0
         }
     })

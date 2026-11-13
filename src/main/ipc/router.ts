@@ -15,6 +15,7 @@ import { appPath } from '../globalStates'
 import {
     getDependencies,
     getDependencyState,
+    getLocalDependencies,
     installDependency,
     onDependencyStateChange
 } from './dependencies'
@@ -136,6 +137,7 @@ export const appRouter = t.router({
         apply: procedure.mutation(() => applyUpdate())
     }),
     dependency: t.router({
+        local: procedure.query(() => getLocalDependencies()),
         list: procedure.query(() => getDependencies()),
         install: procedure
             .input(z.object({ id: z.string() }))

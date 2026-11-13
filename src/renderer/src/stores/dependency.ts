@@ -12,6 +12,8 @@ export const dependencyStore = defineStore('dependency', () => {
     const items = ref<IDependencyInfo[]>([])
     /** 远端信息是否可用 */
     const remoteOk = ref(true)
+    /** 必需依赖是否缺失 */
+    const missingRequired = ref(false)
     /** 是否正在检查 */
     const checking = ref(false)
     /** 是否可下载 */
@@ -39,8 +41,11 @@ export const dependencyStore = defineStore('dependency', () => {
             onData(next) {
                 const installed = next.status === 'done' && state.value.status !== 'done'
                 state.value = next
-                // 安装完成刷新模型
-                if (installed) void globalStatesStore().reloadModelNames()
+                // 安装完成刷新模型与依赖状态
+                if (installed) {
+                    void checkLocal()
+                    void globalStatesStore().reloadModelNames()
+                }
             },
             onError(error) {
                 LogHelper.error('依赖进度订阅失败', error)
@@ -56,6 +61,18 @@ export const dependencyStore = defineStore('dependency', () => {
     })
 
     /**
+     * 检查本地依赖
+     */
+    async function checkLocal() {
+        try {
+            const list = await ipc.dependency.local.query()
+            missingRequired.value = list.some((item) => item.required && !item.installed)
+        } catch (error) {
+            LogHelper.error('检查本地依赖失败', error)
+        }
+    }
+
+    /**
      * 检查依赖状态
      * @returns 依赖列表
      */
@@ -65,6 +82,7 @@ export const dependencyStore = defineStore('dependency', () => {
             const result = await ipc.dependency.list.query()
             items.value = result.items
             remoteOk.value = result.remoteOk
+            missingRequired.value = result.items.some((item) => item.required && !item.installed)
             return items.value
         } finally {
             checking.value = false
@@ -89,6 +107,10 @@ export const dependencyStore = defineStore('dependency', () => {
          */
         remoteOk,
         /**
+         * 必需依赖是否缺失
+         */
+        missingRequired,
+        /**
          * 是否正在检查
          */
         checking,
@@ -104,6 +126,10 @@ export const dependencyStore = defineStore('dependency', () => {
          * 检查依赖状态
          */
         refresh,
+        /**
+         * 检查本地依赖
+         */
+        checkLocal,
         /**
          * 安装依赖
          */

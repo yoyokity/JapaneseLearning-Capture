@@ -12,7 +12,7 @@ import {
     TransHelper
 } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
-import { settingsStore } from '@renderer/stores'
+import { dependencyStore, settingsStore } from '@renderer/stores'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
@@ -21,7 +21,7 @@ import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const OPENAI_API_KEYS_URL = 'https://platform.openai.com/api-keys'
 const OPENAI_MODELS_URL = 'https://platform.openai.com/docs/models'
@@ -30,6 +30,7 @@ const DEEPSEEK_PRICING_URL = 'https://api-docs.deepseek.com/zh-cn/quick_start/pr
 const testDefaultText = 'こんにちは世界'
 
 const settings = settingsStore()
+const dependency = dependencyStore()
 const translateEngineConfigRef = ref()
 const llmModels = ref<string[]>([])
 const testText = ref(testDefaultText)
@@ -109,6 +110,14 @@ function openLlmInfo() {
         }
     })
 }
+
+// 缺少必需依赖时直接展示依赖页
+watch(
+    () => dependency.missingRequired,
+    (value) => {
+        if (value) activeTab.value = 'dependency'
+    }
+)
 </script>
 
 <template>

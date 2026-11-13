@@ -4,8 +4,9 @@ import ScraperView from '@renderer/components/scraperView/scraperView.vue'
 import SettingsView from '@renderer/components/settingsView/settingsView.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import ToolsView from '@renderer/components/toolsView/toolsView.vue'
+import { dependencyStore } from '@renderer/stores'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 /** 标签页配置 */
 const tabs = [
@@ -16,8 +17,12 @@ const tabs = [
 ]
 
 const { pendingRequestCount } = storeToRefs(toolsStore())
+const dependency = dependencyStore()
 
 const activeTab = ref('scraper')
+
+/** 是否锁定主标签页 */
+const locked = computed(() => dependency.missingRequired)
 
 /**
  * 切换标签页
@@ -25,11 +30,21 @@ const activeTab = ref('scraper')
  */
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
+    // 缺少必需依赖时只能进入设置
+    if (locked.value && tabId !== 'settings') return
     activeTab.value = tabId
 }
 
 // 其他视图发起工具请求（音频编码/图片超分等）时切换到工具页
 watch(pendingRequestCount, () => switchTab('tools'))
+
+// 缺少必需依赖时停留在设置页
+watch(locked, (value) => {
+    if (value) activeTab.value = 'settings'
+})
+
+// 启动立即检查本地依赖
+void dependency.checkLocal()
 </script>
 
 <template>
@@ -38,7 +53,10 @@ watch(pendingRequestCount, () => switchTab('tools'))
             <div
                 v-for="tab in tabs"
                 :key="tab.id"
-                :class="{ active: activeTab === tab.id }"
+                :class="{
+                    active: activeTab === tab.id,
+                    disabled: locked && tab.id !== 'settings'
+                }"
                 :style="{ marginTop: tab.id === 'settings' ? 'auto' : undefined }"
                 class="tab-item"
                 @click="switchTab(tab.id)"
@@ -103,6 +121,12 @@ watch(pendingRequestCount, () => switchTab('tools'))
     &.active {
         background-color: var(--p-surface-200);
         color: var(--p-primary-color);
+    }
+
+    &.disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        pointer-events: none;
     }
 
     i {
