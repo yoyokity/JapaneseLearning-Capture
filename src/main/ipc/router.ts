@@ -70,6 +70,7 @@ import {
     setCookie,
     setProxy
 } from './net'
+import { createSubtitleStream } from './subtitle'
 import {
     applyUpdate,
     checkUpdate,
@@ -324,6 +325,26 @@ export const appRouter = t.router({
                     input.bitrate
                 )
             )
+    }),
+    subtitle: t.router({
+        generate: procedure
+            .input(
+                z.object({
+                    inputPath: z.string(),
+                    language: z.enum(['ja', 'en', 'zh', 'ko']),
+                    aiOptimize: z.boolean(),
+                    llm: z
+                        .object({
+                            provider: z.enum(['openai', 'deepseek']),
+                            baseUrl: z.string().optional(),
+                            apiKey: z.string(),
+                            model: z.string(),
+                            reasoningEffort: z.string().optional()
+                        })
+                        .optional()
+                })
+            )
+            .subscription(({ input }) => createSubtitleStream(input))
     }),
     net: t.router({
         get: procedure

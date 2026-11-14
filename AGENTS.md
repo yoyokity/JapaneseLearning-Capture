@@ -12,6 +12,13 @@
 - 不需要复用的、当前只使用一次的代码，不要额外包装成函数
 - 变量名使用英文，只有当变量名是八字词汇时，才使用中文
 
+# 测试文件
+
+- 临时测试材料（音频、视频、日志、识别结果等）统一放在根目录 `test/` 下，按功能建子目录，如 `test/subtitle/`。
+- `test/` 已在 `.gitignore` 中忽略，不纳入 Git 跟踪，禁止提交其中的任何文件。
+- 测试脚本不要放进 `test/`：一次性的脚本放系统临时目录，需要保留的脚本放 `scripts/`。
+- 测试结束后清理不再需要的大文件（音视频、模型输出）。
+
 # 简单至上
 
 用最少的代码解决问题。不要进行任何推测。
@@ -114,8 +121,8 @@
 
 1. `vp run package`（必须重新打包，脚本会校验产物是否早于构建结果）
 2. `vp run release`（创建 draft，自动写入并上传 `latest.json`）
-3. `gh release view <version> --json assets` 确认 5 个资产齐全：
-   `JapLC-app-x64.7z`、`JapLC-dep-ffmpeg-<hash>-x64.7z`、`JapLC-dep-image-polish-<hash>-x64.7z`、`JapLC-dep-mediainfo-<hash>-x64.7z`、`latest.json`
+3. `gh release view <version> --json assets` 确认 7 个资产齐全：
+   `JapLC-app-x64.7z`、`JapLC-dep-ffmpeg-<hash>-x64.7z`、`JapLC-dep-image-polish-<hash>-x64.7z`、`JapLC-dep-mediainfo-<hash>-x64.7z`、`JapLC-dep-subtitle-<hash>-x64.7z`、`JapLC-dep-subtitle-cohere-<hash>-x64.7z`、`latest.json`
 4. `vp run release --publish`（draft 完整时只转正式发布，不重新上传）
 5. 验证：
     - `gh release view <version>` 显示 Latest

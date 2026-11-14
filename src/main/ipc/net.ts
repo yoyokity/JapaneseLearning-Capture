@@ -460,7 +460,9 @@ function aiFetch(input: RequestInfo | URL, init?: RequestInit) {
  * 获取 AI 模型实例
  * @param options AI 配置
  */
-function getAiModel(options: IAiStartOptions) {
+export function getAiModel(
+    options: Pick<IAiStartOptions, 'provider' | 'apiKey' | 'model' | 'baseURL'>
+) {
     // deepseek
     if (options.provider === 'deepseek') {
         const provider = createDeepSeek({

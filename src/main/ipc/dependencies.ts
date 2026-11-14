@@ -15,17 +15,27 @@ const execFileAsync = promisify(execFile)
 const DEPENDENCY_ASSET_PATTERN = /^JapLC-dep-(?<id>[a-z-]+)-(?<hash>[0-9a-f]{8})-x64\.7z$/
 
 /**
+ * 依赖的物理包
+ */
+export interface IDependencyComponent {
+    /** tools 目录名，也是发布资产 id */
+    id: string
+    /** 安装检测文件 */
+    files: string[]
+}
+
+/**
  * 依赖定义
  */
 export interface IDependencyDefinition {
-    /** tools 目录名 */
+    /** 依赖 id，界面上以它为单位展示 */
     id: string
     /** 展示名称 */
     name: string
     /** 功能说明 */
     description: string
-    /** 安装检测文件 */
-    files: string[]
+    /** 组成该依赖的物理包，逐个下载安装 */
+    components: IDependencyComponent[]
     /** 是否必需 */
     required: boolean
 }
@@ -36,22 +46,47 @@ const DEPENDENCIES: IDependencyDefinition[] = [
         id: 'ffmpeg',
         name: 'FFmpeg',
         description: '音频重编码',
-        files: ['ffmpeg.exe'],
-        required: true
+        required: true,
+        components: [{ id: 'ffmpeg', files: ['ffmpeg.exe'] }]
     },
     {
         id: 'image-polish',
         name: 'Image Polish',
         description: '图片超分辨率',
-        files: ['imagepolish.exe', 'onnxruntime.dll', 'DirectML.dll'],
-        required: true
+        required: true,
+        components: [
+            {
+                id: 'image-polish',
+                files: ['imagepolish.exe', 'onnxruntime.dll', 'DirectML.dll']
+            }
+        ]
     },
     {
         id: 'mediainfo',
         name: 'MediaInfo',
         description: '读取媒体信息',
-        files: ['MediaInfo.exe', 'LIBCURL.DLL'],
-        required: true
+        required: true,
+        components: [{ id: 'mediainfo', files: ['MediaInfo.exe', 'LIBCURL.DLL'] }]
+    },
+    {
+        id: 'subtitle',
+        name: '字幕生成',
+        description: '本地语音识别与中文字幕生成',
+        required: false,
+        components: [
+            {
+                id: 'subtitle',
+                files: [
+                    'runtimes/windows-x64/cuda/bin/crispasr.exe',
+                    'models/qwen3-forced-aligner.gguf',
+                    'models/vad/whisper-vad-asmr-q4_k.gguf'
+                ]
+            },
+            {
+                id: 'subtitle-cohere',
+                files: ['cohere-transcribe-q6_k.gguf']
+            }
+        ]
     }
 ]
 
@@ -121,10 +156,10 @@ function getToolsDir() {
 }
 
 /**
- * 读取本地版本
- * @param id 依赖 id
+ * 读取物理包的本地版本
+ * @param id 物理包 id
  */
-function readLocalVersion(id: string) {
+function readComponentVersion(id: string) {
     try {
         return readFileSync(join(getToolsDir(), id, '.version'), 'utf8').trim()
     } catch {
@@ -133,11 +168,25 @@ function readLocalVersion(id: string) {
 }
 
 /**
+ * 读取本地版本
+ * @param dependency 依赖定义
+ * @remark 多个物理包的版本用 + 连接
+ */
+function readLocalVersion(dependency: IDependencyDefinition) {
+    return dependency.components
+        .map((component) => readComponentVersion(component.id))
+        .filter(Boolean)
+        .join('+')
+}
+
+/**
  * 检查依赖是否完整
  * @param dependency 依赖定义
  */
 function isInstalled(dependency: IDependencyDefinition) {
-    return dependency.files.every((file) => existsSync(join(getToolsDir(), dependency.id, file)))
+    return dependency.components.every((component) =>
+        component.files.every((file) => existsSync(join(getToolsDir(), component.id, file)))
+    )
 }
 
 /**
@@ -177,7 +226,7 @@ export function getLocalDependencies(): IDependencyInfo[] {
     return DEPENDENCIES.map((dependency) => ({
         ...dependency,
         installed: isInstalled(dependency),
-        version: readLocalVersion(dependency.id),
+        version: readLocalVersion(dependency),
         latestVersion: '',
         updateAvailable: false,
         size: 0
@@ -200,25 +249,43 @@ export async function getDependencies(): Promise<IDependencyList> {
 
     const dependencies = manifest?.assets?.dependencies
     const items = getLocalDependencies().map((item) => {
-        const asset = dependencies?.[item.id]
-        // 从包名取版本
-        const { hash = '' } = DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
+        const components = item.components.map((component) => {
+            const asset = dependencies?.[component.id]
+            // 从包名取版本
+            const { hash = '' } = DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
+
+            return {
+                local: readComponentVersion(component.id),
+                remote: hash,
+                size: asset?.size ?? 0
+            }
+        })
 
         return {
             ...item,
-            latestVersion: hash,
-            // 版本未知时不提示更新
-            updateAvailable: Boolean(item.version && hash && item.version !== hash),
-            size: asset?.size ?? 0
+            latestVersion: components
+                .map((component) => component.remote)
+                .filter(Boolean)
+                .join('+'),
+            // 任一物理包版本不一致即提示更新
+            updateAvailable: components.some(
+                (component) =>
+                    Boolean(component.local) &&
+                    Boolean(component.remote) &&
+                    component.local !== component.remote
+            ),
+            size: components.reduce((sum, component) => sum + component.size, 0)
         }
     })
 
     return {
         items,
-        // 开发模式视为可用
+        // 开发模式视为可用；可选依赖缺省不影响整体可用
         remoteOk:
             !app.isPackaged ||
-            DEPENDENCIES.every((dependency) => Boolean(dependencies?.[dependency.id]))
+            DEPENDENCIES.filter((dependency) => dependency.required).every((dependency) =>
+                dependency.components.every((component) => Boolean(dependencies?.[component.id]))
+            )
     }
 }
 
@@ -247,55 +314,76 @@ export async function installDependency(id: string) {
             }
 
             const manifest = await fetchLatestManifest()
-            const asset = manifest?.assets?.dependencies?.[id]
-            const { id: assetId = '', hash = '' } =
-                DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
-            if (!manifest || !asset || !hash || assetId !== id) {
+            if (!manifest) {
                 throw new Error('依赖信息已失效，请重新检查')
             }
 
-            const depsDir = join(app.getPath('userData'), 'dependency')
-            mkdirSync(depsDir, { recursive: true })
-            setState({ id, status: 'downloading', received: 0, total: asset.size, error: null })
+            // 先校验全部物理包，避免下载到一半才发现信息失效
+            const components = dependency.components.map((component) => {
+                const asset = manifest.assets?.dependencies?.[component.id]
+                const { id: assetId = '', hash = '' } =
+                    DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
+                if (!asset || !hash || assetId !== component.id) {
+                    throw new Error('依赖信息已失效，请重新检查')
+                }
 
-            const archivePath = await downloadFile({
-                url: `${DOWNLOAD_BASE}/${manifest.tag}/${asset.name}`,
-                size: asset.size,
-                sha256: asset.sha256,
-                targetPath: join(depsDir, asset.name),
-                onProgress: (received) => setState({ received })
+                return { component, asset, hash }
             })
 
-            setState({ status: 'extracting', received: 0, total: 0 })
-            const toolsDir = getToolsDir()
-            const dependencyDir = join(toolsDir, id)
-            // 临时目录同卷
-            const tmpDir = join(toolsDir, `.tmp-${id}`)
-            mkdirSync(toolsDir, { recursive: true })
-            rmSync(tmpDir, { recursive: true, force: true })
+            const total = components.reduce((sum, item) => sum + item.asset.size, 0)
+            const depsDir = join(app.getPath('userData'), 'dependency')
+            mkdirSync(depsDir, { recursive: true })
+            setState({ id, status: 'downloading', received: 0, total, error: null })
 
-            // 先解压到临时目录
-            try {
-                await execFileAsync(getSevenZipPath(), ['x', '-y', `-o${tmpDir}`, archivePath], {
-                    windowsHide: true
+            let finished = 0
+            for (const { component, asset, hash } of components) {
+                const offset = finished
+                const archivePath = await downloadFile({
+                    url: `${DOWNLOAD_BASE}/${manifest.tag}/${asset.name}`,
+                    size: asset.size,
+                    sha256: asset.sha256,
+                    targetPath: join(depsDir, asset.name),
+                    onProgress: (received) => setState({ received: offset + received })
                 })
-            } catch {
+
+                setState({ status: 'extracting', received: offset, total })
+                const toolsDir = getToolsDir()
+                const dependencyDir = join(toolsDir, component.id)
+                // 临时目录同卷
+                const tmpDir = join(toolsDir, `.tmp-${component.id}`)
+                mkdirSync(toolsDir, { recursive: true })
                 rmSync(tmpDir, { recursive: true, force: true })
-                throw new Error(`${dependency.name} 解压失败，请重试`)
+
+                // 先解压到临时目录
+                try {
+                    await execFileAsync(
+                        getSevenZipPath(),
+                        ['x', '-y', `-o${tmpDir}`, archivePath],
+                        {
+                            windowsHide: true
+                        }
+                    )
+                } catch {
+                    rmSync(tmpDir, { recursive: true, force: true })
+                    throw new Error(`${dependency.name} 解压失败，请重试`)
+                }
+
+                // 替换旧版本，失败保留
+                try {
+                    rmSync(dependencyDir, { recursive: true, force: true })
+                    renameSync(join(tmpDir, component.id), dependencyDir)
+                } catch {
+                    throw new Error(`${dependency.name} 文件正在被使用，请关闭相关功能后重试`)
+                } finally {
+                    rmSync(tmpDir, { recursive: true, force: true })
+                }
+
+                writeFileSync(join(dependencyDir, '.version'), hash)
+                rmSync(archivePath, { force: true })
+                finished += asset.size
+                setState({ received: finished })
             }
 
-            // 替换旧版本，失败保留
-            try {
-                rmSync(dependencyDir, { recursive: true, force: true })
-                renameSync(join(tmpDir, id), dependencyDir)
-            } catch {
-                throw new Error(`${dependency.name} 文件正在被使用，请关闭相关功能后重试`)
-            } finally {
-                rmSync(tmpDir, { recursive: true, force: true })
-            }
-
-            writeFileSync(join(dependencyDir, '.version'), hash)
-            rmSync(archivePath, { force: true })
             setState({ status: 'done', received: 0, total: 0 })
         } catch (error) {
             // 标记 id，前端据此结束排队任务

@@ -7,6 +7,7 @@ export * from './MediaHelper'
 export * from './NetHelper.ts'
 export * from './PathHelper.ts'
 export * from './ScraperHelper.ts'
+export * from './SubtitleHelper.ts'
 export * from './TaskHelper.ts'
 export * from './TransHelper.ts'
 

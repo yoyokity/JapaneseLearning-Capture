@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import AudioEncode from '@renderer/components/toolsView/tools/audioEncode.vue'
 import ImageSuperResolution from '@renderer/components/toolsView/tools/imageSuperResolution.vue'
+import SubtitleGenerate from '@renderer/components/toolsView/tools/subtitleGenerate.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
@@ -16,6 +17,11 @@ const tools = [
         id: 'audioEncode',
         name: '音频编码',
         component: AudioEncode
+    },
+    {
+        id: 'subtitleGenerate',
+        name: '字幕生成',
+        component: SubtitleGenerate
     }
 ]
 

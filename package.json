@@ -14,7 +14,7 @@
         }
     },
     "scripts": {
-        "prepare": "vp config --no-agent && install-electron"
+        "prepare": "vp config --no-agent && install-electron && vpx scripts/fetch-subtitle.ts"
     },
     "dependencies": {
         "sharp": "^0.35.5"

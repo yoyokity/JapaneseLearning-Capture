@@ -1,4 +1,5 @@
 import type { Path } from '@renderer/helper'
+import type { SubtitleLanguage } from '@shared'
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -17,6 +18,10 @@ export const toolsStore = defineStore(
         const activeToolId = ref('imageSuperResolution')
         /** 图片超分当前选中的模型名 */
         const superResolutionModelName = ref('')
+        /** 字幕识别语言 */
+        const subtitleLanguage = ref<SubtitleLanguage>('ja')
+        /** 字幕是否启用 AI 优化 */
+        const subtitleAiOptimize = ref(true)
 
         /**
          * 待处理的音频编码请求（被工具消费后置空）
@@ -66,6 +71,14 @@ export const toolsStore = defineStore(
              */
             superResolutionModelName,
             /**
+             * 字幕识别语言
+             */
+            subtitleLanguage,
+            /**
+             * 字幕是否启用 AI 优化
+             */
+            subtitleAiOptimize,
+            /**
              * 待处理的音频编码请求（被工具消费后置空）
              */
             pendingAudioEncode,
@@ -91,7 +104,7 @@ export const toolsStore = defineStore(
     },
     {
         persist: {
-            pick: ['superResolutionModelName']
+            pick: ['superResolutionModelName', 'subtitleLanguage', 'subtitleAiOptimize']
         }
     }
 )

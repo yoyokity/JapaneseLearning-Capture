@@ -13,14 +13,12 @@ import {
 import { finished } from 'node:stream/promises'
 import { net } from 'electron'
 
+import { DOWNLOAD_BLOCK_SIZE, DOWNLOAD_CONNECTIONS, runWithConcurrency } from './downloadShared'
+
 /** 下载超时，大包下载不能使用短超时 */
 const DOWNLOAD_TIMEOUT = 30 * 60 * 1000
 /** 下载中断后的最大重试次数 */
 const MAX_DOWNLOAD_RETRIES = 3
-/** 分块下载并发数，实测 8 路可跑满带宽 */
-const DOWNLOAD_CONNECTIONS = 8
-/** 每个分块的大小 */
-const DOWNLOAD_BLOCK_SIZE = 8 * 1024 * 1024
 
 /**
  * 分块下载参数
@@ -205,12 +203,12 @@ export async function downloadFile({
         throw lastError instanceof Error ? lastError : new Error(String(lastError))
     }
 
-    // 只调度未完成的分块，多个 worker 并发领取
-    const pendingBlocks: number[] = []
+    // 只调度未完成的分块
+    const tasks: (() => Promise<void>)[] = []
     for (let index = 0; index < blockCount; index++) {
         const { length } = getBlockRange(index, size)
         if ((state.received[index] ?? 0) < length) {
-            pendingBlocks.push(index)
+            tasks.push(() => downloadBlockWithRetry(index))
         }
     }
 
@@ -218,18 +216,7 @@ export async function downloadFile({
     emitProgress(true)
 
     try {
-        await Promise.all(
-            Array.from(
-                { length: Math.min(DOWNLOAD_CONNECTIONS, pendingBlocks.length) },
-                async () => {
-                    while (pendingBlocks.length > 0) {
-                        const index = pendingBlocks.shift()
-                        if (index === undefined) break
-                        await downloadBlockWithRetry(index)
-                    }
-                }
-            )
-        )
+        await runWithConcurrency(tasks, DOWNLOAD_CONNECTIONS)
     } catch (error) {
         saveState()
         throw error

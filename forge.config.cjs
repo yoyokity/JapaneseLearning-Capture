@@ -7,25 +7,46 @@ const { path7za } = require('7zip-bin')
 /**
  * 目录 hash 取前 8 位
  * @param {string} dirPath 目录路径
+ * @remark 模型文件可能接近 2GB，必须流式读取，不能一次性读入内存
  */
-function hashDirectory(dirPath) {
+async function hashDirectory(dirPath) {
     const hash = crypto.createHash('sha256')
 
-    const walk = (currentPath) => {
+    const walk = async (currentPath) => {
         for (const name of fs.readdirSync(currentPath).sort()) {
             const fullPath = path.join(currentPath, name)
             const stat = fs.statSync(fullPath)
             if (stat.isDirectory()) {
-                walk(fullPath)
+                await walk(fullPath)
             } else if (name !== '.version') {
                 hash.update(path.relative(dirPath, fullPath))
-                hash.update(fs.readFileSync(fullPath))
+                await new Promise((resolve, reject) => {
+                    const stream = fs.createReadStream(fullPath)
+                    stream.on('data', (chunk) => hash.update(chunk))
+                    stream.on('end', resolve)
+                    stream.on('error', reject)
+                })
             }
         }
     }
 
-    walk(dirPath)
+    await walk(dirPath)
     return hash.digest('hex').slice(0, 8)
+}
+
+/**
+ * 目录总大小
+ * @param {string} dirPath 目录路径
+ */
+function getDirectorySize(dirPath) {
+    let size = 0
+    for (const name of fs.readdirSync(dirPath)) {
+        const fullPath = path.join(dirPath, name)
+        const stat = fs.statSync(fullPath)
+        size += stat.isDirectory() ? getDirectorySize(fullPath) : stat.size
+    }
+
+    return size
 }
 
 module.exports = {
@@ -115,11 +136,14 @@ module.exports = {
                     const dependencyDir = path.join(toolsDir, id)
                     if (!(await fs.promises.stat(dependencyDir)).isDirectory()) continue
 
-                    const hash = hashDirectory(dependencyDir)
+                    const hash = await hashDirectory(dependencyDir)
                     const archiveName = `JapLC-dep-${id}-${hash}-x64.7z`
+                    // 大模型包基本不可压缩，降低压缩级别避免长时间等待
+                    const compressLevel =
+                        getDirectorySize(dependencyDir) > 500 * 1024 * 1024 ? '-mx=1' : '-mx=5'
                     execFileSync(
                         path7za,
-                        ['a', '-mx=5', '-md=32m', path.join(outDir, archiveName), id],
+                        ['a', compressLevel, '-md=32m', path.join(outDir, archiveName), id],
                         { cwd: toolsDir, stdio: 'inherit' }
                     )
                 }

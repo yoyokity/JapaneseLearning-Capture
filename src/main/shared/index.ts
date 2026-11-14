@@ -32,4 +32,11 @@ export type {
     ParseResultType
 } from '../ipc/net'
 export type { AppRouter } from '../ipc/router'
+export type {
+    IGenerateSubtitleInput,
+    ISubtitleLlm,
+    ISubtitleProgress,
+    SubtitleLanguage,
+    SubtitleStage
+} from '../ipc/subtitle'
 export type { IUpdateAsset, IUpdateInfo, IUpdateState, UpdateStatus } from '../ipc/update'

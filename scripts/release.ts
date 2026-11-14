@@ -27,7 +27,7 @@ if (!existsSync(outDir)) {
 }
 
 // 依赖包名须唯一
-const DEPENDENCY_IDS = ['ffmpeg', 'image-polish', 'mediainfo']
+const DEPENDENCY_IDS = ['ffmpeg', 'image-polish', 'mediainfo', 'subtitle', 'subtitle-cohere']
 const DEPENDENCY_ASSET_PATTERN = /^JapLC-dep-(?<id>[a-z-]+)-(?<hash>[0-9a-f]{8})-x64\.7z$/
 const dependencyArchives = new Map<string, string>()
 for (const name of readdirSync(outDir)) {

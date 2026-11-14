@@ -1,6 +1,7 @@
 node_modules/
 dist
 out
+test/
 .DS_Store
 .eslintcache
 *.log*
@@ -12,5 +13,7 @@ out
 *.tsbuildinfo
 .zcode
 tools/image-polish/
+tools/subtitle/
+tools/subtitle-cohere/
 # 由 sync:icon 从 resources/mainIcon.png 生成
 src/renderer/src/assets/app-icon.png
