@@ -151,6 +151,10 @@ export interface IAgentResult {
      */
     finishReason: AgentFinishReason
     /**
+     * 错误信息
+     */
+    error?: string | undefined
+    /**
      * 是否被取消
      */
     cancelled?: boolean | undefined

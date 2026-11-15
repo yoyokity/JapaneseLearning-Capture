@@ -75,7 +75,13 @@ async function openProxySetting() {
 async function testConnection() {
     if (testConnectionLoading.value) return
 
-    const config = getAgentConfig(settings.ai)
+    // 连接测试固定关闭思考，避免按当前强度长时间推理
+    const config = getAgentConfig({
+        ...settings.ai,
+        openai: { ...settings.ai.openai, reasoningEffort: 'none' },
+        deepseek: { ...settings.ai.deepseek, reasoningEffort: 'none' },
+        custom: { ...settings.ai.custom, reasoningEffort: 'none' }
+    })
     if (!config) {
         toast.add({
             severity: 'error',
@@ -109,10 +115,14 @@ async function testConnection() {
                 life: 3000
             })
         } else {
+            const detail = result.error
+                ? `失败原因：${result.error.slice(0, 200)}`
+                : '请检查 API Key、Base URL 或模型名称'
+
             toast.add({
                 severity: 'error',
                 summary: '连接失败',
-                detail: '请检查 API Key、Base URL 或模型名称',
+                detail,
                 life: 3000
             })
         }
@@ -386,7 +396,11 @@ watch(
                         <!-- #region 自定义配置  -->
                         <div v-if="settings.ai.provider === 'custom'">
                             <InputLineItem title="Base URL">
-                                <InputText v-model.trim="settings.ai.custom.baseUrl" type="text" />
+                                <InputText
+                                    v-model.trim="settings.ai.custom.baseUrl"
+                                    placeholder="https://api.example.com/v1"
+                                    type="text"
+                                />
                             </InputLineItem>
                             <InputLineItem title="API Key">
                                 <InputText v-model.trim="settings.ai.custom.apiKey" type="text" />

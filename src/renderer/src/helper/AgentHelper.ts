@@ -137,12 +137,21 @@ export function getRetryMessage(info: IAgentRetryPayload) {
 }
 
 /**
+ * 提取错误信息
+ * @param error 错误对象
+ */
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error)
+}
+
+/**
  * 多轮 AI 会话
  */
 export class AgentSession {
     private readonly options: IAgentSessionOptions
     private readonly history: IAgentMessage[] = []
     private activeController: AbortController | null = null
+    private generation = 0
 
     constructor(options: IAgentSessionOptions) {
         this.options = options
@@ -152,7 +161,7 @@ export class AgentSession {
      * 当前对话历史
      */
     get messages(): IAgentMessage[] {
-        return [...this.history]
+        return this.history.map((message) => ({ ...message }))
     }
 
     /**
@@ -166,6 +175,7 @@ export class AgentSession {
         }
 
         const controller = new AbortController()
+        const generation = this.generation
         this.activeController = controller
         this.history.push({ role: 'user', content: text })
 
@@ -180,10 +190,13 @@ export class AgentSession {
                 onRetry: this.options.onRetry
             })
 
-            if (isAgentSuccess(result.finishReason) && result.text.trim()) {
-                this.history.push({ role: 'assistant', content: result.text })
-            } else {
-                this.history.pop()
+            // 会话已被 clear() 清空时，不再写回旧历史
+            if (generation === this.generation) {
+                if (isAgentSuccess(result.finishReason) && result.text.trim()) {
+                    this.history.push({ role: 'assistant', content: result.text })
+                } else {
+                    this.history.pop()
+                }
             }
 
             return result
@@ -206,6 +219,7 @@ export class AgentSession {
      */
     clear() {
         this.abort()
+        this.generation += 1
         this.history.length = 0
     }
 }
@@ -248,7 +262,8 @@ export class AgentHelper {
         return AgentHelper.request(
             {
                 config: options.config,
-                messages: options.messages,
+                // 复制一份，避免调用方后续修改影响请求
+                messages: options.messages.map((message) => ({ ...message })),
                 system: options.system,
                 timeout: options.timeout,
                 signal: options.signal
@@ -354,7 +369,8 @@ export class AgentHelper {
                     resolveTask({
                         text,
                         ...(reasoningText ? { reasoningText } : {}),
-                        finishReason: 'error'
+                        finishReason: 'error',
+                        error: 'AI流未正常结束'
                     })
                 }
             })
@@ -392,7 +408,7 @@ export class AgentHelper {
                 `AI流请求失败：${input.config.provider}:${input.config.model}`,
                 re.error
             )
-            return { text: '', finishReason: 'error' }
+            return { text: '', finishReason: 'error', error: getErrorMessage(re.error) }
         }
 
         try {
@@ -403,7 +419,7 @@ export class AgentHelper {
             }
 
             LogHelper.error(`AI流请求失败：${input.config.provider}:${input.config.model}`, error)
-            return { text: '', finishReason: 'error' }
+            return { text: '', finishReason: 'error', error: getErrorMessage(error) }
         } finally {
             re.result.dispose()
         }

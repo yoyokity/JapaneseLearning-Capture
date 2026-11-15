@@ -146,8 +146,23 @@ export function getAgentConfig(ai: IAiSettings): IAgentConfig | null {
 
     if (!ai.custom.baseUrl || !ai.custom.model) return null
 
+    // 统一成 SDK 追加接口路径前的前缀
+    let baseUrl = ai.custom.baseUrl.replace(/\/+$/, '')
+
+    for (const endpoint of ['/chat/completions', '/responses', '/messages']) {
+        if (baseUrl.endsWith(endpoint)) {
+            baseUrl = baseUrl.slice(0, -endpoint.length)
+            break
+        }
+    }
+
+    // Anthropic 官方接口固定带 /v1 前缀
+    if (ai.custom.apiFormat === 'anthropic' && !/\/v\d+$/.test(baseUrl)) {
+        baseUrl = `${baseUrl}/v1`
+    }
+
     const baseConfig = {
-        baseUrl: ai.custom.baseUrl,
+        baseUrl,
         apiKey: ai.custom.apiKey || '1',
         model: ai.custom.model,
         // 自定义服务通常是第三方接口，none 时不发送思考参数

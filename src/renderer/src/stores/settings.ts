@@ -136,6 +136,22 @@ export const settingsStore = defineStore(
         }
     },
     {
-        persist: true
+        persist: {
+            afterHydrate: (context) => {
+                // 清理旧版 translate 字段，避免旧 API Key 继续留在 localStorage
+                const translate = context.store.translate as unknown as Record<string, unknown>
+                const validKeys = new Set(['enable', 'retryWithGoogle', 'targetLanguage', 'ai'])
+                let cleaned = false
+
+                for (const key of Object.keys(translate)) {
+                    if (validKeys.has(key)) continue
+
+                    delete translate[key]
+                    cleaned = true
+                }
+
+                if (cleaned) context.store.$persist()
+            }
+        }
     }
 )
