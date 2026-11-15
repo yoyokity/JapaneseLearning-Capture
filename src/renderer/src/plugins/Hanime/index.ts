@@ -884,7 +884,12 @@ const useScraper = ScraperHelper.defineScraper(
 
                 if (signal.aborted) return false
 
-                const re = await TransHelper.translate(StringHelper.removeBraces(plot))
+                const re = await TransHelper.translate(
+                    StringHelper.removeBraces(plot),
+                    true,
+                    undefined,
+                    signal
+                )
                 plot = re.text
 
                 if (!plot) return false

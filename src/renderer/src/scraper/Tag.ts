@@ -27,9 +27,13 @@ let translateQueue: Promise<unknown> = Promise.resolve()
  * @param extraPrompt 附加提示词
  * @returns 去重后的译文数组
  */
-export function translateTags(tags: string[], extraPrompt?: string): Promise<string[]> {
+export function translateTags(
+    tags: string[],
+    extraPrompt?: string,
+    signal?: AbortSignal
+): Promise<string[]> {
     // 串行执行，复用前次缓存
-    const task = translateQueue.then(() => doTranslateTags(tags, extraPrompt))
+    const task = translateQueue.then(() => doTranslateTags(tags, extraPrompt, signal))
     // 失败不阻塞后续任务
     translateQueue = task.catch(() => {})
     return task
@@ -41,10 +45,15 @@ export function translateTags(tags: string[], extraPrompt?: string): Promise<str
  * @param extraPrompt 附加提示词
  * @returns 去重后的译文数组
  */
-async function doTranslateTags(tags: string[], extraPrompt?: string): Promise<string[]> {
+async function doTranslateTags(
+    tags: string[],
+    extraPrompt?: string,
+    signal?: AbortSignal
+): Promise<string[]> {
     const uniqueTags = [...new Set(tags)]
     const settings = settingsStore()
     if (!settings.translate.enable || uniqueTags.length === 0) return uniqueTags
+    if (signal?.aborted) return uniqueTags
 
     const targetLanguage = settings.translate.targetLanguage
 
@@ -52,7 +61,8 @@ async function doTranslateTags(tags: string[], extraPrompt?: string): Promise<st
     if (!settings.translate.ai) {
         const results: string[] = []
         for (const tag of uniqueTags) {
-            results.push((await TransHelper.translate(tag, false)).text)
+            if (signal?.aborted) return uniqueTags
+            results.push((await TransHelper.translate(tag, false, undefined, signal)).text)
         }
         return results
     }
@@ -69,8 +79,10 @@ async function doTranslateTags(tags: string[], extraPrompt?: string): Promise<st
     // 分批翻译
     const translatedMap = new Map<string, string>()
     for (let index = 0; index < untranslatedTags.length; index += BATCH_SIZE) {
+        if (signal?.aborted) break
+
         const batch = untranslatedTags.slice(index, index + BATCH_SIZE)
-        const results = await translateUntranslated(batch, extraPrompt)
+        const results = await translateUntranslated(batch, extraPrompt, signal)
 
         const cacheEntries: [string, ITag][] = []
         batch.forEach((tag, i) => {
@@ -95,24 +107,36 @@ async function doTranslateTags(tags: string[], extraPrompt?: string): Promise<st
  */
 async function translateUntranslated(
     tags: string[],
-    extraPrompt?: string
+    extraPrompt?: string,
+    signal?: AbortSignal
 ): Promise<ITranslateResult[]> {
     const settings = settingsStore()
 
     // AI一次请求翻译整批
     const re = await TransHelper.translateWithSystem(
         JSON.stringify(tags),
-        getPrompt(settings.translate.targetLanguage, extraPrompt)
+        getPrompt(settings.translate.targetLanguage, extraPrompt),
+        signal
     )
     const translated = re.ok ? parseTranslatedTags(re.text, tags.length) : null
     if (translated) return translated.map((text) => ({ ok: true, text: text.trim() }))
+
+    // 已取消时不再逐条回退
+    if (signal?.aborted) return tags.map((tag) => ({ ok: false, text: tag }))
 
     // 失败时逐条回退
     const retryWithGoogle = settings.translate.retryWithGoogle
     const results: ITranslateResult[] = []
     for (const tag of tags) {
+        if (signal?.aborted) {
+            results.push({ ok: false, text: tag })
+            continue
+        }
+
         results.push(
-            retryWithGoogle ? await TransHelper.translateByGoogle(tag) : { ok: false, text: tag }
+            retryWithGoogle
+                ? await TransHelper.translateByGoogle(tag, signal)
+                : { ok: false, text: tag }
         )
     }
     return results

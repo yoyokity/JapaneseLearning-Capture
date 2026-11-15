@@ -588,7 +588,12 @@ const useScraper = ScraperHelper.defineScraper(
                 if (!title) return false
 
                 // 翻译一下
-                const re = await TransHelper.translate(StringHelper.removeBraces(title), false)
+                const re = await TransHelper.translate(
+                    StringHelper.removeBraces(title),
+                    false,
+                    undefined,
+                    signal
+                )
                 if (re.ok) title = re.text
 
                 return title
@@ -781,7 +786,7 @@ const useScraper = ScraperHelper.defineScraper(
                 plot = plot.replace(trailingBracketRegex, '').trim()
 
                 // 翻译一下
-                if (plot) plot = (await TransHelper.translate(plot)).text
+                if (plot) plot = (await TransHelper.translate(plot, true, undefined, signal)).text
 
                 // 加上演员信息
                 if (await getActor()) {

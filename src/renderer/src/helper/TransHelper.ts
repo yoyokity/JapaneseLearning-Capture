@@ -173,6 +173,8 @@ export class TransHelper {
         if (!settings.translate.enable)
             return { ok: false, text: format ? TransHelper.formatTranslateText(text) : text }
 
+        if (signal?.aborted) return { ok: false, text }
+
         let re: ITranslateResult = { ok: false, text }
         let hasAiDelta = false
 
@@ -216,7 +218,7 @@ export class TransHelper {
         // 未启用 AI，或 AI 翻译失败后按设置回退
         const shouldUseGoogle = !settings.translate.ai || settings.translate.retryWithGoogle
 
-        if (!re.ok && shouldUseGoogle) {
+        if (!re.ok && shouldUseGoogle && !signal?.aborted) {
             if (settings.translate.ai) {
                 LogHelper.warn('AI翻译失败，调用谷歌翻译...')
             }
@@ -278,9 +280,14 @@ export class TransHelper {
      * 谷歌翻译
      * @param text 文本
      */
-    static async translateByGoogle(text: string): Promise<ITranslateResult> {
+    static async translateByGoogle(text: string, signal?: AbortSignal): Promise<ITranslateResult> {
         const settings = settingsStore()
-        const re = await translateByGoogleText(text, settings.translate.targetLanguage)
+        const re = await translateByGoogleText(
+            text,
+            settings.translate.targetLanguage,
+            undefined,
+            signal
+        )
         re.text = TransHelper.toSimplified(re.text)
         return re
     }
