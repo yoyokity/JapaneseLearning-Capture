@@ -1,21 +1,12 @@
-import type {
-    IAgentCallOptions,
-    IAgentDataPayload,
-    IAgentEndPayload,
-    IAgentResult,
-    IAgentRetryPayload,
-    IAgentStreamOptions,
-    IAgentStreamPayload
-} from './types'
+import type { IAgentStreamOptions, IAgentStreamPayload } from './types'
 
 import { observable } from '@trpc/server/observable'
-import { generateText, streamText } from 'ai'
+import { streamText } from 'ai'
 
 import { getAgentModel, getReasoningOption } from './model'
 import {
     AI_MAX_RETRIES,
     AI_STREAM_IDLE_TIMEOUT_MS,
-    AI_STREAM_IDLE_TIMEOUT_STEP_MS,
     getErrorHeaders,
     getRetryDelayMs,
     isRetryableError,
@@ -27,59 +18,11 @@ export * from './schema'
 export * from './types'
 
 /**
- * 非流式 AI 调用
- * @param options 调用参数
+ * 转为 Error
+ * @param error 错误
  */
-export async function generateAgentText(options: IAgentCallOptions): Promise<IAgentResult> {
-    let retries = 0
-    let emptyRetried = false
-
-    while (true) {
-        let signal = options.signal
-        if (options.timeout) {
-            const timeoutSignal = AbortSignal.timeout(options.timeout)
-            signal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
-        }
-
-        try {
-            const result = await generateText({
-                model: getAgentModel(options.config),
-                prompt: options.prompt,
-                ...(signal ? { abortSignal: signal } : {}),
-                maxRetries: 0,
-                ...(options.system ? { system: options.system } : {}),
-                ...getReasoningOption(options.config)
-            })
-
-            const step = result.finalStep
-            const text = result.text
-            const reasoningText = step.reasoningText
-
-            // 空响应额外重试一次
-            if (isAgentSuccess(step.finishReason) && !text.trim() && !reasoningText?.trim()) {
-                if (!emptyRetried) {
-                    emptyRetried = true
-                    retries++
-                    await sleep(getRetryDelayMs(retries))
-                    continue
-                }
-
-                throw new Error('AI 返回空响应')
-            }
-
-            return {
-                text,
-                ...(reasoningText ? { reasoningText } : {}),
-                finishReason: step.finishReason
-            }
-        } catch (error) {
-            if (options.signal?.aborted) throw error
-            if (!isRetryableError(error) || retries >= AI_MAX_RETRIES) throw error
-
-            retries++
-            await sleep(getRetryDelayMs(retries, getErrorHeaders(error)))
-        }
-    }
+function toError(error: unknown) {
+    return error instanceof Error ? error : new Error(String(error))
 }
 
 /**
@@ -99,10 +42,10 @@ export function createAgentStream(options: IAgentStreamOptions) {
          * 清理空闲计时器
          */
         function clearTimer() {
-            if (timeoutId) {
-                clearTimeout(timeoutId)
-                timeoutId = null
-            }
+            if (!timeoutId) return
+
+            clearTimeout(timeoutId)
+            timeoutId = null
         }
 
         /**
@@ -128,9 +71,11 @@ export function createAgentStream(options: IAgentStreamOptions) {
             /**
              * 等待并准备下一次尝试
              * @param layer 重试层
-             * @param error 触发重试的错误
+             * @param error 触发错误
              */
             async function waitForRetry(layer: 'adapter' | 'recovery', error: unknown) {
+                if (stopped || outerController.signal.aborted) return false
+
                 if (layer === 'adapter') {
                     if (adapterRetries >= AI_MAX_RETRIES) return false
                     adapterRetries++
@@ -139,7 +84,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                     recoveryRetries++
                 }
 
-                // 已展示过内容时先通知上层清空，再从安全锚点重新生成
+                // 已输出内容时先清空
                 if (layer === 'recovery' && hasCommittedOutput) {
                     hasCommittedOutput = false
                     emit.next({ type: 'reset' })
@@ -147,24 +92,28 @@ export function createAgentStream(options: IAgentStreamOptions) {
 
                 totalRetries++
                 const delayMs = getRetryDelayMs(totalRetries, getErrorHeaders(error))
-                const retryPayload: IAgentRetryPayload = {
+                emit.next({
                     type: 'retry',
                     layer,
                     attempt: layer === 'adapter' ? adapterRetries : recoveryRetries,
                     maxAttempts: AI_MAX_RETRIES,
                     delayMs
+                })
+
+                try {
+                    await sleep(delayMs, outerController.signal)
+                } catch {
+                    return false
                 }
-                emit.next(retryPayload)
-                await sleep(delayMs)
+
                 return true
             }
 
             while (!stopped) {
                 attemptController = new AbortController()
                 const signal = AbortSignal.any([outerController.signal, attemptController.signal])
-                const idleTimeout = baseIdleTimeout + totalRetries * AI_STREAM_IDLE_TIMEOUT_STEP_MS
                 timedOut = false
-                startTimer(idleTimeout)
+                startTimer(baseIdleTimeout)
 
                 let attemptText = ''
                 let attemptReasoning = ''
@@ -186,7 +135,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
 
                     for await (const part of result.stream) {
                         if (stopped) return
-                        startTimer(idleTimeout)
+                        startTimer(baseIdleTimeout)
 
                         if (part.type === 'error') {
                             errorPart = part.error
@@ -199,42 +148,29 @@ export function createAgentStream(options: IAgentStreamOptions) {
                             continue
                         }
 
+                        if (part.type !== 'text-delta' && part.type !== 'reasoning-delta') continue
+                        if (!part.text) continue
+
+                        hasCommittedOutput = true
+                        hasEverOutput = true
+
                         if (part.type === 'text-delta') {
-                            if (!part.text) continue
-
-                            hasCommittedOutput = true
-                            hasEverOutput = true
                             attemptText += part.text
-
-                            const dataPayload: IAgentDataPayload = {
-                                type: 'data',
-                                data: part.text
-                            }
-                            emit.next(dataPayload)
-                            continue
-                        }
-
-                        if (part.type === 'reasoning-delta') {
-                            if (!part.text) continue
-
-                            hasCommittedOutput = true
-                            hasEverOutput = true
+                            emit.next({ type: 'data', data: part.text })
+                        } else {
                             attemptReasoning += part.text
-
-                            const dataPayload: IAgentDataPayload = {
-                                type: 'data',
-                                data: '',
-                                reasoningData: part.text
-                            }
-                            emit.next(dataPayload)
+                            emit.next({ type: 'data', data: '', reasoningData: part.text })
                         }
                     }
 
                     const step = await result.finalStep
-                    const finishReason = errorPart ? 'error' : step.finishReason
+                    const stepFinishReason = step.finishReason
+                    // 未正常结束时视为致命
+                    const finishReason =
+                        errorPart && !isAgentSuccess(stepFinishReason) ? 'error' : stepFinishReason
                     const reasoningText = step.reasoningText ?? attemptReasoning
 
-                    // 空响应额外重试一次，不计入 adapter / recovery 预算
+                    // 空响应额外重试一次
                     if (
                         isAgentSuccess(finishReason) &&
                         !attemptText.trim() &&
@@ -244,15 +180,14 @@ export function createAgentStream(options: IAgentStreamOptions) {
                             emptyRetried = true
                             totalRetries++
                             const delayMs = getRetryDelayMs(totalRetries)
-                            const retryPayload: IAgentRetryPayload = {
+                            emit.next({
                                 type: 'retry',
                                 layer: 'empty',
                                 attempt: 1,
                                 maxAttempts: 1,
                                 delayMs
-                            }
-                            emit.next(retryPayload)
-                            await sleep(delayMs)
+                            })
+                            await sleep(delayMs, outerController.signal)
                             continue
                         }
 
@@ -261,7 +196,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         return
                     }
 
-                    // 中断或错误：按是否已输出过内容选择重试层
+                    // 中断或错误时按输出情况重试
                     if (finishReason === 'interrupted' || finishReason === 'error') {
                         const error = errorPart ?? new Error(`AI生成未完成：${finishReason}`)
                         const retryable = finishReason === 'interrupted' || isRetryableError(error)
@@ -269,20 +204,20 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         if (retryable) {
                             const layer = hasEverOutput ? 'recovery' : 'adapter'
                             if (await waitForRetry(layer, error)) continue
+                            if (stopped || outerController.signal.aborted) return
                         }
 
-                        emit.error(error instanceof Error ? error : new Error(String(error)))
+                        emit.error(toError(error))
                         stopped = true
                         return
                     }
 
-                    const endPayload: IAgentEndPayload = {
+                    emit.next({
                         type: 'end',
                         text: attemptText,
                         ...(reasoningText ? { reasoningText } : {}),
                         finishReason
-                    }
-                    emit.next(endPayload)
+                    })
                     stopped = true
                     emit.complete()
                     return
@@ -295,19 +230,16 @@ export function createAgentStream(options: IAgentStreamOptions) {
 
                     // 非重试错误直接结束
                     if (!timedOut && !isRetryableError(error)) {
-                        emit.error(error instanceof Error ? error : new Error(String(error)))
+                        emit.error(toError(error))
                         stopped = true
                         return
                     }
 
                     const layer = hasEverOutput ? 'recovery' : 'adapter'
                     if (await waitForRetry(layer, effectiveError)) continue
+                    if (stopped || outerController.signal.aborted) return
 
-                    emit.error(
-                        effectiveError instanceof Error
-                            ? effectiveError
-                            : new Error(String(effectiveError))
-                    )
+                    emit.error(toError(effectiveError))
                     stopped = true
                     return
                 } finally {

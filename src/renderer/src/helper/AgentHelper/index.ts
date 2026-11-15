@@ -3,107 +3,59 @@ import type { IAgentConfig, IAgentMessage, IAgentResult, IAgentRetryPayload } fr
 import { ipc } from '@renderer/ipc'
 import { isAgentSuccess } from '@shared'
 
-import { LogHelper } from './LogHelper.ts'
-import { TaskHelper } from './TaskHelper.ts'
+import { LogHelper } from '../LogHelper.ts'
+import { TaskHelper } from '../TaskHelper.ts'
 
-/**
- * 流式回调
- */
+/** 会话上下文上限（token） */
+const SESSION_MAX_TOKENS = 1_000_000
+
 export type TAgentStreamCallback = (data: string, reasoningData: string, reset?: boolean) => void
 
-/**
- * 单轮 AI 调用参数
- */
 export interface IAgentAskOptions {
-    /**
-     * 连接配置
-     */
+    /** 连接配置 */
     config: IAgentConfig
-    /**
-     * 用户输入
-     */
+    /** 用户输入 */
     prompt: string
-    /**
-     * 系统提示词
-     */
+    /** 系统提示词 */
     system?: string | undefined
-    /**
-     * 超时时间（毫秒）
-     */
+    /** 超时时间（毫秒） */
     timeout?: number | undefined
-    /**
-     * 流式回调
-     */
+    /** 流式回调 */
     callback?: TAgentStreamCallback | undefined
-    /**
-     * 重试回调
-     */
+    /** 重试回调 */
     onRetry?: ((info: IAgentRetryPayload) => void) | undefined
-    /**
-     * 取消信号
-     */
+    /** 取消信号 */
     signal?: AbortSignal | undefined
 }
 
-/**
- * 多轮 AI 调用参数
- */
 export interface IAgentChatOptions {
-    /**
-     * 连接配置
-     */
+    /** 连接配置 */
     config: IAgentConfig
-    /**
-     * 历史消息
-     */
+    /** 历史消息 */
     messages: IAgentMessage[]
-    /**
-     * 系统提示词
-     */
+    /** 系统提示词 */
     system?: string | undefined
-    /**
-     * 超时时间（毫秒）
-     */
+    /** 超时时间（毫秒） */
     timeout?: number | undefined
-    /**
-     * 流式回调
-     */
+    /** 流式回调 */
     callback?: TAgentStreamCallback | undefined
-    /**
-     * 重试回调
-     */
+    /** 重试回调 */
     onRetry?: ((info: IAgentRetryPayload) => void) | undefined
-    /**
-     * 取消信号
-     */
+    /** 取消信号 */
     signal?: AbortSignal | undefined
 }
 
-/**
- * 多轮会话参数
- */
 export interface IAgentSessionOptions {
-    /**
-     * 连接配置
-     */
+    /** 连接配置 */
     config: IAgentConfig
-    /**
-     * 系统提示词
-     */
+    /** 系统提示词 */
     system?: string | undefined
-    /**
-     * 超时时间（毫秒）
-     */
+    /** 超时时间（毫秒） */
     timeout?: number | undefined
-    /**
-     * 重试回调
-     */
+    /** 重试回调 */
     onRetry?: ((info: IAgentRetryPayload) => void) | undefined
 }
 
-/**
- * 请求入参
- */
 type TAgentRequestInput =
     | {
           config: IAgentConfig
@@ -145,13 +97,68 @@ function getErrorMessage(error: unknown) {
 }
 
 /**
- * 多轮 AI 会话
+ * 估算 token 数
+ * @param text 文本
+ * @description 中日韩字符按 1 token，其余按 4 字符
  */
+function estimateTokens(text: string) {
+    let cjk = 0
+    let other = 0
+
+    for (let index = 0; index < text.length; index++) {
+        const code = text.charCodeAt(index)
+
+        if (
+            (code >= 0x3000 && code <= 0x9fff) ||
+            (code >= 0xf900 && code <= 0xfaff) ||
+            (code >= 0xac00 && code <= 0xd7af)
+        ) {
+            cjk++
+        } else {
+            other++
+        }
+    }
+
+    return cjk + Math.ceil(other / 4)
+}
+
+/**
+ * 裁剪会话历史
+ * @param history 会话历史，原地修改
+ */
+function trimSessionHistory(history: IAgentMessage[]) {
+    let total = 0
+    let start = history.length
+
+    while (start > 0) {
+        const message = history[start - 1]
+        const cost = estimateTokens(message.content) + 4
+
+        // 最后一条即使超限也保留
+        if (total + cost > SESSION_MAX_TOKENS && start < history.length) break
+
+        total += cost
+        start--
+    }
+
+    // 不能以 assistant 开头
+    while (start < history.length && history[start].role === 'assistant') {
+        start++
+    }
+
+    // 至少保留最后一条
+    const keepFrom = Math.min(start, history.length - 1)
+    if (keepFrom > 0) {
+        history.splice(0, keepFrom)
+    }
+}
+
 export class AgentSession {
     private readonly options: IAgentSessionOptions
     private readonly history: IAgentMessage[] = []
     private activeController: AbortController | null = null
     private generation = 0
+    private queue: Promise<void> = Promise.resolve()
 
     constructor(options: IAgentSessionOptions) {
         this.options = options
@@ -165,19 +172,45 @@ export class AgentSession {
     }
 
     /**
-     * 发送一条消息并等待回复
+     * 发送消息并等待回复
+     * @param text 用户输入
+     * @param callback 流式回调
+     * @description 消息按调用顺序排队
+     */
+    async send(text: string, callback?: TAgentStreamCallback): Promise<IAgentResult> {
+        const epoch = this.generation
+
+        const task = this.queue.then((): IAgentResult | Promise<IAgentResult> => {
+            // abort()/clear() 后不再执行
+            if (epoch !== this.generation) {
+                return { text: '', finishReason: 'error', cancelled: true }
+            }
+
+            return this.doSend(text, callback)
+        })
+
+        // 让后续消息继续排队
+        this.queue = task.then(
+            () => undefined,
+            () => undefined
+        )
+
+        return task
+    }
+
+    /**
+     * 执行一次发送
      * @param text 用户输入
      * @param callback 流式回调
      */
-    async send(text: string, callback?: TAgentStreamCallback): Promise<IAgentResult> {
-        if (this.activeController) {
-            throw new Error('上一轮对话尚未结束')
-        }
-
+    private async doSend(text: string, callback?: TAgentStreamCallback): Promise<IAgentResult> {
         const controller = new AbortController()
         const generation = this.generation
         this.activeController = controller
         this.history.push({ role: 'user', content: text })
+
+        // 超过上限时丢弃最早对话
+        trimSessionHistory(this.history)
 
         try {
             const result = await AgentHelper.chat({
@@ -190,7 +223,7 @@ export class AgentSession {
                 onRetry: this.options.onRetry
             })
 
-            // 会话已被 clear() 清空时，不再写回旧历史
+            // 会话已终止时不写回历史
             if (generation === this.generation) {
                 if (isAgentSuccess(result.finishReason) && result.text.trim()) {
                     this.history.push({ role: 'assistant', content: result.text })
@@ -211,22 +244,29 @@ export class AgentSession {
      * 取消当前请求
      */
     abort() {
-        this.activeController?.abort()
+        const controller = this.activeController
+        this.activeController = null
+        this.generation += 1
+
+        if (!controller) return
+
+        // 移除未完成的用户消息
+        if (this.history.at(-1)?.role === 'user') {
+            this.history.pop()
+        }
+
+        controller.abort()
     }
 
     /**
-     * 清空对话历史
+     * 清空历史并取消请求
      */
     clear() {
         this.abort()
-        this.generation += 1
         this.history.length = 0
     }
 }
 
-/**
- * AI 调用
- */
 export class AgentHelper {
     /**
      * 创建多轮会话
@@ -237,8 +277,8 @@ export class AgentHelper {
     }
 
     /**
-     * 单轮流式 AI 请求
-     * @param options AI 调用参数
+     * 单轮流式请求
+     * @param options 调用参数
      */
     static async ask(options: IAgentAskOptions): Promise<IAgentResult> {
         return AgentHelper.request(
@@ -255,14 +295,14 @@ export class AgentHelper {
     }
 
     /**
-     * 多轮流式 AI 请求
-     * @param options AI 调用参数
+     * 多轮流式请求
+     * @param options 调用参数
      */
     static async chat(options: IAgentChatOptions): Promise<IAgentResult> {
         return AgentHelper.request(
             {
                 config: options.config,
-                // 复制一份，避免调用方后续修改影响请求
+                // 复制一份，避免外部修改
                 messages: options.messages.map((message) => ({ ...message })),
                 system: options.system,
                 timeout: options.timeout,
@@ -288,8 +328,6 @@ export class AgentHelper {
             return { text: '', finishReason: 'error', cancelled: true }
         }
 
-        const timeout = input.timeout
-
         const re = await TaskHelper.tryExecute(async () => {
             let closed = false
             let isResolved = false
@@ -297,7 +335,7 @@ export class AgentHelper {
             let reasoningText = ''
 
             let resolveTask!: (value: IAgentResult) => void
-            let rejectTask!: (reason?: any) => void
+            let rejectTask!: (reason?: unknown) => void
 
             const completed = new Promise<IAgentResult>((resolve, reject) => {
                 resolveTask = resolve
@@ -310,13 +348,13 @@ export class AgentHelper {
                           config: input.config,
                           messages: input.messages,
                           system: input.system,
-                          timeout
+                          timeout: input.timeout
                       }
                     : {
                           config: input.config,
                           prompt: input.prompt,
                           system: input.system,
-                          timeout
+                          timeout: input.timeout
                       }
 
             const subscription = ipc.agent.stream.subscribe(body, {
@@ -345,6 +383,12 @@ export class AgentHelper {
                     if (isResolved) return
 
                     isResolved = true
+
+                    // 非正常结束时清空半截内容
+                    if (!isAgentSuccess(payload.finishReason)) {
+                        callback?.('', '', true)
+                    }
+
                     resolveTask({
                         text,
                         ...(reasoningText ? { reasoningText } : {}),
@@ -366,6 +410,7 @@ export class AgentHelper {
                     }
 
                     isResolved = true
+                    callback?.('', '', true)
                     resolveTask({
                         text,
                         ...(reasoningText ? { reasoningText } : {}),
@@ -375,9 +420,7 @@ export class AgentHelper {
                 }
             })
 
-            /**
-             * 取消当前请求
-             */
+            // 取消当前请求
             function cancel() {
                 if (closed) return
 
@@ -404,6 +447,7 @@ export class AgentHelper {
                 return { text: '', finishReason: 'error', cancelled: true }
             }
 
+            callback?.('', '', true)
             LogHelper.error(
                 `AI流请求失败：${input.config.provider}:${input.config.model}`,
                 re.error
@@ -418,6 +462,7 @@ export class AgentHelper {
                 return { text: '', finishReason: 'error', cancelled: true }
             }
 
+            callback?.('', '', true)
             LogHelper.error(`AI流请求失败：${input.config.provider}:${input.config.model}`, error)
             return { text: '', finishReason: 'error', error: getErrorMessage(error) }
         } finally {

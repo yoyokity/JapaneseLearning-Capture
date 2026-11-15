@@ -8,75 +8,59 @@ import { basename, dirname, extname, join } from 'node:path'
 import { observable } from '@trpc/server/observable'
 import { app } from 'electron'
 
-import { generateAgentText, isAgentSuccess } from '../agent'
+import { createAgentStream, isAgentSuccess } from '../agent'
 import { appPath } from '../globalStates'
 import { post } from './net'
 
-/** 识别语言 */
 export type SubtitleLanguage = 'ja' | 'en' | 'zh' | 'ko'
 
-/** 字幕生成阶段 */
 export type SubtitleStage = 'extract' | 'asr' | 'optimize' | 'translate'
 
-/**
- * 字幕生成的 LLM 配置
- */
 export type ISubtitleLlm = IAgentConfig
 
-/**
- * 字幕生成参数
- */
 export interface IGenerateSubtitleInput {
-    /** 视频文件路径 */
+    /** 视频路径 */
     inputPath: string
     /** 识别语言 */
     language: SubtitleLanguage
-    /** 是否启用 AI 优化 */
+    /** 是否 AI 优化 */
     aiOptimize: boolean
-    /** AI 优化使用的 LLM，未配置时为空 */
+    /** AI 优化配置 */
     llm?: ISubtitleLlm | undefined
 }
 
-/**
- * 字幕生成进度
- */
 export interface ISubtitleProgress {
     /** 当前阶段 */
     stage: SubtitleStage
-    /** 阶段进度 0-1，-1 表示不确定 */
+    /** 进度 0-1，-1 未知 */
     progress: number
     /** 附加文案 */
     message?: string
-    /** 完成时的输出文件路径 */
+    /** 输出文件路径 */
     outputPath?: string
 }
 
-/** 词 */
 interface IWord {
     text: string
     from: number
     to: number
 }
 
-/** 识别段 */
 interface ISegment {
     words: IWord[]
 }
 
-/** 字幕草稿 */
 interface ICueDraft {
     from: number
     to: number
     text: string
 }
 
-/** 字幕条 */
 interface ICue extends ICueDraft {
     id: string
     zh?: string
 }
 
-/** LLM 切分结果 */
 interface ISentence {
     from: number
     to: number
@@ -87,8 +71,6 @@ interface ISentence {
 const MAX_CUE_CHARS = 24
 /** 单条字幕最大时长（毫秒） */
 const MAX_CUE_MS = 8000
-/** 整段 AI 调用超时（毫秒） */
-const LLM_TIMEOUT_MS = 600_000
 /** 语言名称 */
 const LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
     ja: '日语',
@@ -98,7 +80,7 @@ const LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
 }
 
 /**
- * 获取依赖内的程序与模型路径
+ * 获取依赖程序与模型路径
  */
 function getSubtitlePaths() {
     const toolsDir = join(appPath.extraResource, 'tools')
@@ -112,8 +94,9 @@ function getSubtitlePaths() {
 }
 
 /**
- * 判断路径是否全部为 ASCII 字符
- * @remark crispasr 通过 ANSI 路径打开模型，非 ASCII 路径会失败
+ * 路径是否全为 ASCII
+ * @param value 路径
+ * @remark crispasr 无法读取非 ASCII 路径
  */
 function isAsciiPath(value: string) {
     return /^[\x20-\x7E]*$/.test(value)
@@ -129,7 +112,8 @@ function delay(ms: number) {
 
 /**
  * 终止进程树
- * @remark crispasr 会派生子进程，单独 kill 父进程不足以结束
+ * @param child 子进程
+ * @remark crispasr 会派生子进程
  */
 function killProcessTree(child: ChildProcess | null) {
     if (!child?.pid) return
@@ -138,7 +122,12 @@ function killProcessTree(child: ChildProcess | null) {
 }
 
 /**
- * 使用 ffmpeg 提取 16k 单声道音频
+ * 提取 16k 单声道音频
+ * @param ffmpegPath ffmpeg 路径
+ * @param inputPath 输入路径
+ * @param outputPath 输出路径
+ * @param onProgress 进度回调
+ * @param onChild 子进程回调
  */
 function extractAudio(
     ffmpegPath: string,
@@ -277,7 +266,7 @@ function runCrispasr(
 
 /**
  * 解析 crispasr 的 json-full 结果
- * @param jsonPath JSON 文件路径
+ * @param jsonPath JSON 路径
  */
 function parseSegments(jsonPath: string): ISegment[] {
     const raw = JSON.parse(readFileSync(jsonPath, 'utf8')) as {
@@ -320,8 +309,9 @@ function parseSegments(jsonPath: string): ISegment[] {
 }
 
 /**
- * 修正词时间：保证单调递增且有正时长
+ * 修正词时间
  * @param words 词列表
+ * @remark 保证单调递增且有正时长
  */
 function normalizeWordTimes(words: IWord[]) {
     let previous = 0
@@ -347,7 +337,7 @@ function joinWordText(words: IWord[], language: SubtitleLanguage) {
 }
 
 /**
- * 按标点与长度把词切成字幕草稿
+ * 按标点与长度切分字幕
  * @param words 词列表
  * @param language 识别语言
  */
@@ -381,7 +371,7 @@ function splitIntoCues(words: IWord[], language: SubtitleLanguage): ICueDraft[] 
 }
 
 /**
- * 从 LLM 回复中提取 JSON
+ * 从回复中提取 JSON
  * @param content 回复文本
  */
 function extractJson(content: string) {
@@ -395,8 +385,8 @@ function extractJson(content: string) {
 }
 
 /**
- * 校验并归一化 LLM 返回的句子切分
- * @param value 解析后的值
+ * 校验并归一化句子切分
+ * @param value 解析结果
  * @param count 词数
  */
 function normalizeSentences(value: unknown, count: number): ISentence[] | null {
@@ -425,25 +415,76 @@ function normalizeSentences(value: unknown, count: number): ISentence[] | null {
  * @param prompt 提示词
  * @param llm LLM 配置
  * @param signal 取消信号
- * @param timeoutMs 超时时间（毫秒）
  */
-async function askLlm(prompt: string, llm: ISubtitleLlm, signal: AbortSignal, timeoutMs = 120_000) {
-    const result = await generateAgentText({
-        config: llm,
-        prompt,
-        signal,
-        timeout: timeoutMs
+function askLlm(prompt: string, llm: ISubtitleLlm, signal: AbortSignal) {
+    return new Promise<string>((resolve, reject) => {
+        let text = ''
+        let settled = false
+        let subscription: { unsubscribe: () => void } | null = null
+
+        /**
+         * 结束本次调用
+         * @param callback 结束回调
+         */
+        function finish(callback: () => void) {
+            if (settled) return
+
+            settled = true
+            signal.removeEventListener('abort', onAbort)
+            callback()
+        }
+
+        /**
+         * 取消本次调用
+         */
+        function onAbort() {
+            subscription?.unsubscribe()
+            finish(() => reject(new Error('AI流已取消')))
+        }
+
+        if (signal.aborted) {
+            reject(new Error('AI流已取消'))
+            return
+        }
+
+        subscription = createAgentStream({ config: llm, prompt }).subscribe({
+            next(payload) {
+                if (payload.type === 'data') {
+                    text += payload.data
+                    return
+                }
+
+                if (payload.type === 'reset') {
+                    text = ''
+                    return
+                }
+
+                if (payload.type !== 'end') return
+
+                finish(() => {
+                    if (!isAgentSuccess(payload.finishReason)) {
+                        reject(new Error(`AI生成未完成：${payload.finishReason}`))
+                        return
+                    }
+
+                    resolve(payload.text || text)
+                })
+            },
+            error(error) {
+                finish(() => reject(error))
+            },
+            complete() {
+                finish(() => reject(new Error('AI流未正常结束')))
+            }
+        })
+
+        signal.addEventListener('abort', onAbort, { once: true })
+        if (signal.aborted) onAbort()
     })
-
-    if (!isAgentSuccess(result.finishReason)) {
-        throw new Error(`AI生成未完成：${result.finishReason}`)
-    }
-
-    return result.text
 }
 
 /**
- * 按限制并发执行任务
+ * 按并发数执行任务
  * @param tasks 任务列表
  * @param limit 并发数
  */
@@ -460,8 +501,8 @@ async function runWithConcurrency(tasks: (() => Promise<void>)[], limit: number)
 }
 
 /**
- * 让 LLM 纠错并切分全部识别词
- * @param words 全部识别词
+ * 让 LLM 纠错并切分全部词
+ * @param words 全部词
  * @param language 识别语言
  * @param llm LLM 配置
  * @param signal 取消信号
@@ -492,7 +533,7 @@ async function correctAll(
 
     try {
         const sentences = normalizeSentences(
-            extractJson(await askLlm(prompt, llm, signal, LLM_TIMEOUT_MS)),
+            extractJson(await askLlm(prompt, llm, signal)),
             words.length
         )
         if (!sentences) return fallback
@@ -503,13 +544,18 @@ async function correctAll(
             text: sentence.text.replace(/\s+/g, ' ').trim()
         }))
     } catch {
-        // 整段失败时保留原始切分
+        // 失败时保留原始切分
         return fallback
     }
 }
 
 /**
  * 纠错并切分全部识别段
+ * @param segments 识别段
+ * @param language 识别语言
+ * @param llm LLM 配置
+ * @param signal 取消信号
+ * @param onProgress 进度回调
  */
 async function correctSegments(
     segments: ISegment[],
@@ -520,15 +566,24 @@ async function correctSegments(
 ) {
     if (signal.aborted) return []
 
-    const words = segments.flatMap((segment) => segment.words)
-    const cues = await correctAll(words, language, llm, signal)
+    const cues = await correctAll(
+        segments.flatMap((segment) => segment.words),
+        language,
+        llm,
+        signal
+    )
     if (!signal.aborted) onProgress(1)
 
     return cues
 }
 
 /**
- * 用 LLM 整段翻译字幕
+ * 用 LLM 翻译字幕
+ * @param cues 字幕条
+ * @param language 识别语言
+ * @param llm LLM 配置
+ * @param signal 取消信号
+ * @param onProgress 进度回调
  */
 async function translateCues(
     cues: ICue[],
@@ -550,7 +605,7 @@ async function translateCues(
     ].join('\n')
 
     try {
-        const value = extractJson(await askLlm(prompt, llm, signal, LLM_TIMEOUT_MS)) as {
+        const value = extractJson(await askLlm(prompt, llm, signal)) as {
             translations?: { id?: string; zh?: string }[]
         }
         const translations = new Map(
@@ -607,7 +662,10 @@ async function translateByGoogle(text: string) {
 }
 
 /**
- * 用谷歌翻译逐条翻译字幕
+ * 谷歌翻译全部字幕
+ * @param cues 字幕条
+ * @param signal 取消信号
+ * @param onProgress 进度回调
  */
 async function translateCuesWithGoogle(
     cues: ICue[],
@@ -668,6 +726,7 @@ function renderSrt(cues: ICue[]) {
 
 /**
  * 创建字幕生成任务
+ * @param input 生成参数
  */
 export function createSubtitleStream(input: IGenerateSubtitleInput) {
     return observable<ISubtitleProgress>((emit) => {

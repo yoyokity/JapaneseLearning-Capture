@@ -21,29 +21,29 @@ const dependency = dependencyStore()
 
 const activeTab = ref('scraper')
 
-/** 是否锁定主标签页 */
+/** 是否锁定标签页 */
 const locked = computed(() => dependency.missingRequired)
 
 /**
  * 切换标签页
- * @param tabId 标签ID
+ * @param tabId 标签 ID
  */
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
-    // 缺少必需依赖时只能进入设置
+    // 缺少依赖时只能进设置
     if (locked.value && tabId !== 'settings') return
     activeTab.value = tabId
 }
 
-// 其他视图发起工具请求（音频编码/图片超分等）时切换到工具页
+// 工具请求时切到工具页
 watch(pendingRequestCount, () => switchTab('tools'))
 
-// 缺少必需依赖时停留在设置页
+// 缺少依赖时停留在设置页
 watch(locked, (value) => {
     if (value) activeTab.value = 'settings'
 })
 
-// 启动立即检查本地依赖
+// 启动时检查依赖
 void dependency.checkLocal()
 </script>
 
@@ -81,6 +81,7 @@ void dependency.checkLocal()
                     active: activeTab === tab.id,
                     'slide-up': activeTab === tab.id
                 }"
+                :active="tab.id === 'settings' ? activeTab === 'settings' : undefined"
             />
         </div>
     </div>

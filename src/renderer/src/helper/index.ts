@@ -1,5 +1,5 @@
-export * from './AgentHelper.ts'
-export * from './AiConfig.ts'
+export * from './AgentHelper'
+export * from './AgentHelper/AiConfig.ts'
 export * from './const.ts'
 export * from './DataHelper.ts'
 export * from './DebugHelper.ts'

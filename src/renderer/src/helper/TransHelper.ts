@@ -1,16 +1,16 @@
 import { Segmenter } from '@formatjs/intl-segmenter'
 import { showGlobalWarn } from '@renderer/components/control/message'
-import { AgentHelper, getRetryMessage } from '@renderer/helper/AgentHelper.ts'
+import { AgentHelper, getRetryMessage } from '@renderer/helper/AgentHelper'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
 import { isAgentSuccess } from '@shared'
 import { createConverter } from 'js-opencc'
 
-import { getAgentConfig } from './AiConfig.ts'
+import { getAgentConfig } from './AgentHelper/AiConfig.ts'
 import { StringHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
 
-// 句子分段器，用于格式化翻译结果
+// 句子分段器
 const sentenceSegmenter = new Segmenter('zh-CN', {
     granularity: 'sentence'
 })
@@ -36,6 +36,7 @@ export type TStreamCallback = (data: string, reasoningData: string, reset?: bool
  * @param s_text 要翻译的文本
  * @param targetLanguage 目标语言
  * @param streamCallback 流式回调
+ * @param signal 取消信号
  */
 async function translateByGoogleText(
     s_text: string,
@@ -141,9 +142,6 @@ function normaliseGoogleResponse(rawBody: string) {
     }
 }
 
-/**
- * 翻译相关
- */
 export class TransHelper {
     private static traditionalToSimpleConverter: ((text: string) => string) | null = null
 
@@ -181,6 +179,8 @@ export class TransHelper {
         if (settings.translate.ai) {
             const config = getAgentConfig(settings.ai)
             if (config) {
+                let retryWarned = false
+
                 const result = await AgentHelper.ask({
                     config,
                     system: getTranslatePrompt(settings.translate.targetLanguage),
@@ -199,6 +199,9 @@ export class TransHelper {
                     onRetry: (info) => {
                         const message = getRetryMessage(info)
                         LogHelper.warn(message)
+
+                        if (retryWarned) return
+                        retryWarned = true
                         showGlobalWarn(message)
                     }
                 })
@@ -226,7 +229,7 @@ export class TransHelper {
             re = await translateByGoogleText(
                 text,
                 settings.translate.targetLanguage,
-                // AI 已输出过部分文本时不再流式回传，避免和谷歌译文拼接
+                // 有 AI 输出时不回传
                 hasAiDelta ? undefined : streamCallback,
                 signal
             )
@@ -258,7 +261,7 @@ export class TransHelper {
         if (!settings.translate.enable) return { ok: false, text }
 
         // 未启用 AI 时走谷歌翻译
-        if (!settings.translate.ai) return this.translate(text, false)
+        if (!settings.translate.ai) return this.translate(text, false, undefined, signal)
 
         const config = getAgentConfig(settings.ai)
         if (!config) return { ok: false, text }
@@ -302,13 +305,13 @@ export class TransHelper {
     /**
      * 格式化翻译文本
      * @param text 翻译文本
-     * @description 每一句话之间隔一行，同时句首顶格，全部翻译为简体中文，最后将文本中的转义换行符转为普通换行
+     * @description 每句隔一行并转简体
      */
     static formatTranslateText(text: string) {
         const segments = Array.from(sentenceSegmenter.segment(text))
             .filter((item): item is NonNullable<typeof item> => Boolean(item))
             .map((item) => item.segment.trim())
-            // 只有单独的 …… 才作为换行符，后面跟其他标点时不换行
+            // 只有单独的 …… 才换行
             .flatMap((segment) => segment.split(/(?<=……)(?![\p{P}\p{S}])/u))
             .map((segment) => segment.trim())
             .filter(Boolean)
@@ -317,7 +320,7 @@ export class TransHelper {
         for (const segment of segments) {
             const lastSegment = mergedSegments.at(-1)
 
-            // 不使用 、 作为换行分隔符
+            // 不以 、 换行
             if (lastSegment?.endsWith('、')) {
                 mergedSegments[mergedSegments.length - 1] = `${lastSegment}${segment}`
                 continue

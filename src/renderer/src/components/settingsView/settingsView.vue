@@ -26,42 +26,58 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+
+interface IProps {
+    /** 是否为主标签页 */
+    active?: boolean
+}
+
+const props = withDefaults(defineProps<IProps>(), { active: true })
 
 const OPENAI_API_KEYS_URL = 'https://platform.openai.com/api-keys'
 const OPENAI_MODELS_URL = 'https://platform.openai.com/docs/models'
 const DEEPSEEK_API_KEYS_URL = 'https://platform.deepseek.com/api_keys'
 const DEEPSEEK_PRICING_URL = 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing'
 const testDefaultText = 'こんにちは世界'
-
-const settings = settingsStore()
-const dependency = dependencyStore()
-const aiConfigRef = ref()
-const proxyConfigRef = ref()
-const testText = ref(testDefaultText)
-const testTranslateLoading = ref(false)
-const testConnectionLoading = ref(false)
-const toast = useToast()
-
-/** 当前模型服务商名称 */
-const aiProviderLabel = computed(
-    () => AiProviderOptions.find((item) => item.value === settings.ai.provider)?.label ?? ''
-)
-
+/** 标签页配置 */
 const tabs = [
     { id: 'settings', name: '设置', icon: 'pi pi-cog' },
     { id: 'dependency', name: '依赖', icon: 'pi pi-box' },
     { id: 'info', name: '关于', icon: 'pi pi-info-circle' }
 ]
-const activeTab = ref('settings')
 
+const settings = settingsStore()
+const dependency = dependencyStore()
+const toast = useToast()
+
+const aiConfigRef = ref()
+const proxyConfigRef = ref()
+const testText = ref(testDefaultText)
+const testTranslateLoading = ref(false)
+const testConnectionLoading = ref(false)
+const activeTab = ref('settings')
+/** 连接测试取消句柄 */
+let testConnectionController: AbortController | null = null
+/** 翻译测试取消句柄 */
+let testTranslateController: AbortController | null = null
+
+/** 当前服务商名称 */
+const aiProviderLabel = computed(
+    () => AiProviderOptions.find((item) => item.value === settings.ai.provider)?.label ?? ''
+)
+
+/**
+ * 切换标签页
+ * @param tabId 标签 ID
+ */
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
     activeTab.value = tabId
 }
 
 /**
- * 跳转到网络代理设置
+ * 跳转到代理设置
  */
 async function openProxySetting() {
     activeTab.value = 'settings'
@@ -70,12 +86,12 @@ async function openProxySetting() {
 }
 
 /**
- * 测试当前模型服务商连接
+ * 测试连接
  */
 async function testConnection() {
     if (testConnectionLoading.value) return
 
-    // 连接测试固定关闭思考，避免按当前强度长时间推理
+    // 测试固定关闭思考
     const config = getAgentConfig({
         ...settings.ai,
         openai: { ...settings.ai.openai, reasoningEffort: 'none' },
@@ -94,17 +110,29 @@ async function testConnection() {
 
     testConnectionLoading.value = true
 
+    const controller = new AbortController()
+    testConnectionController = controller
+
     try {
+        let retryWarned = false
+
         const result = await AgentHelper.ask({
             config,
             prompt: '只回复 ok',
             timeout: 60 * 1000,
+            signal: controller.signal,
             onRetry: (info) => {
                 const message = getRetryMessage(info)
                 LogHelper.warn(message)
+
+                // 只提示一次
+                if (retryWarned) return
+                retryWarned = true
                 showGlobalWarn(message)
             }
         })
+
+        if (result.cancelled) return
 
         if (isAgentSuccess(result.finishReason) && result.text.trim()) {
             LogHelper.debug(`AI连接成功：${config.provider}:${config.model}`, result.text)
@@ -127,14 +155,23 @@ async function testConnection() {
             })
         }
     } finally {
+        if (testConnectionController === controller) {
+            testConnectionController = null
+        }
         testConnectionLoading.value = false
     }
 }
 
+/**
+ * 测试翻译
+ */
 async function testTranslate() {
     if (testTranslateLoading.value) return
 
     testTranslateLoading.value = true
+
+    const controller = new AbortController()
+    testTranslateController = controller
 
     try {
         let reasoningText = ''
@@ -149,8 +186,11 @@ async function testTranslate() {
                 }
 
                 reasoningText += reasoningData
-            }
+            },
+            controller.signal
         )
+
+        if (controller.signal.aborted) return
 
         if (result.ok) {
             if (reasoningText) LogHelper.title('app').title('AI Thinking').debug(reasoningText)
@@ -171,17 +211,38 @@ async function testTranslate() {
             })
         }
     } finally {
+        if (testTranslateController === controller) {
+            testTranslateController = null
+        }
         testTranslateLoading.value = false
     }
 }
 
-// 缺少必需依赖时直接展示依赖页
+/**
+ * 取消测试请求
+ */
+function abortTests() {
+    testConnectionController?.abort()
+    testTranslateController?.abort()
+}
+
+// 离开页面时取消测试
+watch(
+    () => props.active,
+    (active) => {
+        if (!active) abortTests()
+    }
+)
+
+// 缺少依赖时展示依赖页
 watch(
     () => dependency.missingRequired,
     (value) => {
         if (value) activeTab.value = 'dependency'
     }
 )
+
+onBeforeUnmount(abortTests)
 </script>
 
 <template>
@@ -500,7 +561,7 @@ watch(
                     </InputLine>
                 </div>
 
-                <!--dependency-->
+                <!-- 依赖 -->
                 <div
                     v-else-if="activeTab === 'dependency'"
                     key="dependency"
@@ -509,7 +570,7 @@ watch(
                     <DependencyPanel />
                 </div>
 
-                <!--info-->
+                <!-- 关于 -->
                 <div v-else-if="activeTab === 'info'" key="info" class="settings-tab-content">
                     <UpdatePanel />
                 </div>
@@ -586,7 +647,7 @@ watch(
         }
     }
 
-    /* Tab内容滑动动画 */
+    /* Tab 内容滑动动画 */
     .slide-up-enter-active,
     .slide-down-enter-active {
         transition: transform 0.2s var(--animation-type);
@@ -615,7 +676,6 @@ watch(
     }
 }
 
-// 设置界面内部样式
 h1 {
     font-size: 1rem;
     font-weight: bold;

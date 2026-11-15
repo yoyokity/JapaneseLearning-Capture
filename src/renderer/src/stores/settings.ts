@@ -1,17 +1,26 @@
-import type { IAiSettings } from '@renderer/helper/AiConfig.ts'
+import type { IAiSettings } from '@renderer/helper/AgentHelper/AiConfig.ts'
 import type { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
 import { NetHelper } from '@renderer/helper'
 import { defineStore } from 'pinia'
 import { reactive, ref, watch } from 'vue'
 
-export type VideoSortType = keyof typeof VideoSortTypeList
 export const VideoSortTypeList = {
     title: '标题名称',
     releasedate: '发布日期',
     joinTime: '加入时间',
     changeTime: '编辑时间'
 } as const
+
+export type VideoSortType = keyof typeof VideoSortTypeList
+
+/** 默认翻译设置 */
+const DEFAULT_TRANSLATE_SETTINGS: ITranslateSettings = {
+    enable: false,
+    retryWithGoogle: true,
+    targetLanguage: 'zh-CN',
+    ai: true
+}
 
 export const settingsStore = defineStore(
     'settings',
@@ -23,33 +32,27 @@ export const settingsStore = defineStore(
             port: 7890
         })
 
-        // 监听 proxy 的变化，自动设置
+        // proxy 变化时自动设置
         watch(
             proxy,
             (newValue) => {
                 NetHelper.setProxy(newValue.enable, newValue.host, newValue.port.toString())
             },
             {
-                // 在 Store 初始化时立即执行一次，并监听后续变化
+                /** 初始化时立即执行 */
                 immediate: true,
-                // 深度监听，确保所有嵌套属性的变化都能被捕获
+                /** 深度监听 */
                 deep: true
             }
         )
 
         // 网络
         const net = reactive({
-            /**
-             * 请求超时时间
-             */
+            /** 请求超时时间 */
             timeout: 7,
-            /**
-             * 重试次数
-             */
+            /** 重试次数 */
             retry: 3,
-            /**
-             * 每次相同网站的请求间隔
-             */
+            /** 相同网站请求间隔 */
             delay: 3000
         })
 
@@ -69,19 +72,14 @@ export const settingsStore = defineStore(
             custom: {
                 baseUrl: '',
                 apiKey: '',
-                apiFormat: 'responses',
+                apiFormat: 'chat',
                 model: '',
                 reasoningEffort: 'none'
             }
         })
 
         // 翻译
-        const translate = reactive<ITranslateSettings>({
-            enable: false,
-            retryWithGoogle: true,
-            targetLanguage: 'zh-CN',
-            ai: true
-        })
+        const translate = reactive<ITranslateSettings>({ ...DEFAULT_TRANSLATE_SETTINGS })
 
         const scraperPath = reactive<Record<string, string>>({})
         const currentScraper = ref('')
@@ -91,46 +89,30 @@ export const settingsStore = defineStore(
 
         // 更新
         const update = reactive({
-            /**
-             * 启动时自动检查更新
-             */
+            /** 启动时自动检查更新 */
             autoCheck: true
         })
 
         return {
             proxy,
             net,
-            /**
-             * AI 模型配置
-             */
+            /** AI 模型配置 */
             ai,
-            /**
-             * 翻译设置
-             */
+            /** 翻译设置 */
             translate,
-            /**
-             * 更新设置
-             */
+            /** 更新设置 */
             update,
-            /**
-             * 刮削器路径设置
-             */
+            /** 刮削器路径 */
             scraperPath,
-            /**
-             * 当前刮削器名称
-             */
+            /** 当前刮削器名称 */
             currentScraper,
-            /**
-             * 管理视图排序
-             */
+            /** 管理视图排序 */
             manageViewSort,
-            /**
-             * 管理视图排序方向
-             */
+            /** 管理视图排序方向 */
             manageViewSortReverse,
             /**
-             * 管理视图tags匹配模式
-             * @description 如果为false，则只要包含一个tag，就算匹配上；反之要包含全部tags
+             * 管理视图 tags 匹配模式
+             * @description false 时匹配任一 tag
              */
             manageViewTagsMatchAll
         }
@@ -138,9 +120,9 @@ export const settingsStore = defineStore(
     {
         persist: {
             afterHydrate: (context) => {
-                // 清理旧版 translate 字段，避免旧 API Key 继续留在 localStorage
+                // 清理旧版 translate 字段
                 const translate = context.store.translate as unknown as Record<string, unknown>
-                const validKeys = new Set(['enable', 'retryWithGoogle', 'targetLanguage', 'ai'])
+                const validKeys = new Set(Object.keys(DEFAULT_TRANSLATE_SETTINGS))
                 let cleaned = false
 
                 for (const key of Object.keys(translate)) {
