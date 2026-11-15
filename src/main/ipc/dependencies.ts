@@ -84,7 +84,7 @@ const DEPENDENCIES: IDependencyDefinition[] = [
             },
             {
                 id: 'subtitle-cohere',
-                files: ['cohere-transcribe-q6_k.gguf']
+                files: ['cohere-transcribe-q4_k.gguf']
             }
         ]
     }

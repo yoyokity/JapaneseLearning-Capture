@@ -38,9 +38,9 @@ const execFileAsync = promisify(execFile)
 /** 待下载的模型 */
 const models = [
     {
-        url: `${hfEndpoint}/cstr/cohere-transcribe-03-2026-GGUF/resolve/main/cohere-transcribe-q6_k.gguf`,
-        target: join(root, 'tools/subtitle-cohere/cohere-transcribe-q6_k.gguf'),
-        size: 1_981_355_904
+        url: `${hfEndpoint}/cstr/cohere-transcribe-03-2026-GGUF/resolve/main/cohere-transcribe-q4_k.gguf`,
+        target: join(root, 'tools/subtitle-cohere/cohere-transcribe-q4_k.gguf'),
+        size: 1_289_178_240
     },
     {
         url: `${hfEndpoint}/cstr/qwen3-forced-aligner-0.6b-GGUF/resolve/main/qwen3-forced-aligner-0.6b-q4_k.gguf`,
