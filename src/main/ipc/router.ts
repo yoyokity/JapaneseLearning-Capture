@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { agentConfigSchema, agentStreamOptionsSchema, createAgentStream } from '../agent'
 import { openCloudflareWindow } from '../CloudflareWindow'
 import { appPath } from '../globalStates'
+import { createSubtitleStream } from '../subtitle'
 import {
     getDependencies,
     getDependencyState,
@@ -69,7 +70,6 @@ import {
     setCookie,
     setProxy
 } from './net'
-import { createSubtitleStream } from './subtitle'
 import {
     applyUpdate,
     checkUpdate,
