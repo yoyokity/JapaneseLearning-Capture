@@ -49,7 +49,7 @@ async function doTranslateTags(tags: string[], extraPrompt?: string): Promise<st
     const targetLanguage = settings.translate.targetLanguage
 
     // 谷歌翻译不缓存
-    if (settings.translate.translateEngine === 'google') {
+    if (!settings.translate.ai) {
         const results: string[] = []
         for (const tag of uniqueTags) {
             results.push((await TransHelper.translate(tag, false)).text)

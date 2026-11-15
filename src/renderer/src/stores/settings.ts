@@ -1,3 +1,4 @@
+import type { IAiSettings } from '@renderer/helper/AiConfig.ts'
 import type { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
 import { NetHelper } from '@renderer/helper'
@@ -52,30 +53,34 @@ export const settingsStore = defineStore(
             delay: 3000
         })
 
-        // 翻译
-        const translate = reactive<ITranslateSettings>({
-            enable: false,
-            retryWithGoogle: true,
-            targetLanguage: 'zh-CN',
-            translateEngine: 'google',
+        // AI 模型
+        const ai = reactive<IAiSettings>({
+            provider: 'openai',
             openai: {
                 apiKey: '',
-                model: 'gpt-5.4',
-                baseURL: 'https://api.openai.com/v1',
-                thinking: true,
+                model: 'gpt-6.1-sol',
                 reasoningEffort: 'high'
             },
             deepseek: {
                 apiKey: '',
                 model: 'deepseek-flash',
-                thinking: true,
                 reasoningEffort: 'max'
             },
-            localLLM: {
-                host: '127.0.0.1',
-                port: 1234,
-                model: ''
+            custom: {
+                baseUrl: '',
+                apiKey: '',
+                apiFormat: 'responses',
+                model: '',
+                reasoningEffort: 'none'
             }
+        })
+
+        // 翻译
+        const translate = reactive<ITranslateSettings>({
+            enable: false,
+            retryWithGoogle: true,
+            targetLanguage: 'zh-CN',
+            ai: true
         })
 
         const scraperPath = reactive<Record<string, string>>({})
@@ -95,6 +100,10 @@ export const settingsStore = defineStore(
         return {
             proxy,
             net,
+            /**
+             * AI 模型配置
+             */
+            ai,
             /**
              * 翻译设置
              */

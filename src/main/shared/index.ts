@@ -1,4 +1,15 @@
 export type {
+    AgentApiFormat,
+    AgentFinishReason,
+    AgentProvider,
+    AgentReasoningEffort,
+    IAgentConfig,
+    IAgentMessage,
+    IAgentResult,
+    IAgentRetryPayload
+} from '../agent'
+export { isAgentSuccess } from '../agent/types'
+export type {
     DependencyInstallStatus,
     IDependencyInfo,
     IDependencyList,
@@ -22,8 +33,6 @@ export type {
 export type { SuperResolutionModel } from '../ipc/models'
 export type {
     CookiesSetDetails,
-    IAiOptions,
-    IAiResult,
     IFetchOptions,
     IFetchParse,
     IPingResult,

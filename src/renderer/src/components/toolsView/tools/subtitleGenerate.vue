@@ -4,7 +4,7 @@ import type { ISubtitleLlm, SubtitleLanguage } from '@shared'
 import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
-import { LogHelper, PathHelper, SubtitleHelper } from '@renderer/helper'
+import { getAgentConfig, LogHelper, PathHelper, SubtitleHelper } from '@renderer/helper'
 import { ipc } from '@renderer/ipc'
 import { settingsStore } from '@renderer/stores'
 import { storeToRefs } from 'pinia'
@@ -66,61 +66,11 @@ const inputFileName = computed(() =>
     inputPath.value ? PathHelper.newPath(inputPath.value).filename : ''
 )
 
-/** 当前翻译设置对应的 LLM */
-const llm = computed<ISubtitleLlm | null>(() => {
-    const translate = settings.translate
-
-    if (translate.translateEngine === 'openai') {
-        const config = translate.openai
-        if (!config.baseURL || !config.model) return null
-
-        return {
-            provider: 'openai',
-            baseUrl: config.baseURL,
-            // 本地中转通常不校验 Key，留空时给一个占位值
-            apiKey: config.apiKey || '1',
-            model: config.model,
-            ...(config.thinking ? { reasoningEffort: config.reasoningEffort } : {})
-        }
-    }
-
-    if (translate.translateEngine === 'deepseek') {
-        const config = translate.deepseek
-        if (!config.apiKey || !config.model) return null
-
-        return {
-            provider: 'deepseek',
-            baseUrl: 'https://api.deepseek.com/v1',
-            apiKey: config.apiKey,
-            model: config.model,
-            ...(config.thinking ? { reasoningEffort: config.reasoningEffort } : {})
-        }
-    }
-
-    if (translate.translateEngine === 'localLLM') {
-        const config = translate.localLLM
-        if (!config.host || !config.port || !config.model) return null
-
-        return {
-            provider: 'openai',
-            baseUrl: `http://${config.host}:${config.port}/v1`,
-            apiKey: 'local-llm',
-            model: config.model
-        }
-    }
-
-    return null
-})
+/** 当前 AI 配置对应的 LLM */
+const llm = computed<ISubtitleLlm | null>(() => getAgentConfig(settings.ai))
 
 /** AI 优化不可用的原因 */
-const aiHint = computed(() => {
-    if (settings.translate.translateEngine === 'google') {
-        return '当前翻译引擎为谷歌翻译，无法启用 AI 优化'
-    }
-    if (!llm.value) return '请先在 设置 → 翻译 中填写 AI 引擎配置'
-
-    return ''
-})
+const aiHint = computed(() => (llm.value ? '' : '请先在 设置 → AI 中填写模型服务商配置'))
 
 /**
  * 记录输入文件路径

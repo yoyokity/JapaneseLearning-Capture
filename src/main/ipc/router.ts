@@ -1,7 +1,7 @@
 import type { IDependencyState } from './dependencies'
 import type { ReadDirectoryOptions } from './filesystem'
 import type { ImageData, ImageResizeOptions, SaveImageOptions } from './media'
-import type { CookiesSetDetails, IAiStartOptions, IFetchOptions, IProxyConfig } from './net'
+import type { CookiesSetDetails, IFetchOptions, IProxyConfig } from './net'
 import type { IUpdateState } from './update'
 
 import { initTRPC } from '@trpc/server'
@@ -10,6 +10,7 @@ import { app } from 'electron'
 import superjson from 'superjson'
 import { z } from 'zod'
 
+import { agentConfigSchema, agentStreamOptionsSchema, createAgentStream } from '../agent'
 import { openCloudflareWindow } from '../CloudflareWindow'
 import { appPath } from '../globalStates'
 import {
@@ -57,10 +58,8 @@ import {
 } from './media'
 import { getSuperResolutionModels } from './models'
 import {
-    aiStartOptionsSchema,
     clearCache,
     clearProxy,
-    createAiStream,
     encode,
     fetchOptionsSchema,
     get,
@@ -333,18 +332,15 @@ export const appRouter = t.router({
                     inputPath: z.string(),
                     language: z.enum(['ja', 'en', 'zh', 'ko']),
                     aiOptimize: z.boolean(),
-                    llm: z
-                        .object({
-                            provider: z.enum(['openai', 'deepseek']),
-                            baseUrl: z.string().optional(),
-                            apiKey: z.string(),
-                            model: z.string(),
-                            reasoningEffort: z.string().optional()
-                        })
-                        .optional()
+                    llm: agentConfigSchema.optional()
                 })
             )
             .subscription(({ input }) => createSubtitleStream(input))
+    }),
+    agent: t.router({
+        stream: procedure
+            .input(agentStreamOptionsSchema)
+            .subscription(({ input }) => createAgentStream(input))
     }),
     net: t.router({
         get: procedure
@@ -375,9 +371,6 @@ export const appRouter = t.router({
                     input.options ? (omitUndefined(input.options) as IFetchOptions) : undefined
                 )
             ),
-        ai: procedure
-            .input(aiStartOptionsSchema)
-            .subscription(({ input }) => createAiStream(omitUndefined(input) as IAiStartOptions)),
         setProxy: procedure
             .input(proxyConfigSchema)
             .mutation(({ input }) => setProxy(omitUndefined(input) as IProxyConfig)),

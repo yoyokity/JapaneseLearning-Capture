@@ -35,7 +35,7 @@ import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import SplitButton from 'primevue/splitbutton'
 import Textarea from 'primevue/textarea'
-import { inject, nextTick, onMounted, ref, watch } from 'vue'
+import { inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 dayjs.extend(duration)
 
@@ -53,6 +53,9 @@ const isInitialized = ref(false)
 const isSaving = ref(false)
 const isTranslatingPlot = ref(false)
 const isCanceling = ref(false)
+
+/** 剧情翻译的取消句柄 */
+let translateController: AbortController | null = null
 const scraperProgress = ref(0)
 const currentScraperController = ref<AbortController | null>(null)
 
@@ -282,19 +285,41 @@ async function transPlot() {
 
     isTranslatingPlot.value = true
 
+    const controller = new AbortController()
+    translateController = controller
+
     try {
         let text = ''
-        await TransHelper.translate(newVideo.value.plot, true, (data) => {
-            text = text + data
-            newVideo.value.plot = TransHelper.formatTranslateText(text)
-        })
+        const result = await TransHelper.translate(
+            newVideo.value.plot,
+            true,
+            (data, _, reset) => {
+                if (reset) {
+                    text = ''
+                    newVideo.value.plot = ''
+                    return
+                }
 
-        console.info(text) // 打印一下方便debug
+                text = text + data
+                newVideo.value.plot = TransHelper.formatTranslateText(text)
+            },
+            controller.signal
+        )
+        newVideo.value.plot = result.text
+
+        console.info(result.text) // 打印一下方便debug
         LogHelper.log('翻译完成')
     } finally {
+        if (translateController === controller) {
+            translateController = null
+        }
         isTranslatingPlot.value = false
     }
 }
+
+onBeforeUnmount(() => {
+    translateController?.abort()
+})
 
 /**
  * 处理鼠标返回

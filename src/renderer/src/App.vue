@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useMessage } from '@renderer/components/control/message'
+import { setGlobalToast, useMessage } from '@renderer/components/control/message'
 import { PreviewImage } from '@renderer/components/control/previewImage'
 import ScraperPregressWindow from '@renderer/components/scraperView/scraperPregressWindow.vue'
 import TabContainer from '@renderer/components/tabContainer.vue'
@@ -14,6 +14,7 @@ import { onMounted } from 'vue'
 const settings = settingsStore()
 const update = updateStore()
 const { toast } = useMessage()
+setGlobalToast(toast)
 
 onMounted(() => {
     // 上次更新替换失败时提示用户

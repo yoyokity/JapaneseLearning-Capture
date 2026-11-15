@@ -1,8 +1,12 @@
 import { Segmenter } from '@formatjs/intl-segmenter'
+import { showGlobalWarn } from '@renderer/components/control/message'
+import { AgentHelper, getRetryMessage } from '@renderer/helper/AgentHelper.ts'
 import { NetHelper } from '@renderer/helper/NetHelper.ts'
 import { settingsStore } from '@renderer/stores'
+import { isAgentSuccess } from '@shared'
 import { createConverter } from 'js-opencc'
 
+import { getAgentConfig } from './AiConfig.ts'
 import { StringHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
 
@@ -11,29 +15,13 @@ const sentenceSegmenter = new Segmenter('zh-CN', {
     granularity: 'sentence'
 })
 
-export type TranslateEngine = keyof typeof translators
 export type TranslateTargetLanguage = 'zh-CN' | 'zh-TW'
-export const OpenAIReasoningEffortArray = ['low', 'high', 'max'] as const
-export const DeepseekReasoningEffortArray = ['high', 'max'] as const
+
 export interface ITranslateSettings {
     enable: boolean
     retryWithGoogle: boolean
     targetLanguage: TranslateTargetLanguage
-    translateEngine: TranslateEngine
-    openai: {
-        apiKey: string
-        model: string
-        baseURL: string
-        thinking: boolean
-        reasoningEffort: (typeof OpenAIReasoningEffortArray)[number]
-    }
-    deepseek: {
-        apiKey: string
-        model: string
-        thinking: boolean
-        reasoningEffort: (typeof DeepseekReasoningEffortArray)[number]
-    }
-    localLLM: { port: number; model: string; host: string }
+    ai: boolean
 }
 
 export interface ITranslateResult {
@@ -41,234 +29,117 @@ export interface ITranslateResult {
     text: string
 }
 
-export type TStreamCallback = (data: string, reasoningData: string) => void
+export type TStreamCallback = (data: string, reasoningData: string, reset?: boolean) => void
 
-const translators = {
-    google: {
-        description: '谷歌机器翻译不需要额外配置',
-        func: async (
-            s_text: string,
-            targetLanguage = 'zh-CN',
-            streamCallback?: TStreamCallback
-        ): Promise<ITranslateResult> => {
-            const translateOptions = {
-                from: 'auto',
-                to: targetLanguage,
-                hl: 'zh-CN', // Host language
-                tld: 'com',
-                rpcids: 'MkEWBc'
+/**
+ * 谷歌翻译
+ * @param s_text 要翻译的文本
+ * @param targetLanguage 目标语言
+ * @param streamCallback 流式回调
+ */
+async function translateByGoogleText(
+    s_text: string,
+    targetLanguage: string,
+    streamCallback?: TStreamCallback,
+    signal?: AbortSignal
+): Promise<ITranslateResult> {
+    const translateOptions = {
+        from: 'auto',
+        to: targetLanguage,
+        hl: 'zh-CN', // Host language
+        tld: 'com',
+        rpcids: 'MkEWBc'
+    }
+
+    // url
+    const searchParams = new URLSearchParams({
+        rpcids: translateOptions.rpcids,
+        'source-path': '/',
+        hl: translateOptions.hl,
+        'soc-app': '1',
+        'soc-platform': '1',
+        'soc-device': '1'
+    })
+    const url = `https://translate.google.${translateOptions.tld}/_/TranslateWebserverUi/data/batchexecute?${searchParams}`
+
+    // body
+    const encodedData = StringHelper.encodeUrl(
+        `[[["${translateOptions.rpcids}","[[\\"${s_text}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
+    )
+    const body = `f.req=${encodedData}&`
+
+    // headers
+    const headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+
+    const re = await NetHelper.post(url, body, {
+        headers,
+        delay: 500,
+        signal
+    })
+
+    if (re.ok) {
+        try {
+            const text = normaliseGoogleResponse(re.body).text.trim()
+            streamCallback?.(text, '')
+            return {
+                ok: true,
+                text
             }
-
-            // url
-            const searchParams = new URLSearchParams({
-                rpcids: translateOptions.rpcids,
-                'source-path': '/',
-                hl: translateOptions.hl,
-                'soc-app': '1',
-                'soc-platform': '1',
-                'soc-device': '1'
-            })
-            const url = `https://translate.google.${translateOptions.tld}/_/TranslateWebserverUi/data/batchexecute?${searchParams}`
-
-            // body
-            const encodedData = StringHelper.encodeUrl(
-                `[[["${translateOptions.rpcids}","[[\\"${s_text}\\",\\"${translateOptions.from}\\",\\"${translateOptions.to}\\",1],[]]",null,"generic"]]]`
-            )
-            const body = `f.req=${encodedData}&`
-
-            // headers
-            const headers = {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-
-            const re = await NetHelper.post(url, body, {
-                headers,
-                delay: 500
-            })
-
-            if (re.ok) {
-                try {
-                    const text = normaliseResponse(re.body).text.trim()
-                    streamCallback?.(text, '')
-                    return {
-                        ok: true,
-                        text
-                    }
-                } catch (e) {
-                    LogHelper.error(`google翻译返回内容解析失败：`, re.body, e)
-                }
-            }
-
-            // 翻译失败则原文返回
-            streamCallback?.(s_text, '')
-            return { ok: false, text: s_text }
-
-            function parseData(data: string) {
-                try {
-                    const content = JSON.parse(data.replace(/^\)\]\}'/, ''))
-                    const translationResponse = JSON.parse(content[0][2])
-
-                    return translationResponse
-                } catch {
-                    throw new Error('数据为空或损坏')
-                }
-            }
-
-            function normaliseResponse(rawBody: string) {
-                const data = parseData(rawBody)
-                const translatedPhrases = data[1][0][0][5] as Array<[string]>
-                const text = translatedPhrases.reduce((fullText, [textBlock]) => {
-                    return fullText ? `${fullText} ${textBlock}` : textBlock
-                }, '')
-
-                return {
-                    text,
-                    pronunciation: data[1][0][0][1],
-                    from: {
-                        language: {
-                            didYouMean: Boolean(data[0][1]),
-                            iso: data[2]
-                        },
-                        text: {
-                            pronunciation: data[0][0],
-                            autoCorrected: Boolean(data[0][1]),
-                            value: data[0][6][0],
-                            didYouMean: data[0][1] ? data[0][1][0][4] : null
-                        }
-                    }
-                }
-            }
-        }
-    },
-
-    openai: {
-        description: 'OpenAI翻译，适合接入官方接口或兼容OpenAI格式的中转服务',
-        func: async (
-            s_text: string,
-            targetLanguage = 'zh-CN',
-            streamCallback?: TStreamCallback,
-            customSystem?: string
-        ): Promise<ITranslateResult> => {
-            const settings = settingsStore()
-
-            const result = await NetHelper.ai({
-                provider: 'openai',
-                apiKey: settings.translate.openai.apiKey,
-                model: settings.translate.openai.model,
-                baseURL: settings.translate.openai.baseURL,
-                system: customSystem ?? getGptPrompt(targetLanguage),
-                prompt: s_text,
-                providerOptions: {
-                    openai: {
-                        reasoningEffort: settings.translate.openai.thinking
-                            ? settings.translate.openai.reasoningEffort
-                            : 'none'
-                    }
-                },
-                callback: streamCallback
-            })
-            const text = result.text.trim()
-
-            if (text) {
-                try {
-                    return {
-                        ok: true,
-                        text
-                    }
-                } catch (e) {
-                    LogHelper.error(`openai翻译返回内容解析失败：`, text, e)
-                }
-            }
-
-            // 翻译失败则原文返回
-            return { ok: false, text: s_text }
-        }
-    },
-
-    deepseek: {
-        description: 'DeepSeek翻译，使用DeepSeek官方接口',
-        func: async (
-            s_text: string,
-            targetLanguage = 'zh-CN',
-            streamCallback?: TStreamCallback,
-            customSystem?: string
-        ): Promise<ITranslateResult> => {
-            const settings = settingsStore()
-
-            const result = await NetHelper.ai({
-                provider: 'deepseek',
-                apiKey: settings.translate.deepseek.apiKey,
-                model: settings.translate.deepseek.model,
-                system: customSystem ?? getDeepSeekPrompt(targetLanguage),
-                prompt: s_text,
-                providerOptions: {
-                    deepseek: settings.translate.deepseek.thinking
-                        ? {
-                              thinking: { type: 'enabled' },
-                              reasoning_effort: settings.translate.deepseek.reasoningEffort
-                          }
-                        : {
-                              thinking: { type: 'disabled' }
-                          }
-                },
-                callback: streamCallback
-            })
-            const text = result.text.trim()
-
-            if (text) {
-                try {
-                    return {
-                        ok: true,
-                        text
-                    }
-                } catch (e) {
-                    LogHelper.error(`deepseek翻译返回内容解析失败：`, text, e)
-                }
-            }
-
-            // 翻译失败则原文返回
-            return { ok: false, text: s_text }
-        }
-    },
-
-    localLLM: {
-        description: '本地AI大模型，效果好且不用担心敏感内容被屏蔽，需要按照说明安装本地模型',
-        func: async (
-            s_text: string,
-            targetLanguage = '简体中文',
-            streamCallback?: TStreamCallback,
-            customSystem?: string
-        ): Promise<ITranslateResult> => {
-            const settings = settingsStore()
-
-            const result = await NetHelper.ai({
-                provider: 'openai',
-                apiKey: 'local-llm',
-                model: settings.translate.localLLM.model,
-                baseURL: `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1`,
-                system: customSystem ?? getLLMPrompt(targetLanguage),
-                prompt: s_text,
-                callback: streamCallback,
-                timeout: 30 * 1000 // 预留充分时间，方便llm加载
-            })
-            const text = result.text.trim()
-
-            if (text) {
-                try {
-                    return {
-                        ok: true,
-                        text
-                    }
-                } catch (e) {
-                    LogHelper.error(`localLLM翻译返回内容解析失败：`, text, e)
-                }
-            }
-
-            // 翻译失败则原文返回
-            return { ok: false, text: s_text }
+        } catch (e) {
+            LogHelper.error(`google翻译返回内容解析失败：`, re.body, e)
         }
     }
-} as const
+
+    // 翻译失败则原文返回
+    streamCallback?.(s_text, '')
+    return { ok: false, text: s_text }
+}
+
+/**
+ * 解析谷歌翻译返回数据
+ * @param data 原始响应
+ */
+function parseGoogleResponse(data: string) {
+    try {
+        const content = JSON.parse(data.replace(/^\)\]\}'/, ''))
+        const translationResponse = JSON.parse(content[0][2])
+
+        return translationResponse
+    } catch {
+        throw new Error('数据为空或损坏')
+    }
+}
+
+/**
+ * 格式化谷歌翻译返回数据
+ * @param rawBody 原始响应体
+ */
+function normaliseGoogleResponse(rawBody: string) {
+    const data = parseGoogleResponse(rawBody)
+    const translatedPhrases = data[1][0][0][5] as Array<[string]>
+    const text = translatedPhrases.reduce((fullText, [textBlock]) => {
+        return fullText ? `${fullText} ${textBlock}` : textBlock
+    }, '')
+
+    return {
+        text,
+        pronunciation: data[1][0][0][1],
+        from: {
+            language: {
+                didYouMean: Boolean(data[0][1]),
+                iso: data[2]
+            },
+            text: {
+                pronunciation: data[0][0],
+                autoCorrected: Boolean(data[0][1]),
+                value: data[0][6][0],
+                didYouMean: data[0][1] ? data[0][1][0][4] : null
+            }
+        }
+    }
+}
 
 /**
  * 翻译相关
@@ -286,20 +157,6 @@ export class TransHelper {
     }
 
     /**
-     * 获取全部翻译引擎
-     */
-    static get translateEngines() {
-        return Object.keys(translators)
-    }
-
-    /**
-     * 获取翻译引擎描述
-     */
-    static getTranslateEngineDescription(engine: TranslateEngine) {
-        return translators[engine].description
-    }
-
-    /**
      * 翻译
      * @param text 要翻译的文本
      * @param format 是否格式化，默认为 true
@@ -309,32 +166,68 @@ export class TransHelper {
     static async translate(
         text: string,
         format: boolean = true,
-        streamCallback?: TStreamCallback
+        streamCallback?: TStreamCallback,
+        signal?: AbortSignal
     ): Promise<ITranslateResult> {
-        // TODO: 给翻译也添加取消signal
         const settings = settingsStore()
         if (!settings.translate.enable)
             return { ok: false, text: format ? TransHelper.formatTranslateText(text) : text }
 
-        const re = await translators[settings.translate.translateEngine].func(
-            text,
-            settings.translate.targetLanguage,
-            streamCallback
-        )
+        let re: ITranslateResult = { ok: false, text }
+        let hasAiDelta = false
 
-        // 如果AI翻译失败，则调用谷歌翻译
-        if (!re.ok && settings.translate.retryWithGoogle) {
-            LogHelper.warn('AI翻译失败，调用谷歌翻译...')
-            const googleRe = await translators.google.func(
+        if (settings.translate.ai) {
+            const config = getAgentConfig(settings.ai)
+            if (config) {
+                const result = await AgentHelper.ask({
+                    config,
+                    system: getTranslatePrompt(settings.translate.targetLanguage),
+                    prompt: text,
+                    signal,
+                    callback: (data, reasoningData, reset) => {
+                        if (reset) {
+                            hasAiDelta = false
+                            streamCallback?.('', '', true)
+                            return
+                        }
+
+                        if (data) hasAiDelta = true
+                        streamCallback?.(data, reasoningData)
+                    },
+                    onRetry: (info) => {
+                        const message = getRetryMessage(info)
+                        LogHelper.warn(message)
+                        showGlobalWarn(message)
+                    }
+                })
+
+                if (result.cancelled) {
+                    return { ok: false, text }
+                }
+
+                const resultText = result.text.trim()
+
+                if (resultText && isAgentSuccess(result.finishReason)) {
+                    re = { ok: true, text: resultText }
+                }
+            }
+        }
+
+        // 未启用 AI，或 AI 翻译失败后按设置回退
+        const shouldUseGoogle = !settings.translate.ai || settings.translate.retryWithGoogle
+
+        if (!re.ok && shouldUseGoogle) {
+            if (settings.translate.ai) {
+                LogHelper.warn('AI翻译失败，调用谷歌翻译...')
+            }
+
+            re = await translateByGoogleText(
                 text,
                 settings.translate.targetLanguage,
-                streamCallback
+                // AI 已输出过部分文本时不再流式回传，避免和谷歌译文拼接
+                hasAiDelta ? undefined : streamCallback,
+                signal
             )
-
-            googleRe.text = TransHelper.toSimplified(googleRe.text)
-            return format
-                ? { ...googleRe, text: TransHelper.formatTranslateText(googleRe.text) }
-                : googleRe
         }
 
         re.text = TransHelper.toSimplified(re.text)
@@ -354,23 +247,31 @@ export class TransHelper {
      * @param text 文本
      * @param system 系统提示词
      */
-    static async translateWithSystem(text: string, system: string): Promise<ITranslateResult> {
+    static async translateWithSystem(
+        text: string,
+        system: string,
+        signal?: AbortSignal
+    ): Promise<ITranslateResult> {
         const settings = settingsStore()
         if (!settings.translate.enable) return { ok: false, text }
 
-        const engine = settings.translate.translateEngine
+        // 未启用 AI 时走谷歌翻译
+        if (!settings.translate.ai) return this.translate(text, false)
 
-        // 谷歌翻译不支持自定义提示词
-        if (engine === 'google') return this.translate(text, false)
+        const config = getAgentConfig(settings.ai)
+        if (!config) return { ok: false, text }
 
-        const re = await translators[engine].func(
-            text,
-            settings.translate.targetLanguage,
-            undefined,
-            system
-        )
-        re.text = TransHelper.toSimplified(re.text)
-        return re
+        const result = await AgentHelper.ask({
+            config,
+            system,
+            prompt: text,
+            signal
+        })
+        const resultText = result.text.trim()
+
+        if (!resultText || !isAgentSuccess(result.finishReason)) return { ok: false, text }
+
+        return { ok: true, text: TransHelper.toSimplified(resultText) }
     }
 
     /**
@@ -379,39 +280,9 @@ export class TransHelper {
      */
     static async translateByGoogle(text: string): Promise<ITranslateResult> {
         const settings = settingsStore()
-        const re = await translators.google.func(text, settings.translate.targetLanguage)
+        const re = await translateByGoogleText(text, settings.translate.targetLanguage)
         re.text = TransHelper.toSimplified(re.text)
         return re
-    }
-
-    /**
-     * 获取本地所有翻译模型
-     */
-    static async getLLMModels(): Promise<[]> {
-        const settings = settingsStore()
-        const re = await NetHelper.get(
-            `http://${settings.translate.localLLM.host}:${settings.translate.localLLM.port}/v1/models`,
-            {
-                parse: 'json',
-                delay: 0,
-                retry: 0
-            }
-        )
-
-        if (re.ok) {
-            try {
-                return re.body.data
-                    .map((item: any) => {
-                        return item.id
-                    })
-                    .sort((a, b) => a.localeCompare(b))
-            } catch (e) {
-                LogHelper.error(`获取LLM模型失败：`, e)
-            }
-        }
-
-        LogHelper.error(`获取LLM模型失败：`, re)
-        return []
     }
 
     /**
@@ -456,7 +327,10 @@ export class TransHelper {
     }
 }
 
-function getPrompt(targetLanguage: string) {
+/**
+ * 翻译提示词
+ */
+function getTranslatePrompt(targetLanguage: string) {
     return `
     - 你是一个翻译助手，你会将我说的话翻译成${targetLanguage}。
     - 不要返回md格式，返回纯文本给我。
@@ -466,30 +340,7 @@ function getPrompt(targetLanguage: string) {
     - 语句的前后逻辑关系要通顺，不要前后矛盾。
     - 如果遇到英文片假名，结合语境判断是翻译成英文原文还是翻译成${targetLanguage}，一定不要保留原有的日文片假名。
     - 人名使用中文音译。
-    - 自行优化排版。`
-}
-
-/**
- * gpt的提示词
- */
-function getGptPrompt(targetLanguage: string) {
-    return `${getPrompt(targetLanguage)}
-    - 如果遇到屏蔽字符比如○、●之类的，请自行联想NSFW词汇。
-    - 一定不要包含屏蔽字，比如○、●`
-}
-
-/**
- * deepseek的提示词
- */
-function getDeepSeekPrompt(targetLanguage: string) {
-    return getLLMPrompt(targetLanguage)
-}
-
-/**
- * llm的提示词
- */
-function getLLMPrompt(targetLanguage: string) {
-    return `${getPrompt(targetLanguage)}
+    - 自行优化排版。
     - 如果遇到屏蔽字符比如○、●之类的，请自行联想NSFW色情词汇。
     - 一定不要包含屏蔽字，比如○、●
     - 让语句表达更加NSFW色情、淫秽。`

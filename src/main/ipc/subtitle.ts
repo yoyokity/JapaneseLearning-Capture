@@ -1,15 +1,16 @@
 import type { Buffer } from 'node:buffer'
 import type { ChildProcess } from 'node:child_process'
+import type { IAgentConfig } from '../agent'
 
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { observable } from '@trpc/server/observable'
-import { generateText } from 'ai'
 import { app } from 'electron'
 
+import { generateAgentText, isAgentSuccess } from '../agent'
 import { appPath } from '../globalStates'
-import { getAiModel, post } from './net'
+import { post } from './net'
 
 /** 识别语言 */
 export type SubtitleLanguage = 'ja' | 'en' | 'zh' | 'ko'
@@ -20,18 +21,7 @@ export type SubtitleStage = 'extract' | 'asr' | 'optimize' | 'translate'
 /**
  * 字幕生成的 LLM 配置
  */
-export interface ISubtitleLlm {
-    /** AI 提供商 */
-    provider: 'openai' | 'deepseek'
-    /** OpenAI 兼容接口地址 */
-    baseUrl?: string | undefined
-    /** API Key */
-    apiKey: string
-    /** 模型名称 */
-    model: string
-    /** 推理强度 */
-    reasoningEffort?: string | undefined
-}
+export type ISubtitleLlm = IAgentConfig
 
 /**
  * 字幕生成参数
@@ -438,24 +428,16 @@ function normalizeSentences(value: unknown, count: number): ISentence[] | null {
  * @param timeoutMs 超时时间（毫秒）
  */
 async function askLlm(prompt: string, llm: ISubtitleLlm, signal: AbortSignal, timeoutMs = 120_000) {
-    let providerOptions: Record<string, Record<string, string>> | undefined
-    if (llm.reasoningEffort && llm.provider === 'openai') {
-        providerOptions = { openai: { reasoningEffort: llm.reasoningEffort } }
-    } else if (llm.reasoningEffort && llm.provider === 'deepseek') {
-        providerOptions = { deepseek: { reasoning_effort: llm.reasoningEffort } }
-    }
-
-    const result = await generateText({
-        model: getAiModel({
-            provider: llm.provider,
-            apiKey: llm.apiKey,
-            model: llm.model,
-            ...(llm.baseUrl ? { baseURL: llm.baseUrl } : {})
-        }),
+    const result = await generateAgentText({
+        config: llm,
         prompt,
-        abortSignal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
-        ...(providerOptions ? { providerOptions } : {})
+        signal,
+        timeout: timeoutMs
     })
+
+    if (!isAgentSuccess(result.finishReason)) {
+        throw new Error(`AI生成未完成：${result.finishReason}`)
+    }
 
     return result.text
 }

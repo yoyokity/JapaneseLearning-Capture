@@ -1,27 +1,32 @@
 <script lang="ts" setup>
 import InputLine from '@renderer/components/control/inputLine/inputLine.vue'
 import InputLineItem from '@renderer/components/control/inputLine/inputLineItem.vue'
+import { showGlobalWarn } from '@renderer/components/control/message'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import DependencyPanel from '@renderer/components/settingsView/dependencyPanel.vue'
-import LlmInfo from '@renderer/components/settingsView/llmInfo.vue'
 import UpdatePanel from '@renderer/components/settingsView/updatePanel.vue'
 import {
+    AgentHelper,
+    AiApiFormatOptions,
+    AiProviderDescriptions,
+    AiProviderOptions,
     DeepseekReasoningEffortArray,
+    getAgentConfig,
+    getRetryMessage,
     LogHelper,
     OpenAIReasoningEffortArray,
     TransHelper
 } from '@renderer/helper'
 import { Scraper } from '@renderer/scraper'
 import { dependencyStore, settingsStore } from '@renderer/stores'
+import { isAgentSuccess } from '@shared'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { useDialog } from 'primevue/usedialog'
 import { useToast } from 'primevue/usetoast'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 const OPENAI_API_KEYS_URL = 'https://platform.openai.com/api-keys'
 const OPENAI_MODELS_URL = 'https://platform.openai.com/docs/models'
@@ -31,13 +36,17 @@ const testDefaultText = 'こんにちは世界'
 
 const settings = settingsStore()
 const dependency = dependencyStore()
-const translateEngineConfigRef = ref()
+const aiConfigRef = ref()
 const proxyConfigRef = ref()
-const llmModels = ref<string[]>([])
 const testText = ref(testDefaultText)
 const testTranslateLoading = ref(false)
+const testConnectionLoading = ref(false)
 const toast = useToast()
-const dialog = useDialog()
+
+/** 当前模型服务商名称 */
+const aiProviderLabel = computed(
+    () => AiProviderOptions.find((item) => item.value === settings.ai.provider)?.label ?? ''
+)
 
 const tabs = [
     { id: 'settings', name: '设置', icon: 'pi pi-cog' },
@@ -60,10 +69,56 @@ async function openProxySetting() {
     proxyConfigRef.value?.open()
 }
 
-// 获取LLM模型列表
-async function fetchLLMModels() {
-    if (settings.translate.translateEngine !== 'localLLM') return
-    llmModels.value = await TransHelper.getLLMModels()
+/**
+ * 测试当前模型服务商连接
+ */
+async function testConnection() {
+    if (testConnectionLoading.value) return
+
+    const config = getAgentConfig(settings.ai)
+    if (!config) {
+        toast.add({
+            severity: 'error',
+            summary: '连接失败',
+            detail: '请先填写模型服务商配置',
+            life: 3000
+        })
+        return
+    }
+
+    testConnectionLoading.value = true
+
+    try {
+        const result = await AgentHelper.ask({
+            config,
+            prompt: '只回复 ok',
+            timeout: 60 * 1000,
+            onRetry: (info) => {
+                const message = getRetryMessage(info)
+                LogHelper.warn(message)
+                showGlobalWarn(message)
+            }
+        })
+
+        if (isAgentSuccess(result.finishReason) && result.text.trim()) {
+            LogHelper.debug(`AI连接成功：${config.provider}:${config.model}`, result.text)
+            toast.add({
+                severity: 'success',
+                summary: '连接成功',
+                detail: `${config.provider}: ${config.model}`,
+                life: 3000
+            })
+        } else {
+            toast.add({
+                severity: 'error',
+                summary: '连接失败',
+                detail: '请检查 API Key、Base URL 或模型名称',
+                life: 3000
+            })
+        }
+    } finally {
+        testConnectionLoading.value = false
+    }
 }
 
 async function testTranslate() {
@@ -74,9 +129,18 @@ async function testTranslate() {
     try {
         let reasoningText = ''
 
-        const result = await TransHelper.translate(testText.value, true, (_, reasoningData) => {
-            reasoningText += reasoningData
-        })
+        const result = await TransHelper.translate(
+            testText.value,
+            true,
+            (_, reasoningData, reset) => {
+                if (reset) {
+                    reasoningText = ''
+                    return
+                }
+
+                reasoningText += reasoningData
+            }
+        )
 
         if (result.ok) {
             if (reasoningText) LogHelper.title('app').title('AI Thinking').debug(reasoningText)
@@ -99,26 +163,6 @@ async function testTranslate() {
     } finally {
         testTranslateLoading.value = false
     }
-}
-
-function openLlmInfo() {
-    dialog.open(LlmInfo, {
-        props: {
-            modal: true,
-            draggable: false,
-            header: '本地LLM大模型使用说明',
-            style: {
-                width: 'fit-content',
-                maxWidth: '60rem'
-            },
-            contentStyle: {
-                padding: '0'
-            }
-        },
-        onClose: () => {
-            fetchLLMModels()
-        }
-    })
 }
 
 // 缺少必需依赖时直接展示依赖页
@@ -249,52 +293,32 @@ watch(
                         </InputLineItem>
                     </InputLine>
 
-                    <h1>翻译</h1>
-
-                    <InputLine icon="pi pi-language" title="启用">
-                        <template #right>
-                            <ToggleSwitch v-model="settings.translate.enable" />
-                        </template>
-                    </InputLine>
+                    <h1>AI</h1>
 
                     <InputLine
-                        description="当一次AI翻译失败后，会自动调用谷歌翻译，再次翻译这段内容"
-                        icon="pi pi-sync"
-                        title="AI翻译失败后用谷歌翻译"
+                        description="翻译与字幕 AI 优化使用的模型服务商"
+                        icon="pi pi-microchip"
+                        title="模型服务商"
                     >
                         <template #right>
-                            <ToggleSwitch v-model="settings.translate.retryWithGoogle" />
-                        </template>
-                    </InputLine>
-
-                    <InputLine icon="pi pi-microchip" title="翻译引擎">
-                        <template #right>
                             <Select
-                                v-model="settings.translate.translateEngine"
-                                :options="TransHelper.translateEngines"
-                                @change="
-                                    () => {
-                                        translateEngineConfigRef.close()
-                                    }
-                                "
+                                v-model="settings.ai.provider"
+                                :options="AiProviderOptions as any"
+                                option-label="label"
+                                option-value="value"
+                                @change="aiConfigRef.close()"
                             />
                         </template>
                     </InputLine>
 
                     <InputLine
-                        ref="translateEngineConfigRef"
+                        ref="aiConfigRef"
                         :collapsible="true"
-                        :description="
-                            TransHelper.getTranslateEngineDescription(
-                                settings.translate.translateEngine
-                            )
-                        "
-                        :disable="settings.translate.translateEngine === 'google'"
-                        :title="`${settings.translate.translateEngine}配置`"
-                        @open="fetchLLMModels"
+                        :description="AiProviderDescriptions[settings.ai.provider]"
+                        :title="`${aiProviderLabel}配置`"
                     >
-                        <!-- #region openai配置  -->
-                        <div v-if="settings.translate.translateEngine === 'openai'">
+                        <!-- #region OpenAI配置  -->
+                        <div v-if="settings.ai.provider === 'openai'">
                             <InputLineItem title="API Key">
                                 <Button
                                     as="a"
@@ -304,16 +328,7 @@ watch(
                                 >
                                     获取API Key
                                 </Button>
-                                <InputText
-                                    v-model.trim="settings.translate.openai.apiKey"
-                                    type="text"
-                                />
-                            </InputLineItem>
-                            <InputLineItem title="Base URL">
-                                <InputText
-                                    v-model.trim="settings.translate.openai.baseURL"
-                                    type="text"
-                                />
+                                <InputText v-model.trim="settings.ai.openai.apiKey" type="text" />
                             </InputLineItem>
                             <InputLineItem title="模型">
                                 <Button
@@ -324,25 +339,19 @@ watch(
                                 >
                                     查看全部模型
                                 </Button>
-                                <InputText
-                                    v-model.trim="settings.translate.openai.model"
-                                    type="text"
-                                />
-                            </InputLineItem>
-                            <InputLineItem title="思考模式">
-                                <ToggleSwitch v-model="settings.translate.openai.thinking" />
+                                <InputText v-model.trim="settings.ai.openai.model" type="text" />
                             </InputLineItem>
                             <InputLineItem title="思考强度">
                                 <Select
-                                    v-model="settings.translate.openai.reasoningEffort"
+                                    v-model="settings.ai.openai.reasoningEffort"
                                     :options="OpenAIReasoningEffortArray as any"
                                 />
                             </InputLineItem>
                         </div>
-                        <!-- #endregion openai配置 -->
+                        <!-- #endregion OpenAI配置 -->
 
-                        <!-- #region deepseek配置  -->
-                        <div v-if="settings.translate.translateEngine === 'deepseek'">
+                        <!-- #region Deepseek配置  -->
+                        <div v-if="settings.ai.provider === 'deepseek'">
                             <InputLineItem title="API Key">
                                 <Button
                                     as="a"
@@ -352,10 +361,7 @@ watch(
                                 >
                                     获取API Key
                                 </Button>
-                                <InputText
-                                    v-model.trim="settings.translate.deepseek.apiKey"
-                                    type="text"
-                                />
+                                <InputText v-model.trim="settings.ai.deepseek.apiKey" type="text" />
                             </InputLineItem>
                             <InputLineItem title="模型">
                                 <Button
@@ -366,67 +372,95 @@ watch(
                                 >
                                     查看全部模型
                                 </Button>
-                                <InputText
-                                    v-model.trim="settings.translate.deepseek.model"
-                                    type="text"
-                                />
-                            </InputLineItem>
-                            <InputLineItem title="思考模式">
-                                <ToggleSwitch v-model="settings.translate.deepseek.thinking" />
+                                <InputText v-model.trim="settings.ai.deepseek.model" type="text" />
                             </InputLineItem>
                             <InputLineItem title="思考强度">
                                 <Select
-                                    v-model="settings.translate.deepseek.reasoningEffort"
+                                    v-model="settings.ai.deepseek.reasoningEffort"
                                     :options="DeepseekReasoningEffortArray as any"
                                 />
                             </InputLineItem>
                         </div>
-                        <!-- #endregion deepseek配置 -->
+                        <!-- #endregion Deepseek配置 -->
 
-                        <!-- #region LLM配置  -->
-                        <div v-if="settings.translate.translateEngine === 'localLLM'">
-                            <InputLineItem title="主机">
-                                <InputText
-                                    v-model.trim="settings.translate.localLLM.host"
-                                    type="text"
-                                    @change="fetchLLMModels"
-                                />
+                        <!-- #region 自定义配置  -->
+                        <div v-if="settings.ai.provider === 'custom'">
+                            <InputLineItem title="Base URL">
+                                <InputText v-model.trim="settings.ai.custom.baseUrl" type="text" />
                             </InputLineItem>
-                            <InputLineItem title="端口">
-                                <InputNumber
-                                    v-model.trim="settings.translate.localLLM.port"
-                                    :max="65535"
-                                    :min="1"
-                                    :use-grouping="false"
-                                    @change="fetchLLMModels"
+                            <InputLineItem title="API Key">
+                                <InputText v-model.trim="settings.ai.custom.apiKey" type="text" />
+                            </InputLineItem>
+                            <InputLineItem title="API 格式">
+                                <Select
+                                    v-model="settings.ai.custom.apiFormat"
+                                    :options="AiApiFormatOptions as any"
+                                    option-label="label"
+                                    option-value="value"
                                 />
                             </InputLineItem>
                             <InputLineItem title="模型">
-                                <Message
-                                    v-if="
-                                        settings.translate.translateEngine === 'localLLM' &&
-                                        llmModels.length === 0
-                                    "
-                                    severity="error"
-                                >
-                                    请先启动本地LLM服务！
-                                </Message>
+                                <InputText v-model.trim="settings.ai.custom.model" type="text" />
+                            </InputLineItem>
+                            <InputLineItem title="思考强度">
                                 <Select
-                                    v-model="settings.translate.localLLM.model"
-                                    :options="llmModels"
+                                    v-model="settings.ai.custom.reasoningEffort"
+                                    :options="OpenAIReasoningEffortArray as any"
                                 />
                             </InputLineItem>
-                            <InputLineItem title="">
-                                <Button @click="openLlmInfo"> 使用说明 </Button>
-                            </InputLineItem>
                         </div>
-                        <!-- #endregion LLM配置 -->
+                        <!-- #endregion 自定义配置 -->
                     </InputLine>
 
                     <InputLine
-                        description="测试输入文本，看看翻译器是否正常工作"
+                        description="使用当前模型服务商发送一次最小请求"
+                        icon="pi pi-link"
+                        title="测试连接"
+                    >
+                        <template #right>
+                            <Button
+                                label="测试连接"
+                                :loading="testConnectionLoading"
+                                @click="testConnection"
+                            />
+                        </template>
+                    </InputLine>
+
+                    <h1>翻译</h1>
+
+                    <InputLine icon="pi pi-language" title="启用">
+                        <template #right>
+                            <ToggleSwitch v-model="settings.translate.enable" />
+                        </template>
+                    </InputLine>
+
+                    <InputLine
+                        description="关闭时使用谷歌翻译"
+                        icon="pi pi-star"
+                        title="启用AI翻译"
+                    >
+                        <template #right>
+                            <ToggleSwitch v-model="settings.translate.ai" />
+                        </template>
+                    </InputLine>
+
+                    <InputLine
+                        description="当一次AI翻译失败后，会自动调用谷歌翻译，再次翻译这段内容"
+                        icon="pi pi-sync"
+                        title="AI翻译失败后用谷歌翻译"
+                    >
+                        <template #right>
+                            <ToggleSwitch
+                                v-model="settings.translate.retryWithGoogle"
+                                :disabled="!settings.translate.ai"
+                            />
+                        </template>
+                    </InputLine>
+
+                    <InputLine
+                        description="测试输入文本，看看翻译是否正常工作"
                         icon="pi pi-check"
-                        title="测试当前引擎"
+                        title="测试翻译"
                     >
                         <template #right>
                             <Button

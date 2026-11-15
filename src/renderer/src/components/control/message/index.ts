@@ -95,3 +95,26 @@ export function useMessage() {
 
     return { confirmDialog, toast }
 }
+
+/**
+ * 全局通知实例
+ */
+type ToastApi = ReturnType<typeof useMessage>['toast']
+
+let globalToast: ToastApi | null = null
+
+/**
+ * 注册全局通知实例
+ * @param toast 通知实例
+ */
+export function setGlobalToast(toast: ToastApi) {
+    globalToast = toast
+}
+
+/**
+ * 全局警告提示
+ * @param message 消息
+ */
+export function showGlobalWarn(message: string) {
+    globalToast?.warn(message)
+}
