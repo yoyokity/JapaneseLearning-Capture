@@ -43,6 +43,7 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
         timeout,
         maxRetries,
         tools,
+        cwd,
         maxSteps,
         toolCallConcurrency,
         signal,
@@ -57,6 +58,7 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
                   timeout,
                   maxRetries,
                   tools,
+                  cwd,
                   maxSteps,
                   toolCallConcurrency
               }
@@ -67,6 +69,7 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
                   timeout,
                   maxRetries,
                   tools,
+                  cwd,
                   maxSteps,
                   toolCallConcurrency
               }
