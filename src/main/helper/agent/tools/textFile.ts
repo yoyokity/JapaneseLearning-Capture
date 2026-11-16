@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
-import { isAbsolute, normalize, resolve } from 'node:path'
+import { realpath } from 'node:fs/promises'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import iconv from 'iconv-lite'
 
 /** 文本文件编码 */
@@ -13,12 +14,23 @@ const UTF16LE_BOM = [0xff, 0xfe] as const
 const LEGACY_CHINESE_ENCODINGS = ['gb2312', 'gbk', 'gb18030'] as const
 const BINARY_CONTROL_BYTE_THRESHOLD = 0.3
 const MAX_DETECTION_TRAILING_DROP_BYTES = 3
+const SANDBOX_SEPARATOR_PATTERN = /[\\/]/
+const INVALID_FILENAME_PATTERN = /[\0:*?"<>|]/
+const TRAILING_DOT_OR_SPACE_PATTERN = /[. ]$/
 
 /** 不支持的文本编码或二进制文件 */
 export class UnsupportedTextFileError extends Error {
     constructor(filePath: string) {
         super(`Unsupported or binary text encoding: ${filePath}`)
         this.name = 'UnsupportedTextFileError'
+    }
+}
+
+/** 沙箱路径非法 */
+export class SandboxPathError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = 'SandboxPathError'
     }
 }
 
@@ -80,13 +92,42 @@ export function detectLineEndings(content: string): TextFileLineEndings {
 }
 
 /**
- * 解析工具文件路径
- * @param filePath 模型传入路径
- * @param cwd 相对路径基准目录
+ * 解析沙箱内的文件名
+ * @param fileName 模型传入的文件名
+ * @param sandboxDir 沙箱目录
+ * @remark 只接受单个文件名，不接受目录、绝对路径或路径穿越
  */
-export function resolveToolFilePath(filePath: string, cwd: string) {
-    if (!filePath) throw new Error('Tool path must not be empty')
-    return normalize(isAbsolute(filePath) ? filePath : resolve(cwd, filePath))
+export function resolveSandboxFilePath(fileName: string, sandboxDir: string) {
+    if (!fileName || fileName !== fileName.trim()) {
+        throw new SandboxPathError('file_path must be a non-empty file name.')
+    }
+    if (
+        SANDBOX_SEPARATOR_PATTERN.test(fileName) ||
+        fileName === '.' ||
+        fileName === '..' ||
+        INVALID_FILENAME_PATTERN.test(fileName) ||
+        TRAILING_DOT_OR_SPACE_PATTERN.test(fileName)
+    ) {
+        throw new SandboxPathError(
+            `file_path must be a file name inside the sandbox, not a path: ${fileName}`
+        )
+    }
+
+    return join(resolve(sandboxDir), fileName)
+}
+
+/**
+ * 校验真实路径仍在沙箱内
+ * @param filePath 文件路径
+ * @param sandboxDir 沙箱目录
+ * @remark 防止沙箱内的符号链接指向外部
+ */
+export async function assertInsideSandbox(filePath: string, sandboxDir: string) {
+    const [realFile, realRoot] = await Promise.all([realpath(filePath), realpath(sandboxDir)])
+    const rel = relative(realRoot, realFile)
+
+    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return
+    throw new SandboxPathError(`Path is outside the sandbox: ${filePath}`)
 }
 
 /** 生成读取状态 Map 的路径键 */

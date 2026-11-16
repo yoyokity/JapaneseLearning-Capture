@@ -3,20 +3,22 @@ import type { IReadFileState } from './readFile'
 import type { TextFileEncoding, TextFileLineEndings } from './textFile'
 
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
 import { tool } from 'ai'
 import { z } from 'zod'
 
+import { appPath } from '../../../globalStates'
 import { findEditMatch, normalizeReplacementForMatch, preserveQuoteStyle } from './editMatchers'
 import { READ_DEFAULT_MAX_LINES } from './readFile'
 import {
     applyLineEndings,
+    assertInsideSandbox,
     decodeTextBuffer,
     detectLineEndings,
     encodeTextContent,
     getFilePathKey,
     normalizeLineEndings,
-    resolveToolFilePath,
+    resolveSandboxFilePath,
+    SandboxPathError,
     UnsupportedTextFileError
 } from './textFile'
 
@@ -48,8 +50,6 @@ export interface IStructuredPatchHunk {
 }
 
 export interface IEditFileToolOptions {
-    /** 相对路径的基准目录 */
-    cwd?: string | undefined
     /** read_file / edit_file 共享的读取状态 */
     readFileState?: Map<string, IReadFileState> | undefined
 }
@@ -86,20 +86,21 @@ export type EditFileOutput = IEditFileSuccessOutput | IEditFileErrorOutput
  * @remark 基于精确字符串替换；必须先通过 read_file 读取，写回时保持原编码与换行
  */
 export function createEditFileTool(options: IEditFileToolOptions = {}) {
-    const cwd = options.cwd ?? process.cwd()
+    const sandboxDir = appPath.sandbox
     const readFileState = options.readFileState ?? new Map<string, IReadFileState>()
 
     return tool<IEditFileInput, EditFileOutput, Record<string, unknown>>({
         description: [
-            'Performs exact string replacement in a file.',
+            'Performs exact string replacement in a file inside the agent sandbox.',
             '',
+            '- `file_path` is a file name inside the sandbox, not a path. Do not pass directories, absolute paths, or `..`.',
             '- You must Read the file in this conversation before editing, or the call will fail.',
             '- `old_string` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the Read line prefix (line number + tab) before matching.',
             '- `replace_all: true` replaces every occurrence instead.',
             `- To create a new file, pass an empty \`old_string\` and the complete content as \`new_string\`. Reads are capped at ${READ_DEFAULT_MAX_LINES} lines by default.`
         ].join('\n'),
         inputSchema: z.object({
-            file_path: z.string().describe('The absolute path to the file to modify'),
+            file_path: z.string().describe('The file name inside the sandbox, not a path'),
             old_string: z.string().describe('The text to replace'),
             new_string: z
                 .string()
@@ -117,7 +118,7 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
             replace_all
         }): Promise<EditFileOutput> => {
             try {
-                const filePath = resolveToolFilePath(file_path, cwd)
+                const filePath = resolveSandboxFilePath(file_path, sandboxDir)
                 const oldString = normalizeLineEndings(old_string)
                 const newString = normalizeLineEndings(new_string)
 
@@ -145,7 +146,7 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
                         )
                     }
 
-                    await mkdir(dirname(filePath), { recursive: true })
+                    await mkdir(sandboxDir, { recursive: true })
                     await writeFile(filePath, encodeTextContent(newString, 'utf8', filePath))
                     const created = await stat(filePath)
                     readFileState.set(key, {
@@ -176,6 +177,7 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
                         `Path is not a regular file: ${filePath}`
                     )
                 }
+                await assertInsideSandbox(filePath, sandboxDir)
 
                 if (filePath.toLowerCase().endsWith('.ipynb')) {
                     return errorOutput(
@@ -290,6 +292,9 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
                     stats
                 })
             } catch (error) {
+                if (error instanceof SandboxPathError) {
+                    return errorOutput(EditErrorCode.INVALID_PATH, error.message)
+                }
                 if (error instanceof UnsupportedTextFileError) {
                     return errorOutput('unsupported', error.message)
                 }

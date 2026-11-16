@@ -10,8 +10,6 @@ const AI_MAX_TOOL_STEPS = 5
 export interface IAgentToolOptions {
     /** 工具集合，仅主进程内部使用；同名工具会覆盖默认工具 */
     tools?: ToolSet | undefined
-    /** 默认文件工具的基准目录 */
-    cwd?: string | undefined
     /** 单次调用内的工具循环最大步数 */
     maxSteps?: number | undefined
     /** 工具最大并发数 */
@@ -30,7 +28,7 @@ export interface IAgentToolState {
  */
 export function getToolOptions(options: IAgentToolOptions) {
     const tools: ToolSet = {
-        ...getDefaultFileTools(options.cwd),
+        ...getDefaultFileTools(),
         ...options.tools
     }
 

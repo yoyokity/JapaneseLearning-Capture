@@ -4,12 +4,15 @@ import { readFile, stat } from 'node:fs/promises'
 import { tool } from 'ai'
 import { z } from 'zod'
 
+import { appPath } from '../../../globalStates'
 import {
+    assertInsideSandbox,
     decodeTextBuffer,
     detectLineEndings,
     getFilePathKey,
     normalizeLineEndings,
-    resolveToolFilePath,
+    resolveSandboxFilePath,
+    SandboxPathError,
     UnsupportedTextFileError
 } from './textFile'
 
@@ -53,8 +56,6 @@ export interface IReadFileState {
 }
 
 export interface IReadFileToolOptions {
-    /** 相对路径的基准目录 */
-    cwd?: string | undefined
     /** read_file / edit_file 共享的读取状态 */
     readFileState?: Map<string, IReadFileState> | undefined
 }
@@ -81,7 +82,7 @@ export interface IReadFileTextOutput {
 
 export interface IReadFileErrorOutput {
     ok: false
-    errorCode: 'not_found' | 'not_file' | 'too_large' | 'unsupported' | 'io_error'
+    errorCode: 'not_found' | 'not_file' | 'too_large' | 'unsupported' | 'invalid_path' | 'io_error'
     message: string
 }
 
@@ -93,14 +94,14 @@ export type ReadFileOutput = IReadFileTextOutput | IReadFileErrorOutput
  * @remark 返回带行号的文本；大文件可用 offset/limit 分段读取
  */
 export function createReadFileTool(options: IReadFileToolOptions = {}) {
-    const cwd = options.cwd ?? process.cwd()
+    const sandboxDir = appPath.sandbox
     const readFileState = options.readFileState ?? new Map<string, IReadFileState>()
 
     return tool<IReadFileInput, ReadFileOutput, Record<string, unknown>>({
         description: [
-            'Reads a file from the local filesystem.',
+            'Reads a file from the agent sandbox.',
             '',
-            '- `file_path` must be an absolute path.',
+            '- `file_path` is a file name inside the sandbox, not a path. Do not pass directories, absolute paths, or `..`.',
             `- Reads up to ${READ_DEFAULT_MAX_LINES} lines by default.`,
             '- When you already know which part of the file you need, only read that part. This can be important for larger files.',
             '- Results are returned using cat -n format, with line numbers starting at 1.',
@@ -108,7 +109,7 @@ export function createReadFileTool(options: IReadFileToolOptions = {}) {
             '- Do NOT re-read a file you just edited to verify — edit_file would have errored if the change failed.'
         ].join('\n'),
         inputSchema: z.object({
-            file_path: z.string().describe('The absolute path to the file to read'),
+            file_path: z.string().describe('The file name inside the sandbox, not a path'),
             offset: z
                 .number()
                 .int()
@@ -128,11 +129,12 @@ export function createReadFileTool(options: IReadFileToolOptions = {}) {
         }),
         execute: async ({ file_path, offset, limit }): Promise<ReadFileOutput> => {
             try {
-                const filePath = resolveToolFilePath(file_path, cwd)
+                const filePath = resolveSandboxFilePath(file_path, sandboxDir)
                 const stats = await stat(filePath)
                 if (!stats.isFile()) {
-                    return errorOutput('not_file', `Path is not a regular file: ${filePath}`)
+                    return errorOutput('not_file', `Path is not a regular file: ${file_path}`)
                 }
+                await assertInsideSandbox(filePath, sandboxDir)
 
                 const wholeFileRead = offset === undefined && limit === undefined
                 const maxBytes = wholeFileRead
@@ -203,8 +205,14 @@ export function createReadFileTool(options: IReadFileToolOptions = {}) {
                     notice
                 }
             } catch (error) {
+                if (error instanceof SandboxPathError) {
+                    return errorOutput('invalid_path', error.message)
+                }
                 if (error instanceof UnsupportedTextFileError) {
                     return errorOutput('unsupported', error.message)
+                }
+                if (isNodeError(error) && error.code === 'ENOENT') {
+                    return errorOutput('not_found', `File not found in sandbox: ${file_path}`)
                 }
 
                 return errorOutput('io_error', getErrorMessage(error))
@@ -260,6 +268,10 @@ function errorOutput(
 
 function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error)
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+    return error instanceof Error && 'code' in error
 }
 
 function formatFileSize(bytes: number) {

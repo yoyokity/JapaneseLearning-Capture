@@ -29,6 +29,7 @@ appPath.arsr = app.getAppPath()
 appPath.resources = join(appPath.arsr, 'resources')
 appPath.extraResource = app.isPackaged ? join(appPath.arsr, '../') : appPath.arsr
 appPath.renderer = join(appPath.arsr, 'dist', 'renderer')
+appPath.sandbox = join(appPath.root, 'data', 'sandbox')
 
 // 设置electron缓存文件夹在根目录下，不要建立在C盘
 app.setPath('userData', join(appPath.root, 'data'))
@@ -36,6 +37,7 @@ app.setPath('logs', join(appPath.root, 'data', 'logs'))
 app.setPath('temp', join(appPath.root, 'data', 'temp'))
 
 createDirectory(app.getPath('temp'))
+createDirectory(appPath.sandbox)
 
 // 读取上次更新失败标记，并恢复已下载完成但未应用的更新
 consumeUpdateError()
