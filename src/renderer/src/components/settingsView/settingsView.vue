@@ -120,6 +120,7 @@ async function testConnection() {
             config,
             prompt: '只回复 ok',
             timeout: 60 * 1000,
+            maxRetries: 0,
             signal: controller.signal,
             onRetry: (info) => {
                 const message = getRetryMessage(info)
@@ -367,7 +368,7 @@ onBeforeUnmount(abortTests)
                     <h1>AI</h1>
 
                     <InputLine
-                        description="翻译与字幕 AI 优化使用的模型服务商"
+                        description="翻译与字幕生成使用的模型服务商"
                         icon="pi pi-microchip"
                         title="模型服务商"
                     >

@@ -2,7 +2,7 @@ import type { IAgentConfig } from '../agent'
 
 export type SubtitleLanguage = 'ja' | 'en' | 'zh' | 'ko'
 
-export type SubtitleStage = 'extract' | 'asr' | 'optimize' | 'translate'
+export type SubtitleStage = 'extract' | 'asr' | 'translate'
 
 export type ISubtitleLlm = IAgentConfig
 
@@ -11,9 +11,9 @@ export interface IGenerateSubtitleInput {
     inputPath: string
     /** 识别语言 */
     language: SubtitleLanguage
-    /** 是否 AI 优化 */
+    /** 是否使用 AI 翻译 */
     aiOptimize: boolean
-    /** AI 优化配置 */
+    /** AI 翻译配置 */
     llm?: ISubtitleLlm | undefined
 }
 
@@ -35,6 +35,16 @@ export interface IWord {
 }
 
 export interface ISegment {
+    /** ASR 段 ID */
+    chunkId?: number | undefined
+    /** 段文本 */
+    text: string
+    /** 段开始时间（毫秒） */
+    from: number
+    /** 段结束时间（毫秒） */
+    to: number
+    /** 原始时间戳字符串 */
+    timestamps?: { from: string; to: string } | undefined
     words: IWord[]
 }
 

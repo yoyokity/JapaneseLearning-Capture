@@ -20,7 +20,7 @@ export const toolsStore = defineStore(
         const superResolutionModelName = ref('')
         /** 字幕识别语言 */
         const subtitleLanguage = ref<SubtitleLanguage>('ja')
-        /** 字幕是否启用 AI 优化 */
+        /** 字幕是否启用 AI 翻译 */
         const subtitleAiOptimize = ref(true)
 
         /**
@@ -75,7 +75,7 @@ export const toolsStore = defineStore(
              */
             subtitleLanguage,
             /**
-             * 字幕是否启用 AI 优化
+             * 字幕是否启用 AI 翻译
              */
             subtitleAiOptimize,
             /**

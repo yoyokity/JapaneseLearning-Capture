@@ -1,3 +1,5 @@
+import type { IAgentToolOptions } from './tools'
+
 export type AgentProvider = 'openai' | 'deepseek' | 'anthropic'
 
 export type AgentApiFormat = 'chat' | 'responses'
@@ -9,6 +11,9 @@ export type AgentReasoningEffort = (typeof AgentReasoningEffortArray)[number]
 
 export type AgentFinishReason =
     'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'interrupted' | 'other'
+
+/** 重试原因 */
+export type AgentRetryReason = 'request_failed' | 'stream_idle_timeout' | 'empty_completion'
 
 export interface IAgentConfig {
     /** 提供商 */
@@ -39,6 +44,8 @@ export interface IAgentBaseOptions {
     system?: string | undefined
     /** 超时时间（毫秒） */
     timeout?: number | undefined
+    /** 最大重试次数（不含首次请求） */
+    maxRetries?: number | undefined
 }
 
 export interface IAgentCallOptions extends IAgentBaseOptions {
@@ -53,7 +60,9 @@ export interface IAgentChatOptions extends IAgentBaseOptions {
     messages: IAgentMessage[]
 }
 
-export type IAgentStreamOptions = Omit<IAgentCallOptions, 'signal'> | IAgentChatOptions
+export type IAgentStreamOptions =
+    | (Omit<IAgentCallOptions, 'signal'> & IAgentToolOptions)
+    | (IAgentChatOptions & IAgentToolOptions)
 
 export interface IAgentResult {
     /** 生成的文本 */
@@ -94,12 +103,18 @@ export interface IAgentRetryPayload {
     type: 'retry'
     /** 重试层 */
     layer: 'adapter' | 'recovery' | 'empty'
-    /** 当前层重试次数 */
+    /** 当前重试次数 */
     attempt: number
-    /** 当前层最大次数 */
+    /** 最大重试次数 */
     maxAttempts: number
     /** 等待时长（毫秒） */
     delayMs: number
+    /** 重试原因 */
+    reason?: AgentRetryReason | undefined
+    /** 错误状态码 */
+    statusCode?: number | undefined
+    /** 触发超时的时长（毫秒） */
+    timeoutMs?: number | undefined
 }
 
 export type IAgentStreamPayload =

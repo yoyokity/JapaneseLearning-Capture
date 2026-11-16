@@ -13,14 +13,14 @@ export class SubtitleHelper {
      * @param options 生成参数
      * @param options.input 字幕生成参数
      * @param options.onProgress 进度回调
-     * @param options.onCancelRegister 注册取消函数，调用后会终止任务并结束订阅，结果以 null 结束
-     * @returns 成功时返回输出文件路径，取消或失败返回 null
+     * @param options.onCancelRegister 注册取消函数，调用后会终止任务并结束订阅
+     * @returns 成功时返回输出路径，失败时返回错误信息，取消时两者均为 null
      */
     static generate(options: {
         input: IGenerateSubtitleInput
         onProgress?: (progress: ISubtitleProgress) => void
         onCancelRegister?: (cancel: () => void) => void
-    }): Promise<string | null> {
+    }): Promise<{ outputPath: string | null; error: string | null }> {
         return new Promise((resolve) => {
             let outputPath = ''
 
@@ -31,17 +31,17 @@ export class SubtitleHelper {
                 },
                 onError(error) {
                     LogHelper.error('字幕生成失败：', error)
-                    resolve(null)
+                    resolve({ outputPath: null, error: error.message })
                 },
                 onComplete() {
-                    resolve(outputPath || null)
+                    resolve({ outputPath: outputPath || null, error: null })
                 }
             })
 
             // 取消订阅不会触发任何回调，这里主动结束 Promise
             options.onCancelRegister?.(() => {
                 subscription.unsubscribe()
-                resolve(null)
+                resolve({ outputPath: null, error: null })
             })
         })
     }

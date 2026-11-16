@@ -26,7 +26,6 @@ const languageOptions = [
 const stageLabels = {
     extract: '正在提取音频',
     asr: '正在识别语音',
-    optimize: '正在 AI 纠错与切分',
     translate: '正在翻译'
 } as const
 
@@ -69,7 +68,7 @@ const inputFileName = computed(() =>
 /** 当前 AI 配置对应的 LLM */
 const llm = computed<ISubtitleLlm | null>(() => getAgentConfig(settings.ai))
 
-/** AI 优化不可用的原因 */
+/** AI 翻译不可用的原因 */
 const aiHint = computed(() => (llm.value ? '' : '请先在 设置 → AI 中填写模型服务商配置'))
 
 /**
@@ -201,14 +200,20 @@ async function startGenerate() {
         return
     }
 
-    if (!result) {
+    if (result.error) {
+        logger.error('字幕生成失败：', result.error)
+        notify('error', '字幕生成失败', result.error)
+        return
+    }
+
+    if (!result.outputPath) {
         logger.error('字幕生成失败：', inputPath.value)
         notify('error', '字幕生成失败', '详见日志')
         return
     }
 
-    outputPath.value = result
-    logger.success('字幕生成完成：', result)
+    outputPath.value = result.outputPath
+    logger.success('字幕生成完成：', result.outputPath)
     notify('success', '字幕生成完成')
 }
 
@@ -291,8 +296,8 @@ onActivated(checkDependency)
                 </InputLine>
 
                 <InputLine
-                    :description="aiHint || '开启后调用 AI 纠错并优化译文，关闭则直接使用谷歌翻译'"
-                    title="AI 优化"
+                    :description="aiHint || '开启后调用 AI 翻译并修正识别错误，关闭则使用谷歌翻译'"
+                    title="AI 翻译"
                 >
                     <template #right>
                         <ToggleSwitch v-model="subtitleAiOptimize" :disabled="running" />

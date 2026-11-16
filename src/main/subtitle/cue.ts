@@ -3,7 +3,9 @@ import type { ICue, ICueDraft, IWord, SubtitleLanguage } from './types'
 /** 单条字幕最大字数 */
 export const MAX_CUE_CHARS = 24
 /** 单条字幕最大时长（毫秒） */
-const MAX_CUE_MS = 8000
+export const MAX_CUE_MS = 10000
+/** 相邻词的最大间隔（毫秒） */
+export const MAX_CUE_GAP_MS = 700
 
 /**
  * 拼接词文本
@@ -17,7 +19,7 @@ function joinWordText(words: IWord[], language: SubtitleLanguage) {
 }
 
 /**
- * 按标点与长度切分字幕
+ * 按标点、长度与词间间隔切分字幕
  * @param words 词列表
  * @param language 识别语言
  */
@@ -26,6 +28,18 @@ export function splitIntoCues(words: IWord[], language: SubtitleLanguage): ICueD
     let bucket: IWord[] = []
 
     for (const word of words) {
+        const previous = bucket.at(-1)
+
+        // 词间间隔过大时先切条，避免把长间隔并进同一条字幕
+        if (previous && word.from - previous.to > MAX_CUE_GAP_MS) {
+            cues.push({
+                from: bucket[0]!.from,
+                to: previous.to,
+                text: joinWordText(bucket, language)
+            })
+            bucket = []
+        }
+
         bucket.push(word)
 
         const start = bucket[0]!.from

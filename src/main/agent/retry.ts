@@ -1,10 +1,16 @@
 import { APICallError, EmptyResponseBodyError } from 'ai'
 
 /** 默认空闲超时（毫秒） */
-export const AI_STREAM_IDLE_TIMEOUT_MS = 180_000
+export const AI_STREAM_IDLE_TIMEOUT_MS = 600_000
 
-/** 单层最大重试次数 */
-export const AI_MAX_RETRIES = 5
+/** 每次重试增加的空闲超时（毫秒） */
+export const AI_STREAM_IDLE_TIMEOUT_INCREMENT_MS = 30_000
+
+/** 最大重试次数（不含首次请求） */
+export const AI_MAX_RETRIES = 10
+
+/** 流关闭的兜底等待时长（毫秒） */
+export const AI_STREAM_CLEANUP_TIMEOUT_MS = 5_000
 
 /** 退避基础延迟（毫秒） */
 export const AI_RETRY_BASE_DELAY_MS = 2_000
@@ -69,6 +75,68 @@ function getErrorMessage(error: unknown) {
     return typeof message === 'string' ? message : ''
 }
 
+/** 上下文超限标记 */
+const CONTEXT_EXCEEDED_MARKERS = new Set([
+    'context_exceeded',
+    'context_length_exceeded',
+    'context_window_exceeded',
+    'model_context_exceeded',
+    'model_context_window_exceeded',
+    'prompt_too_long'
+])
+
+/** 空响应不能重试的标记 */
+const NON_RETRYABLE_EMPTY_MARKERS = new Set([
+    'refusal',
+    'content_filter',
+    'content-filter',
+    'content-filtered'
+])
+
+/**
+ * 是否为上下文超限
+ * @param finishReason 结束原因
+ * @param rawFinishReason 原始结束原因
+ */
+export function isContextExceededReason(
+    finishReason: string | undefined,
+    rawFinishReason: string | undefined
+) {
+    return [finishReason, rawFinishReason].some((reason) => {
+        if (!reason) return false
+
+        return CONTEXT_EXCEEDED_MARKERS.has(reason.trim().toLowerCase())
+    })
+}
+
+/**
+ * 空响应是否不应重试
+ * @param finishReason 结束原因
+ * @param rawFinishReason 原始结束原因
+ * @remark 上下文超限、拒绝、内容过滤不做空响应重试
+ */
+export function isNonRetryableEmptyReason(
+    finishReason: string | undefined,
+    rawFinishReason: string | undefined
+) {
+    if (isContextExceededReason(finishReason, rawFinishReason)) return true
+    if (finishReason === 'content-filter') return true
+
+    return [finishReason, rawFinishReason].some((reason) => {
+        if (!reason) return false
+
+        return NON_RETRYABLE_EMPTY_MARKERS.has(reason.trim().toLowerCase())
+    })
+}
+
+/**
+ * 获取错误状态码
+ * @param error 错误
+ */
+export function getErrorStatus(error: unknown) {
+    return APICallError.isInstance(error) ? error.statusCode : undefined
+}
+
 /**
  * 是否为 Chromium 网络错误
  * @param error 错误
@@ -89,7 +157,7 @@ function hasChromiumNetworkError(error: unknown) {
  * @param headers 响应头
  */
 function isRetryRefused(headers: Record<string, string> | undefined) {
-    const value = getHeader(headers, 'x-should-retry')
+    const value = getHeader(headers, 'x-should-retry')?.trim().toLowerCase()
     return value === 'false' || value === '0'
 }
 
@@ -165,6 +233,13 @@ function getRetryAfterMs(headers: Record<string, string> | undefined): number | 
         retryAfter <= 5 * 60
     ) {
         return retryAfter * 1000
+    }
+
+    // 兼容 HTTP-date 格式
+    const retryAfterDate = Date.parse(retryAfterHeader ?? '')
+    if (Number.isFinite(retryAfterDate)) {
+        const delayMs = retryAfterDate - Date.now()
+        if (delayMs >= 0 && delayMs <= 5 * 60 * 1000) return delayMs
     }
 
     return null

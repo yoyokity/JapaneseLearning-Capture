@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process'
-import type { ICue, IGenerateSubtitleInput, ISubtitleProgress } from './types'
+import type { ICue, IGenerateSubtitleInput, ISegment, ISubtitleProgress } from './types'
 
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -10,11 +10,26 @@ import { app } from 'electron'
 import { appPath } from '../globalStates'
 import { parseSegments, runCrispasr } from './asr'
 import { extractAudio } from './audio'
-import { renderSrt, splitIntoCues } from './cue'
+import { renderSrt } from './cue'
 import { translateCuesWithGoogle } from './google'
-import { correctSegments, translateCues } from './llm'
+import { translateSegments } from './llm'
 
 export * from './types'
+
+/**
+ * 使用 ASR 已分好的句子生成初始字幕
+ * @param segments 识别段
+ */
+function buildSegmentCues(segments: ISegment[]) {
+    return segments
+        .filter((segment) => segment.text.trim())
+        .map((segment, index) => ({
+            id: `c${index}`,
+            from: segment.from,
+            to: segment.to,
+            text: segment.text
+        }))
+}
 
 /**
  * 获取依赖程序与模型路径
@@ -129,39 +144,50 @@ export function createSubtitleStream(input: IGenerateSubtitleInput) {
                     )
                 }
 
-                const segments = parseSegments(resultPath)
+                const segments = parseSegments(resultPath, input.language)
                 if (!segments.length) {
                     throw new Error('未识别到语音内容')
                 }
 
+                // 3. AI 翻译或谷歌翻译
                 let cues: ICue[]
                 if (input.aiOptimize && input.llm) {
-                    // 3. AI 纠错切分
-                    emitProgress({ stage: 'optimize', progress: -1, message: '正在纠错与切分' })
-                    const drafts = await correctSegments(
+                    // 4. AI 翻译，同时修正识别错误
+                    emitProgress({ stage: 'translate', progress: -1, message: '正在 AI 翻译' })
+                    const aiCues = await translateSegments(
                         segments,
+                        paths.model,
                         input.language,
                         input.llm,
-                        controller.signal,
-                        (progress) => emitProgress({ stage: 'optimize', progress })
+                        controller.signal
                     )
-                    cues = drafts.map((cue, index) => ({ ...cue, id: `c${index}` }))
+                    if (cancelled) return
 
-                    // 4. AI 翻译
-                    emitProgress({ stage: 'translate', progress: -1, message: '正在翻译' })
-                    await translateCues(
-                        cues,
-                        input.language,
-                        input.llm,
-                        controller.signal,
-                        (progress) => emitProgress({ stage: 'translate', progress })
-                    )
+                    if (aiCues) {
+                        cues = aiCues
+                    } else {
+                        // AI 失败时回退规则切分 + 谷歌翻译
+                        const initialCues = buildSegmentCues(segments)
+                        if (!initialCues.length) {
+                            throw new Error('未识别到语音内容')
+                        }
+                        cues = initialCues
+                        emitProgress({
+                            stage: 'translate',
+                            progress: 0,
+                            message: 'AI 翻译失败，改用谷歌翻译'
+                        })
+                        await translateCuesWithGoogle(cues, controller.signal, (progress) =>
+                            emitProgress({ stage: 'translate', progress })
+                        )
+                    }
                 } else {
-                    // 3. 直接切分并谷歌翻译
-                    cues = segments
-                        .flatMap((segment) => splitIntoCues(segment.words, input.language))
-                        .map((cue, index) => ({ ...cue, id: `c${index}` }))
-
+                    // 4. 谷歌翻译
+                    const initialCues = buildSegmentCues(segments)
+                    if (!initialCues.length) {
+                        throw new Error('未识别到语音内容')
+                    }
+                    cues = initialCues
                     emitProgress({ stage: 'translate', progress: 0, message: '正在翻译' })
                     await translateCuesWithGoogle(cues, controller.signal, (progress) =>
                         emitProgress({ stage: 'translate', progress })

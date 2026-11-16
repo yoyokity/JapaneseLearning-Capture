@@ -23,12 +23,14 @@ export const agentStreamOptionsSchema = z.union([
         config: agentConfigSchema,
         prompt: z.string(),
         system: z.string().optional(),
-        timeout: z.number().int().optional()
+        timeout: z.number().int().optional(),
+        maxRetries: z.number().int().min(0).optional()
     }),
     z.object({
         config: agentConfigSchema,
         messages: z.array(agentMessageSchema).min(1),
         system: z.string().optional(),
-        timeout: z.number().int().optional()
+        timeout: z.number().int().optional(),
+        maxRetries: z.number().int().min(0).optional()
     })
 ])

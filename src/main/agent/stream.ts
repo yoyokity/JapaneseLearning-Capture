@@ -1,0 +1,402 @@
+import type { AgentRetryReason, IAgentStreamOptions, IAgentStreamPayload } from './types'
+
+import { observable } from '@trpc/server/observable'
+import { streamText } from 'ai'
+
+import { writeLog } from '../ipc/filesystem'
+import { getAgentModel, getReasoningOption } from './model'
+import {
+    AI_MAX_RETRIES,
+    AI_STREAM_CLEANUP_TIMEOUT_MS,
+    AI_STREAM_IDLE_TIMEOUT_INCREMENT_MS,
+    AI_STREAM_IDLE_TIMEOUT_MS,
+    getErrorHeaders,
+    getErrorStatus,
+    getRetryDelayMs,
+    isContextExceededReason,
+    isNonRetryableEmptyReason,
+    isRetryableError,
+    sleep
+} from './retry'
+import { getToolOptions, handleToolPart } from './tools'
+
+/**
+ * 转为 Error
+ * @param error 错误
+ */
+function toError(error: unknown) {
+    return error instanceof Error ? error : new Error(String(error))
+}
+
+/**
+ * 获取错误消息
+ * @param error 错误
+ */
+function getErrorMessage(error: unknown) {
+    if (error instanceof Error) return error.message
+
+    const message = (error as { message?: unknown } | null)?.message
+    return typeof message === 'string' ? message : String(error)
+}
+
+/**
+ * 创建空闲超时错误
+ * @param timeoutMs 超时时长
+ */
+function createIdleTimeoutError(timeoutMs: number) {
+    return Object.assign(new Error(`AI流请求超时：${timeoutMs}ms 内没有收到新数据`), {
+        code: 'AI_STREAM_IDLE_TIMEOUT',
+        timeoutMs
+    })
+}
+
+/**
+ * 创建流提前结束错误
+ */
+function createEofError() {
+    return Object.assign(new Error('AI流提前结束'), { code: 'AI_STREAM_EOF' })
+}
+
+/**
+ * 创建 AI 流式请求
+ * @param options 调用参数
+ */
+export function createAgentStream(options: IAgentStreamOptions) {
+    return observable<IAgentStreamPayload>((emit) => {
+        const outerController = new AbortController()
+        const baseIdleTimeout = options.timeout ?? AI_STREAM_IDLE_TIMEOUT_MS
+        const maxRetries = options.maxRetries ?? AI_MAX_RETRIES
+        const toolOptions = getToolOptions(options)
+        let stopped = false
+        let attemptController: AbortController | null = null
+        let timeoutId: ReturnType<typeof setTimeout> | null = null
+        let timedOut = false
+
+        /**
+         * 清理空闲计时器
+         */
+        function clearTimer() {
+            if (!timeoutId) return
+
+            clearTimeout(timeoutId)
+            timeoutId = null
+        }
+
+        /**
+         * 重新开始空闲计时
+         * @param idleTimeout 空闲超时（毫秒）
+         */
+        function startTimer(idleTimeout: number) {
+            clearTimer()
+            timeoutId = setTimeout(() => {
+                timedOut = true
+                attemptController?.abort()
+            }, idleTimeout)
+        }
+
+        void (async () => {
+            let retryCount = 0
+            let emptyRetried = false
+
+            /**
+             * 等待并准备下一次尝试
+             * @param reason 重试原因
+             * @param error 触发错误
+             * @param extra 附加信息
+             * @param extra.timeoutMs 超时时间（毫秒）
+             */
+            async function waitForRetry(
+                reason: AgentRetryReason,
+                error: unknown,
+                extra?: { timeoutMs?: number }
+            ) {
+                if (stopped || outerController.signal.aborted) return false
+                if (retryCount >= maxRetries) return false
+
+                retryCount++
+                const delayMs = getRetryDelayMs(retryCount, getErrorHeaders(error))
+                const statusCode = getErrorStatus(error)
+                emit.next({
+                    type: 'retry',
+                    layer: reason === 'empty_completion' ? 'empty' : 'adapter',
+                    attempt: retryCount,
+                    maxAttempts: maxRetries,
+                    delayMs,
+                    reason,
+                    ...(statusCode !== undefined ? { statusCode } : {}),
+                    ...(extra?.timeoutMs !== undefined ? { timeoutMs: extra.timeoutMs } : {})
+                })
+                writeLog('warn', '[AI] 重试', {
+                    attempt: retryCount,
+                    maxAttempts: maxRetries,
+                    reason,
+                    delayMs,
+                    statusCode,
+                    timeoutMs: extra?.timeoutMs
+                })
+
+                try {
+                    await sleep(delayMs, outerController.signal)
+                } catch {
+                    return false
+                }
+
+                return true
+            }
+
+            while (!stopped) {
+                const idleTimeout =
+                    baseIdleTimeout + retryCount * AI_STREAM_IDLE_TIMEOUT_INCREMENT_MS
+                attemptController = new AbortController()
+                const signal = AbortSignal.any([outerController.signal, attemptController.signal])
+                const abortPromise = new Promise<never>((_, reject) => {
+                    const onAbort = () => reject(signal.reason ?? new Error('已取消'))
+                    if (signal.aborted) {
+                        onAbort()
+                        return
+                    }
+                    signal.addEventListener('abort', onAbort, { once: true })
+                })
+                timedOut = false
+                startTimer(idleTimeout)
+
+                let attemptText = ''
+                let attemptReasoning = ''
+                let errorPart: unknown
+                const toolState = { callCount: 0 }
+                let hasCommittedOutput = false
+                let sawFinish = false
+                let streamDone = false
+
+                try {
+                    const input =
+                        'messages' in options
+                            ? { messages: options.messages }
+                            : { prompt: options.prompt }
+                    const result = streamText({
+                        model: getAgentModel(options.config),
+                        ...input,
+                        abortSignal: signal,
+                        maxRetries: 0,
+                        ...(options.system ? { system: options.system } : {}),
+                        ...toolOptions,
+                        ...getReasoningOption(options.config)
+                    })
+                    const iterator = result.stream[Symbol.asyncIterator]()
+
+                    try {
+                        while (true) {
+                            const next = await Promise.race([iterator.next(), abortPromise])
+                            if (next.done) {
+                                streamDone = true
+                                break
+                            }
+
+                            const part = next.value
+                            if (stopped) return
+
+                            // error chunk 视为失败，不再等待后续 finish
+                            if (part.type === 'error') {
+                                errorPart = part.error
+                                break
+                            }
+
+                            // 工具事件一旦出现就跨过重试边界；执行期间暂停 idle 计时
+                            if (handleToolPart(part, toolState)) {
+                                clearTimer()
+                                hasCommittedOutput = true
+                                continue
+                            }
+
+                            if (part.type === 'finish-step') {
+                                clearTimer()
+                                continue
+                            }
+
+                            if (part.type === 'finish') {
+                                sawFinish = true
+                                clearTimer()
+                                continue
+                            }
+
+                            startTimer(idleTimeout)
+
+                            if (part.type !== 'text-delta' && part.type !== 'reasoning-delta')
+                                continue
+                            if (!part.text) continue
+
+                            if (part.text.length > 0) hasCommittedOutput = true
+
+                            if (part.type === 'text-delta') {
+                                attemptText += part.text
+                                emit.next({ type: 'data', data: part.text })
+                            } else {
+                                attemptReasoning += part.text
+                                emit.next({ type: 'data', data: '', reasoningData: part.text })
+                            }
+                        }
+                    } finally {
+                        // 有界等待旧流关闭，避免重试时连接槽重叠
+                        if (!streamDone) {
+                            try {
+                                await Promise.race([
+                                    Promise.resolve(iterator.return?.()),
+                                    sleep(AI_STREAM_CLEANUP_TIMEOUT_MS)
+                                ])
+                            } catch {
+                                // 关闭异常忽略
+                            }
+                        }
+                    }
+
+                    if (errorPart) throw errorPart
+                    if (!sawFinish) throw createEofError()
+
+                    const step = await result.finalStep
+                    const finishReason = step.finishReason
+                    const rawFinishReason = step.rawFinishReason
+                    const reasoningText = step.reasoningText ?? attemptReasoning
+                    const usage = step.usage
+                    const hasUsage = (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0) > 0
+                    const hasOutput =
+                        attemptText.length > 0 ||
+                        attemptReasoning.length > 0 ||
+                        toolState.callCount > 0 ||
+                        hasUsage
+
+                    // 上下文超限且没有有效输出：直接失败，不做空响应重试
+                    if (!hasOutput && isContextExceededReason(finishReason, rawFinishReason)) {
+                        const error = Object.assign(
+                            new Error('AI 上下文超限，请缩短字幕或更换模型'),
+                            { code: 'AI_CONTEXT_EXCEEDED' }
+                        )
+                        writeLog('error', '[AI] 上下文超限', {
+                            attempt: retryCount + 1
+                        })
+                        emit.error(error)
+                        stopped = true
+                        return
+                    }
+
+                    // 拒绝或内容过滤且没有有效输出：不做空响应重试
+                    if (!hasOutput && isNonRetryableEmptyReason(finishReason, rawFinishReason)) {
+                        const error = Object.assign(new Error('AI 拒绝生成或内容被过滤'), {
+                            code: 'AI_CONTENT_FILTERED'
+                        })
+                        writeLog('error', '[AI] 内容被拒绝', {
+                            attempt: retryCount + 1
+                        })
+                        emit.error(error)
+                        stopped = true
+                        return
+                    }
+
+                    // 空响应：零 text/reasoning/tool/usage 时最多重试一次
+                    if (!hasOutput) {
+                        if (!emptyRetried) {
+                            emptyRetried = true
+                            if (
+                                await waitForRetry('empty_completion', new Error('AI 返回空响应'))
+                            ) {
+                                continue
+                            }
+                        }
+
+                        writeLog('error', '[AI] 空响应', {
+                            attempt: retryCount + 1
+                        })
+                        emit.error(new Error('AI 返回空响应'))
+                        stopped = true
+                        return
+                    }
+
+                    // 中断或错误时按输出情况处理
+                    if (finishReason === 'interrupted' || finishReason === 'error') {
+                        const error = new Error(`AI生成未完成：${finishReason}`)
+                        const retryable = finishReason === 'interrupted' || isRetryableError(error)
+
+                        if (!hasCommittedOutput && retryable) {
+                            if (await waitForRetry('request_failed', error)) continue
+                        }
+
+                        if (hasCommittedOutput) emit.next({ type: 'reset' })
+                        if (!stopped && !outerController.signal.aborted) {
+                            writeLog('error', '[AI] 请求失败', {
+                                attempt: retryCount + 1,
+                                message: getErrorMessage(error),
+                                statusCode: getErrorStatus(error)
+                            })
+                            emit.error(toError(error))
+                            stopped = true
+                        }
+                        return
+                    }
+
+                    emit.next({
+                        type: 'end',
+                        text: attemptText,
+                        ...(reasoningText ? { reasoningText } : {}),
+                        finishReason
+                    })
+                    stopped = true
+                    emit.complete()
+                    return
+                } catch (error) {
+                    clearTimer()
+                    if (stopped || outerController.signal.aborted) return
+
+                    const effectiveError = timedOut ? createIdleTimeoutError(idleTimeout) : error
+                    const errorCode = (error as { code?: unknown } | null)?.code
+                    const retryable =
+                        timedOut || isRetryableError(error) || errorCode === 'AI_STREAM_EOF'
+
+                    // 已越过重试边界：不自动重放，交给调用方处理
+                    if (hasCommittedOutput) {
+                        emit.next({ type: 'reset' })
+                        writeLog('error', '[AI] 请求失败', {
+                            attempt: retryCount + 1,
+                            reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
+                            message: getErrorMessage(error),
+                            statusCode: getErrorStatus(error),
+                            timeoutMs: timedOut ? idleTimeout : undefined
+                        })
+                        emit.error(toError(effectiveError))
+                        stopped = true
+                        return
+                    }
+
+                    if (retryable) {
+                        const retried = await waitForRetry(
+                            timedOut ? 'stream_idle_timeout' : 'request_failed',
+                            effectiveError,
+                            timedOut ? { timeoutMs: idleTimeout } : undefined
+                        )
+                        if (retried) continue
+                    }
+                    if (stopped || outerController.signal.aborted) return
+
+                    writeLog('error', '[AI] 请求失败', {
+                        attempt: retryCount + 1,
+                        reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
+                        message: getErrorMessage(error),
+                        statusCode: getErrorStatus(error),
+                        timeoutMs: timedOut ? idleTimeout : undefined
+                    })
+                    emit.error(toError(effectiveError))
+                    stopped = true
+                    return
+                } finally {
+                    clearTimer()
+                }
+            }
+        })()
+
+        return {
+            unsubscribe() {
+                stopped = true
+                clearTimer()
+                outerController.abort()
+            }
+        }
+    })
+}

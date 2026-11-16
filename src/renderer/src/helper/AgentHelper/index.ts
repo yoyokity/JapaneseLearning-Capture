@@ -20,6 +20,8 @@ export interface IAgentAskOptions {
     system?: string | undefined
     /** 超时时间（毫秒） */
     timeout?: number | undefined
+    /** 最大重试次数 */
+    maxRetries?: number | undefined
     /** 流式回调 */
     callback?: TAgentStreamCallback | undefined
     /** 重试回调 */
@@ -37,6 +39,8 @@ export interface IAgentChatOptions {
     system?: string | undefined
     /** 超时时间（毫秒） */
     timeout?: number | undefined
+    /** 最大重试次数 */
+    maxRetries?: number | undefined
     /** 流式回调 */
     callback?: TAgentStreamCallback | undefined
     /** 重试回调 */
@@ -52,6 +56,8 @@ export interface IAgentSessionOptions {
     system?: string | undefined
     /** 超时时间（毫秒） */
     timeout?: number | undefined
+    /** 最大重试次数 */
+    maxRetries?: number | undefined
     /** 重试回调 */
     onRetry?: ((info: IAgentRetryPayload) => void) | undefined
 }
@@ -62,6 +68,7 @@ type TAgentRequestInput =
           prompt: string
           system?: string | undefined
           timeout?: number | undefined
+          maxRetries?: number | undefined
           signal?: AbortSignal | undefined
       }
     | {
@@ -69,6 +76,7 @@ type TAgentRequestInput =
           messages: IAgentMessage[]
           system?: string | undefined
           timeout?: number | undefined
+          maxRetries?: number | undefined
           signal?: AbortSignal | undefined
       }
 
@@ -77,6 +85,14 @@ type TAgentRequestInput =
  * @param info 重试信息
  */
 export function getRetryMessage(info: IAgentRetryPayload) {
+    if (info.reason === 'stream_idle_timeout') {
+        return `AI 流长时间无响应，正在重试 ${info.attempt}/${info.maxAttempts}`
+    }
+
+    if (info.reason === 'empty_completion') {
+        return 'AI 返回空响应，正在重试'
+    }
+
     if (info.layer === 'recovery') {
         return `AI 输出中断，正在重新生成 ${info.attempt}/${info.maxAttempts}`
     }
@@ -108,10 +124,11 @@ function estimateTokens(text: string) {
     for (let index = 0; index < text.length; index++) {
         const code = text.charCodeAt(index)
 
+        // CJK、CJK 兼容区、韩文
         if (
-            (code >= 0x3000 && code <= 0x9fff) ||
-            (code >= 0xf900 && code <= 0xfaff) ||
-            (code >= 0xac00 && code <= 0xd7af)
+            (code >= 12288 && code <= 40959) ||
+            (code >= 63744 && code <= 64255) ||
+            (code >= 44032 && code <= 55215)
         ) {
             cjk++
         } else {
@@ -218,6 +235,7 @@ export class AgentSession {
                 messages: [...this.history],
                 system: this.options.system,
                 timeout: this.options.timeout,
+                maxRetries: this.options.maxRetries,
                 signal: controller.signal,
                 callback,
                 onRetry: this.options.onRetry
@@ -287,6 +305,7 @@ export class AgentHelper {
                 prompt: options.prompt,
                 system: options.system,
                 timeout: options.timeout,
+                maxRetries: options.maxRetries,
                 signal: options.signal
             },
             options.callback,
@@ -306,6 +325,7 @@ export class AgentHelper {
                 messages: options.messages.map((message) => ({ ...message })),
                 system: options.system,
                 timeout: options.timeout,
+                maxRetries: options.maxRetries,
                 signal: options.signal
             },
             options.callback,
@@ -348,13 +368,15 @@ export class AgentHelper {
                           config: input.config,
                           messages: input.messages,
                           system: input.system,
-                          timeout: input.timeout
+                          timeout: input.timeout,
+                          maxRetries: input.maxRetries
                       }
                     : {
                           config: input.config,
                           prompt: input.prompt,
                           system: input.system,
-                          timeout: input.timeout
+                          timeout: input.timeout,
+                          maxRetries: input.maxRetries
                       }
 
             const subscription = ipc.agent.stream.subscribe(body, {
