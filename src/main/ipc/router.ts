@@ -10,9 +10,9 @@ import { app } from 'electron'
 import superjson from 'superjson'
 import { z } from 'zod'
 
-import { agentConfigSchema, agentStreamOptionsSchema, createAgentStream } from '../agent'
 import { openCloudflareWindow } from '../CloudflareWindow'
 import { appPath } from '../globalStates'
+import { Helper } from '../helper'
 import { createSubtitleStream } from '../subtitle'
 import {
     getDependencies,
@@ -332,15 +332,15 @@ export const appRouter = t.router({
                     inputPath: z.string(),
                     language: z.enum(['ja', 'en', 'zh', 'ko']),
                     aiOptimize: z.boolean(),
-                    llm: agentConfigSchema.optional()
+                    llm: Helper.AI.agentConfigSchema.optional()
                 })
             )
             .subscription(({ input }) => createSubtitleStream(input))
     }),
     agent: t.router({
         stream: procedure
-            .input(agentStreamOptionsSchema)
-            .subscription(({ input }) => createAgentStream(input))
+            .input(Helper.AI.agentStreamOptionsSchema)
+            .subscription(({ input }) => Helper.AI.createAgentStream(input))
     }),
     net: t.router({
         get: procedure

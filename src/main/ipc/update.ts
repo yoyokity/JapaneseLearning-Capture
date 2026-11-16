@@ -6,7 +6,7 @@ import { app, net } from 'electron'
 import iconv from 'iconv-lite'
 
 import { appPath } from '../globalStates'
-import { downloadFile } from '../helper/download'
+import { Helper } from '../helper'
 
 const REPO = 'yoyokity/JapaneseLearning-Capture'
 /** 更新清单地址，走 GitHub 下载 CDN，不消耗 API 配额 */
@@ -318,7 +318,7 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
 async function downloadUpdateAsset(asset: IUpdateAsset, stage: IUpdateState['stage']) {
     setState({ status: 'downloading', stage, received: 0, total: asset.size, error: null })
 
-    return downloadFile({
+    return Helper.downloadFile({
         url: asset.url,
         size: asset.size,
         sha256: asset.sha256,

@@ -9,7 +9,7 @@ import sharp from 'sharp'
 import { v7 } from 'uuid'
 
 import { appPath } from '../globalStates'
-import { Cmd } from '../helper/shell'
+import { Helper } from '../helper'
 import { imagePolishDir } from './models'
 
 /**
@@ -177,7 +177,7 @@ export async function readMediaInfo(path: string) {
     const mediainfoPath = join(appPath.extraResource, 'tools/mediainfo/MediaInfo.exe')
 
     return await new Promise<string>((resolve, reject) => {
-        const mediainfo = new Cmd(mediainfoPath)
+        const mediainfo = new Helper.Cmd(mediainfoPath)
         const cmd = mediainfo.run(ars)
         cmd.onExit(async (code, text) => {
             if (code === 0) {
@@ -225,7 +225,7 @@ const runImagePolish = (
         }
         args.push('--grain', modelFilePath ? '15' : '10')
 
-        const cmd = new Cmd(join(imagePolishDir(), 'imagepolish.exe')).run(args)
+        const cmd = new Helper.Cmd(join(imagePolishDir(), 'imagepolish.exe')).run(args)
 
         // imagepolish 每完成一张会在 stdout 输出一行 "ok:"（已实时 flush），按行统计已完成张数
         let pendingText = ''
@@ -434,7 +434,7 @@ export function createReencodeAudioStream(
                 activeEncodes.add(outputPath)
 
                 await new Promise<void>((resolve, reject) => {
-                    const ffmpeg = new Cmd(ffmpegPath)
+                    const ffmpeg = new Helper.Cmd(ffmpegPath)
                     const cmd = ffmpeg.run(args)
                     cmdHandle = cmd
 

@@ -7,7 +7,7 @@ import { promisify } from 'node:util'
 import { app } from 'electron'
 
 import { appPath } from '../globalStates'
-import { downloadFile } from '../helper/download'
+import { Helper } from '../helper'
 import { DOWNLOAD_BASE, fetchLatestManifest, getSevenZipPath } from './update'
 
 const execFileAsync = promisify(execFile)
@@ -338,7 +338,7 @@ export async function installDependency(id: string) {
             let finished = 0
             for (const { component, asset, hash } of components) {
                 const offset = finished
-                const archivePath = await downloadFile({
+                const archivePath = await Helper.downloadFile({
                     url: `${DOWNLOAD_BASE}/${manifest.tag}/${asset.name}`,
                     size: asset.size,
                     sha256: asset.sha256,

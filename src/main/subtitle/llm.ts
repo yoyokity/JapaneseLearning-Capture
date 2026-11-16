@@ -1,7 +1,7 @@
-import type { IAgentMessage, IAgentResult } from '../agent'
+import type { IAgentMessage, IAgentResult } from '../helper/agent'
 import type { ICue, ISegment, ISubtitleLlm, IWord, SubtitleLanguage } from './types'
 
-import { chat, createTools, isAgentSuccess } from '../agent'
+import { Helper } from '../helper'
 import { writeLog } from '../ipc/filesystem'
 import { MAX_CUE_MS, splitIntoCues } from './cue'
 
@@ -23,7 +23,7 @@ const AI_TOOL_CONCURRENCY = 8
  * @remark 带工具调用时以 tool-calls 结束也算成功
  */
 function isChatSuccess(result: IAgentResult) {
-    return isAgentSuccess(result.finishReason) || result.finishReason === 'tool-calls'
+    return Helper.AI.isAgentSuccess(result.finishReason) || result.finishReason === 'tool-calls'
 }
 
 /** 已提交的字幕范围 */
@@ -223,7 +223,7 @@ export async function translateSegments(
     const ranges: ISubmittedRange[] = []
     const claimed = new Set<number>()
 
-    const tools = createTools({
+    const tools = Helper.AI.createTools({
         words,
         claimed,
         ranges,
@@ -231,7 +231,7 @@ export async function translateSegments(
     })
     const maxSteps = Math.min(300, Math.max(20, Math.ceil(words.length / 10)))
 
-    const first = await chat({
+    const first = await Helper.AI.chat({
         config: llm,
         messages,
         system,
@@ -253,7 +253,7 @@ export async function translateSegments(
         const submitted = buildSubmittedContent(ranges)
         const missingCount = words.length - claimed.size
 
-        const second = await chat({
+        const second = await Helper.AI.chat({
             config: llm,
             messages: [
                 ...messages,

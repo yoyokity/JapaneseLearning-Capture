@@ -3,7 +3,7 @@ import type { AgentRetryReason, IAgentStreamOptions, IAgentStreamPayload } from 
 import { observable } from '@trpc/server/observable'
 import { streamText } from 'ai'
 
-import { writeLog } from '../ipc/filesystem'
+import { writeLog } from '../../ipc/filesystem'
 import { getAgentModel, getReasoningOption } from './model'
 import {
     AI_MAX_RETRIES,

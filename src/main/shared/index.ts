@@ -7,8 +7,8 @@ export type {
     IAgentMessage,
     IAgentResult,
     IAgentRetryPayload
-} from '../agent'
-export { isAgentSuccess } from '../agent/types'
+} from '../helper/agent'
+export { isAgentSuccess } from '../helper/agent/types'
 export type {
     DependencyInstallStatus,
     IDependencyInfo,
