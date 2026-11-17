@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import AiLogView from '@renderer/components/aiLogView/aiLogView.vue'
 import ManageView from '@renderer/components/manageView/manageView.vue'
 import ScraperView from '@renderer/components/scraperView/scraperView.vue'
 import SettingsView from '@renderer/components/settingsView/settingsView.vue'
@@ -13,6 +14,7 @@ const tabs = [
     { id: 'scraper', name: '刮削', icon: 'pi pi-search', component: ScraperView },
     { id: 'manage', name: '管理', icon: 'pi pi-folder', component: ManageView },
     { id: 'tools', name: '工具', icon: 'pi pi-wrench', component: ToolsView },
+    { id: 'aiLog', name: '日志', icon: 'pi pi-history', component: AiLogView },
     { id: 'settings', name: '设置', icon: 'pi pi-cog', component: SettingsView }
 ]
 
@@ -57,7 +59,7 @@ void dependency.checkLocal()
                     active: activeTab === tab.id,
                     disabled: locked && tab.id !== 'settings'
                 }"
-                :style="{ marginTop: tab.id === 'settings' ? 'auto' : undefined }"
+                :style="{ marginTop: tab.id === 'aiLog' ? 'auto' : undefined }"
                 class="tab-item"
                 @click="switchTab(tab.id)"
             >
@@ -81,7 +83,9 @@ void dependency.checkLocal()
                     active: activeTab === tab.id,
                     'slide-up': activeTab === tab.id
                 }"
-                :active="tab.id === 'settings' ? activeTab === 'settings' : undefined"
+                :active="
+                    tab.id === 'aiLog' || tab.id === 'settings' ? activeTab === tab.id : undefined
+                "
             />
         </div>
     </div>

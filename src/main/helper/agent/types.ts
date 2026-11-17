@@ -46,6 +46,10 @@ export interface IAgentBaseOptions {
     timeout?: number | undefined
     /** 最大重试次数（不含首次请求） */
     maxRetries?: number | undefined
+    /** 会话 ID，相同 ID 的调用归入同一 AI 日志会话 */
+    sessionId?: string | undefined
+    /** 会话来源标记 */
+    source?: string | undefined
 }
 
 export interface IAgentCallOptions extends IAgentBaseOptions {

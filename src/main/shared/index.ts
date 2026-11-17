@@ -6,7 +6,13 @@ export type {
     IAgentConfig,
     IAgentMessage,
     IAgentResult,
-    IAgentRetryPayload
+    IAgentRetryPayload,
+    IAiLogAttemptItem,
+    IAiLogListOptions,
+    IAiLogSessionDetail,
+    IAiLogSessionItem,
+    IAiLogSessionRecord,
+    IAiLogStepItem
 } from '../helper/agent'
 export { isAgentSuccess } from '../helper/agent/types'
 export type {

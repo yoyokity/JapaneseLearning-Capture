@@ -5,6 +5,7 @@ import { app, BrowserWindow, net, protocol } from 'electron'
 import { createIPCHandler } from 'electron-trpc/main'
 
 import { appPath } from './globalStates'
+import { log } from './helper/agent/log'
 import { createDirectory } from './ipc/filesystem'
 import { appRouter } from './ipc/router'
 import { consumeUpdateError, restorePendingUpdate } from './ipc/update'
@@ -88,8 +89,10 @@ app.on('window-all-closed', () => {
     }
 })
 
-// 程序退出时清理 temp 文件夹
+// 程序退出时清理 temp 文件夹并关闭 AI 日志数据库
 app.on('quit', () => {
+    log.close()
+
     try {
         console.log('清除temp')
         fs.rmSync(app.getPath('temp'), { recursive: true, force: true })

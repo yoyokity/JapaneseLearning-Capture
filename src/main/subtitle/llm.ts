@@ -242,6 +242,7 @@ export async function translateSegments(
             tools,
             maxSteps,
             toolCallConcurrency: AI_TOOL_CONCURRENCY,
+            source: 'subtitle',
             signal
         })
     } catch (error) {

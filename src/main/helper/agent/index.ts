@@ -1,4 +1,5 @@
 export * from './ask'
+export * from './log'
 export * from './schema'
 export * from './stream'
 export * from './tools'

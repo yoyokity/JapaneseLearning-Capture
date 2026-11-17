@@ -1,9 +1,11 @@
 import type { AgentRetryReason, IAgentStreamOptions, IAgentStreamPayload } from './types'
 
+import { randomUUID } from 'node:crypto'
 import { observable } from '@trpc/server/observable'
 import { streamText } from 'ai'
 
 import { writeLog } from '../../ipc/filesystem'
+import { log } from './log'
 import { getAgentModel, getReasoningOption } from './model'
 import {
     AI_MAX_RETRIES,
@@ -71,6 +73,22 @@ export function createAgentStream(options: IAgentStreamOptions) {
         let attemptController: AbortController | null = null
         let timeoutId: ReturnType<typeof setTimeout> | null = null
         let timedOut = false
+        let attemptId = ''
+        let attemptText = ''
+        let attemptReasoning = ''
+
+        const sessionId = options.sessionId ?? randomUUID()
+        log.startSession({
+            id: sessionId,
+            source: options.source,
+            provider: options.config.provider,
+            model: options.config.model,
+            apiFormat: options.config.apiFormat,
+            reasoningEffort: options.config.reasoningEffort,
+            input:
+                'messages' in options ? { messages: options.messages } : { prompt: options.prompt },
+            system: options.system
+        })
 
         /**
          * 清理空闲计时器
@@ -99,6 +117,42 @@ export function createAgentStream(options: IAgentStreamOptions) {
             let emptyRetried = false
 
             /**
+             * 记录失败结果
+             * @param error 错误
+             * @param extra 附加信息
+             * @param extra.reason 重试原因
+             * @param extra.timeoutMs 超时时间（毫秒）
+             * @param extra.finishReason 结束原因
+             */
+            function finishWithError(
+                error: unknown,
+                extra?: {
+                    reason?: AgentRetryReason | undefined
+                    timeoutMs?: number | undefined
+                    finishReason?: string | undefined
+                }
+            ) {
+                const message = getErrorMessage(error)
+
+                log.finishAttempt(attemptId, {
+                    status: 'error',
+                    retryReason: extra?.reason,
+                    statusCode: getErrorStatus(error),
+                    timeoutMs: extra?.timeoutMs,
+                    error: message,
+                    text: attemptText,
+                    reasoningText: attemptReasoning
+                })
+                log.finishSession(sessionId, {
+                    status: 'error',
+                    finishReason: extra?.finishReason,
+                    error: message,
+                    text: attemptText,
+                    reasoningText: attemptReasoning
+                })
+            }
+
+            /**
              * 等待并准备下一次尝试
              * @param reason 重试原因
              * @param error 触发错误
@@ -116,6 +170,15 @@ export function createAgentStream(options: IAgentStreamOptions) {
                 retryCount++
                 const delayMs = getRetryDelayMs(retryCount, getErrorHeaders(error))
                 const statusCode = getErrorStatus(error)
+                log.finishAttempt(attemptId, {
+                    status: 'retried',
+                    retryReason: reason,
+                    statusCode,
+                    timeoutMs: extra?.timeoutMs,
+                    delayMs,
+                    text: attemptText,
+                    reasoningText: attemptReasoning
+                })
                 emit.next({
                     type: 'retry',
                     layer: reason === 'empty_completion' ? 'empty' : 'adapter',
@@ -147,6 +210,9 @@ export function createAgentStream(options: IAgentStreamOptions) {
             while (!stopped) {
                 const idleTimeout =
                     baseIdleTimeout + retryCount * AI_STREAM_IDLE_TIMEOUT_INCREMENT_MS
+                attemptId = log.startAttempt(sessionId, retryCount + 1)
+                attemptText = ''
+                attemptReasoning = ''
                 attemptController = new AbortController()
                 const signal = AbortSignal.any([outerController.signal, attemptController.signal])
                 const abortPromise = new Promise<never>((_, reject) => {
@@ -160,8 +226,6 @@ export function createAgentStream(options: IAgentStreamOptions) {
                 timedOut = false
                 startTimer(idleTimeout)
 
-                let attemptText = ''
-                let attemptReasoning = ''
                 let errorPart: unknown
                 const toolState = { callCount: 0 }
                 let hasCommittedOutput = false
@@ -178,6 +242,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         ...input,
                         abortSignal: signal,
                         maxRetries: 0,
+                        onStepEnd: (step) => log.saveStep(attemptId, step),
                         ...(options.system ? { system: options.system } : {}),
                         ...toolOptions,
                         ...getReasoningOption(options.config)
@@ -273,6 +338,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         writeLog('error', '[AI] 上下文超限', {
                             attempt: retryCount + 1
                         })
+                        finishWithError(error)
                         emit.error(error)
                         stopped = true
                         return
@@ -286,6 +352,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         writeLog('error', '[AI] 内容被拒绝', {
                             attempt: retryCount + 1
                         })
+                        finishWithError(error)
                         emit.error(error)
                         stopped = true
                         return
@@ -305,7 +372,9 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         writeLog('error', '[AI] 空响应', {
                             attempt: retryCount + 1
                         })
-                        emit.error(new Error('AI 返回空响应'))
+                        const error = new Error('AI 返回空响应')
+                        finishWithError(error)
+                        emit.error(error)
                         stopped = true
                         return
                     }
@@ -321,6 +390,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
 
                         if (hasCommittedOutput) emit.next({ type: 'reset' })
                         if (!stopped && !outerController.signal.aborted) {
+                            finishWithError(error, { finishReason })
                             writeLog('error', '[AI] 请求失败', {
                                 attempt: retryCount + 1,
                                 message: getErrorMessage(error),
@@ -331,6 +401,30 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         }
                         return
                     }
+
+                    let totalUsage: unknown = step.usage
+                    let responseMessages: unknown
+                    try {
+                        responseMessages = await result.responseMessages
+                        totalUsage = await result.usage
+                    } catch {
+                        // 元数据读取失败时保留步骤用量
+                    }
+
+                    log.finishAttempt(attemptId, {
+                        status: 'success',
+                        text: attemptText,
+                        reasoningText,
+                        usage: totalUsage
+                    })
+                    log.finishSession(sessionId, {
+                        status: 'success',
+                        finishReason,
+                        text: attemptText,
+                        reasoningText,
+                        usage: totalUsage,
+                        responseMessages
+                    })
 
                     emit.next({
                         type: 'end',
@@ -353,6 +447,10 @@ export function createAgentStream(options: IAgentStreamOptions) {
                     // 已越过重试边界：不自动重放，交给调用方处理
                     if (hasCommittedOutput) {
                         emit.next({ type: 'reset' })
+                        finishWithError(effectiveError, {
+                            reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
+                            timeoutMs: timedOut ? idleTimeout : undefined
+                        })
                         writeLog('error', '[AI] 请求失败', {
                             attempt: retryCount + 1,
                             reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
@@ -375,6 +473,10 @@ export function createAgentStream(options: IAgentStreamOptions) {
                     }
                     if (stopped || outerController.signal.aborted) return
 
+                    finishWithError(effectiveError, {
+                        reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
+                        timeoutMs: timedOut ? idleTimeout : undefined
+                    })
                     writeLog('error', '[AI] 请求失败', {
                         attempt: retryCount + 1,
                         reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
@@ -396,6 +498,18 @@ export function createAgentStream(options: IAgentStreamOptions) {
                 stopped = true
                 clearTimer()
                 outerController.abort()
+                if (attemptId) {
+                    log.finishAttempt(attemptId, {
+                        status: 'cancelled',
+                        text: attemptText,
+                        reasoningText: attemptReasoning
+                    })
+                }
+                log.finishSession(sessionId, {
+                    status: 'cancelled',
+                    text: attemptText,
+                    reasoningText: attemptReasoning
+                })
             }
         }
     })

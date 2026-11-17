@@ -24,13 +24,22 @@ export const agentStreamOptionsSchema = z.union([
         prompt: z.string(),
         system: z.string().optional(),
         timeout: z.number().int().optional(),
-        maxRetries: z.number().int().min(0).optional()
+        maxRetries: z.number().int().min(0).optional(),
+        sessionId: z.string().optional(),
+        source: z.string().optional()
     }),
     z.object({
         config: agentConfigSchema,
         messages: z.array(agentMessageSchema).min(1),
         system: z.string().optional(),
         timeout: z.number().int().optional(),
-        maxRetries: z.number().int().min(0).optional()
+        maxRetries: z.number().int().min(0).optional(),
+        sessionId: z.string().optional(),
+        source: z.string().optional()
     })
 ])
+
+export const aiLogListOptionsSchema = z.object({
+    limit: z.number().int().min(1).max(100).default(30),
+    offset: z.number().int().min(0).default(0)
+})

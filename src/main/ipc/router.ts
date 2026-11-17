@@ -342,6 +342,17 @@ export const appRouter = t.router({
             .input(Helper.AI.agentStreamOptionsSchema)
             .subscription(({ input }) => Helper.AI.createAgentStream(input))
     }),
+    aiLog: t.router({
+        listSessions: procedure
+            .input(Helper.AI.aiLogListOptionsSchema)
+            .query(({ input }) => Helper.AI.log.listSessions(input)),
+        getSession: procedure
+            .input(z.object({ sessionId: z.string() }))
+            .query(({ input }) => Helper.AI.log.getSessionDetail(input.sessionId)),
+        getSteps: procedure
+            .input(z.object({ sessionId: z.string() }))
+            .query(({ input }) => Helper.AI.log.getSessionSteps(input.sessionId))
+    }),
     net: t.router({
         get: procedure
             .input(
