@@ -50,37 +50,12 @@ module.exports = {
             ProductName: 'Japanese Learning Capture'
         },
         ignore: [
-            /^\/src/,
-            /^\/build/,
-            '.zcode',
-            '.cursor',
-            '.git',
-            '.vscode',
-            '.windsurf',
-            '.idea',
-            'data',
-            'tools',
-            'image-polish',
-
-            '.gitignore',
-            '.npmrc',
-            '.prettierignore',
-            '.prettierrc.yaml',
-            'pnpm-lock.yaml',
-            'forge.config.cjs',
-            'release.mjs',
-            'electron.vite.config.js',
-            'electron.vite.config.ts',
-            'README.md',
-            'AGENTS.md',
-            'tsconfig.json',
-            'tsconfig.node.json',
-            'tsconfig.web.json',
-            '.VSCodeCounter',
-            'eslint.config.js',
-            'pnpm-workspace.yaml',
-            'postcss.config.ts',
-            'tsconfig.web.tsbuildinfo'
+            // 根目录的源码、构建产物与开发目录
+            /^\/(?:src|build|data|tools|image-polish|scripts|test|\.vite-hooks|\.zcode|\.cursor|\.git|\.vscode|\.windsurf|\.idea|\.VSCodeCounter)(\/|$)/,
+            // 根目录的工程配置与说明
+            /^\/(?:\.gitignore|\.npmrc|\.prettierignore|\.prettierrc\.yaml|pnpm-lock\.yaml|forge\.config\.cjs|release\.mjs|electron\.vite\.config\.(?:js|ts)|vite\.config\.ts|README\.md|AGENTS\.md|tsconfig[^/]*|eslint\.config\.js|pnpm-workspace\.yaml|postcss\.config\.ts)$/,
+            // node_modules 只保留运行时需要的 sharp 及其依赖
+            /^\/node_modules\/(?!sharp(\/|$)|@img(\/|$)|detect-libc(\/|$)|semver(\/|$))/
         ]
     },
     rebuildConfig: {},
