@@ -21,9 +21,9 @@ const LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
 }
 /** 过短字幕阈值（毫秒） */
 const TRANSLATE_MIN_CUE_MS = 500
-/** 文件工具必须串行，避免并发编辑同一 SRT */
+/** 工具调用串行执行 */
 const AI_TOOL_CONCURRENCY = 1
-/** 单次词时间查询返回上限 */
+/** 词时间返回上限 */
 const WORD_TIMING_MAX_RESULTS = 2000
 
 const SRT_CUE_PATTERN = /\d+\s*\n\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\s*\n.*\S/
@@ -43,28 +43,10 @@ interface IWordTimingWord {
 }
 
 type WordTimingOutput =
-    | {
-          ok: true
-          total: number
-          words: IWordTimingWord[]
-          truncated?: boolean
-      }
+    | { ok: true; total: number; words: IWordTimingWord[]; truncated?: boolean }
     | { ok: false; error: string }
 
-/**
- * 是否为成功的 AI 调用
- * @param result AI 结果
- * @remark 必须以正常 stop 结束；tool-calls 说明还没走完编辑循环
- */
-function isChatSuccess(result: IAgentResult) {
-    return Helper.AI.isAgentSuccess(result.finishReason)
-}
-
-/**
- * 构造翻译系统提示词
- * @param language 识别语言
- * @param fileName 沙箱中的 SRT 文件名
- */
+/** 构造翻译提示词 */
 function buildTranslateSystemPrompt(language: SubtitleLanguage, fileName: string) {
     return [
         `你是专业的${LANGUAGE_NAMES[language]}→简体中文字幕翻译。沙箱中有一个未经加工的原始字幕文件 ${fileName}，内容来自语音识别的分段结果。`,
@@ -94,12 +76,7 @@ function buildTranslateSystemPrompt(language: SubtitleLanguage, fileName: string
     ].join('\n')
 }
 
-/**
- * 构造发送给 AI 的完整识别 JSON
- * @param segments 识别段
- * @param modelPath 模型路径
- * @param language 识别语言
- */
+/** 构造识别 JSON */
 function buildAsrJson(segments: ISegment[], modelPath: string, language: SubtitleLanguage) {
     let wordIndex = 0
 
@@ -124,29 +101,7 @@ function buildAsrJson(segments: ISegment[], modelPath: string, language: Subtitl
     }
 }
 
-/**
- * 从 ASR JSON 生成未加工的初始 SRT
- * @param asrJson 识别结果
- * @remark 按原始分段直接转换，不做断句或合并
- */
-function buildInitialSrt(asrJson: AsrJson) {
-    return renderSrt(
-        asrJson.transcription
-            .filter((segment) => segment.text.trim())
-            .map((segment, index) => ({
-                id: `c${index}`,
-                from: segment.offsets.from,
-                to: segment.offsets.to,
-                text: segment.text
-            }))
-    )
-}
-
-/**
- * 创建词级时间查询工具
- * @param asrJson 识别结果
- * @remark 按 SRT 时间范围返回词级时间，结果可直接用于修改字幕时间轴
- */
+/** 词时间查询工具 */
 function createWordTimingTool(asrJson: AsrJson) {
     const words = asrJson.transcription.flatMap((segment) => segment.words)
 
@@ -186,23 +141,7 @@ function createWordTimingTool(asrJson: AsrJson) {
     })
 }
 
-/**
- * 校验是否为合法 SRT
- * @param content SRT 内容
- */
-function isValidSrt(content: string) {
-    return SRT_CUE_PATTERN.test(content)
-}
-
-/**
- * 用 AI 翻译全部识别结果
- * @param segments 识别段
- * @param modelPath 模型路径
- * @param language 识别语言
- * @param llm LLM 配置
- * @param signal 取消信号
- * @remark 把原始 SRT 写入沙箱，AI 通过文件工具和词时间工具直接编辑
- */
+/** AI 翻译字幕 */
 export async function translateSegments(
     segments: ISegment[],
     modelPath: string,
@@ -213,7 +152,16 @@ export async function translateSegments(
     if (signal.aborted || !segments.length) return null
 
     const asrJson = buildAsrJson(segments, modelPath, language)
-    const initialSrt = buildInitialSrt(asrJson)
+    const initialSrt = renderSrt(
+        asrJson.transcription
+            .filter((segment) => segment.text.trim())
+            .map((segment, index) => ({
+                id: `c${index}`,
+                from: segment.offsets.from,
+                to: segment.offsets.to,
+                text: segment.text
+            }))
+    )
     if (!initialSrt) return null
 
     mkdirSync(appPath.sandbox, { recursive: true })
@@ -258,7 +206,7 @@ export async function translateSegments(
         return null
     }
 
-    if (!isChatSuccess(result)) {
+    if (!Helper.AI.isAgentSuccess(result.finishReason)) {
         writeLog('error', '[字幕生成] AI编辑字幕失败：', result.error ?? result.finishReason)
         cleanup()
         return null
@@ -270,7 +218,7 @@ export async function translateSegments(
     }
 
     const srt = readFileSync(sandboxPath, 'utf8')
-    if (!isValidSrt(srt)) {
+    if (!SRT_CUE_PATTERN.test(srt)) {
         writeLog('error', '[字幕生成] AI生成的 SRT 格式非法')
         cleanup()
         return null

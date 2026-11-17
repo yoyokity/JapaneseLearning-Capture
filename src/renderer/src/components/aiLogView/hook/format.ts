@@ -2,18 +2,15 @@ import type { IAiLogSessionRecord } from '@shared'
 
 import dayjs from 'dayjs'
 
-/**
- * 格式化时间
- * @param timestamp 毫秒时间戳
- */
+/** 去除小数末尾 0 */
+const TRAILING_ZERO = /\.?0+$/
+
+/** 格式化时间 */
 export function formatTime(timestamp: number | null) {
     return timestamp ? dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss') : '-'
 }
 
-/**
- * 格式化来源
- * @param source 来源标记
- */
+/** 格式化来源 */
 export function formatSource(source: string | null) {
     if (!source) return 'AI'
     if (source === 'subtitle') return '字幕优化和翻译'
@@ -21,10 +18,7 @@ export function formatSource(source: string | null) {
     return source
 }
 
-/**
- * 格式化状态
- * @param status 状态
- */
+/** 格式化状态 */
 export function formatStatus(status: string | null) {
     switch (status) {
         case 'success':
@@ -42,10 +36,7 @@ export function formatStatus(status: string | null) {
     }
 }
 
-/**
- * 获取状态标签颜色
- * @param status 状态
- */
+/** 获取状态标签颜色 */
 export function getStatusSeverity(status: string | null) {
     switch (status) {
         case 'success':
@@ -62,24 +53,18 @@ export function getStatusSeverity(status: string | null) {
     }
 }
 
-/**
- * 格式化紧凑数字
- * @param value 数字
- */
+/** 格式化紧凑数字 */
 function formatCompactNumber(value: number) {
     if (value >= 1_000_000) {
-        return `${(value / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M`
+        return `${(value / 1_000_000).toFixed(2).replace(TRAILING_ZERO, '')}M`
     }
     if (value >= 1_000) {
-        return `${(value / 1_000).toFixed(1).replace(/\.?0+$/, '')}K`
+        return `${(value / 1_000).toFixed(1).replace(TRAILING_ZERO, '')}K`
     }
     return String(value)
 }
 
-/**
- * 格式化用量
- * @param usage 用量对象
- */
+/** 格式化用量 */
 export function formatUsage(usage: unknown) {
     if (!usage || typeof usage !== 'object') return ''
 
@@ -101,10 +86,7 @@ export function formatUsage(usage: unknown) {
     return parts.join(' · ')
 }
 
-/**
- * 格式化工作区标题
- * @param session 会话
- */
+/** 格式化工作区标题 */
 export function getWorkLabel(session: IAiLogSessionRecord) {
     if (session.status === 'cancelled') return '已停止'
     if (!session.finishedAt) return '进行中'

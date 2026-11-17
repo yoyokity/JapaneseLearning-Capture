@@ -2,35 +2,12 @@ import type { ICue } from './types'
 
 import { post } from '../ipc/net'
 
-/**
- * 延迟
- * @param ms 毫秒
- */
+/** 延迟 */
 function delay(ms: number) {
     return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
-/**
- * 按并发数执行任务
- * @param tasks 任务列表
- * @param limit 并发数
- */
-async function runWithConcurrency(tasks: (() => Promise<void>)[], limit: number) {
-    let index = 0
-    const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
-        while (index < tasks.length) {
-            const task = tasks[index++]!
-            await task()
-        }
-    })
-
-    await Promise.all(workers)
-}
-
-/**
- * 谷歌翻译单条文本
- * @param text 文本
- */
+/** 谷歌翻译单条文本 */
 async function translateByGoogle(text: string) {
     const searchParams = new URLSearchParams({
         rpcids: 'MkEWBc',
@@ -61,12 +38,7 @@ async function translateByGoogle(text: string) {
     }
 }
 
-/**
- * 谷歌翻译全部字幕
- * @param cues 字幕条
- * @param signal 取消信号
- * @param onProgress 进度回调
- */
+/** 谷歌翻译全部字幕 */
 export async function translateCuesWithGoogle(
     cues: ICue[],
     signal: AbortSignal,
@@ -90,5 +62,13 @@ export async function translateCuesWithGoogle(
         await delay(300)
     })
 
-    await runWithConcurrency(tasks, 2)
+    // 并发 2
+    let index = 0
+    await Promise.all(
+        Array.from({ length: Math.min(2, tasks.length) }, async () => {
+            while (index < tasks.length) {
+                await tasks[index++]!()
+            }
+        })
+    )
 }

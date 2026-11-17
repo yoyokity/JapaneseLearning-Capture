@@ -21,19 +21,13 @@ const TOOL_ICONS: Record<string, string> = {
     get_word_timings: 'pi pi-clock'
 }
 
-/**
- * 格式化 JSON
- * @param value 任意值
- */
+/** 格式化 JSON */
 function formatJson(value: unknown) {
     if (value === null || value === undefined) return ''
     return JSON.stringify(value, null, 2)
 }
 
-/**
- * 格式化错误
- * @param error 错误
- */
+/** 格式化错误 */
 function formatError(error: unknown) {
     if (error instanceof Error) return error.message
     if (typeof error === 'string') return error
@@ -44,10 +38,7 @@ function formatError(error: unknown) {
     return formatJson(error) || String(error)
 }
 
-/**
- * 获取工具文件路径
- * @param input 工具输入
- */
+/** 获取工具文件路径 */
 function getToolFilePath(input: unknown) {
     if (!input || typeof input !== 'object') return ''
 
@@ -56,28 +47,17 @@ function getToolFilePath(input: unknown) {
     return typeof filePath === 'string' ? filePath : ''
 }
 
-/**
- * 获取工具图标
- * @param tool 工具
- */
+/** 获取工具图标 */
 export function getToolIcon(tool: IToolItem | null) {
-    if (!tool) return 'pi pi-wrench'
-    return TOOL_ICONS[tool.name] ?? 'pi pi-wrench'
+    return TOOL_ICONS[tool?.name ?? ''] ?? 'pi pi-wrench'
 }
 
-/**
- * 获取工具类别
- * @param tool 工具
- */
+/** 获取工具类别 */
 export function getToolKind(tool: IToolItem | null) {
-    if (!tool) return ''
-    return TOOL_KIND_LABELS[tool.name] ?? tool.name
+    return tool ? (TOOL_KIND_LABELS[tool.name] ?? tool.name) : ''
 }
 
-/**
- * 获取工具主文本
- * @param tool 工具
- */
+/** 获取工具主文本 */
 export function getToolPrimary(tool: IToolItem | null) {
     if (!tool) return ''
 
@@ -100,10 +80,7 @@ export function getToolPrimary(tool: IToolItem | null) {
     return ''
 }
 
-/**
- * 是否为工具错误
- * @param tool 工具
- */
+/** 是否为工具错误 */
 export function isToolError(tool: IToolItem | null) {
     if (!tool) return false
     if (tool.error) return true
@@ -115,11 +92,7 @@ export function isToolError(tool: IToolItem | null) {
     )
 }
 
-/**
- * 获取工具状态文案
- * @param tool 工具
- * @remark 成功状态不展示，保持行内简洁
- */
+/** 获取工具状态文案 */
 export function getToolStatus(tool: IToolItem | null) {
     if (!tool) return ''
     if (isToolError(tool)) return '失败'
@@ -127,21 +100,15 @@ export function getToolStatus(tool: IToolItem | null) {
     return ''
 }
 
-/**
- * 获取工具输入文本
- * @param tool 工具
- */
+/** 获取工具输入文本 */
 export function getToolInput(tool: IToolItem | null) {
     if (!tool) return ''
-    // 读取工具只展示路径，输入信息没有额外价值
+    // 读取工具无需输入
     if (tool.name === 'read_file') return ''
     return formatJson(tool.input)
 }
 
-/**
- * 获取工具结果文本
- * @param tool 工具
- */
+/** 获取工具结果文本 */
 export function getToolResult(tool: IToolItem | null) {
     if (!tool) return ''
     if (tool.error) return formatError(tool.error)
@@ -161,10 +128,7 @@ export function getToolResult(tool: IToolItem | null) {
     return formatJson(output) || '无结果'
 }
 
-/**
- * 获取工具统计文案
- * @param tools 工具列表
- */
+/** 获取工具统计文案 */
 export function getToolStats(tools: IToolItem[]) {
     let read = 0
     let query = 0

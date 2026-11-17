@@ -15,14 +15,11 @@ import { net } from 'electron'
 
 import { DOWNLOAD_BLOCK_SIZE, DOWNLOAD_CONNECTIONS, runWithConcurrency } from './downloadShared'
 
-/** 下载超时，大包下载不能使用短超时 */
+/** 下载超时 */
 const DOWNLOAD_TIMEOUT = 30 * 60 * 1000
-/** 下载中断后的最大重试次数 */
+/** 最大重试次数 */
 const MAX_DOWNLOAD_RETRIES = 3
 
-/**
- * 分块下载参数
- */
 export interface IDownloadOptions {
     /** 下载地址 */
     url: string
@@ -36,9 +33,6 @@ export interface IDownloadOptions {
     onProgress?: (received: number) => void
 }
 
-/**
- * 分块下载状态，保存在 .part.json 中用于断点续传
- */
 interface IPartState {
     /** 文件总大小 */
     size: number
@@ -46,20 +40,14 @@ interface IPartState {
     received: number[]
 }
 
-/**
- * 获取分块的范围
- * @param index 分块下标
- * @param size 文件总大小
- */
+/** 获取分块范围 */
 function getBlockRange(index: number, size: number) {
     const start = index * DOWNLOAD_BLOCK_SIZE
     const end = Math.min(start + DOWNLOAD_BLOCK_SIZE, size)
     return { start, end, length: end - start }
 }
 
-/**
- * 计算文件的 sha256
- */
+/** 计算文件 sha256 */
 async function hashFile(filePath: string) {
     const hash = createHash('sha256')
     for await (const chunk of createReadStream(filePath)) {
@@ -69,10 +57,7 @@ async function hashFile(filePath: string) {
     return hash.digest('hex')
 }
 
-/**
- * 分块下载文件，支持断点续传与 sha256 校验
- * @returns 下载完成的文件路径
- */
+/** 分块下载并校验 */
 export async function downloadFile({
     url,
     size,
@@ -88,9 +73,7 @@ export async function downloadFile({
     const statePath = `${partPath}.json`
     const blockCount = Math.ceil(size / DOWNLOAD_BLOCK_SIZE)
 
-    /**
-     * 创建全新的分块状态，预分配文件
-     */
+    /** 创建分块状态 */
     function createPartState(): IPartState {
         rmSync(partPath, { force: true })
         writeFileSync(partPath, '')
@@ -103,9 +86,7 @@ export async function downloadFile({
         return nextState
     }
 
-    /**
-     * 读取上次未完成的分块状态，文件大小不一致时返回 null
-     */
+    /** 读取断点状态 */
     function readPartState(): IPartState | null {
         try {
             const saved = JSON.parse(readFileSync(statePath, 'utf8')) as IPartState
@@ -121,18 +102,14 @@ export async function downloadFile({
     let lastEmitTime = 0
     let lastSaveTime = Date.now()
 
-    /**
-     * 保存断点状态
-     */
+    /** 保存断点状态 */
     function saveState() {
         try {
             writeFileSync(statePath, JSON.stringify(state))
         } catch {}
     }
 
-    /**
-     * 汇总各分块进度并推送
-     */
+    /** 汇总并推送进度 */
     function emitProgress(force = false) {
         const now = Date.now()
         if (!force && now - lastEmitTime < 200) return
@@ -145,9 +122,7 @@ export async function downloadFile({
         }
     }
 
-    /**
-     * 下载单个分块，从该块已写入位置继续
-     */
+    /** 下载单个分块 */
     async function downloadBlock(index: number) {
         const { start, end } = getBlockRange(index, size)
         const offset = start + (state.received[index] ?? 0)
@@ -178,14 +153,12 @@ export async function downloadFile({
             }
         } finally {
             file.end()
-            // 等文件句柄释放后再继续，避免 Windows 上文件被占用
+            // 等待文件句柄释放
             await finished(file).catch(() => {})
         }
     }
 
-    /**
-     * 下载分块并重试
-     */
+    /** 下载分块并重试 */
     async function downloadBlockWithRetry(index: number) {
         let lastError: unknown = null
         for (let attempt = 0; attempt <= MAX_DOWNLOAD_RETRIES; attempt++) {
@@ -212,7 +185,7 @@ export async function downloadFile({
         }
     }
 
-    // 立即推送断点续传的进度，避免界面上重新从 0 开始
+    // 推送断点进度
     emitProgress(true)
 
     try {

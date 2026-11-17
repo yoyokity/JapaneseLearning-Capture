@@ -30,10 +30,7 @@ import {
 /** 每页会话数 */
 const PAGE_SIZE = 30
 
-/**
- * AI 日志查看 Hook
- * @param active 是否为当前激活页
- */
+/** AI 日志查看 Hook */
 export function useAiLogView(active: Ref<boolean>) {
     const { toast } = useMessage()
 
@@ -56,10 +53,7 @@ export function useAiLogView(active: Ref<boolean>) {
         return buildSessionView(detail.value, steps.value)
     })
 
-    /**
-     * 加载会话步骤
-     * @param sessionId 会话 ID
-     */
+    /** 加载会话步骤 */
     async function loadSteps(sessionId: string) {
         loadingSteps.value = true
         const result = await TaskHelper.tryExecute(() => ipc.aiLog.getSteps.query({ sessionId }))
@@ -75,10 +69,7 @@ export function useAiLogView(active: Ref<boolean>) {
         steps.value = result.result
     }
 
-    /**
-     * 加载会话列表
-     * @param reset 是否从第一页重新加载
-     */
+    /** 加载会话列表 */
     async function loadSessions(reset = false) {
         if (loadingSessions.value) return
         if (!reset && sessions.value.length >= total.value) return
@@ -109,17 +100,15 @@ export function useAiLogView(active: Ref<boolean>) {
         if (!selectedId.value && first) await selectSession(first.id)
         if (
             reset &&
+            first &&
             selectedId.value &&
             !sessions.value.some((item) => item.id === selectedId.value)
         ) {
-            if (first) await selectSession(first.id)
+            await selectSession(first.id)
         }
     }
 
-    /**
-     * 选择会话并加载详情
-     * @param sessionId 会话 ID
-     */
+    /** 选择会话并加载详情 */
     async function selectSession(sessionId: string) {
         if (selectedId.value === sessionId && detail.value) return
 
@@ -139,7 +128,7 @@ export function useAiLogView(active: Ref<boolean>) {
 
         if (selectedId.value !== sessionId) return
         detail.value = result.result
-        if (detail.value) await loadSteps(sessionId)
+        if (result.result) await loadSteps(sessionId)
     }
 
     /** 刷新会话列表 */
@@ -152,7 +141,7 @@ export function useAiLogView(active: Ref<boolean>) {
         await loadSessions(true)
     }
 
-    // 首次进入日志页时加载数据
+    // 首次进入时加载
     watch(
         active,
         (value) => {

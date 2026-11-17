@@ -4,28 +4,20 @@ import type { ICue, ICueDraft, IWord, SubtitleLanguage } from './types'
 export const MAX_CUE_CHARS = 24
 /** 单条字幕最大时长（毫秒） */
 export const MAX_CUE_MS = 10000
-/** 相邻词的最大间隔（毫秒） */
+/** 相邻词最大间隔（毫秒） */
 export const MAX_CUE_GAP_MS = 700
 
 const SRT_TIMESTAMP_PATTERN =
     /^(?<hours>\d{2}):(?<minutes>\d{2}):(?<seconds>\d{2}),(?<millis>\d{3})$/
 
-/**
- * 拼接词文本
- * @param words 词列表
- * @param language 识别语言
- */
+/** 拼接词文本 */
 function joinWordText(words: IWord[], language: SubtitleLanguage) {
     const text = words.map((word) => word.text).join(language === 'en' ? ' ' : '')
 
     return language === 'en' ? text.replace(/\s+/g, ' ').trim() : text
 }
 
-/**
- * 按标点、长度与词间间隔切分字幕
- * @param words 词列表
- * @param language 识别语言
- */
+/** 按长度与标点切分 */
 export function splitIntoCues(words: IWord[], language: SubtitleLanguage): ICueDraft[] {
     const cues: ICueDraft[] = []
     let bucket: IWord[] = []
@@ -33,7 +25,7 @@ export function splitIntoCues(words: IWord[], language: SubtitleLanguage): ICueD
     for (const word of words) {
         const previous = bucket.at(-1)
 
-        // 词间间隔过大时先切条，避免把长间隔并进同一条字幕
+        // 间隔过大先切条
         if (previous && word.from - previous.to > MAX_CUE_GAP_MS) {
             cues.push({
                 from: bucket[0]!.from,
@@ -59,7 +51,7 @@ export function splitIntoCues(words: IWord[], language: SubtitleLanguage): ICueD
     if (bucket.length) {
         cues.push({
             from: bucket[0]!.from,
-            to: bucket[bucket.length - 1]!.to,
+            to: bucket.at(-1)!.to,
             text: joinWordText(bucket, language)
         })
     }
@@ -67,29 +59,22 @@ export function splitIntoCues(words: IWord[], language: SubtitleLanguage): ICueD
     return cues.filter((cue) => cue.text.trim())
 }
 
-/**
- * 格式化 SRT 时间戳
- * @param ms 毫秒
- */
+/** 格式化 SRT 时间戳 */
 export function formatSrtTimestamp(ms: number) {
     const value = Math.max(0, Math.round(ms))
     const hours = Math.floor(value / 3_600_000)
     const minutes = Math.floor((value % 3_600_000) / 60_000)
     const seconds = Math.floor((value % 60_000) / 1000)
     const millis = value % 1000
+    const hh = String(hours).padStart(2, '0')
+    const mm = String(minutes).padStart(2, '0')
+    const ss = String(seconds).padStart(2, '0')
+    const mmm = String(millis).padStart(3, '0')
 
-    return [
-        String(hours).padStart(2, '0'),
-        String(minutes).padStart(2, '0'),
-        `${String(seconds).padStart(2, '0')},${String(millis).padStart(3, '0')}`
-    ].join(':')
+    return `${hh}:${mm}:${ss},${mmm}`
 }
 
-/**
- * 解析 SRT 时间戳
- * @param value SRT 时间戳
- * @returns 毫秒数，格式非法时返回 null
- */
+/** 解析 SRT 时间戳，非法返回 null */
 export function parseSrtTimestamp(value: string) {
     const match = SRT_TIMESTAMP_PATTERN.exec(value.trim())
     if (!match?.groups) return null
@@ -103,15 +88,14 @@ export function parseSrtTimestamp(value: string) {
     )
 }
 
-/**
- * 渲染 SRT
- * @param cues 字幕条
- */
+/** 渲染 SRT */
 export function renderSrt(cues: ICue[]) {
     return cues
-        .map(
-            (cue, index) =>
-                `${index + 1}\n${formatSrtTimestamp(cue.from)} --> ${formatSrtTimestamp(cue.to)}\n${cue.zh ?? cue.text}\n`
-        )
+        .map((cue, index) => {
+            const from = formatSrtTimestamp(cue.from)
+            const to = formatSrtTimestamp(cue.to)
+
+            return `${index + 1}\n${from} --> ${to}\n${cue.zh ?? cue.text}\n`
+        })
         .join('\n')
 }

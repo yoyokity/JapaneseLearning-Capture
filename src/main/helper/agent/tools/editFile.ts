@@ -25,7 +25,7 @@ import {
 /** 可编辑文件大小上限 */
 export const EDIT_MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024
 
-/** 编辑错误码，与 ZCode Edit 契约一致 */
+/** 编辑错误码 */
 export const EditErrorCode = {
     NO_CHANGE: 1,
     FILE_EXISTS_NO_OLD_STRING: 3,
@@ -50,7 +50,7 @@ export interface IStructuredPatchHunk {
 }
 
 export interface IEditFileToolOptions {
-    /** read_file / edit_file 共享的读取状态 */
+    /** 共享读取状态 */
     readFileState?: Map<string, IReadFileState> | undefined
 }
 
@@ -80,11 +80,7 @@ export interface IEditFileErrorOutput {
 
 export type EditFileOutput = IEditFileSuccessOutput | IEditFileErrorOutput
 
-/**
- * 创建编辑文件工具
- * @param options 工具参数
- * @remark 基于精确字符串替换；必须先通过 read_file 读取，写回时保持原编码与换行
- */
+/** 创建编辑文件工具 */
 export function createEditFileTool(options: IEditFileToolOptions = {}) {
     const sandboxDir = appPath.sandbox
     const readFileState = options.readFileState ?? new Map<string, IReadFileState>()
@@ -130,13 +126,10 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
                 }
 
                 const key = getFilePathKey(filePath)
-                let stats: Stats | undefined
-
-                try {
-                    stats = await stat(filePath)
-                } catch (error) {
+                const stats = await stat(filePath).catch((error) => {
                     if (!isNodeError(error) || error.code !== 'ENOENT') throw error
-                }
+                    return undefined
+                })
 
                 if (!stats) {
                     if (oldString !== '') {
@@ -299,7 +292,10 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
                     return errorOutput('unsupported', error.message)
                 }
 
-                return errorOutput('io_error', getErrorMessage(error))
+                return errorOutput(
+                    'io_error',
+                    error instanceof Error ? error.message : String(error)
+                )
             }
         },
         toModelOutput: ({ output }) => ({
@@ -309,11 +305,7 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
     })
 }
 
-/**
- * 生成模型可见编辑结果
- * @param output 编辑结果
- * @remark 成功只返回短确认，完整 diff 留在结构化输出
- */
+/** 生成模型可见结果 */
 export function formatEditFileModelContent(output: EditFileOutput) {
     if (!output.ok) return `<tool_use_error>${output.message}</tool_use_error>`
 
@@ -464,8 +456,4 @@ function createStructuredPatch(original: string, updated: string): IStructuredPa
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
     return error instanceof Error && 'code' in error
-}
-
-function getErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error)
 }

@@ -22,18 +22,12 @@ import {
 } from './retry'
 import { getToolOptions, handleToolPart } from './tools'
 
-/**
- * 转为 Error
- * @param error 错误
- */
+/** 转为 Error */
 function toError(error: unknown) {
     return error instanceof Error ? error : new Error(String(error))
 }
 
-/**
- * 获取错误消息
- * @param error 错误
- */
+/** 获取错误消息 */
 function getErrorMessage(error: unknown) {
     if (error instanceof Error) return error.message
 
@@ -41,10 +35,7 @@ function getErrorMessage(error: unknown) {
     return typeof message === 'string' ? message : String(error)
 }
 
-/**
- * 创建空闲超时错误
- * @param timeoutMs 超时时长
- */
+/** 创建空闲超时错误 */
 function createIdleTimeoutError(timeoutMs: number) {
     return Object.assign(new Error(`AI流请求超时：${timeoutMs}ms 内没有收到新数据`), {
         code: 'AI_STREAM_IDLE_TIMEOUT',
@@ -52,17 +43,12 @@ function createIdleTimeoutError(timeoutMs: number) {
     })
 }
 
-/**
- * 创建流提前结束错误
- */
+/** 创建流提前结束错误 */
 function createEofError() {
     return Object.assign(new Error('AI流提前结束'), { code: 'AI_STREAM_EOF' })
 }
 
-/**
- * 创建 AI 流式请求
- * @param options 调用参数
- */
+/** 创建 AI 流式请求 */
 export function createAgentStream(options: IAgentStreamOptions) {
     return observable<IAgentStreamPayload>((emit) => {
         const outerController = new AbortController()
@@ -91,9 +77,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
             system: options.system
         })
 
-        /**
-         * 清理空闲计时器
-         */
+        /** 清理空闲计时器 */
         function clearTimer() {
             if (!timeoutId) return
 
@@ -101,10 +85,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
             timeoutId = null
         }
 
-        /**
-         * 重新开始空闲计时
-         * @param idleTimeout 空闲超时（毫秒）
-         */
+        /** 重新开始空闲计时 */
         function startTimer(idleTimeout: number) {
             clearTimer()
             timeoutId = setTimeout(() => {
@@ -117,14 +98,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
             let retryCount = 0
             let emptyRetried = false
 
-            /**
-             * 记录失败结果
-             * @param error 错误
-             * @param extra 附加信息
-             * @param extra.reason 重试原因
-             * @param extra.timeoutMs 超时时间（毫秒）
-             * @param extra.finishReason 结束原因
-             */
+            /** 记录失败结果 */
             function finishWithError(
                 error: unknown,
                 extra?: {
@@ -153,13 +127,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                 })
             }
 
-            /**
-             * 等待并准备下一次尝试
-             * @param reason 重试原因
-             * @param error 触发错误
-             * @param extra 附加信息
-             * @param extra.timeoutMs 超时时间（毫秒）
-             */
+            /** 等待并准备重试 */
             async function waitForRetry(
                 reason: AgentRetryReason,
                 error: unknown,
@@ -261,13 +229,13 @@ export function createAgentStream(options: IAgentStreamOptions) {
                             const part = next.value
                             if (stopped) return
 
-                            // error chunk 视为失败，不再等待后续 finish
+                            // error 事件视为失败
                             if (part.type === 'error') {
                                 errorPart = part.error
                                 break
                             }
 
-                            // 工具事件一旦出现就跨过重试边界；执行期间暂停 idle 计时
+                            // 工具事件跨过重试边界
                             if (handleToolPart(part, toolState)) {
                                 clearTimer()
                                 hasCommittedOutput = true
@@ -291,7 +259,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                                 continue
                             if (!part.text) continue
 
-                            if (part.text.length > 0) hasCommittedOutput = true
+                            hasCommittedOutput = true
 
                             if (part.type === 'text-delta') {
                                 attemptText += part.text
@@ -302,7 +270,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                             }
                         }
                     } finally {
-                        // 有界等待旧流关闭，避免重试时连接槽重叠
+                        // 有界等待旧流关闭
                         if (!streamDone) {
                             try {
                                 await Promise.race([
@@ -330,7 +298,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         toolState.callCount > 0 ||
                         hasUsage
 
-                    // 上下文超限且没有有效输出：直接失败，不做空响应重试
+                    // 上下文超限直接失败
                     if (!hasOutput && isContextExceededReason(finishReason, rawFinishReason)) {
                         const error = Object.assign(
                             new Error('AI 上下文超限，请缩短字幕或更换模型'),
@@ -345,7 +313,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         return
                     }
 
-                    // 拒绝或内容过滤且没有有效输出：不做空响应重试
+                    // 拒绝或过滤直接失败
                     if (!hasOutput && isNonRetryableEmptyReason(finishReason, rawFinishReason)) {
                         const error = Object.assign(new Error('AI 拒绝生成或内容被过滤'), {
                             code: 'AI_CONTENT_FILTERED'
@@ -359,7 +327,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         return
                     }
 
-                    // 空响应：零 text/reasoning/tool/usage 时最多重试一次
+                    // 空响应最多重试一次
                     if (!hasOutput) {
                         if (!emptyRetried) {
                             emptyRetried = true
@@ -380,7 +348,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         return
                     }
 
-                    // 中断或错误时按输出情况处理
+                    // 中断或错误处理
                     if (finishReason === 'interrupted' || finishReason === 'error') {
                         const error = new Error(`AI生成未完成：${finishReason}`)
                         const retryable = finishReason === 'interrupted' || isRetryableError(error)
@@ -409,7 +377,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         responseMessages = await result.responseMessages
                         totalUsage = await result.usage
                     } catch {
-                        // 元数据读取失败时保留步骤用量
+                        // 元数据读取失败忽略
                     }
 
                     aiLog?.finishAttempt(attemptId, {
@@ -445,34 +413,20 @@ export function createAgentStream(options: IAgentStreamOptions) {
                     const retryable =
                         timedOut || isRetryableError(error) || errorCode === 'AI_STREAM_EOF'
 
-                    // 已越过重试边界：不自动重放，交给调用方处理
                     if (hasCommittedOutput) {
+                        // 已越过重试边界
                         emit.next({ type: 'reset' })
-                        finishWithError(effectiveError, {
-                            reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
-                            timeoutMs: timedOut ? idleTimeout : undefined
-                        })
-                        writeLog('error', '[AI] 请求失败', {
-                            attempt: retryCount + 1,
-                            reason: timedOut ? 'stream_idle_timeout' : 'request_failed',
-                            message: getErrorMessage(error),
-                            statusCode: getErrorStatus(error),
-                            timeoutMs: timedOut ? idleTimeout : undefined
-                        })
-                        emit.error(toError(effectiveError))
-                        stopped = true
-                        return
+                    } else {
+                        if (retryable) {
+                            const retried = await waitForRetry(
+                                timedOut ? 'stream_idle_timeout' : 'request_failed',
+                                effectiveError,
+                                timedOut ? { timeoutMs: idleTimeout } : undefined
+                            )
+                            if (retried) continue
+                        }
+                        if (stopped || outerController.signal.aborted) return
                     }
-
-                    if (retryable) {
-                        const retried = await waitForRetry(
-                            timedOut ? 'stream_idle_timeout' : 'request_failed',
-                            effectiveError,
-                            timedOut ? { timeoutMs: idleTimeout } : undefined
-                        )
-                        if (retried) continue
-                    }
-                    if (stopped || outerController.signal.aborted) return
 
                     finishWithError(effectiveError, {
                         reason: timedOut ? 'stream_idle_timeout' : 'request_failed',

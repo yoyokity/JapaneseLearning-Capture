@@ -3,10 +3,8 @@ import { realpath } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import iconv from 'iconv-lite'
 
-/** 文本文件编码 */
 export type TextFileEncoding = 'utf8' | 'utf16le' | 'gb2312' | 'gbk' | 'gb18030'
 
-/** 文本文件换行符 */
 export type TextFileLineEndings = 'LF' | 'CRLF'
 
 const UTF8_BOM = [239, 187, 191] as const
@@ -18,7 +16,6 @@ const SANDBOX_SEPARATOR_PATTERN = /[\\/]/
 const INVALID_FILENAME_PATTERN = /[\0:*?"<>|]/
 const TRAILING_DOT_OR_SPACE_PATTERN = /[. ]$/
 
-/** 不支持的文本编码或二进制文件 */
 export class UnsupportedTextFileError extends Error {
     constructor(filePath: string) {
         super(`Unsupported or binary text encoding: ${filePath}`)
@@ -26,7 +23,6 @@ export class UnsupportedTextFileError extends Error {
     }
 }
 
-/** 沙箱路径非法 */
 export class SandboxPathError extends Error {
     constructor(message: string) {
         super(message)
@@ -34,12 +30,7 @@ export class SandboxPathError extends Error {
     }
 }
 
-/**
- * 解码文本文件
- * @param buffer 文件内容
- * @param filePath 文件路径
- * @remark 自动识别 UTF-8、UTF-16LE 和常见中文编码
- */
+/** 解码文本文件 */
 export function decodeTextBuffer(buffer: Buffer, filePath: string) {
     const encoding = detectTextEncoding(buffer, filePath)
     const content = isLegacyChineseEncoding(encoding)
@@ -49,13 +40,7 @@ export function decodeTextBuffer(buffer: Buffer, filePath: string) {
     return { content, encoding }
 }
 
-/**
- * 按原编码写入文本
- * @param content 逻辑文本（LF）
- * @param encoding 原编码
- * @param filePath 文件路径
- * @remark 无法用原编码表示时抛错，避免有损写回
- */
+/** 按原编码写入 */
 export function encodeTextContent(content: string, encoding: TextFileEncoding, filePath: string) {
     if (!isLegacyChineseEncoding(encoding)) return Buffer.from(content, encoding)
 
@@ -91,12 +76,7 @@ export function detectLineEndings(content: string): TextFileLineEndings {
     return crlfCount > lfCount ? 'CRLF' : 'LF'
 }
 
-/**
- * 解析沙箱内的文件名
- * @param fileName 模型传入的文件名
- * @param sandboxDir 沙箱目录
- * @remark 只接受单个文件名，不接受目录、绝对路径或路径穿越
- */
+/** 解析沙箱内文件名 */
 export function resolveSandboxFilePath(fileName: string, sandboxDir: string) {
     if (!fileName || fileName !== fileName.trim()) {
         throw new SandboxPathError('file_path must be a non-empty file name.')
@@ -116,12 +96,7 @@ export function resolveSandboxFilePath(fileName: string, sandboxDir: string) {
     return join(resolve(sandboxDir), fileName)
 }
 
-/**
- * 校验真实路径仍在沙箱内
- * @param filePath 文件路径
- * @param sandboxDir 沙箱目录
- * @remark 防止沙箱内的符号链接指向外部
- */
+/** 校验路径在沙箱内 */
 export async function assertInsideSandbox(filePath: string, sandboxDir: string) {
     const [realFile, realRoot] = await Promise.all([realpath(filePath), realpath(sandboxDir)])
     const rel = relative(realRoot, realFile)
@@ -130,7 +105,7 @@ export async function assertInsideSandbox(filePath: string, sandboxDir: string) 
     throw new SandboxPathError(`Path is outside the sandbox: ${filePath}`)
 }
 
-/** 生成读取状态 Map 的路径键 */
+/** 生成路径键 */
 export function getFilePathKey(filePath: string) {
     const normalized = resolve(filePath)
     return process.platform === 'win32' ? normalized.toLowerCase() : normalized

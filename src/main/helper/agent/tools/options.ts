@@ -1,16 +1,18 @@
 import type { ToolSet } from 'ai'
+import type { IReadFileState } from './readFile'
 
 import { stepCountIs } from 'ai'
 
-import { getDefaultFileTools } from './fileTools'
+import { createEditFileTool } from './editFile'
+import { createReadFileTool } from './readFile'
 
 /** 默认工具循环最大步数 */
 const AI_MAX_TOOL_STEPS = 5
 
 export interface IAgentToolOptions {
-    /** 工具集合，仅主进程内部使用；同名工具会覆盖默认工具 */
+    /** 自定义工具集合 */
     tools?: ToolSet | undefined
-    /** 单次调用内的工具循环最大步数 */
+    /** 工具循环最大步数 */
     maxSteps?: number | undefined
     /** 工具最大并发数 */
     toolCallConcurrency?: number | undefined
@@ -21,14 +23,13 @@ export interface IAgentToolState {
     callCount: number
 }
 
-/**
- * 构造工具调用配置
- * @param options 工具选项
- * @remark 默认文件工具始终启用，传入的 tools 叠加在其后并覆盖同名工具
- */
+/** 构造工具调用配置 */
 export function getToolOptions(options: IAgentToolOptions) {
+    // 文件工具共享读取状态
+    const readFileState = new Map<string, IReadFileState>()
     const tools: ToolSet = {
-        ...getDefaultFileTools(),
+        read_file: createReadFileTool({ readFileState }),
+        edit_file: createEditFileTool({ readFileState }),
         ...options.tools
     }
 
@@ -41,14 +42,7 @@ export function getToolOptions(options: IAgentToolOptions) {
     }
 }
 
-/**
- * 处理工具流事件
- * @param part 流事件
- * @param part.type 事件类型
- * @param state 工具流状态
- * @returns 是否为工具事件
- * @remark 工具事件会暂停空闲计时并标记已产生输出
- */
+/** 处理工具流事件 */
 export function handleToolPart(part: { type: string }, state: IAgentToolState) {
     if (part.type === 'tool-call') {
         state.callCount++

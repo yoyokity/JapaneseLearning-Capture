@@ -12,7 +12,6 @@ export type AgentReasoningEffort = (typeof AgentReasoningEffortArray)[number]
 export type AgentFinishReason =
     'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'interrupted' | 'other'
 
-/** 重试原因 */
 export type AgentRetryReason = 'request_failed' | 'stream_idle_timeout' | 'empty_completion'
 
 export interface IAgentConfig {
@@ -24,7 +23,7 @@ export interface IAgentConfig {
     apiKey: string
     /** 模型名称 */
     model: string
-    /** 接口格式，默认 responses */
+    /** 接口格式 */
     apiFormat?: AgentApiFormat | undefined
     /** 思考强度 */
     reasoningEffort?: AgentReasoningEffort | undefined
@@ -44,13 +43,13 @@ export interface IAgentBaseOptions {
     system?: string | undefined
     /** 超时时间（毫秒） */
     timeout?: number | undefined
-    /** 最大重试次数（不含首次请求） */
+    /** 最大重试次数 */
     maxRetries?: number | undefined
-    /** 会话 ID，相同 ID 的调用归入同一 AI 日志会话 */
+    /** 会话 ID */
     sessionId?: string | undefined
     /** 会话来源标记 */
     source?: string | undefined
-    /** 是否跳过 AI 日志记录 */
+    /** 跳过 AI 日志 */
     skipLog?: boolean | undefined
 }
 
@@ -119,17 +118,14 @@ export interface IAgentRetryPayload {
     reason?: AgentRetryReason | undefined
     /** 错误状态码 */
     statusCode?: number | undefined
-    /** 触发超时的时长（毫秒） */
+    /** 超时时长（毫秒） */
     timeoutMs?: number | undefined
 }
 
 export type IAgentStreamPayload =
     IAgentDataPayload | IAgentEndPayload | IAgentResetPayload | IAgentRetryPayload
 
-/**
- * 是否为正常结束
- * @param reason 结束原因
- */
+/** 是否正常结束 */
 export function isAgentSuccess(reason: AgentFinishReason) {
     return reason === 'stop'
 }

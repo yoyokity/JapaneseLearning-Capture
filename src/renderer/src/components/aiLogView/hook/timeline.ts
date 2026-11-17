@@ -40,10 +40,7 @@ export interface IWorkRow {
     tools: IToolItem[]
 }
 
-/**
- * 提取用户消息
- * @param input 会话输入
- */
+/** 提取用户消息 */
 export function getUserMessages(input: unknown) {
     if (!input || typeof input !== 'object') return []
 
@@ -64,11 +61,7 @@ export function getUserMessages(input: unknown) {
     return messages
 }
 
-/**
- * 解析步骤为时间线片段
- * @param step 步骤
- * @remark 优先按 content 原始顺序渲染，缺失时回退到 text/toolCalls 字段
- */
+/** 解析步骤为时间线片段 */
 function getStepParts(step: IAiLogStepItem) {
     const parts: IStepPart[] = []
     const content = Array.isArray(step.content) ? (step.content as IContentPart[]) : []
@@ -89,18 +82,14 @@ function getStepParts(step: IAiLogStepItem) {
         }
     }
 
-    let hasReasoning = false
-    let hasText = false
     for (const item of content) {
         if (item.type === 'reasoning' && item.text?.trim()) {
-            hasReasoning = true
             parts.push({
                 type: 'reasoning',
                 key: `${step.id}-reasoning-${parts.length}`,
                 text: item.text
             })
         } else if (item.type === 'text' && item.text?.trim()) {
-            hasText = true
             parts.push({ type: 'text', key: `${step.id}-text-${parts.length}`, text: item.text })
         } else if (item.type === 'tool-call' && item.toolCallId) {
             const result = results.get(item.toolCallId)
@@ -115,15 +104,15 @@ function getStepParts(step: IAiLogStepItem) {
         }
     }
 
-    // content 未包含对应内容时用 step 字段补齐
-    if (!hasReasoning && step.reasoningText?.trim()) {
+    // 缺失时用 step 字段补齐
+    if (!parts.some((part) => part.type === 'reasoning') && step.reasoningText?.trim()) {
         parts.unshift({
             type: 'reasoning',
             key: `${step.id}-reasoning`,
             text: step.reasoningText
         })
     }
-    if (!hasText && step.text?.trim()) {
+    if (!parts.some((part) => part.type === 'text') && step.text?.trim()) {
         parts.push({ type: 'text', key: `${step.id}-text`, text: step.text })
     }
 
@@ -152,16 +141,7 @@ function getStepParts(step: IAiLogStepItem) {
     return parts
 }
 
-/**
- * 创建空白工作行
- * @param kind 行类型
- * @param key 行标识
- * @param values 行内容
- * @param values.text 文本内容
- * @param values.attempt 尝试信息
- * @param values.tool 工具信息
- * @param values.tools 工具列表
- */
+/** 创建空白工作行 */
 function createWorkRow(
     kind: IWorkRow['kind'],
     key: string,
@@ -182,10 +162,7 @@ function createWorkRow(
     }
 }
 
-/**
- * 合并连续的工具调用
- * @param rows 工作行
- */
+/** 合并连续的工具调用 */
 function groupToolRows(rows: IWorkRow[]) {
     const result: IWorkRow[] = []
     let tools: IToolItem[] = []
@@ -215,21 +192,7 @@ function groupToolRows(rows: IWorkRow[]) {
     return result
 }
 
-/**
- * 获取指定尝试的步骤
- * @param steps 步骤列表
- * @param attemptNo 尝试序号
- */
-function stepsForAttempt(steps: IAiLogStepItem[], attemptNo: number) {
-    return steps.filter((step) => step.attemptNo === attemptNo)
-}
-
-/**
- * 构建会话工作区
- * @param detail 会话详情
- * @param steps 会话步骤
- * @remark 最后一个文本片段作为最终回复移到工作区外
- */
+/** 构建会话工作区 */
 export function buildSessionView(detail: IAiLogSessionDetail, steps: IAiLogStepItem[]) {
     const rows: IWorkRow[] = []
     let finalRow: IWorkRow | null = null
@@ -240,7 +203,7 @@ export function buildSessionView(detail: IAiLogSessionDetail, steps: IAiLogStepI
         }
 
         const attemptRows: IWorkRow[] = []
-        for (const step of stepsForAttempt(steps, attempt.attemptNo)) {
+        for (const step of steps.filter((item) => item.attemptNo === attempt.attemptNo)) {
             for (const part of getStepParts(step)) {
                 if (part.type === 'reasoning') {
                     attemptRows.push(

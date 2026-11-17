@@ -67,11 +67,7 @@ export interface IAiSettings {
     }
 }
 
-/**
- * 获取当前服务商的调用配置
- * @param ai AI 配置
- * @returns 必填项不完整时返回 null
- */
+/** 获取当前服务商配置，缺必填项返回 null */
 export function getAgentConfig(ai: IAiSettings): IAgentConfig | null {
     if (ai.provider === 'openai') {
         if (!ai.openai.apiKey || !ai.openai.model) return null
@@ -98,7 +94,7 @@ export function getAgentConfig(ai: IAiSettings): IAgentConfig | null {
     const custom = ai.custom
     if (!custom.baseUrl || !custom.model) return null
 
-    // 去掉 SDK 会追加的接口路径
+    // 去掉 SDK 追加的接口路径
     let baseUrl = custom.baseUrl.replace(/\/+$/, '')
 
     for (const endpoint of ['/chat/completions', '/responses', '/messages']) {
@@ -108,7 +104,7 @@ export function getAgentConfig(ai: IAiSettings): IAgentConfig | null {
         }
     }
 
-    // Anthropic 接口固定带 /v1 前缀
+    // Anthropic 固定 /v1 前缀
     if (custom.apiFormat === 'anthropic' && !/\/v\d+$/.test(baseUrl)) {
         baseUrl = `${baseUrl}/v1`
     }
@@ -121,16 +117,7 @@ export function getAgentConfig(ai: IAiSettings): IAgentConfig | null {
         ...(custom.reasoningEffort === 'none' ? {} : { reasoningEffort: custom.reasoningEffort })
     }
 
-    if (custom.apiFormat === 'anthropic') {
-        return {
-            provider: 'anthropic',
-            ...baseConfig
-        }
-    }
+    if (custom.apiFormat === 'anthropic') return { provider: 'anthropic', ...baseConfig }
 
-    return {
-        provider: 'openai',
-        apiFormat: custom.apiFormat,
-        ...baseConfig
-    }
+    return { provider: 'openai', apiFormat: custom.apiFormat, ...baseConfig }
 }

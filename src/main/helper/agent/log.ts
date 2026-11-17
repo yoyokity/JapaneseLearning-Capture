@@ -85,7 +85,6 @@ const INDEX_SQL = `
 /** 数据库连接 */
 let db: DatabaseSync | null = null
 
-/** 步骤日志字段 */
 interface IStepLog {
     stepNumber: number
     callId?: string | undefined
@@ -104,7 +103,6 @@ interface IStepLog {
     providerMetadata?: unknown
 }
 
-/** 会话日志字段 */
 interface ISessionLog {
     id: string
     source?: string | undefined
@@ -116,7 +114,6 @@ interface ISessionLog {
     system?: string | undefined
 }
 
-/** 尝试结束字段 */
 interface IAttemptFinishLog {
     status: 'success' | 'error' | 'retried' | 'cancelled'
     retryReason?: string | undefined
@@ -129,7 +126,6 @@ interface IAttemptFinishLog {
     usage?: unknown
 }
 
-/** 会话结束字段 */
 interface ISessionFinishLog {
     status: 'success' | 'error' | 'cancelled'
     finishReason?: string | undefined
@@ -140,13 +136,11 @@ interface ISessionFinishLog {
     responseMessages?: unknown
 }
 
-/** AI 日志列表选项 */
 export interface IAiLogListOptions {
     limit: number
     offset: number
 }
 
-/** AI 日志会话项 */
 export interface IAiLogSessionItem {
     id: string
     source: string | null
@@ -161,7 +155,6 @@ export interface IAiLogSessionItem {
     attemptCount: number
 }
 
-/** AI 日志尝试项 */
 export interface IAiLogAttemptItem {
     id: string
     attemptNo: number
@@ -179,7 +172,6 @@ export interface IAiLogAttemptItem {
     stepCount: number
 }
 
-/** AI 日志会话记录 */
 export interface IAiLogSessionRecord {
     id: string
     source: string | null
@@ -200,13 +192,11 @@ export interface IAiLogSessionRecord {
     finishedAt: number | null
 }
 
-/** AI 日志会话详情 */
 export interface IAiLogSessionDetail {
     session: IAiLogSessionRecord
     attempts: IAiLogAttemptItem[]
 }
 
-/** AI 日志步骤项 */
 export interface IAiLogStepItem {
     id: string
     attemptId: string
@@ -230,7 +220,6 @@ export interface IAiLogStepItem {
     createdAt: number
 }
 
-/** 会话查询行 */
 interface IAiLogSessionRow {
     id: string
     source: string | null
@@ -251,7 +240,6 @@ interface IAiLogSessionRow {
     finishedAt: number | null
 }
 
-/** 尝试查询行 */
 interface IAiLogAttemptRow {
     id: string
     attemptNo: number
@@ -269,7 +257,6 @@ interface IAiLogAttemptRow {
     stepCount: number
 }
 
-/** 步骤查询行 */
 interface IAiLogStepRow {
     id: string
     attemptId: string
@@ -293,11 +280,7 @@ interface IAiLogStepRow {
     createdAt: number
 }
 
-/**
- * 迁移旧版轮次结构
- * @param database 数据库
- * @remark 每个会话只保留最后一轮，旧版通常只有一轮
- */
+/** 迁移旧版轮次结构 */
 function migrateLegacyTurns(database: DatabaseSync) {
     const legacy = database
         .prepare("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = 'ai_turns'")
@@ -364,10 +347,7 @@ function migrateLegacyTurns(database: DatabaseSync) {
     }
 }
 
-/**
- * 获取数据库连接
- * @remark 首次访问时创建目录、打开数据库并建表
- */
+/** 获取数据库连接 */
 function getDb() {
     if (db) return db
 
@@ -388,10 +368,7 @@ function getDb() {
     return db
 }
 
-/**
- * 序列化为 JSON 文本
- * @param value 任意值
- */
+/** 序列化为 JSON */
 function toJson(value: unknown) {
     if (value === undefined) return null
 
@@ -402,10 +379,7 @@ function toJson(value: unknown) {
     }
 }
 
-/**
- * 解析 JSON 文本
- * @param value JSON 文本
- */
+/** 解析 JSON 文本 */
 function parseJson(value: unknown) {
     if (typeof value !== 'string' || !value) return null
 
@@ -416,11 +390,7 @@ function parseJson(value: unknown) {
     }
 }
 
-/**
- * 执行数据库写入
- * @param action 写入操作
- * @remark 日志写入失败不影响 AI 主流程
- */
+/** 执行数据库写入 */
 function write(action: () => void) {
     try {
         action()
@@ -429,12 +399,8 @@ function write(action: () => void) {
     }
 }
 
-/** AI 日志记录器 */
 export const log = {
-    /**
-     * 开始会话
-     * @param session 会话信息
-     */
+    /** 开始会话 */
     startSession(session: ISessionLog) {
         write(() => {
             getDb()
@@ -458,11 +424,7 @@ export const log = {
         })
     },
 
-    /**
-     * 开始尝试
-     * @param sessionId 会话 ID
-     * @param attemptNo 尝试序号（从 1 开始）
-     */
+    /** 开始尝试 */
     startAttempt(sessionId: string, attemptNo: number) {
         const id = randomUUID()
 
@@ -478,11 +440,7 @@ export const log = {
         return id
     },
 
-    /**
-     * 结束尝试
-     * @param attemptId 尝试 ID
-     * @param finish 结束信息
-     */
+    /** 结束尝试 */
     finishAttempt(attemptId: string, finish: IAttemptFinishLog) {
         write(() => {
             getDb()
@@ -508,11 +466,7 @@ export const log = {
         })
     },
 
-    /**
-     * 保存步骤
-     * @param attemptId 尝试 ID
-     * @param step AI SDK 步骤结果
-     */
+    /** 保存步骤 */
     saveStep(attemptId: string, step: IStepLog) {
         write(() => {
             getDb()
@@ -548,11 +502,7 @@ export const log = {
         })
     },
 
-    /**
-     * 结束会话
-     * @param sessionId 会话 ID
-     * @param finish 结束信息
-     */
+    /** 结束会话 */
     finishSession(sessionId: string, finish: ISessionFinishLog) {
         write(() => {
             getDb()
@@ -576,10 +526,7 @@ export const log = {
         })
     },
 
-    /**
-     * 查询会话列表
-     * @param options 分页选项
-     */
+    /** 查询会话列表 */
     listSessions(options: IAiLogListOptions) {
         const database = getDb()
         const totalRow = database.prepare('SELECT COUNT(*) AS total FROM ai_sessions').get()
@@ -600,10 +547,7 @@ export const log = {
         return { items, total }
     },
 
-    /**
-     * 查询会话详情
-     * @param sessionId 会话 ID
-     */
+    /** 查询会话详情 */
     getSessionDetail(sessionId: string) {
         const database = getDb()
         const row = database
@@ -672,10 +616,7 @@ export const log = {
         return { session, attempts }
     },
 
-    /**
-     * 查询会话的所有步骤
-     * @param sessionId 会话 ID
-     */
+    /** 查询会话所有步骤 */
     getSessionSteps(sessionId: string) {
         const rows = getDb()
             .prepare(
@@ -720,9 +661,7 @@ export const log = {
         }))
     },
 
-    /**
-     * 关闭数据库
-     */
+    /** 关闭数据库 */
     close() {
         if (!db) return
 

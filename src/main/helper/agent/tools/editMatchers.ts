@@ -1,4 +1,3 @@
-/** 编辑匹配策略 */
 export type EditMatchStrategy =
     | 'exact'
     | 'quote_normalized'
@@ -40,14 +39,7 @@ const LINE_NUMBER_PREFIX_PATTERN = /^\d+(?:\t|: )/
 const UNICODE_ESCAPE_PATTERN = /\\u(?<hex>[0-9a-fA-F]{4})/g
 const LETTER_PATTERN = /\p{L}/u
 
-/**
- * 查找 old_string 在文件中的实际位置
- * @param input 匹配参数
- * @param input.content 文件内容
- * @param input.search 要查找的文本
- * @param input.replaceAll 是否替换全部匹配
- * @remark 精确匹配优先，失败后才使用保守兼容匹配；最终候选必须唯一
- */
+/** 查找实际匹配位置 */
 export function findEditMatch(input: {
     content: string
     search: string
@@ -76,14 +68,14 @@ export function findEditMatch(input: {
     return { status: 'not_found' }
 }
 
-/** 按匹配策略归一化 new_string */
+/** 按策略归一化替换文本 */
 export function normalizeReplacementForMatch(strategy: EditMatchStrategy, newString: string) {
     if (strategy === 'escape_normalized') return unescapeVisibleCharacters(newString)
     if (strategy === 'unicode_escape_normalized') return unescapeUnicode(newString)
     return newString
 }
 
-/** 保留文件原有的弯引号风格 */
+/** 保留弯引号风格 */
 export function preserveQuoteStyle(oldString: string, actualOldString: string, newString: string) {
     if (oldString === actualOldString) return newString
 

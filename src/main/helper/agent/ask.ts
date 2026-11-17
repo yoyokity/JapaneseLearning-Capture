@@ -1,21 +1,8 @@
 import type { IAgentToolOptions } from './tools'
-import type {
-    IAgentCallOptions,
-    IAgentChatOptions,
-    IAgentResult,
-    IAgentRetryPayload,
-    IAgentStreamOptions
-} from './types'
+import type { IAgentChatOptions, IAgentResult, IAgentRetryPayload } from './types'
 
 import { createAgentStream } from './stream'
 
-/** ask 调用选项 */
-export interface IAgentAskOptions extends IAgentCallOptions, IAgentToolOptions {
-    /** 重试回调 */
-    onRetry?: ((payload: IAgentRetryPayload) => void) | undefined
-}
-
-/** chat 调用选项 */
 export interface IAgentChatRequestOptions extends IAgentChatOptions, IAgentToolOptions {
     /** 取消信号 */
     signal?: AbortSignal | undefined
@@ -23,62 +10,9 @@ export interface IAgentChatRequestOptions extends IAgentChatOptions, IAgentToolO
     onRetry?: ((payload: IAgentRetryPayload) => void) | undefined
 }
 
-/**
- * 获取错误消息
- * @param error 错误
- */
-function getErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error)
-}
-
-/**
- * 发起 AI 请求并等待完整结果
- * @param options 调用选项
- * @remark 流式数据在内部累积，调用方只拿到最终结果
- */
-function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
-    const {
-        config,
-        system,
-        timeout,
-        maxRetries,
-        tools,
-        maxSteps,
-        toolCallConcurrency,
-        sessionId,
-        source,
-        skipLog,
-        signal,
-        onRetry
-    } = options
-    const input: IAgentStreamOptions =
-        'messages' in options
-            ? {
-                  config,
-                  messages: options.messages,
-                  system,
-                  timeout,
-                  maxRetries,
-                  tools,
-                  maxSteps,
-                  toolCallConcurrency,
-                  sessionId,
-                  source,
-                  skipLog
-              }
-            : {
-                  config,
-                  prompt: options.prompt,
-                  system,
-                  timeout,
-                  maxRetries,
-                  tools,
-                  maxSteps,
-                  toolCallConcurrency,
-                  sessionId,
-                  source,
-                  skipLog
-              }
+/** 多轮流式请求，等待完整结果 */
+export function chat(options: IAgentChatRequestOptions) {
+    const { signal, onRetry, ...input } = options
 
     return new Promise<IAgentResult>((resolve) => {
         let text = ''
@@ -86,10 +20,7 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
         let settled = false
         let subscription: { unsubscribe: () => void } | null = null
 
-        /**
-         * 结束本次调用
-         * @param callback 结束回调
-         */
+        /** 结束本次调用 */
         function finish(callback: () => void) {
             if (settled) return
 
@@ -98,9 +29,7 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
             callback()
         }
 
-        /**
-         * 取消本次调用
-         */
+        /** 取消本次调用 */
         function onAbort() {
             subscription?.unsubscribe()
             finish(() => resolve({ text: '', finishReason: 'error', cancelled: true }))
@@ -143,7 +72,11 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
             },
             error(error) {
                 finish(() =>
-                    resolve({ text: '', finishReason: 'error', error: getErrorMessage(error) })
+                    resolve({
+                        text: '',
+                        finishReason: 'error',
+                        error: error instanceof Error ? error.message : String(error)
+                    })
                 )
             },
             complete() {
@@ -154,20 +87,4 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
         signal?.addEventListener('abort', onAbort, { once: true })
         if (signal?.aborted) onAbort()
     })
-}
-
-/**
- * 单轮流式请求，等待完整结果
- * @param options 调用选项
- */
-export function ask(options: IAgentAskOptions) {
-    return request(options)
-}
-
-/**
- * 多轮流式请求，等待完整结果
- * @param options 调用选项
- */
-export function chat(options: IAgentChatRequestOptions) {
-    return request(options)
 }

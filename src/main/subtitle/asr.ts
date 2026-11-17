@@ -8,11 +8,11 @@ import { join } from 'node:path'
 
 import { writeLog } from '../ipc/filesystem'
 
-/** 显存或内存不足的特征文本 */
+/** 内存不足特征 */
 const OUT_OF_MEMORY_PATTERN = /out of memory|out_of_memory|bad_alloc/i
-/** 对齐塌缩判定：单个词超过该时长（毫秒） */
+/** 超长词阈值（毫秒） */
 const LONG_WORD_MS = 3000
-/** 对齐塌缩判定：零长度词占比 */
+/** 零长度词占比阈值 */
 const ZERO_LENGTH_RATIO = 0.2
 
 interface IRawWord {
@@ -22,9 +22,7 @@ interface IRawWord {
     t1?: number
 }
 
-/**
- * 调用 crispasr 生成逐字 JSON
- */
+/** 运行 crispasr 识别 */
 export function runCrispasr(
     options: {
         crispasrPath: string
@@ -71,7 +69,7 @@ export function runCrispasr(
         let outOfMemory = false
         const append = (chunk: Buffer) => {
             const text = chunk.toString()
-            // 逐个分块检测，避免特征文本被尾部截断
+            // 分块检测内存不足
             if (!outOfMemory && OUT_OF_MEMORY_PATTERN.test(output + text)) {
                 outOfMemory = true
             }
@@ -96,11 +94,7 @@ export function runCrispasr(
     })
 }
 
-/**
- * 修正词时间
- * @param words 词列表
- * @remark 保证单调递增且有正时长
- */
+/** 修正词时间，保证递增 */
 function normalizeWordTimes(words: IWord[]) {
     let previous = 0
 
@@ -113,10 +107,7 @@ function normalizeWordTimes(words: IWord[]) {
     })
 }
 
-/**
- * 转为词
- * @param raw 原始词
- */
+/** 转为词 */
 function toWord(raw: IRawWord): IWord | null {
     const text = String(raw.text ?? '')
     if (!text.trim()) return null
@@ -127,10 +118,7 @@ function toWord(raw: IRawWord): IWord | null {
     return { text, from: Number.isFinite(from) ? from : 0, to: Number.isFinite(to) ? to : 0 }
 }
 
-/**
- * 词级时间是否对齐塌缩
- * @param words 词列表
- */
+/** 词时间是否塌缩 */
 function isCollapsed(words: IWord[]) {
     if (!words.length) return false
 
@@ -142,13 +130,7 @@ function isCollapsed(words: IWord[]) {
     )
 }
 
-/**
- * 用 token 级时间重建词
- * @param tokens 原始 token
- * @param language 识别语言
- * @param segmentEnd 段结束时间
- * @remark token 时间不能超出 ASR 段边界
- */
+/** 用 token 时间重建词 */
 function tokensToWords(tokens: IRawWord[], language: SubtitleLanguage, segmentEnd: number | null) {
     const words: IWord[] = []
 
@@ -161,15 +143,12 @@ function tokensToWords(tokens: IRawWord[], language: SubtitleLanguage, segmentEn
         const start = Number.isFinite(from) ? from : 0
         const end = Number.isFinite(to) ? to : start
         const safeEnd = segmentEnd === null ? end : Math.max(start, Math.min(end, segmentEnd))
+        const previous = words.at(-1)
 
-        if (language === 'en') {
-            const previous = words.at(-1)
-            if (previous && !/^\s/u.test(text)) {
-                previous.text += text
-                previous.to = Math.max(previous.to, safeEnd)
-                continue
-            }
-            words.push({ text: text.trim(), from: start, to: safeEnd })
+        // 英文按词合并
+        if (language === 'en' && previous && !/^\s/u.test(text)) {
+            previous.text += text
+            previous.to = Math.max(previous.to, safeEnd)
             continue
         }
 
@@ -179,12 +158,7 @@ function tokensToWords(tokens: IRawWord[], language: SubtitleLanguage, segmentEn
     return words
 }
 
-/**
- * 解析 crispasr 的 json-full 结果
- * @param jsonPath JSON 路径
- * @param language 识别语言
- * @remark 对齐塌缩时改用 tokens 的时间
- */
+/** 解析识别结果 JSON */
 export function parseSegments(jsonPath: string, language: SubtitleLanguage): ISegment[] {
     const raw = JSON.parse(readFileSync(jsonPath, 'utf8')) as {
         transcription?: {
@@ -221,7 +195,7 @@ export function parseSegments(jsonPath: string, language: SubtitleLanguage): ISe
                 : undefined
 
         if (!words.length) {
-            // 没有词级时间时退化为整段
+            // 无词级时间退化为整段
             if (!text) return []
 
             const from = Number(segment.offsets?.from ?? 0)

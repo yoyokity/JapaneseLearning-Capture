@@ -1,15 +1,15 @@
 import { APICallError, EmptyResponseBodyError } from 'ai'
 
-/** 默认空闲超时（毫秒） */
+/** 空闲超时（毫秒） */
 export const AI_STREAM_IDLE_TIMEOUT_MS = 600_000
 
-/** 每次重试增加的空闲超时（毫秒） */
+/** 超时增量（毫秒） */
 export const AI_STREAM_IDLE_TIMEOUT_INCREMENT_MS = 30_000
 
-/** 最大重试次数（不含首次请求） */
+/** 最大重试次数 */
 export const AI_MAX_RETRIES = 10
 
-/** 流关闭的兜底等待时长（毫秒） */
+/** 流关闭等待（毫秒） */
 export const AI_STREAM_CLEANUP_TIMEOUT_MS = 5_000
 
 /** 退避基础延迟（毫秒） */
@@ -50,10 +50,7 @@ const CHROMIUM_NETWORK_ERRORS = [
     'net::ERR_SOCKET_NOT_CONNECTED'
 ]
 
-/**
- * 获取错误码
- * @param error 错误
- */
+/** 获取错误码 */
 function getErrorCode(error: unknown): string | undefined {
     if (!error || typeof error !== 'object') return undefined
 
@@ -64,10 +61,7 @@ function getErrorCode(error: unknown): string | undefined {
     return typeof causeCode === 'string' ? causeCode : undefined
 }
 
-/**
- * 获取错误消息
- * @param error 错误
- */
+/** 获取错误消息 */
 function getErrorMessage(error: unknown) {
     if (error instanceof Error) return error.message
 
@@ -85,7 +79,7 @@ const CONTEXT_EXCEEDED_MARKERS = new Set([
     'prompt_too_long'
 ])
 
-/** 空响应不能重试的标记 */
+/** 空响应不可重试标记 */
 const NON_RETRYABLE_EMPTY_MARKERS = new Set([
     'refusal',
     'content_filter',
@@ -93,11 +87,7 @@ const NON_RETRYABLE_EMPTY_MARKERS = new Set([
     'content-filtered'
 ])
 
-/**
- * 是否为上下文超限
- * @param finishReason 结束原因
- * @param rawFinishReason 原始结束原因
- */
+/** 是否上下文超限 */
 export function isContextExceededReason(
     finishReason: string | undefined,
     rawFinishReason: string | undefined
@@ -109,12 +99,7 @@ export function isContextExceededReason(
     })
 }
 
-/**
- * 空响应是否不应重试
- * @param finishReason 结束原因
- * @param rawFinishReason 原始结束原因
- * @remark 上下文超限、拒绝、内容过滤不做空响应重试
- */
+/** 空响应是否不可重试 */
 export function isNonRetryableEmptyReason(
     finishReason: string | undefined,
     rawFinishReason: string | undefined
@@ -129,18 +114,12 @@ export function isNonRetryableEmptyReason(
     })
 }
 
-/**
- * 获取错误状态码
- * @param error 错误
- */
+/** 获取错误状态码 */
 export function getErrorStatus(error: unknown) {
     return APICallError.isInstance(error) ? error.statusCode : undefined
 }
 
-/**
- * 是否为 Chromium 网络错误
- * @param error 错误
- */
+/** 是否 Chromium 网络错误 */
 function hasChromiumNetworkError(error: unknown) {
     const messages = [
         getErrorMessage(error),
@@ -152,19 +131,13 @@ function hasChromiumNetworkError(error: unknown) {
     )
 }
 
-/**
- * 服务商是否拒绝重试
- * @param headers 响应头
- */
+/** 服务商是否拒绝重试 */
 function isRetryRefused(headers: Record<string, string> | undefined) {
     const value = getHeader(headers, 'x-should-retry')?.trim().toLowerCase()
     return value === 'false' || value === '0'
 }
 
-/**
- * 是否可重试
- * @param error 错误
- */
+/** 是否可重试 */
 export function isRetryableError(error: unknown): boolean {
     if (APICallError.isInstance(error)) {
         if (isRetryRefused(error.responseHeaders)) return false
@@ -187,29 +160,18 @@ export function isRetryableError(error: unknown): boolean {
     return errorCode != null && NETWORK_ERROR_CODES.has(errorCode)
 }
 
-/**
- * 获取错误响应头
- * @param error 错误
- */
+/** 获取错误响应头 */
 export function getErrorHeaders(error: unknown): Record<string, string> | undefined {
     return APICallError.isInstance(error) ? error.responseHeaders : undefined
 }
 
-/**
- * 读取响应头
- * @param headers 响应头
- * @param name 头名称
- */
+/** 读取响应头 */
 function getHeader(headers: Record<string, string> | undefined, name: string) {
     const key = Object.keys(headers ?? {}).find((item) => item.toLowerCase() === name)
     return key ? headers?.[key] : undefined
 }
 
-/**
- * 获取 Retry-After 时长
- * @param headers 响应头
- * @returns 超过 5 分钟返回 null
- */
+/** 获取 Retry-After 时长 */
 function getRetryAfterMs(headers: Record<string, string> | undefined): number | null {
     if (isRetryRefused(headers)) return null
 
@@ -245,11 +207,7 @@ function getRetryAfterMs(headers: Record<string, string> | undefined): number | 
     return null
 }
 
-/**
- * 计算重试等待时长
- * @param attempt 第几次重试
- * @param headers 响应头
- */
+/** 计算重试等待时长 */
 export function getRetryDelayMs(attempt: number, headers?: Record<string, string>): number {
     const retryAfterMs = getRetryAfterMs(headers)
     if (retryAfterMs != null) {
@@ -266,11 +224,7 @@ export function getRetryDelayMs(attempt: number, headers?: Record<string, string
     return Math.round(exponential * (0.5 + Math.random() * 0.5))
 }
 
-/**
- * 等待指定时长
- * @param ms 毫秒
- * @param signal 取消信号
- */
+/** 等待指定时长 */
 export function sleep(ms: number, signal?: AbortSignal) {
     return new Promise<void>((resolve, reject) => {
         if (signal?.aborted) {
@@ -283,9 +237,7 @@ export function sleep(ms: number, signal?: AbortSignal) {
             resolve()
         }, ms)
 
-        /**
-         * 取消等待
-         */
+        /** 取消等待 */
         function onAbort() {
             clearTimeout(timeoutId)
             reject(new Error('已取消'))

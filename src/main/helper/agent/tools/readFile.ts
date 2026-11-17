@@ -22,7 +22,7 @@ export const READ_DEFAULT_MAX_LINES = 2000
 /** 整文件读取大小上限 */
 export const READ_MAX_FILE_SIZE_BYTES = 256 * 1024
 
-/** 带 offset/limit 时的读取大小上限 */
+/** 分段读取大小上限 */
 const READ_RANGE_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 /** 单次输出 token 上限 */
@@ -35,7 +35,6 @@ const TRAILING_ZERO_PATTERN = /\.0$/
 const LINE_BREAK_PATTERN = /\r?\n/
 const CHINESE_CHAR_PATTERN = /[\u4E00-\u9FFF]/g
 
-/** 读取状态，供 edit_file 做读前校验与 stale 判断 */
 export interface IReadFileState {
     /** 文件完整内容（LF） */
     content: string
@@ -47,7 +46,7 @@ export interface IReadFileState {
     mtimeMs: number
     /** 读取时文件大小 */
     sizeBytes: number
-    /** 是否因 token 上限只看到了部分内容 */
+    /** 是否部分视图 */
     isPartialView: boolean
     /** 起始行号 */
     offset: number
@@ -56,7 +55,7 @@ export interface IReadFileState {
 }
 
 export interface IReadFileToolOptions {
-    /** read_file / edit_file 共享的读取状态 */
+    /** 共享读取状态 */
     readFileState?: Map<string, IReadFileState> | undefined
 }
 
@@ -88,11 +87,7 @@ export interface IReadFileErrorOutput {
 
 export type ReadFileOutput = IReadFileTextOutput | IReadFileErrorOutput
 
-/**
- * 创建读取文件工具
- * @param options 工具参数
- * @remark 返回带行号的文本；大文件可用 offset/limit 分段读取
- */
+/** 创建读取文件工具 */
 export function createReadFileTool(options: IReadFileToolOptions = {}) {
     const sandboxDir = appPath.sandbox
     const readFileState = options.readFileState ?? new Map<string, IReadFileState>()
@@ -215,7 +210,10 @@ export function createReadFileTool(options: IReadFileToolOptions = {}) {
                     return errorOutput('not_found', `File not found in sandbox: ${file_path}`)
                 }
 
-                return errorOutput('io_error', getErrorMessage(error))
+                return errorOutput(
+                    'io_error',
+                    error instanceof Error ? error.message : String(error)
+                )
             }
         },
         toModelOutput: ({ output }) => ({
@@ -225,11 +223,7 @@ export function createReadFileTool(options: IReadFileToolOptions = {}) {
     })
 }
 
-/**
- * 生成模型可见读取结果
- * @param output 读取结果
- * @remark 文本使用 `<行号>\t<内容>` 格式，错误与警告使用固定提示
- */
+/** 生成模型可见结果 */
 export function formatReadFileModelContent(output: ReadFileOutput) {
     if (!output.ok) return `<tool_use_error>${output.message}</tool_use_error>`
 
@@ -264,10 +258,6 @@ function errorOutput(
     message: string
 ): IReadFileErrorOutput {
     return { ok: false, errorCode, message }
-}
-
-function getErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error)
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

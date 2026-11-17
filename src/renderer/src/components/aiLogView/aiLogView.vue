@@ -500,16 +500,13 @@ const {
     display: flex;
     gap: 0.5rem;
     white-space: nowrap;
-}
-
-.work-meta,
-.work-status {
     color: var(--p-text-muted-color);
     font-size: 0.75rem;
 }
 
 .work-status {
     color: var(--error-color);
+    font-size: 0.75rem;
 }
 
 .work-arrow {
