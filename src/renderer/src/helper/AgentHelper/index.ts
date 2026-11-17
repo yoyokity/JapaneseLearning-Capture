@@ -22,6 +22,10 @@ export interface IAgentAskOptions {
     timeout?: number | undefined
     /** 最大重试次数 */
     maxRetries?: number | undefined
+    /** 会话来源标记 */
+    source?: string | undefined
+    /** 是否跳过 AI 日志记录 */
+    skipLog?: boolean | undefined
     /** 流式回调 */
     callback?: TAgentStreamCallback | undefined
     /** 重试回调 */
@@ -41,6 +45,10 @@ export interface IAgentChatOptions {
     timeout?: number | undefined
     /** 最大重试次数 */
     maxRetries?: number | undefined
+    /** 会话来源标记 */
+    source?: string | undefined
+    /** 是否跳过 AI 日志记录 */
+    skipLog?: boolean | undefined
     /** 流式回调 */
     callback?: TAgentStreamCallback | undefined
     /** 重试回调 */
@@ -69,6 +77,8 @@ type TAgentRequestInput =
           system?: string | undefined
           timeout?: number | undefined
           maxRetries?: number | undefined
+          source?: string | undefined
+          skipLog?: boolean | undefined
           signal?: AbortSignal | undefined
       }
     | {
@@ -77,6 +87,8 @@ type TAgentRequestInput =
           system?: string | undefined
           timeout?: number | undefined
           maxRetries?: number | undefined
+          source?: string | undefined
+          skipLog?: boolean | undefined
           signal?: AbortSignal | undefined
       }
 
@@ -306,6 +318,8 @@ export class AgentHelper {
                 system: options.system,
                 timeout: options.timeout,
                 maxRetries: options.maxRetries,
+                source: options.source,
+                skipLog: options.skipLog,
                 signal: options.signal
             },
             options.callback,
@@ -326,6 +340,8 @@ export class AgentHelper {
                 system: options.system,
                 timeout: options.timeout,
                 maxRetries: options.maxRetries,
+                source: options.source,
+                skipLog: options.skipLog,
                 signal: options.signal
             },
             options.callback,
@@ -369,14 +385,18 @@ export class AgentHelper {
                           messages: input.messages,
                           system: input.system,
                           timeout: input.timeout,
-                          maxRetries: input.maxRetries
+                          maxRetries: input.maxRetries,
+                          source: input.source,
+                          skipLog: input.skipLog
                       }
                     : {
                           config: input.config,
                           prompt: input.prompt,
                           system: input.system,
                           timeout: input.timeout,
-                          maxRetries: input.maxRetries
+                          maxRetries: input.maxRetries,
+                          source: input.source,
+                          skipLog: input.skipLog
                       }
 
             const subscription = ipc.agent.stream.subscribe(body, {

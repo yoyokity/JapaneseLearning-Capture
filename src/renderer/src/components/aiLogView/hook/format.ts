@@ -16,7 +16,9 @@ export function formatTime(timestamp: number | null) {
  */
 export function formatSource(source: string | null) {
     if (!source) return 'AI'
-    return source === 'subtitle' ? '字幕' : source
+    if (source === 'subtitle') return '字幕优化和翻译'
+    if (source === 'translate') return '翻译'
+    return source
 }
 
 /**

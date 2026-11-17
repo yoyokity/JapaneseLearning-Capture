@@ -72,7 +72,7 @@ export const settingsStore = defineStore(
             custom: {
                 baseUrl: '',
                 apiKey: '',
-                apiFormat: 'chat',
+                apiFormat: 'responses',
                 model: '',
                 reasoningEffort: 'none'
             }

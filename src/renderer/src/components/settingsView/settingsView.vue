@@ -121,6 +121,7 @@ async function testConnection() {
             prompt: '只回复 ok',
             timeout: 60 * 1000,
             maxRetries: 0,
+            skipLog: true,
             signal: controller.signal,
             onRetry: (info) => {
                 const message = getRetryMessage(info)

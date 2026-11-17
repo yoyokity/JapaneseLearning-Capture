@@ -47,6 +47,7 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
         toolCallConcurrency,
         sessionId,
         source,
+        skipLog,
         signal,
         onRetry
     } = options
@@ -62,7 +63,8 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
                   maxSteps,
                   toolCallConcurrency,
                   sessionId,
-                  source
+                  source,
+                  skipLog
               }
             : {
                   config,
@@ -74,7 +76,8 @@ function request(options: IAgentAskOptions | IAgentChatRequestOptions) {
                   maxSteps,
                   toolCallConcurrency,
                   sessionId,
-                  source
+                  source,
+                  skipLog
               }
 
     return new Promise<IAgentResult>((resolve) => {

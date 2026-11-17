@@ -185,6 +185,7 @@ export class TransHelper {
                     config,
                     system: getTranslatePrompt(settings.translate.targetLanguage),
                     prompt: text,
+                    source: 'translate',
                     signal,
                     callback: (data, reasoningData, reset) => {
                         if (reset) {
@@ -270,6 +271,7 @@ export class TransHelper {
             config,
             system,
             prompt: text,
+            source: 'translate',
             signal
         })
         const resultText = result.text.trim()

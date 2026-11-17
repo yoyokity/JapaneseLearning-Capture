@@ -26,7 +26,8 @@ export const agentStreamOptionsSchema = z.union([
         timeout: z.number().int().optional(),
         maxRetries: z.number().int().min(0).optional(),
         sessionId: z.string().optional(),
-        source: z.string().optional()
+        source: z.string().optional(),
+        skipLog: z.boolean().optional()
     }),
     z.object({
         config: agentConfigSchema,
@@ -35,7 +36,8 @@ export const agentStreamOptionsSchema = z.union([
         timeout: z.number().int().optional(),
         maxRetries: z.number().int().min(0).optional(),
         sessionId: z.string().optional(),
-        source: z.string().optional()
+        source: z.string().optional(),
+        skipLog: z.boolean().optional()
     })
 ])
 

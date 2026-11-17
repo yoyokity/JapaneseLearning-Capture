@@ -50,6 +50,8 @@ export interface IAgentBaseOptions {
     sessionId?: string | undefined
     /** 会话来源标记 */
     source?: string | undefined
+    /** 是否跳过 AI 日志记录 */
+    skipLog?: boolean | undefined
 }
 
 export interface IAgentCallOptions extends IAgentBaseOptions {

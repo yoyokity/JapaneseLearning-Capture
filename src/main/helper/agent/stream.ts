@@ -69,6 +69,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
         const baseIdleTimeout = options.timeout ?? AI_STREAM_IDLE_TIMEOUT_MS
         const maxRetries = options.maxRetries ?? AI_MAX_RETRIES
         const toolOptions = getToolOptions(options)
+        const aiLog = options.skipLog ? null : log
         let stopped = false
         let attemptController: AbortController | null = null
         let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -78,7 +79,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
         let attemptReasoning = ''
 
         const sessionId = options.sessionId ?? randomUUID()
-        log.startSession({
+        aiLog?.startSession({
             id: sessionId,
             source: options.source,
             provider: options.config.provider,
@@ -134,7 +135,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
             ) {
                 const message = getErrorMessage(error)
 
-                log.finishAttempt(attemptId, {
+                aiLog?.finishAttempt(attemptId, {
                     status: 'error',
                     retryReason: extra?.reason,
                     statusCode: getErrorStatus(error),
@@ -143,7 +144,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                     text: attemptText,
                     reasoningText: attemptReasoning
                 })
-                log.finishSession(sessionId, {
+                aiLog?.finishSession(sessionId, {
                     status: 'error',
                     finishReason: extra?.finishReason,
                     error: message,
@@ -170,7 +171,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                 retryCount++
                 const delayMs = getRetryDelayMs(retryCount, getErrorHeaders(error))
                 const statusCode = getErrorStatus(error)
-                log.finishAttempt(attemptId, {
+                aiLog?.finishAttempt(attemptId, {
                     status: 'retried',
                     retryReason: reason,
                     statusCode,
@@ -210,7 +211,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
             while (!stopped) {
                 const idleTimeout =
                     baseIdleTimeout + retryCount * AI_STREAM_IDLE_TIMEOUT_INCREMENT_MS
-                attemptId = log.startAttempt(sessionId, retryCount + 1)
+                attemptId = aiLog ? aiLog.startAttempt(sessionId, retryCount + 1) : ''
                 attemptText = ''
                 attemptReasoning = ''
                 attemptController = new AbortController()
@@ -242,7 +243,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         ...input,
                         abortSignal: signal,
                         maxRetries: 0,
-                        onStepEnd: (step) => log.saveStep(attemptId, step),
+                        onStepEnd: (step) => aiLog?.saveStep(attemptId, step),
                         ...(options.system ? { system: options.system } : {}),
                         ...toolOptions,
                         ...getReasoningOption(options.config)
@@ -411,13 +412,13 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         // 元数据读取失败时保留步骤用量
                     }
 
-                    log.finishAttempt(attemptId, {
+                    aiLog?.finishAttempt(attemptId, {
                         status: 'success',
                         text: attemptText,
                         reasoningText,
                         usage: totalUsage
                     })
-                    log.finishSession(sessionId, {
+                    aiLog?.finishSession(sessionId, {
                         status: 'success',
                         finishReason,
                         text: attemptText,
@@ -499,13 +500,13 @@ export function createAgentStream(options: IAgentStreamOptions) {
                 clearTimer()
                 outerController.abort()
                 if (attemptId) {
-                    log.finishAttempt(attemptId, {
+                    aiLog?.finishAttempt(attemptId, {
                         status: 'cancelled',
                         text: attemptText,
                         reasoningText: attemptReasoning
                     })
                 }
-                log.finishSession(sessionId, {
+                aiLog?.finishSession(sessionId, {
                     status: 'cancelled',
                     text: attemptText,
                     reasoningText: attemptReasoning
