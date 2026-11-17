@@ -48,7 +48,8 @@ consumeUpdateError()
 restorePendingUpdate()
 
 app.whenReady().then(() => {
-    const ipcHandler = createIPCHandler({ router: appRouter })
+    // 自定义 preload 已调用 exposeElectronTRPC
+    createIPCHandler({ router: appRouter, preload: false })
 
     // 为 Windows 设置应用用户模型 ID。这是一个专门针对 Windows 的唯一标识符。
     electronApp.setAppUserModelId('com.yoyokity.japLC')
@@ -56,7 +57,7 @@ app.whenReady().then(() => {
     app.on('activate', () => {
         // 在 macOS 上，当点击 dock 图标并且没有其他窗口打开时，通常会在应用程序中重新创建一个窗口。
         if (BrowserWindow.getAllWindows().length === 0) {
-            ipcHandler.attachWindow(createWindow())
+            createWindow()
         }
     })
 
@@ -81,7 +82,7 @@ app.whenReady().then(() => {
         return net.fetch(`file:///${encodedPath}`)
     })
 
-    ipcHandler.attachWindow(createWindow())
+    createWindow()
 })
 
 // 当所有窗口关闭时退出应用，但在 macOS 上除外。在 macOS 上，

@@ -19,6 +19,7 @@ import 'primeicons/primeicons.css'
 LogHelper.debug('============================')
 LogHelper.debug('应用初始化中...')
 
+// TODO: primevue 全部改成dayjs + tailwindcss + tabler
 async function initApp() {
     await PathHelper.init()
     await TransHelper.init()

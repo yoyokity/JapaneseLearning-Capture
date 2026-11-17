@@ -1,5 +1,5 @@
 import { contextBridge, webUtils } from 'electron'
-import { exposeElectronTRPC } from 'electron-trpc/main'
+import { exposeElectronTRPC } from 'electron-trpc/preload'
 
 // 为渲染进程提供的自定义API
 const api = {

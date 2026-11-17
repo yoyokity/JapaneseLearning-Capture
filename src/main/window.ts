@@ -7,16 +7,25 @@ import ElectronStore from 'electron-store'
 
 const iconPath = resolve(import.meta.dirname, '../../resources/mainIcon.png')
 
+interface IWindowConfig {
+    width: number
+    height: number
+    x?: number | undefined
+    y?: number | undefined
+}
+
+interface IWindowStore {
+    window: IWindowConfig
+}
+
 export function createWindow() {
     // 保存窗口配置
-    const store = new ElectronStore({
+    const store = new ElectronStore<IWindowStore>({
         name: 'window', // 保存到data/window.json
         defaults: {
             window: {
                 width: 950,
-                height: 600,
-                x: undefined,
-                y: undefined
+                height: 600
             }
         }
     })
@@ -48,7 +57,7 @@ export function createWindow() {
         minHeight: 500,
         icon: iconPath, // 为所有平台添加图标
         webPreferences: {
-            preload: join(import.meta.dirname, '../preload/index.js'),
+            preload: join(import.meta.dirname, '../preload/index.mjs'),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: false,

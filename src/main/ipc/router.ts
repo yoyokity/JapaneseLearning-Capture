@@ -134,7 +134,7 @@ export const appRouter = t.router({
                 }
             })
         ),
-        apply: procedure.mutation(() => applyUpdate())
+        applyUpdate: procedure.mutation(() => applyUpdate())
     }),
     dependency: t.router({
         local: procedure.query(() => getLocalDependencies()),

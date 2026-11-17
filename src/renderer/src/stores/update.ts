@@ -78,7 +78,7 @@ export const updateStore = defineStore('update', () => {
      * 重启并应用更新
      */
     async function apply() {
-        await ipc.update.apply.mutate()
+        await ipc.update.applyUpdate.mutate()
     }
 
     return {
