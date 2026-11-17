@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import { join } from 'node:path'
 import { electronApp } from '@electron-toolkit/utils'
-import { app, BrowserWindow, net, protocol } from 'electron'
+import { app, BrowserWindow, crashReporter, net, protocol } from 'electron'
 import { createIPCHandler } from 'electron-trpc/main'
 
 import { appPath } from './globalStates'
@@ -39,6 +39,9 @@ app.setPath('temp', join(appPath.root, 'data', 'temp'))
 
 createDirectory(app.getPath('temp'))
 createDirectory(appPath.sandbox)
+
+// 启动崩溃上报（仅本地收集，不上传），否则子进程注册 Crashpad 时会因找不到 handler 报错
+crashReporter.start({ uploadToServer: false })
 
 // 读取上次更新失败标记，并恢复已下载完成但未应用的更新
 consumeUpdateError()
