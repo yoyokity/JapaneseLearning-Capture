@@ -1,3 +1,5 @@
+import type { ISubtitleSource } from '../src/main/subtitle/sources'
+
 import { execFile, execFileSync } from 'node:child_process'
 import {
     closeSync,
@@ -5,7 +7,6 @@ import {
     existsSync,
     mkdirSync,
     openSync,
-    readdirSync,
     readFileSync,
     renameSync,
     rmSync,
@@ -13,7 +14,7 @@ import {
     writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { path7za } from '7zip-bin'
@@ -23,36 +24,14 @@ import {
     DOWNLOAD_CONNECTIONS,
     runWithConcurrency
 } from '../src/main/helper/downloadShared'
+import { findFile, HUGGINGFACE_ENDPOINT, SUBTITLE_SOURCES } from '../src/main/subtitle/sources'
 
 /** 项目根目录 */
 const root = fileURLToPath(new URL('..', import.meta.url))
 /** Hugging Face 地址，可通过 HF_ENDPOINT 使用镜像 */
-const { HF_ENDPOINT: hfEndpoint = 'https://huggingface.co' } = process.env
-/** 运行时对应的 CrispASR 版本 */
-const CRISPASR_VERSION = 'v0.8.53'
-/** CrispASR CUDA 包大小 */
-const CRISPASR_ARCHIVE_SIZE = 787_539_468
+const { HF_ENDPOINT: hfEndpoint = HUGGINGFACE_ENDPOINT } = process.env
 /** 异步执行命令 */
 const execFileAsync = promisify(execFile)
-
-/** 待下载的模型 */
-const models = [
-    {
-        url: `${hfEndpoint}/cstr/cohere-transcribe-03-2026-GGUF/resolve/main/cohere-transcribe-q4_k.gguf`,
-        target: join(root, 'tools/subtitle-cohere/cohere-transcribe-q4_k.gguf'),
-        size: 1_289_178_240
-    },
-    {
-        url: `${hfEndpoint}/cstr/qwen3-forced-aligner-0.6b-GGUF/resolve/main/qwen3-forced-aligner-0.6b-q4_k.gguf`,
-        target: join(root, 'tools/subtitle/models/qwen3-forced-aligner.gguf'),
-        size: 529_001_216
-    },
-    {
-        url: `${hfEndpoint}/cstr/whisper-vad-encdec-asmr-GGUF/resolve/main/whisper-vad-asmr-q4_k.gguf`,
-        target: join(root, 'tools/subtitle/models/vad/whisper-vad-asmr-q4_k.gguf'),
-        size: 25_418_080
-    }
-]
 
 /**
  * 下载单个分块
@@ -135,34 +114,16 @@ async function download(url: string, target: string, size: number) {
 }
 
 /**
- * 递归查找文件
- * @param dir 目录
- * @param name 文件名
- */
-function findFile(dir: string, name: string): string | null {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const fullPath = join(dir, entry.name)
-        if (entry.isDirectory()) {
-            const found = findFile(fullPath, name)
-            if (found) return found
-        } else if (entry.name === name) {
-            return fullPath
-        }
-    }
-
-    return null
-}
-
-/**
  * 下载并解压 CrispASR 运行时
+ * @param source 源文件
+ * @param url 下载地址
  */
-async function fetchRuntime() {
-    const runtimeDir = join(root, 'tools/subtitle/runtimes/windows-x64/cuda/bin')
+async function fetchRuntime(source: ISubtitleSource, url: string) {
+    const runtimeDir = join(root, 'tools', source.component, source.target)
     if (existsSync(join(runtimeDir, 'crispasr.exe'))) return
 
-    const url = `https://github.com/CrispStrobe/CrispASR/releases/download/${CRISPASR_VERSION}/crispasr-windows-x86_64-cuda.zip`
-    const archivePath = join(root, 'tools/.crispasr-windows-x86_64-cuda.zip')
-    await download(url, archivePath, CRISPASR_ARCHIVE_SIZE)
+    const archivePath = join(root, 'tools', `.${basename(new URL(source.url).pathname)}`)
+    await download(url, archivePath, source.size)
 
     const tempDir = join(tmpdir(), `JapLC-crispasr-${Date.now()}`)
     mkdirSync(tempDir, { recursive: true })
@@ -180,7 +141,11 @@ async function fetchRuntime() {
     }
 }
 
-for (const model of models) {
-    await download(model.url, model.target, model.size)
+for (const source of SUBTITLE_SOURCES) {
+    const url = source.url.replace(HUGGINGFACE_ENDPOINT, hfEndpoint)
+    if (source.archive) {
+        await fetchRuntime(source, url)
+    } else {
+        await download(url, join(root, 'tools', source.component, source.target), source.size)
+    }
 }
-await fetchRuntime()

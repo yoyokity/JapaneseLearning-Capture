@@ -92,8 +92,10 @@ export interface ILatestManifest {
     versions?: string[]
     assets: {
         app: { name: string; size: number; sha256: string }
-        /** 各依赖包，旧版清单可能没有 */
-        dependencies?: Record<string, { name: string; size: number; sha256: string }>
+        /** 统一工具包 */
+        tools?: { name: string; size: number; sha256: string; version: string }
+        /** 官网直下的依赖，目前只有字幕 */
+        dependencies?: Record<string, { version?: string }>
     }
 }
 

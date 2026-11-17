@@ -105,7 +105,8 @@ function installDependency(item: IDependencyInfo) {
  * @param item 依赖信息
  */
 function openPath(item: IDependencyInfo) {
-    PathHelper.openInExplorer(PathHelper.arsrPath.extraResource.join('tools', item.id))
+    const toolsDir = PathHelper.arsrPath.extraResource.join('tools')
+    PathHelper.openInExplorer(item.id === 'tools' ? toolsDir : toolsDir.join(item.id))
 }
 
 // 安装结束提示并刷新

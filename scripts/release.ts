@@ -26,36 +26,49 @@ if (!existsSync(outDir)) {
     process.exit(1)
 }
 
-// 依赖包名须唯一
-const DEPENDENCY_IDS = ['ffmpeg', 'image-polish', 'mediainfo', 'subtitle', 'subtitle-cohere']
-const DEPENDENCY_ASSET_PATTERN = /^JapLC-dep-(?<id>[a-z-]+)-(?<hash>[0-9a-f]{8})-x64\.7z$/
-const dependencyArchives = new Map<string, string>()
+// 统一工具包
+const TOOLS_ASSET_PATTERN = /^JapLC-tools-(?<hash>[0-9a-f]{8})-x64\.7z$/
+let toolsArchive = ''
 for (const name of readdirSync(outDir)) {
-    const { id = '' } = DEPENDENCY_ASSET_PATTERN.exec(name)?.groups ?? {}
-    if (!id) continue
-    if (dependencyArchives.has(id)) {
-        console.error(`out 目录中存在多个 ${id} 依赖包，请重新执行 vp run package`)
+    const { hash = '' } = TOOLS_ASSET_PATTERN.exec(name)?.groups ?? {}
+    if (!hash) continue
+    if (toolsArchive) {
+        console.error('out 目录中存在多个工具包，请重新执行 vp run package')
         process.exit(1)
     }
-    dependencyArchives.set(id, name)
+    toolsArchive = name
 }
-const missingDependencies = DEPENDENCY_IDS.filter((id) => !dependencyArchives.has(id))
-if (missingDependencies.length > 0) {
-    console.error(`缺少依赖包：${missingDependencies.join(', ')}，请先执行 vp run package`)
+if (!toolsArchive) {
+    console.error('缺少工具包，请先执行 vp run package')
     process.exit(1)
 }
-// 未登记依赖包告警
-const unknownDependencies = [...dependencyArchives.keys()].filter(
-    (id) => !DEPENDENCY_IDS.includes(id)
-)
-if (unknownDependencies.length > 0) {
-    console.warn(`out 目录中存在未登记依赖包：${unknownDependencies.join(', ')}，将不会上传`)
+
+// 依赖版本由打包时计算
+const hashFile = join(outDir, 'dependency-hashes.json')
+if (!existsSync(hashFile)) {
+    console.error('缺少依赖版本信息，请先执行 vp run package')
+    process.exit(1)
+}
+const dependencyHashes = JSON.parse(readFileSync(hashFile, 'utf8')) as {
+    tools?: string
+    subtitle?: string
+}
+if (!dependencyHashes.tools || !dependencyHashes.subtitle) {
+    console.error('依赖版本信息不完整，请先执行 vp run package')
+    process.exit(1)
+}
+const { hash: toolsFileHash = '' } = TOOLS_ASSET_PATTERN.exec(toolsArchive)?.groups ?? {}
+if (toolsFileHash !== dependencyHashes.tools) {
+    console.error('工具包版本与依赖版本信息不一致，请重新执行 vp run package')
+    process.exit(1)
+}
+// 旧的分目录依赖包告警
+const legacyArchives = readdirSync(outDir).filter((name) => name.startsWith('JapLC-dep-'))
+if (legacyArchives.length > 0) {
+    console.warn(`out 目录中存在旧依赖包：${legacyArchives.join(', ')}，将不会上传`)
 }
 
-const assets = [
-    'JapLC-app-x64.7z',
-    ...DEPENDENCY_IDS.map((id) => dependencyArchives.get(id) as string)
-]
+const assets = ['JapLC-app-x64.7z', toolsArchive]
 const missing = assets.filter((name) => !existsSync(join(outDir, name)))
 if (missing.length > 0) {
     console.error(`缺少发布资产：${missing.join(', ')}，请先执行 vp run package`)
@@ -255,12 +268,14 @@ const manifest = {
     versions,
     assets: {
         app: { name: 'JapLC-app-x64.7z', ...fileInfo(join(outDir, 'JapLC-app-x64.7z')) },
-        dependencies: Object.fromEntries(
-            DEPENDENCY_IDS.map((id) => {
-                const name = dependencyArchives.get(id) as string
-                return [id, { name, ...fileInfo(join(outDir, name)) }]
-            })
-        )
+        tools: {
+            name: toolsArchive,
+            ...fileInfo(join(outDir, toolsArchive)),
+            version: dependencyHashes.tools
+        },
+        dependencies: {
+            subtitle: { version: dependencyHashes.subtitle }
+        }
     }
 }
 const manifestPath = join(outDir, 'latest.json')

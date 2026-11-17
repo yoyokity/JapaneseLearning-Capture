@@ -1,24 +1,33 @@
+import type { ISubtitleSource } from '../subtitle/sources'
 import type { ILatestManifest } from './update'
 
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    statSync,
+    writeFileSync
+} from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import { app } from 'electron'
 
 import { appPath } from '../globalStates'
 import { Helper } from '../helper'
+import { findFile, getSourceSize, getSourceUrls, SUBTITLE_SOURCES } from '../subtitle/sources'
 import { DOWNLOAD_BASE, fetchLatestManifest, getSevenZipPath } from './update'
 
 const execFileAsync = promisify(execFile)
-/** 依赖包名格式 */
-const DEPENDENCY_ASSET_PATTERN = /^JapLC-dep-(?<id>[a-z-]+)-(?<hash>[0-9a-f]{8})-x64\.7z$/
 
 /**
  * 依赖的物理包
  */
 export interface IDependencyComponent {
-    /** tools 目录名，也是发布资产 id */
+    /** tools 目录名 */
     id: string
     /** 安装检测文件 */
     files: string[]
@@ -34,7 +43,7 @@ export interface IDependencyDefinition {
     name: string
     /** 功能说明 */
     description: string
-    /** 组成该依赖的物理包，逐个下载安装 */
+    /** 组成该依赖的物理包，统一工具包内含多个目录 */
     components: IDependencyComponent[]
     /** 是否必需 */
     required: boolean
@@ -43,30 +52,18 @@ export interface IDependencyDefinition {
 /** 应用依赖的工具 */
 const DEPENDENCIES: IDependencyDefinition[] = [
     {
-        id: 'ffmpeg',
-        name: 'FFmpeg',
-        description: '音频重编码',
-        required: true,
-        components: [{ id: 'ffmpeg', files: ['ffmpeg.exe'] }]
-    },
-    {
-        id: 'image-polish',
-        name: 'Image Polish',
-        description: '图片超分辨率',
+        id: 'tools',
+        name: '工具组件',
+        description: '音频、图片与媒体处理工具',
         required: true,
         components: [
+            { id: 'ffmpeg', files: ['ffmpeg.exe'] },
             {
                 id: 'image-polish',
                 files: ['imagepolish.exe', 'onnxruntime.dll', 'DirectML.dll']
-            }
+            },
+            { id: 'mediainfo', files: ['MediaInfo.exe', 'LIBCURL.DLL'] }
         ]
-    },
-    {
-        id: 'mediainfo',
-        name: 'MediaInfo',
-        description: '读取媒体信息',
-        required: true,
-        components: [{ id: 'mediainfo', files: ['MediaInfo.exe', 'LIBCURL.DLL'] }]
     },
     {
         id: 'subtitle',
@@ -79,12 +76,9 @@ const DEPENDENCIES: IDependencyDefinition[] = [
                 files: [
                     'runtimes/windows-x64/cuda/bin/crispasr.exe',
                     'models/qwen3-forced-aligner.gguf',
-                    'models/vad/whisper-vad-asmr-q4_k.gguf'
+                    'models/vad/whisper-vad-asmr-q4_k.gguf',
+                    'models/cohere-transcribe-q4_k.gguf'
                 ]
-            },
-            {
-                id: 'subtitle-cohere',
-                files: ['cohere-transcribe-q4_k.gguf']
             }
         ]
     }
@@ -173,10 +167,11 @@ function readComponentVersion(id: string) {
  * @remark 多个物理包的版本用 + 连接
  */
 function readLocalVersion(dependency: IDependencyDefinition) {
-    return dependency.components
+    const versions = dependency.components
         .map((component) => readComponentVersion(component.id))
         .filter(Boolean)
-        .join('+')
+
+    return [...new Set(versions)].join('+')
 }
 
 /**
@@ -234,6 +229,31 @@ export function getLocalDependencies(): IDependencyInfo[] {
 }
 
 /**
+ * 迁移旧版独立的 subtitle-cohere 目录
+ * @param version 新版字幕依赖版本
+ * @remark 迁移后写入版本号，避免老用户重新下载
+ */
+function migrateSubtitleCohere(version?: string) {
+    if (!version) return
+
+    const toolsDir = getToolsDir()
+    const oldDir = join(toolsDir, 'subtitle-cohere')
+    const oldFile = join(oldDir, 'cohere-transcribe-q4_k.gguf')
+    if (!existsSync(oldFile)) return
+
+    const newFile = join(toolsDir, 'subtitle/models/cohere-transcribe-q4_k.gguf')
+    if (existsSync(newFile)) {
+        rmSync(oldDir, { recursive: true, force: true })
+        return
+    }
+
+    mkdirSync(dirname(newFile), { recursive: true })
+    renameSync(oldFile, newFile)
+    rmSync(oldDir, { recursive: true, force: true })
+    writeFileSync(join(toolsDir, 'subtitle/.version'), version)
+}
+
+/**
  * 获取依赖状态
  */
 export async function getDependencies(): Promise<IDependencyList> {
@@ -248,25 +268,34 @@ export async function getDependencies(): Promise<IDependencyList> {
     }
 
     const dependencies = manifest?.assets?.dependencies
+    const { subtitle } = dependencies ?? {}
+    migrateSubtitleCohere(subtitle?.version)
+
+    const toolsAsset = manifest?.assets?.tools
     const items = getLocalDependencies().map((item) => {
+        const isTools = item.id === 'tools'
         const components = item.components.map((component) => {
-            const asset = dependencies?.[component.id]
-            // 从包名取版本
-            const { hash = '' } = DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
+            const local = readComponentVersion(component.id)
+            // 统一工具包的版本对整个依赖生效
+            if (isTools) {
+                return { local, remote: toolsAsset?.version ?? '', size: 0 }
+            }
+
+            // 官网直下的依赖体积固定，版本由清单直接给出
+            const sourceSize = getSourceSize(component.id)
 
             return {
-                local: readComponentVersion(component.id),
-                remote: hash,
-                size: asset?.size ?? 0
+                local,
+                remote: sourceSize > 0 ? (dependencies?.[component.id]?.version ?? '') : '',
+                size: sourceSize
             }
         })
 
         return {
             ...item,
-            latestVersion: components
-                .map((component) => component.remote)
-                .filter(Boolean)
-                .join('+'),
+            latestVersion: [
+                ...new Set(components.map((component) => component.remote).filter(Boolean))
+            ].join('+'),
             // 任一物理包版本不一致即提示更新
             updateAvailable: components.some(
                 (component) =>
@@ -274,19 +303,217 @@ export async function getDependencies(): Promise<IDependencyList> {
                     Boolean(component.remote) &&
                     component.local !== component.remote
             ),
-            size: components.reduce((sum, component) => sum + component.size, 0)
+            size: isTools
+                ? (toolsAsset?.size ?? 0)
+                : components.reduce((sum, component) => sum + component.size, 0)
         }
     })
 
     return {
         items,
-        // 开发模式视为可用；可选依赖缺省不影响整体可用
-        remoteOk:
-            !app.isPackaged ||
-            DEPENDENCIES.filter((dependency) => dependency.required).every((dependency) =>
-                dependency.components.every((component) => Boolean(dependencies?.[component.id]))
-            )
+        // 开发模式视为可用；字幕为可选依赖，缺失不影响整体可用
+        remoteOk: !app.isPackaged || Boolean(toolsAsset)
     }
+}
+
+/** 源文件下载选项 */
+interface ISourceDownloadOptions {
+    /** 文件大小 */
+    size: number
+    /** 文件 sha256 */
+    sha256: string
+    /** 保存路径 */
+    targetPath: string
+    /** 已下载字节数回调 */
+    onProgress: (received: number) => void
+    /** 官方地址失败回调 */
+    onFallback: () => void
+}
+
+/**
+ * 依次尝试多个源地址下载
+ * @param urls 候选地址，按优先级排列
+ * @param options 下载选项
+ */
+async function downloadFromSources(urls: string[], options: ISourceDownloadOptions) {
+    const { onFallback, ...rest } = options
+    let lastError: unknown = null
+
+    for (const [index, url] of urls.entries()) {
+        try {
+            return await Helper.downloadFile({ url, ...rest })
+        } catch (error) {
+            lastError = error
+            if (index === 0) onFallback()
+        }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError))
+}
+
+/**
+ * 安装官网直下的组件
+ * @param name 依赖展示名称
+ * @param component 组件定义
+ * @param sources 源文件清单
+ * @param version 版本号
+ * @param offset 已完成字节数
+ * @param total 总字节数
+ */
+async function installLocalComponent(
+    name: string,
+    component: IDependencyComponent,
+    sources: ISubtitleSource[],
+    version: string,
+    offset: number,
+    total: number
+) {
+    const toolsDir = getToolsDir()
+    const dependencyDir = join(toolsDir, component.id)
+    // 中断后保留临时目录，已下载文件可复用
+    const tmpDir = join(toolsDir, `.tmp-${component.id}`)
+    const depsDir = join(app.getPath('userData'), 'dependency')
+    mkdirSync(tmpDir, { recursive: true })
+    mkdirSync(depsDir, { recursive: true })
+
+    let received = offset
+    let preferMirror = false
+
+    for (const source of sources) {
+        const urls = getSourceUrls(source.url, preferMirror)
+        const downloadOptions = {
+            size: source.size,
+            sha256: source.sha256,
+            onProgress: (value: number) => setState({ received: received + value }),
+            onFallback: () => {
+                preferMirror = true
+            }
+        }
+
+        if (source.archive) {
+            const archivePath = join(depsDir, basename(new URL(source.url).pathname))
+            // 已完整下载的压缩包直接复用
+            if (!existsSync(archivePath) || statSync(archivePath).size !== source.size) {
+                await downloadFromSources(urls, { ...downloadOptions, targetPath: archivePath })
+            }
+
+            setState({ status: 'extracting', received, total })
+            const extractDir = join(tmpDir, '.extract')
+            rmSync(extractDir, { recursive: true, force: true })
+            try {
+                await execFileAsync(
+                    getSevenZipPath(),
+                    ['x', '-y', `-o${extractDir}`, archivePath],
+                    { windowsHide: true }
+                )
+            } catch {
+                rmSync(extractDir, { recursive: true, force: true })
+                throw new Error(`${name} 解压失败，请重试`)
+            }
+
+            const exePath = findFile(extractDir, 'crispasr.exe')
+            if (!exePath) {
+                rmSync(extractDir, { recursive: true, force: true })
+                throw new Error('压缩包中未找到 crispasr.exe')
+            }
+
+            const targetPath = join(tmpDir, component.id, source.target)
+            mkdirSync(targetPath, { recursive: true })
+            cpSync(dirname(exePath), targetPath, { recursive: true })
+            rmSync(extractDir, { recursive: true, force: true })
+            rmSync(archivePath, { force: true })
+        } else {
+            // 已完整下载的文件直接复用
+            const targetPath = join(tmpDir, component.id, source.target)
+            if (!existsSync(targetPath) || statSync(targetPath).size !== source.size) {
+                mkdirSync(dirname(targetPath), { recursive: true })
+                await downloadFromSources(urls, { ...downloadOptions, targetPath })
+            }
+        }
+
+        received += source.size
+        setState({ status: 'downloading', received })
+    }
+
+    // 替换旧版本，失败保留
+    try {
+        rmSync(dependencyDir, { recursive: true, force: true })
+        renameSync(join(tmpDir, component.id), dependencyDir)
+    } catch {
+        throw new Error(`${name} 文件正在被使用，请关闭相关功能后重试`)
+    }
+
+    rmSync(tmpDir, { recursive: true, force: true })
+    writeFileSync(join(dependencyDir, '.version'), version)
+}
+
+/** 统一工具包资产 */
+interface IToolsAsset {
+    /** 资产文件名 */
+    name: string
+    /** 文件大小 */
+    size: number
+    /** 文件 sha256 */
+    sha256: string
+    /** 包版本 */
+    version: string
+}
+
+/**
+ * 安装统一工具包
+ * @param components 包内组件
+ * @param asset 远端资产
+ * @param tag 版本 tag
+ */
+async function installToolsPackage(
+    components: IDependencyComponent[],
+    asset: IToolsAsset,
+    tag: string
+) {
+    const toolsDir = getToolsDir()
+    const depsDir = join(app.getPath('userData'), 'dependency')
+    mkdirSync(toolsDir, { recursive: true })
+    mkdirSync(depsDir, { recursive: true })
+
+    const archivePath = join(depsDir, asset.name)
+    // 已完整下载的压缩包直接复用
+    if (!existsSync(archivePath) || statSync(archivePath).size !== asset.size) {
+        await Helper.downloadFile({
+            url: `${DOWNLOAD_BASE}/${tag}/${asset.name}`,
+            size: asset.size,
+            sha256: asset.sha256,
+            targetPath: archivePath,
+            onProgress: (received) => setState({ received })
+        })
+    }
+
+    setState({ status: 'extracting', received: 0, total: 0 })
+    const tmpDir = join(toolsDir, '.tmp-tools')
+    rmSync(tmpDir, { recursive: true, force: true })
+    mkdirSync(tmpDir, { recursive: true })
+    try {
+        await execFileAsync(getSevenZipPath(), ['x', '-y', `-o${tmpDir}`, archivePath], {
+            windowsHide: true
+        })
+    } catch {
+        rmSync(tmpDir, { recursive: true, force: true })
+        throw new Error('工具组件解压失败，请重试')
+    }
+
+    // 逐个替换，保留 tools 下其他目录
+    for (const component of components) {
+        const targetDir = join(toolsDir, component.id)
+        try {
+            rmSync(targetDir, { recursive: true, force: true })
+            renameSync(join(tmpDir, component.id), targetDir)
+        } catch {
+            throw new Error('工具组件文件正在被使用，请关闭相关功能后重试')
+        }
+        writeFileSync(join(targetDir, '.version'), asset.version)
+    }
+
+    rmSync(tmpDir, { recursive: true, force: true })
+    rmSync(archivePath, { force: true })
 }
 
 /**
@@ -317,73 +544,37 @@ export async function installDependency(id: string) {
             if (!manifest) {
                 throw new Error('依赖信息已失效，请重新检查')
             }
+            // 下载前先迁移旧版目录，避免重复下载
+            const { subtitle } = manifest.assets?.dependencies ?? {}
+            migrateSubtitleCohere(subtitle?.version)
 
-            // 先校验全部物理包，避免下载到一半才发现信息失效
-            const components = dependency.components.map((component) => {
-                const asset = manifest.assets?.dependencies?.[component.id]
-                const { id: assetId = '', hash = '' } =
-                    DEPENDENCY_ASSET_PATTERN.exec(asset?.name ?? '')?.groups ?? {}
-                if (!asset || !hash || assetId !== component.id) {
+            if (id === 'tools') {
+                const asset = manifest.assets?.tools
+                if (!asset?.name || !asset.size || !asset.sha256 || !asset.version) {
                     throw new Error('依赖信息已失效，请重新检查')
                 }
 
-                return { component, asset, hash }
-            })
-
-            const total = components.reduce((sum, item) => sum + item.asset.size, 0)
-            const depsDir = join(app.getPath('userData'), 'dependency')
-            mkdirSync(depsDir, { recursive: true })
-            setState({ id, status: 'downloading', received: 0, total, error: null })
-
-            let finished = 0
-            for (const { component, asset, hash } of components) {
-                const offset = finished
-                const archivePath = await Helper.downloadFile({
-                    url: `${DOWNLOAD_BASE}/${manifest.tag}/${asset.name}`,
-                    size: asset.size,
-                    sha256: asset.sha256,
-                    targetPath: join(depsDir, asset.name),
-                    onProgress: (received) => setState({ received: offset + received })
-                })
-
-                setState({ status: 'extracting', received: offset, total })
-                const toolsDir = getToolsDir()
-                const dependencyDir = join(toolsDir, component.id)
-                // 临时目录同卷
-                const tmpDir = join(toolsDir, `.tmp-${component.id}`)
-                mkdirSync(toolsDir, { recursive: true })
-                rmSync(tmpDir, { recursive: true, force: true })
-
-                // 先解压到临时目录
-                try {
-                    await execFileAsync(
-                        getSevenZipPath(),
-                        ['x', '-y', `-o${tmpDir}`, archivePath],
-                        {
-                            windowsHide: true
-                        }
-                    )
-                } catch {
-                    rmSync(tmpDir, { recursive: true, force: true })
-                    throw new Error(`${dependency.name} 解压失败，请重试`)
-                }
-
-                // 替换旧版本，失败保留
-                try {
-                    rmSync(dependencyDir, { recursive: true, force: true })
-                    renameSync(join(tmpDir, component.id), dependencyDir)
-                } catch {
-                    throw new Error(`${dependency.name} 文件正在被使用，请关闭相关功能后重试`)
-                } finally {
-                    rmSync(tmpDir, { recursive: true, force: true })
-                }
-
-                writeFileSync(join(dependencyDir, '.version'), hash)
-                rmSync(archivePath, { force: true })
-                finished += asset.size
-                setState({ received: finished })
+                setState({ id, status: 'downloading', received: 0, total: asset.size, error: null })
+                await installToolsPackage(dependency.components, asset, manifest.tag)
+                setState({ status: 'done', received: 0, total: 0 })
+                return
             }
 
+            // 官网直下的依赖
+            const [component] = dependency.components
+            const sources = component
+                ? SUBTITLE_SOURCES.filter((source) => source.component === component.id)
+                : []
+            const version = component
+                ? manifest.assets?.dependencies?.[component.id]?.version
+                : undefined
+            if (!component || sources.length === 0 || !version) {
+                throw new Error('依赖信息已失效，请重新检查')
+            }
+
+            const total = getSourceSize(component.id)
+            setState({ id, status: 'downloading', received: 0, total, error: null })
+            await installLocalComponent(dependency.name, component, sources, version, 0, total)
             setState({ status: 'done', received: 0, total: 0 })
         } catch (error) {
             // 标记 id，前端据此结束排队任务

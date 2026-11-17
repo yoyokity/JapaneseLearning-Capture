@@ -106,7 +106,7 @@
 - 只写用户可见的内容，按 `### ✨ 新功能` / `### 🔧 改进` / `### 🐛 修复` 分组，没有的组省略
 - 不写构建、重构、依赖升级、开发工具相关
 - 发布页顶部的「📥 下载」引导由 `scripts/release.ts` 自动插入（指向 app 包），说明里不要重复写下载链接
-- 不要提依赖包（`JapLC-dep-*.7z`），它们由应用内「设置 → 依赖」下载，用户只需下载 `JapLC-app-x64.7z`
+- 不要提工具包（`JapLC-tools-*.7z`），它由应用内「设置 → 依赖」下载，用户只需下载 `JapLC-app-x64.7z`
 - 示例：
 
 > ### ✨ 新功能
@@ -121,8 +121,9 @@
 
 1. `vp run package`（必须重新打包，脚本会校验产物是否早于构建结果）
 2. `vp run release`（创建 draft，自动写入并上传 `latest.json`）
-3. `gh release view <version> --json assets` 确认 7 个资产齐全：
-   `JapLC-app-x64.7z`、`JapLC-dep-ffmpeg-<hash>-x64.7z`、`JapLC-dep-image-polish-<hash>-x64.7z`、`JapLC-dep-mediainfo-<hash>-x64.7z`、`JapLC-dep-subtitle-<hash>-x64.7z`、`JapLC-dep-subtitle-cohere-<hash>-x64.7z`、`latest.json`
+3. `gh release view <version> --json assets` 确认 3 个资产齐全：
+   `JapLC-app-x64.7z`、`JapLC-tools-<hash>-x64.7z`、`latest.json`
+   （字幕依赖 `subtitle` 由应用直接从官网下载，不再打包上传）
 4. `vp run release --publish`（draft 完整时只转正式发布，不重新上传）
 5. 验证：
     - `gh release view <version>` 显示 Latest

@@ -4,6 +4,9 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { path7za } = require('7zip-bin')
 
+/** 统一工具包包含的目录 */
+const TOOLS_PACKAGE_IDS = ['ffmpeg', 'image-polish', 'mediainfo']
+
 /**
  * 目录 hash 取前 8 位
  * @param {string} dirPath 目录路径
@@ -32,21 +35,6 @@ async function hashDirectory(dirPath) {
 
     await walk(dirPath)
     return hash.digest('hex').slice(0, 8)
-}
-
-/**
- * 目录总大小
- * @param {string} dirPath 目录路径
- */
-function getDirectorySize(dirPath) {
-    let size = 0
-    for (const name of fs.readdirSync(dirPath)) {
-        const fullPath = path.join(dirPath, name)
-        const stat = fs.statSync(fullPath)
-        size += stat.isDirectory() ? getDirectorySize(fullPath) : stat.size
-    }
-
-    return size
 }
 
 module.exports = {
@@ -127,26 +115,43 @@ module.exports = {
                     stdio: 'inherit'
                 })
 
-                // 各依赖单独打包
+                // 统一工具包 + 官网直下依赖的版本
                 const toolsDir = path.join(__dirname, 'tools')
-                for (const id of await fs.promises.readdir(toolsDir)) {
-                    // 跳过隐藏项
-                    if (id.startsWith('.')) continue
-
-                    const dependencyDir = path.join(toolsDir, id)
-                    if (!(await fs.promises.stat(dependencyDir)).isDirectory()) continue
-
-                    const hash = await hashDirectory(dependencyDir)
-                    const archiveName = `JapLC-dep-${id}-${hash}-x64.7z`
-                    // 大模型包基本不可压缩，降低压缩级别避免长时间等待
-                    const compressLevel =
-                        getDirectorySize(dependencyDir) > 500 * 1024 * 1024 ? '-mx=1' : '-mx=5'
-                    execFileSync(
-                        path7za,
-                        ['a', compressLevel, '-md=32m', path.join(outDir, archiveName), id],
-                        { cwd: toolsDir, stdio: 'inherit' }
-                    )
+                const hashes = {}
+                for (const id of TOOLS_PACKAGE_IDS) {
+                    hashes[id] = await hashDirectory(path.join(toolsDir, id))
                 }
+                const toolsHash = crypto
+                    .createHash('sha256')
+                    .update(TOOLS_PACKAGE_IDS.map((id) => `${id}:${hashes[id]}`).join('|'))
+                    .digest('hex')
+                    .slice(0, 8)
+
+                const subtitleDir = path.join(toolsDir, 'subtitle')
+                if (
+                    !fs.existsSync(
+                        path.join(subtitleDir, 'runtimes/windows-x64/cuda/bin/crispasr.exe')
+                    )
+                ) {
+                    throw new Error('未找到 tools/subtitle，请先执行 vp install 下载字幕依赖')
+                }
+                const subtitleHash = await hashDirectory(subtitleDir)
+
+                execFileSync(
+                    path7za,
+                    [
+                        'a',
+                        '-mx=5',
+                        '-md=32m',
+                        path.join(outDir, `JapLC-tools-${toolsHash}-x64.7z`),
+                        ...TOOLS_PACKAGE_IDS
+                    ],
+                    { cwd: toolsDir, stdio: 'inherit' }
+                )
+                await fs.promises.writeFile(
+                    path.join(outDir, 'dependency-hashes.json'),
+                    JSON.stringify({ tools: toolsHash, subtitle: subtitleHash }, null, 4)
+                )
             }
         }
     },

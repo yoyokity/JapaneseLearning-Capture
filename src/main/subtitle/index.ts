@@ -34,7 +34,7 @@ function getSubtitlePaths() {
 
     return {
         crispasr: join(toolsDir, 'subtitle/runtimes/windows-x64/cuda/bin/crispasr.exe'),
-        model: join(toolsDir, 'subtitle-cohere/cohere-transcribe-q4_k.gguf'),
+        model: join(toolsDir, 'subtitle/models/cohere-transcribe-q4_k.gguf'),
         aligner: join(toolsDir, 'subtitle/models/qwen3-forced-aligner.gguf'),
         vad: join(toolsDir, 'subtitle/models/vad/whisper-vad-asmr-q4_k.gguf')
     }
