@@ -9,8 +9,8 @@ export type TextFileEncoding = 'utf8' | 'utf16le' | 'gb2312' | 'gbk' | 'gb18030'
 /** 文本文件换行符 */
 export type TextFileLineEndings = 'LF' | 'CRLF'
 
-const UTF8_BOM = [0xef, 0xbb, 0xbf] as const
-const UTF16LE_BOM = [0xff, 0xfe] as const
+const UTF8_BOM = [239, 187, 191] as const
+const UTF16LE_BOM = [255, 254] as const
 const LEGACY_CHINESE_ENCODINGS = ['gb2312', 'gbk', 'gb18030'] as const
 const BINARY_CONTROL_BYTE_THRESHOLD = 0.3
 const MAX_DETECTION_TRAILING_DROP_BYTES = 3
@@ -174,7 +174,7 @@ function looksLikeBinary(buffer: Buffer) {
     let controlBytes = 0
     for (const byte of buffer) {
         if (byte === 0) return true
-        if (byte < 0x09 || (byte > 0x0d && byte < 0x20)) controlBytes++
+        if (byte < 9 || (byte > 13 && byte < 32)) controlBytes++
     }
 
     return controlBytes / buffer.length > BINARY_CONTROL_BYTE_THRESHOLD

@@ -1,9 +1,16 @@
 import type { IAgentMessage, IAgentResult } from '../helper/agent'
-import type { ICue, ISegment, ISubtitleLlm, IWord, SubtitleLanguage } from './types'
+import type { ISegment, ISubtitleLlm, SubtitleLanguage } from './types'
 
+import { randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tool } from 'ai'
+import { z } from 'zod'
+
+import { appPath } from '../globalStates'
 import { Helper } from '../helper'
 import { writeLog } from '../ipc/filesystem'
-import { MAX_CUE_MS, splitIntoCues } from './cue'
+import { formatSrtTimestamp, MAX_CUE_MS, parseSrtTimestamp, renderSrt } from './cue'
 
 /** 语言名称 */
 const LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
@@ -14,48 +21,76 @@ const LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
 }
 /** 过短字幕阈值（毫秒） */
 const TRANSLATE_MIN_CUE_MS = 500
-/** 工具最大并发数 */
-const AI_TOOL_CONCURRENCY = 8
+/** 文件工具必须串行，避免并发编辑同一 SRT */
+const AI_TOOL_CONCURRENCY = 1
+/** 单次词时间查询返回上限 */
+const WORD_TIMING_MAX_RESULTS = 2000
+
+const SRT_CUE_PATTERN = /\d+\s*\n\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\s*\n.*\S/
+
+type AsrJson = ReturnType<typeof buildAsrJson>
+
+interface IWordTimingInput {
+    from: string
+    to: string
+}
+
+interface IWordTimingWord {
+    i: number
+    text: string
+    from: string
+    to: string
+}
+
+type WordTimingOutput =
+    | {
+          ok: true
+          total: number
+          words: IWordTimingWord[]
+          truncated?: boolean
+      }
+    | { ok: false; error: string }
 
 /**
  * 是否为成功的 AI 调用
  * @param result AI 结果
- * @remark 带工具调用时以 tool-calls 结束也算成功
+ * @remark 必须以正常 stop 结束；tool-calls 说明还没走完编辑循环
  */
 function isChatSuccess(result: IAgentResult) {
-    return Helper.AI.isAgentSuccess(result.finishReason) || result.finishReason === 'tool-calls'
-}
-
-/** 已提交的字幕范围 */
-interface ISubmittedRange {
-    fromWord: number
-    toWord: number
-    zh: string
+    return Helper.AI.isAgentSuccess(result.finishReason)
 }
 
 /**
  * 构造翻译系统提示词
  * @param language 识别语言
+ * @param fileName 沙箱中的 SRT 文件名
  */
-function buildTranslateSystemPrompt(language: SubtitleLanguage) {
+function buildTranslateSystemPrompt(language: SubtitleLanguage, fileName: string) {
     return [
-        `你是专业的${LANGUAGE_NAMES[language]}→简体中文字幕翻译。下面给出完整的 crispasr 识别结果，包含段级信息（timestamps/offsets/text/chunk_id）和逐词信息（words：text/from/to）。chunk_id 只是 ASR 分段提示，不是硬性断句。`,
+        `你是专业的${LANGUAGE_NAMES[language]}→简体中文字幕翻译。沙箱中有一个未经加工的原始字幕文件 ${fileName}，内容来自语音识别的分段结果。`,
         '',
-        '请修正明显的识别错误，按语义和停顿把词组合成最终字幕行，再翻译成简体中文。',
+        '工作方式：',
+        `- 必须先用 read_file 读取 ${fileName}，再修改。`,
+        '- 用 get_word_timings 按当前字幕行的时间范围查询词级时间，参数是 SRT 时间戳，例如 00:01:23,456。',
+        `- 用 edit_file 直接修改 ${fileName}；不要创建新文件。`,
+        '- 可以合并、拆分字幕行；时间轴必须来自词级时间或原时间轴，不能凭空编造。',
+        '- 删除或合并后重新编号，保持序号连续。',
+        '- 修改后必须保持合法 SRT：序号、时间轴、文本三段结构完整。',
+        '- edit_file 的 old_string 必须唯一；同一文本出现多处时，带上序号、时间轴或相邻行作为上下文。',
+        '- 文件内容就是最终交付，不要在回复里粘贴，也不要用 markdown 代码块。',
+        '- 文件较大时用 read_file 的 offset/limit 分段读取，分批 edit_file。',
         '',
-        '规则：',
-        '- 必须调用 commit_subtitle 提交最终字幕行。',
-        '- words 里的 i 是全局词索引，fromWord/toWord 使用这个索引。',
-        '- fromWord/toWord 是全局词索引（包含两端），必须完整覆盖所有 words，不能重叠、遗漏。',
-        '- 可以跨 chunk_id 合并，也可以在 chunk 内部拆分。',
+        '翻译规则：',
+        '- 修正明显的识别错误，按语义和停顿整理字幕行，再翻译成简体中文。',
         '- 每行尽量是一个完整句或自然断句；不要把同一句拆成两行，也不要把两句话硬合成一行。',
         `- 每行时长不超过 ${MAX_CUE_MS / 1000} 秒，过长请拆成多行。`,
-        `- 时长低于 ${TRANSLATE_MIN_CUE_MS} 毫秒、内容一闪而过的行，zh 传空字符串删除。`,
-        '- 明显是很长的乱码、重复噪声或无法翻译的行，zh 传空字符串删除。',
-        '- zh 为空表示删除该范围。',
-        '- 参考已提交内容，保持人名、术语和语气一致。',
+        `- 时长低于 ${TRANSLATE_MIN_CUE_MS} 毫秒、内容一闪而过的行，直接删除该条字幕。`,
+        '- 明显是很长的乱码、重复噪声或无法翻译的行，直接删除该条字幕。',
+        '- 保持人名、术语和语气一致。',
         '- 句末不要加句号。',
-        '- 男性生殖器统一译为「肉棒」，女性生殖器统一译为「小穴」。'
+        '- 男性生殖器统一译为「肉棒」，女性生殖器统一译为「小穴」。',
+        '',
+        '完成后只回复一句简短确认，不要粘贴文件内容。'
     ].join('\n')
 }
 
@@ -90,110 +125,73 @@ function buildAsrJson(segments: ISegment[], modelPath: string, language: Subtitl
 }
 
 /**
- * 拼接词文本
- * @param words 词列表
- * @param language 识别语言
+ * 从 ASR JSON 生成未加工的初始 SRT
+ * @param asrJson 识别结果
+ * @remark 按原始分段直接转换，不做断句或合并
  */
-function joinWords(words: IWord[], language: SubtitleLanguage) {
-    const text = words.map((word) => word.text).join(language === 'en' ? ' ' : '')
-
-    return language === 'en' ? text.replace(/\s+/g, ' ').trim() : text
-}
-
-/**
- * 构造未覆盖词提示
- * @param words 全部词
- * @param claimed 已覆盖词索引
- */
-function buildMissingPrompt(words: IWord[], claimed: Set<number>) {
-    const ranges: string[] = []
-    let start: number | null = null
-
-    for (let index = 0; index < words.length; index++) {
-        if (claimed.has(index)) {
-            if (start !== null) {
-                ranges.push(start === index - 1 ? `${start}` : `${start}-${index - 1}`)
-                start = null
-            }
-            continue
-        }
-
-        if (start === null) start = index
-    }
-
-    if (start !== null) {
-        ranges.push(start === words.length - 1 ? `${start}` : `${start}-${words.length - 1}`)
-    }
-
-    return [
-        '以下词索引尚未覆盖，请继续调用 commit_subtitle 补齐（索引为全局词索引）：',
-        ranges.join(', ')
-    ].join('\n')
-}
-
-/**
- * 构造已提交内容
- * @param ranges 已提交范围
- */
-function buildSubmittedContent(ranges: ISubmittedRange[]) {
-    return JSON.stringify({
-        subtitles: [...ranges]
-            .sort((a, b) => a.fromWord - b.fromWord)
-            .map((range) => ({
-                fromWord: range.fromWord,
-                toWord: range.toWord,
-                zh: range.zh
+function buildInitialSrt(asrJson: AsrJson) {
+    return renderSrt(
+        asrJson.transcription
+            .filter((segment) => segment.text.trim())
+            .map((segment, index) => ({
+                id: `c${index}`,
+                from: segment.offsets.from,
+                to: segment.offsets.to,
+                text: segment.text
             }))
+    )
+}
+
+/**
+ * 创建词级时间查询工具
+ * @param asrJson 识别结果
+ * @remark 按 SRT 时间范围返回词级时间，结果可直接用于修改字幕时间轴
+ */
+function createWordTimingTool(asrJson: AsrJson) {
+    const words = asrJson.transcription.flatMap((segment) => segment.words)
+
+    return tool<IWordTimingInput, WordTimingOutput, Record<string, unknown>>({
+        description:
+            '查询 ASR 词级时间。传入 SRT 时间范围，只返回该范围内的词；返回的时间为 SRT 格式，可直接用于编辑字幕。',
+        inputSchema: z.object({
+            from: z.string().describe('SRT 起始时间，例如 00:01:23,456'),
+            to: z.string().describe('SRT 结束时间，例如 00:01:25,000')
+        }),
+        execute: ({ from, to }) => {
+            const fromMs = parseSrtTimestamp(from)
+            const toMs = parseSrtTimestamp(to)
+
+            if (fromMs === null) return { ok: false, error: `无效的 SRT 时间：${from}` }
+            if (toMs === null) return { ok: false, error: `无效的 SRT 时间：${to}` }
+            if (toMs < fromMs) return { ok: false, error: '`to` 必须大于或等于 `from`' }
+
+            const selected = words.filter((word) => word.to >= fromMs && word.from <= toMs)
+
+            return {
+                ok: true,
+                total: selected.length,
+                words: selected.slice(0, WORD_TIMING_MAX_RESULTS).map((word) => ({
+                    i: word.i,
+                    text: word.text,
+                    from: formatSrtTimestamp(word.from),
+                    to: formatSrtTimestamp(word.to)
+                })),
+                ...(selected.length > WORD_TIMING_MAX_RESULTS ? { truncated: true } : {})
+            }
+        },
+        toModelOutput: ({ output }) => ({
+            type: 'text' as const,
+            value: JSON.stringify(output)
+        })
     })
 }
 
 /**
- * 根据提交范围生成字幕
- * @param words 全部词
- * @param ranges 已提交范围
- * @param language 识别语言
- * @remark 未覆盖的缺口用规则切分兜底
+ * 校验是否为合法 SRT
+ * @param content SRT 内容
  */
-function buildCues(words: IWord[], ranges: ISubmittedRange[], language: SubtitleLanguage) {
-    const committed = new Map<number, ISubmittedRange>()
-    for (const range of ranges) committed.set(range.fromWord, range)
-
-    const cues: ICue[] = []
-    let cursor = 0
-
-    while (cursor < words.length) {
-        const range = committed.get(cursor)
-        if (range) {
-            if (range.zh) {
-                const rangeWords = words.slice(range.fromWord, range.toWord + 1)
-                const first = rangeWords[0]
-                const last = rangeWords.at(-1)
-                if (first && last) {
-                    cues.push({
-                        id: '',
-                        from: first.from,
-                        to: last.to,
-                        text: joinWords(rangeWords, language),
-                        zh: range.zh
-                    })
-                }
-            }
-
-            cursor = range.toWord + 1
-            continue
-        }
-
-        let next = cursor
-        while (next < words.length && !committed.has(next)) next++
-
-        for (const cue of splitIntoCues(words.slice(cursor, next), language)) {
-            cues.push({ id: '', from: cue.from, to: cue.to, text: cue.text })
-        }
-
-        cursor = next
-    }
-
-    return cues
+function isValidSrt(content: string) {
+    return SRT_CUE_PATTERN.test(content)
 }
 
 /**
@@ -203,7 +201,7 @@ function buildCues(words: IWord[], ranges: ISubmittedRange[], language: Subtitle
  * @param language 识别语言
  * @param llm LLM 配置
  * @param signal 取消信号
- * @remark 一次发送完整 JSON，AI 通过 commit_subtitle 按词索引提交
+ * @remark 把原始 SRT 写入沙箱，AI 通过文件工具和词时间工具直接编辑
  */
 export async function translateSegments(
     segments: ISegment[],
@@ -211,75 +209,77 @@ export async function translateSegments(
     language: SubtitleLanguage,
     llm: ISubtitleLlm,
     signal: AbortSignal
-): Promise<ICue[] | null> {
-    if (signal.aborted || !segments.length) return []
+): Promise<string | null> {
+    if (signal.aborted || !segments.length) return null
 
-    const words = segments.flatMap((segment) => segment.words)
-    if (!words.length) return []
+    const asrJson = buildAsrJson(segments, modelPath, language)
+    const initialSrt = buildInitialSrt(asrJson)
+    if (!initialSrt) return null
 
-    const system = buildTranslateSystemPrompt(language)
-    const content = JSON.stringify(buildAsrJson(segments, modelPath, language))
-    const messages: IAgentMessage[] = [{ role: 'user', content }]
-    const ranges: ISubmittedRange[] = []
-    const claimed = new Set<number>()
+    mkdirSync(appPath.sandbox, { recursive: true })
 
-    const tools = Helper.AI.createTools({
-        words,
-        claimed,
-        ranges,
-        maxCueMs: MAX_CUE_MS
-    })
-    const maxSteps = Math.min(300, Math.max(20, Math.ceil(words.length / 10)))
+    const fileName = `subtitle-${randomUUID()}.srt`
+    const sandboxPath = join(appPath.sandbox, fileName)
+    writeFileSync(sandboxPath, initialSrt, 'utf8')
 
-    const first = await Helper.AI.chat({
-        config: llm,
-        messages,
-        system,
-        tools,
-        maxSteps,
-        toolCallConcurrency: AI_TOOL_CONCURRENCY,
-        signal
-    })
-    if (!isChatSuccess(first)) {
-        writeLog('error', '[字幕生成] AI翻译失败：', first.error ?? first.finishReason)
-    }
-    if (signal.aborted) return null
+    const cleanup = () => rmSync(sandboxPath, { force: true })
+    const system = buildTranslateSystemPrompt(language, fileName)
+    const messages: IAgentMessage[] = [
+        {
+            role: 'user',
+            content: `请读取并翻译沙箱中的 ${fileName}。完成后只回复一句简短确认。`
+        }
+    ]
+    const tools = { get_word_timings: createWordTimingTool(asrJson) }
+    const maxSteps = Math.min(300, Math.max(30, asrJson.transcription.length * 2))
 
-    // 一次提交都没有时交给上层回退谷歌翻译
-    if (!ranges.length) return null
-
-    if (claimed.size < words.length) {
-        const missingPrompt = buildMissingPrompt(words, claimed)
-        const submitted = buildSubmittedContent(ranges)
-        const missingCount = words.length - claimed.size
-
-        const second = await Helper.AI.chat({
+    let result: IAgentResult
+    try {
+        result = await Helper.AI.chat({
             config: llm,
-            messages: [
-                ...messages,
-                { role: 'assistant', content: submitted },
-                { role: 'user', content: missingPrompt }
-            ],
+            messages,
             system,
             tools,
-            maxSteps: Math.min(100, Math.max(5, Math.ceil(missingCount / 10))),
+            maxSteps,
             toolCallConcurrency: AI_TOOL_CONCURRENCY,
             signal
         })
-        if (!isChatSuccess(second)) {
-            writeLog('warn', '[字幕生成] AI补译失败：', second.error ?? second.finishReason)
+    } catch (error) {
+        if (!signal.aborted) {
+            writeLog('error', '[字幕生成] AI编辑字幕失败：', String(error))
         }
-        if (signal.aborted) return null
+        cleanup()
+        return null
     }
 
-    if (claimed.size < words.length) {
-        writeLog('warn', '[字幕生成] 部分词未翻译，已回退规则切分', {
-            missing: words.length - claimed.size
-        })
+    if (signal.aborted) {
+        cleanup()
+        return null
     }
 
-    return buildCues(words, ranges, language).map((cue, index) => ({
-        ...cue,
-        id: `c${index}`
-    }))
+    if (!isChatSuccess(result)) {
+        writeLog('error', '[字幕生成] AI编辑字幕失败：', result.error ?? result.finishReason)
+        cleanup()
+        return null
+    }
+
+    if (!existsSync(sandboxPath)) {
+        writeLog('error', '[字幕生成] AI未生成 SRT 文件')
+        return null
+    }
+
+    const srt = readFileSync(sandboxPath, 'utf8')
+    if (!isValidSrt(srt)) {
+        writeLog('error', '[字幕生成] AI生成的 SRT 格式非法')
+        cleanup()
+        return null
+    }
+
+    if (srt.replaceAll('\r\n', '\n') === initialSrt && language !== 'zh') {
+        writeLog('warn', '[字幕生成] AI未修改 SRT')
+        cleanup()
+        return null
+    }
+
+    return sandboxPath
 }

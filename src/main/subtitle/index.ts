@@ -2,7 +2,7 @@ import type { ChildProcess } from 'node:child_process'
 import type { ICue, IGenerateSubtitleInput, ISegment, ISubtitleProgress } from './types'
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { observable } from '@trpc/server/observable'
 import { app } from 'electron'
@@ -150,37 +150,48 @@ export function createSubtitleStream(input: IGenerateSubtitleInput) {
                 }
 
                 // 3. AI 翻译或谷歌翻译
+                const outputPath = join(
+                    dirname(input.inputPath),
+                    `${basename(input.inputPath, extname(input.inputPath))}.zh-CN.srt`
+                )
                 let cues: ICue[]
                 if (input.aiOptimize && input.llm) {
                     // 4. AI 翻译，同时修正识别错误
                     emitProgress({ stage: 'translate', progress: -1, message: '正在 AI 翻译' })
-                    const aiCues = await translateSegments(
+                    const aiSrtPath = await translateSegments(
                         segments,
                         paths.model,
                         input.language,
                         input.llm,
                         controller.signal
                     )
-                    if (cancelled) return
-
-                    if (aiCues) {
-                        cues = aiCues
-                    } else {
-                        // AI 失败时回退规则切分 + 谷歌翻译
-                        const initialCues = buildSegmentCues(segments)
-                        if (!initialCues.length) {
-                            throw new Error('未识别到语音内容')
-                        }
-                        cues = initialCues
-                        emitProgress({
-                            stage: 'translate',
-                            progress: 0,
-                            message: 'AI 翻译失败，改用谷歌翻译'
-                        })
-                        await translateCuesWithGoogle(cues, controller.signal, (progress) =>
-                            emitProgress({ stage: 'translate', progress })
-                        )
+                    if (cancelled) {
+                        if (aiSrtPath) rmSync(aiSrtPath, { force: true })
+                        return
                     }
+
+                    if (aiSrtPath) {
+                        copyFileSync(aiSrtPath, outputPath)
+                        rmSync(aiSrtPath, { force: true })
+                        emitProgress({ stage: 'translate', progress: 1, outputPath })
+                        emit.complete()
+                        return
+                    }
+
+                    // AI 失败时回退规则切分 + 谷歌翻译
+                    const initialCues = buildSegmentCues(segments)
+                    if (!initialCues.length) {
+                        throw new Error('未识别到语音内容')
+                    }
+                    cues = initialCues
+                    emitProgress({
+                        stage: 'translate',
+                        progress: 0,
+                        message: 'AI 翻译失败，改用谷歌翻译'
+                    })
+                    await translateCuesWithGoogle(cues, controller.signal, (progress) =>
+                        emitProgress({ stage: 'translate', progress })
+                    )
                 } else {
                     // 4. 谷歌翻译
                     const initialCues = buildSegmentCues(segments)
@@ -195,10 +206,6 @@ export function createSubtitleStream(input: IGenerateSubtitleInput) {
                 }
                 if (cancelled) return
 
-                const outputPath = join(
-                    dirname(input.inputPath),
-                    `${basename(input.inputPath, extname(input.inputPath))}.zh-CN.srt`
-                )
                 writeFileSync(outputPath, renderSrt(cues), 'utf8')
 
                 emitProgress({ stage: 'translate', progress: 1, outputPath })
