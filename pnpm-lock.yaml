@@ -30,6 +30,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^4.0.118
         version: 4.0.118(zod@4.6.7)
+      '@ai-sdk/openai-compatible':
+        specifier: ^3.0.92
+        version: 3.0.92(zod@4.6.7)
       '@antfu/eslint-config':
         specifier: ^10.0.0
         version: 10.0.0(@typescript-eslint/typescript-estree@8.73.0(typescript@6.0.3))(@typescript-eslint/utils@8.73.0(eslint@10.15.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.45)(eslint@10.15.0(jiti@2.7.0))(oxlint@1.94.0(vite-plus@1.7.0(@types/node@24.13.3)(@vitest/ui@5.1.0)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.108.2)(terser@5.51.2)(tsx@4.23.12)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))(yaml@2.9.1)))(typescript@6.0.3)(vitest@5.1.0(@types/node@24.13.3)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0(vitest@5.1.0))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.13.3)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.108.2)(terser@5.51.2)(tsx@4.23.12)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))(yaml@2.9.1)))
@@ -245,6 +248,12 @@ packages:
 
   '@ai-sdk/gateway@4.0.146':
     resolution: {integrity: sha512-rJ5NQSyjnpo6HSBEYc9Ff6k1EROUuB7KeAfHYVbVDsk68ynY0Eb8JeWflZKXlT6NhYgqyCiBDxE5blXWACXMKQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai-compatible@3.0.92':
+    resolution: {integrity: sha512-2gV7HHV4qpx+8GotOZMmGqY270ExkftwFG5+DM6nChLmRaP6WP9JKj4e9WjLhih/GsPL9dSGnZHzwCsofHwiAQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -5863,6 +5872,12 @@ snapshots:
       '@ai-sdk/provider': 4.0.38
       '@ai-sdk/provider-utils': 5.0.81(zod@4.6.7)
       '@vercel/oidc': 3.2.0
+      zod: 4.6.7
+
+  '@ai-sdk/openai-compatible@3.0.92(zod@4.6.7)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.38
+      '@ai-sdk/provider-utils': 5.0.81(zod@4.6.7)
       zod: 4.6.7
 
   '@ai-sdk/openai@4.0.118(zod@4.6.7)':

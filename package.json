@@ -24,6 +24,7 @@
         "@ai-sdk/anthropic": "^4.0.105",
         "@ai-sdk/deepseek": "^3.0.87",
         "@ai-sdk/openai": "^4.0.118",
+        "@ai-sdk/openai-compatible": "^3.0.92",
         "@antfu/eslint-config": "^10.0.0",
         "@cloudimage/before-after": "^1.0.4",
         "@electron-forge/cli": "^8.0.1",

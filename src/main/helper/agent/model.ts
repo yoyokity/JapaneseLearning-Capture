@@ -3,6 +3,7 @@ import type { IAgentConfig } from './types'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { net } from 'electron'
 
 /** 适配 AI SDK 的 fetch */
@@ -26,11 +27,17 @@ export function getAgentModel(config: IAgentConfig) {
         return createAnthropic(options)(config.model)
     }
 
-    const provider = createOpenAI(options)
+    // 自定义接口的 chat 格式需要解析 reasoning_content，使用通用兼容实现
+    if (config.apiFormat === 'chat') {
+        return createOpenAICompatible({
+            name: 'custom',
+            baseURL: config.baseUrl ?? 'https://api.openai.com/v1',
+            apiKey: config.apiKey,
+            fetch: aiFetch
+        })(config.model)
+    }
 
-    return config.apiFormat === 'chat'
-        ? provider.chat(config.model)
-        : provider.responses(config.model)
+    return createOpenAI(options).responses(config.model)
 }
 
 /** 转换思考强度 */

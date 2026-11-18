@@ -11,6 +11,13 @@
 - 不需要复用的、当前只使用一次的代码，不要额外包装成函数
 - 新增或移除依赖时，必须同步检查 `forge.config.cjs` 的 `packagerConfig.ignore`：`node_modules` 仅保留运行时依赖白名单（当前为 `sharp`、`@img`、`detect-libc`、`semver`），新增 external 或原生依赖时加入白名单，移除时同步删除。
 
+# 构建环境
+
+- `vp run build`、`dev`、`start`、`package` 都会触发 `build:image-polish`（`image-polish/build.py`），要求 PATH 中存在 `python`（3.x）。
+- 编译器由 pip 包提供：`pip install ziglang`，无需系统安装 zig/LLVM/MinGW。
+- 首次构建会从 npm 下载 ONNX Runtime 到 `image-polish/.ort-cache/`，之后可离线复用；模型文件在 `image-polish/models/`。
+- 构建产物由 `scripts/sync-tools.ts` 同步到 `tools/image-polish/`，`tools/` 不纳入 Git。
+
 # 测试文件
 
 - 临时测试材料（音频、视频、日志、识别结果等）统一放在根目录 `test/` 下，按功能建子目录，如 `test/subtitle/`。

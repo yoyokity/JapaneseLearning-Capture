@@ -2,29 +2,35 @@
 
 一个基于 Electron 的日语学习资料刮削与管理工具。
 
-![预览](./resources/preview.jpg)
+![预览](./resources/preview.webp)
 
-## 📘用法
+## ✨ 功能
 
-- 批量刮削视频资料信息
+- 刮削视频资料
 - 管理本地已刮削数据
+- 图像超分工具
+- 本地AI字幕生成
 
-## ⚠️注意事项
+## ⚠️ 注意事项
 
 - 首次运行前请确认本地刮削目录配置正确
-- 某些翻译能力依赖外部 AI API 或本地模型
 
-## 📢声明
+## 📢 声明
 
 - 本项目不提供任何视频下载，只管理本地资源
 - 本项目和项目成果仅供技术，学术交流和electron性能测试使用
 - 永久开源免费
 
-## 🛠️构建
+## 🛠️ 开发构建
 
-只需[安装 vp](https://viteplus.dev/guide/)，Node.js 与 pnpm 会按项目声明自动准备。
+需安装 **[vp](https://viteplus.dev/guide/)** 与 **Python 3.x**
+
+> Node.js 与 pnpm 会按项目声明自动准备，可以不安装。
+
+随后安装项目依赖并构建：
 
 ```bash
+pip install ziglang
 vp install      # 安装依赖
 vp run dev      # 启动开发环境
 vp run package  # 构建并打包到 out/
