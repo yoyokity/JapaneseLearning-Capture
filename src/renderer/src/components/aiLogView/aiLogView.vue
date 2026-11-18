@@ -1,16 +1,26 @@
 <script lang="ts" setup>
-import TextButton from '@renderer/components/control/button/textButton.vue'
+import type { IAiLogSessionItem } from '@shared'
+import type { MenuItem } from 'primevue/menuitem'
+
 import Markdown from '@renderer/components/control/markdown.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import Button from 'primevue/button'
+import ContextMenu from 'primevue/contextmenu'
 import Tag from 'primevue/tag'
-import { toRef } from 'vue'
+import { computed, ref, toRef } from 'vue'
 
 import { useAiLogView } from './hook'
 
 interface IProps {
     /** 是否为当前激活页 */
     active?: boolean
+}
+
+interface IContextMenuRef {
+    /** 显示右键菜单 */
+    show: (event: MouseEvent) => void
+    /** 隐藏右键菜单 */
+    hide: () => void
 }
 
 const props = withDefaults(defineProps<IProps>(), { active: true })
@@ -42,8 +52,46 @@ const {
     getToolStats,
     selectSession,
     loadSessions,
-    refresh
+    deleteSession,
+    deleteAllSessions
 } = useAiLogView(toRef(props, 'active'))
+
+const sessionContextMenu = ref<IContextMenuRef | null>(null)
+const currentSession = ref<IAiLogSessionItem | null>(null)
+
+/** 会话右键菜单项 */
+const sessionContextMenuItems = computed<MenuItem[]>(() => {
+    const session = currentSession.value
+    if (!session) return []
+
+    return [
+        {
+            label: '删除当前记录',
+            icon: 'pi pi-trash',
+            command: () => void deleteSession(session.id)
+        },
+        {
+            label: '删除全部',
+            icon: 'pi pi-trash',
+            class: 'danger-item',
+            command: () => void deleteAllSessions()
+        }
+    ]
+})
+
+/** 打开会话右键菜单 */
+function showSessionContextMenu(event: MouseEvent, session: IAiLogSessionItem) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    currentSession.value = session
+    sessionContextMenu.value?.show(event)
+}
+
+/** 收起会话右键菜单 */
+function hideSessionContextMenu() {
+    sessionContextMenu.value?.hide()
+}
 </script>
 
 <template>
@@ -52,14 +100,13 @@ const {
             <div class="panel-header">
                 <span class="title">会话</span>
                 <span class="count">{{ total }}</span>
-                <TextButton
-                    class="refresh-button"
-                    icon="pi pi-refresh"
-                    :disabled="loadingSessions"
-                    @click="refresh"
-                />
             </div>
-            <Scroll class="session-list" occupy-space="0.25rem">
+            <Scroll
+                class="session-list"
+                occupy-space="0.25rem"
+                @touchmove="hideSessionContextMenu"
+                @wheel.capture="hideSessionContextMenu"
+            >
                 <div v-if="!sessions.length && !loadingSessions" class="empty">暂无 AI 日志</div>
 
                 <div
@@ -68,6 +115,7 @@ const {
                     class="session-item"
                     :class="{ active: session.id === selectedId }"
                     @click="selectSession(session.id)"
+                    @contextmenu="(event: MouseEvent) => showSessionContextMenu(event, session)"
                 >
                     <div class="session-top">
                         <span class="source">{{ formatSource(session.source) }}</span>
@@ -301,6 +349,9 @@ const {
             <div v-else-if="loadingDetail" class="empty">加载中…</div>
             <div v-else class="empty">选择左侧会话查看详情</div>
         </div>
+
+        <!-- 会话右键菜单 -->
+        <ContextMenu ref="sessionContextMenu" :model="sessionContextMenuItems" />
     </div>
 </template>
 
@@ -335,10 +386,6 @@ const {
 .count {
     color: var(--p-text-muted-color);
     font-size: 0.75rem;
-}
-
-.refresh-button {
-    margin-left: auto;
 }
 
 .session-list {

@@ -351,7 +351,11 @@ export const appRouter = t.router({
             .query(({ input }) => Helper.AI.log.getSessionDetail(input.sessionId)),
         getSteps: procedure
             .input(z.object({ sessionId: z.string() }))
-            .query(({ input }) => Helper.AI.log.getSessionSteps(input.sessionId))
+            .query(({ input }) => Helper.AI.log.getSessionSteps(input.sessionId)),
+        deleteSession: procedure
+            .input(z.object({ sessionId: z.string() }))
+            .mutation(({ input }) => Helper.AI.log.deleteSession(input.sessionId)),
+        deleteAllSessions: procedure.mutation(() => Helper.AI.log.deleteAllSessions())
     }),
     net: t.router({
         get: procedure

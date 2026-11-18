@@ -599,10 +599,3 @@ useEventListener(window, 'mouseup', handleMouseBackAction)
     opacity: 1;
 }
 </style>
-
-<style lang="scss">
-.p-contextmenu .danger-item .p-contextmenu-item-label,
-.p-contextmenu .danger-item .p-contextmenu-item-icon {
-    color: var(--p-red-500) !important;
-}
-</style>

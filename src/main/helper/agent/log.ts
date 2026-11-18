@@ -661,6 +661,44 @@ export const log = {
         }))
     },
 
+    /** 删除会话及其所有尝试与步骤 */
+    deleteSession(sessionId: string) {
+        const database = getDb()
+        database.exec('BEGIN')
+
+        try {
+            // 兼容早期没有外键约束的数据库，按顺序显式删除
+            database
+                .prepare(
+                    `DELETE FROM ai_steps
+                     WHERE attempt_id IN (SELECT id FROM ai_attempts WHERE session_id = ?)`
+                )
+                .run(sessionId)
+            database.prepare('DELETE FROM ai_attempts WHERE session_id = ?').run(sessionId)
+            database.prepare('DELETE FROM ai_sessions WHERE id = ?').run(sessionId)
+            database.exec('COMMIT')
+        } catch (error) {
+            database.exec('ROLLBACK')
+            throw error
+        }
+    },
+
+    /** 删除所有会话及其尝试与步骤 */
+    deleteAllSessions() {
+        const database = getDb()
+        database.exec('BEGIN')
+
+        try {
+            database.exec('DELETE FROM ai_steps')
+            database.exec('DELETE FROM ai_attempts')
+            database.exec('DELETE FROM ai_sessions')
+            database.exec('COMMIT')
+        } catch (error) {
+            database.exec('ROLLBACK')
+            throw error
+        }
+    },
+
     /** 关闭数据库 */
     close() {
         if (!db) return

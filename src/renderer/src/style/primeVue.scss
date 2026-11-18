@@ -32,6 +32,12 @@ button {
     margin: 0.25rem 0;
 }
 
+// 右键菜单危险项
+.p-contextmenu .danger-item .p-contextmenu-item-label,
+.p-contextmenu .danger-item .p-contextmenu-item-icon {
+    color: var(--p-red-500) !important;
+}
+
 .p-scrolltop.p-button {
     inset-block-end: 1rem !important;
     inset-inline-end: 1rem !important;
