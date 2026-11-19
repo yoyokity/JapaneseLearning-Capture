@@ -87,25 +87,23 @@ export function createEditFileTool(options: IEditFileToolOptions = {}) {
 
     return tool<IEditFileInput, EditFileOutput, Record<string, unknown>>({
         description: [
-            'Performs exact string replacement in a file inside the agent sandbox.',
+            '在 agent 沙箱中的文件内执行精确字符串替换。',
             '',
-            '- `file_path` is a file name inside the sandbox, not a path. Do not pass directories, absolute paths, or `..`.',
-            '- You must Read the file in this conversation before editing, or the call will fail.',
-            '- `old_string` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the Read line prefix (line number + tab) before matching.',
-            '- `replace_all: true` replaces every occurrence instead.',
-            `- To create a new file, pass an empty \`old_string\` and the complete content as \`new_string\`. Reads are capped at ${READ_DEFAULT_MAX_LINES} lines by default.`
+            '- `file_path` 是沙箱内的文件名，不是路径。不要传入目录、绝对路径或 `..`。',
+            '- 编辑前必须在当前对话中读取过该文件，否则调用会失败。',
+            '- `old_string` 必须与文件内容完全一致（包括缩进）且唯一，否则编辑失败。匹配前请去掉 Read 输出的行前缀（行号 + 制表符）。',
+            '- `replace_all: true` 会替换所有匹配项。',
+            `- 创建新文件时，传入空的 \`old_string\` 和完整内容作为 \`new_string\`。默认最多读取 ${READ_DEFAULT_MAX_LINES} 行。`
         ].join('\n'),
         inputSchema: z.object({
-            file_path: z.string().describe('The file name inside the sandbox, not a path'),
-            old_string: z.string().describe('The text to replace'),
-            new_string: z
-                .string()
-                .describe('The text to replace it with (must be different from old_string)'),
+            file_path: z.string().describe('沙箱内的文件名，不是路径'),
+            old_string: z.string().describe('要替换的文本'),
+            new_string: z.string().describe('替换后的文本（必须与 old_string 不同）'),
             replace_all: z
                 .boolean()
                 .optional()
                 .default(false)
-                .describe('Replace all occurrences of old_string (default false)')
+                .describe('替换 old_string 的所有匹配项（默认 false）')
         }),
         execute: async ({
             file_path,

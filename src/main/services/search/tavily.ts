@@ -100,10 +100,9 @@ async function request<T extends ITavilyError>(
     body: unknown,
     config: ITavilyConfig
 ): Promise<T> {
-    const { TAVILY_API_KEY } = process.env
-    const apiKey = config.apiKey || TAVILY_API_KEY
+    const apiKey = config.apiKey
     if (!apiKey) {
-        throw new Error('未配置 TAVILY_API_KEY')
+        throw new Error('未配置 Tavily API Key')
     }
 
     const response = await post(`${config.baseUrl ?? DEFAULT_BASE_URL}${path}`, body, {

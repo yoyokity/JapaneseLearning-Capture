@@ -220,7 +220,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                             ? {
                                   tools: {
                                       ...toolOptions.tools,
-                                      web_search: deepSeek.tools.webSearch()
+                                      deepseek_web_search: deepSeek.tools.webSearch()
                                   }
                               }
                             : {}),

@@ -94,33 +94,29 @@ export function createReadFileTool(options: IReadFileToolOptions = {}) {
 
     return tool<IReadFileInput, ReadFileOutput, Record<string, unknown>>({
         description: [
-            'Reads a file from the agent sandbox.',
+            '读取 agent 沙箱中的文件。',
             '',
-            '- `file_path` is a file name inside the sandbox, not a path. Do not pass directories, absolute paths, or `..`.',
-            `- Reads up to ${READ_DEFAULT_MAX_LINES} lines by default.`,
-            '- When you already know which part of the file you need, only read that part. This can be important for larger files.',
-            '- Results are returned using cat -n format, with line numbers starting at 1.',
-            '- Reading a directory, a missing file, or an empty file returns an error or system reminder rather than content.',
-            '- Do NOT re-read a file you just edited to verify — edit_file would have errored if the change failed.'
+            '- `file_path` 是沙箱内的文件名，不是路径。不要传入目录、绝对路径或 `..`。',
+            `- 默认最多读取 ${READ_DEFAULT_MAX_LINES} 行。`,
+            '- 如果已经知道需要文件中的哪一部分，只读取该部分。对大文件尤其重要。',
+            '- 结果以 cat -n 格式返回，行号从 1 开始。',
+            '- 读取目录、不存在的文件或空文件时，返回错误或系统提示，而不是内容。',
+            '- 不要为了验证刚编辑过的文件而重新读取 —— 如果修改失败，edit_file 会直接报错。'
         ].join('\n'),
         inputSchema: z.object({
-            file_path: z.string().describe('The file name inside the sandbox, not a path'),
+            file_path: z.string().describe('沙箱内的文件名，不是路径'),
             offset: z
                 .number()
                 .int()
                 .nonnegative()
                 .optional()
-                .describe(
-                    'The line number to start reading from. Only provide if the file is too large to read at once'
-                ),
+                .describe('开始读取的行号。仅在文件过大无法一次读取时提供'),
             limit: z
                 .number()
                 .int()
                 .positive()
                 .optional()
-                .describe(
-                    'The number of lines to read. Only provide if the file is too large to read at once.'
-                )
+                .describe('读取的行数。仅在文件过大无法一次读取时提供')
         }),
         execute: async ({ file_path, offset, limit }): Promise<ReadFileOutput> => {
             try {

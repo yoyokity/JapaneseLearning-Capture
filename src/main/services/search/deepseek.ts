@@ -117,10 +117,9 @@ function buildQuery(options: ISearchOptions) {
  * @param config 引擎配置
  */
 async function request<T>(path: string, body: unknown, config: IDeepSeekConfig): Promise<T> {
-    const { DEEPSEEK_API_KEY } = process.env
-    const apiKey = config.apiKey || DEEPSEEK_API_KEY
+    const apiKey = config.apiKey
     if (!apiKey) {
-        throw new Error('未配置 DEEPSEEK_API_KEY')
+        throw new Error('未配置 DeepSeek API Key')
     }
 
     const response = await post(`${config.baseUrl ?? DEFAULT_BASE_URL}${path}`, body, {
