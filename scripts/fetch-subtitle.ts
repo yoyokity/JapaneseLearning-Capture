@@ -19,12 +19,12 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { path7za } from '7zip-bin'
 
+import { findFile, HUGGINGFACE_ENDPOINT, SUBTITLE_SOURCES } from '../src/main/subtitle/sources'
 import {
     DOWNLOAD_BLOCK_SIZE,
     DOWNLOAD_CONNECTIONS,
     runWithConcurrency
-} from '../src/main/helper/downloadShared'
-import { findFile, HUGGINGFACE_ENDPOINT, SUBTITLE_SOURCES } from '../src/main/subtitle/sources'
+} from '../src/main/utils/download/shared'
 
 /** 项目根目录 */
 const root = fileURLToPath(new URL('..', import.meta.url))

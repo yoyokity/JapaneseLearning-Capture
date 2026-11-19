@@ -4,11 +4,11 @@ import { electronApp } from '@electron-toolkit/utils'
 import { app, BrowserWindow, crashReporter, net, protocol } from 'electron'
 import { createIPCHandler } from 'electron-trpc/main'
 
+import { log } from './agent/log'
 import { appPath } from './globalStates'
-import { log } from './helper/agent/log'
-import { createDirectory } from './ipc/filesystem'
 import { appRouter } from './ipc/router'
-import { consumeUpdateError, restorePendingUpdate } from './ipc/update'
+import { consumeUpdateError, restorePendingUpdate } from './services/update'
+import { createDirectory } from './utils/fs'
 import { createWindow } from './window'
 
 // 预注册本地文件协议，确保渲染进程可识别

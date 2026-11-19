@@ -6,7 +6,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { tool } from 'ai'
 import { z } from 'zod'
 
-import { appPath } from '../../../globalStates'
+import { appPath } from '../../globalStates'
 import { findEditMatch, normalizeReplacementForMatch, preserveQuoteStyle } from './editMatchers'
 import { READ_DEFAULT_MAX_LINES } from './readFile'
 import {

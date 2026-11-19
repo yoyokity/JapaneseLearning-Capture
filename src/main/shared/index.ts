@@ -13,41 +13,27 @@ export type {
     IAiLogSessionItem,
     IAiLogSessionRecord,
     IAiLogStepItem
-} from '../helper/agent'
-export { isAgentSuccess } from '../helper/agent/types'
+} from '../agent'
+export { isAgentSuccess } from '../agent/types'
+export type { IVerifyCookies } from '../CloudflareWindow'
+export type { AppRouter } from '../ipc/router'
 export type {
     DependencyInstallStatus,
     IDependencyInfo,
     IDependencyList,
     IDependencyState
-} from '../ipc/dependencies'
-export type {
-    FormatInputPathObject,
-    IFile,
-    ILogType,
-    IStats,
-    ReadDirectoryOptions
-} from '../ipc/filesystem'
+} from '../services/dependencies'
+export type { ILogType } from '../services/log'
 export type {
     ImageCropPos,
     ImageData,
     ImageDataInfo,
     ImageResizeOptions,
     IReencodeAudioProgress,
-    SaveImageOptions
-} from '../ipc/media'
-export type { SuperResolutionModel } from '../ipc/models'
-export type {
-    CookiesSetDetails,
-    IFetchOptions,
-    IFetchParse,
-    IPingResult,
-    IResult,
-    IVerifyCookies,
-    ParseResultType
-} from '../ipc/net'
-export type { AppRouter } from '../ipc/router'
-export type { IUpdateAsset, IUpdateInfo, IUpdateState, UpdateStatus } from '../ipc/update'
+    SaveImageOptions,
+    SuperResolutionModel
+} from '../services/media'
+export type { IUpdateAsset, IUpdateInfo, IUpdateState, UpdateStatus } from '../services/update'
 export type {
     IGenerateSubtitleInput,
     ISubtitleLlm,
@@ -55,3 +41,12 @@ export type {
     SubtitleLanguage,
     SubtitleStage
 } from '../subtitle'
+export type { FormatInputPathObject, IFile, IStats, ReadDirectoryOptions } from '../utils/fs'
+export type {
+    CookiesSetDetails,
+    IFetchOptions,
+    IFetchParse,
+    IPingResult,
+    IResult,
+    ParseResultType
+} from '../utils/net'

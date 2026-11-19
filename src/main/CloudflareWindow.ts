@@ -1,7 +1,27 @@
-import type { IVerifyCookies } from './ipc/net'
-
 import { resolve } from 'node:path'
 import { BrowserWindow } from 'electron'
+
+/**
+ * Cloudflare 验证结果
+ */
+export interface IVerifyCookies {
+    /**
+     * 是否验证成功
+     */
+    success: boolean
+    /**
+     * Cookie 字符串
+     */
+    cookies: string
+    /**
+     * 获取到的目标 Cookie 键值对
+     */
+    targetCookies: Record<string, string>
+    /**
+     * 错误信息
+     */
+    error?: string
+}
 
 const iconPath = resolve(import.meta.dirname, '../../resources/mainIcon.png')
 

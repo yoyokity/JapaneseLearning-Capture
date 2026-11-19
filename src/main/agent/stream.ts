@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { observable } from '@trpc/server/observable'
 import { streamText } from 'ai'
 
-import { writeLog } from '../../ipc/filesystem'
+import { writeLog } from '../services/log'
 import { log } from './log'
 import { getAgentModel, getReasoningOption } from './model'
 import {

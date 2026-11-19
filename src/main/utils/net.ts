@@ -85,28 +85,6 @@ export interface IPingResult {
 }
 
 /**
- * Cloudflare 验证结果
- */
-export interface IVerifyCookies {
-    /**
-     * 是否验证成功
-     */
-    success: boolean
-    /**
-     * Cookie 字符串
-     */
-    cookies: string
-    /**
-     * 获取到的目标 Cookie 键值对
-     */
-    targetCookies: Record<string, string>
-    /**
-     * 错误信息
-     */
-    error?: string
-}
-
-/**
  * 根据解析类型返回对应的数据类型
  */
 export type ParseResultType<P extends IFetchParse | undefined> = P extends 'arrayBuffer'

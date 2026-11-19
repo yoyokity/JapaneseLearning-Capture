@@ -4,7 +4,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { tool } from 'ai'
 import { z } from 'zod'
 
-import { appPath } from '../../../globalStates'
+import { appPath } from '../../globalStates'
 import {
     assertInsideSandbox,
     decodeTextBuffer,

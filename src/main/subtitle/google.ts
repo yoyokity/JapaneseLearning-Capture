@@ -1,6 +1,6 @@
 import type { ICue } from './types'
 
-import { post } from '../ipc/net'
+import { post } from '../utils/net'
 
 /** 延迟 */
 function delay(ms: number) {

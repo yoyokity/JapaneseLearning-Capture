@@ -1,7 +1,6 @@
 import type { ISubtitleSource } from '../subtitle/sources'
-import type { ILatestManifest } from './update'
+import type { ILatestManifest } from './release'
 
-import { execFile } from 'node:child_process'
 import {
     cpSync,
     existsSync,
@@ -13,15 +12,12 @@ import {
     writeFileSync
 } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
-import { promisify } from 'node:util'
 import { app } from 'electron'
 
 import { appPath } from '../globalStates'
-import { Helper } from '../helper'
 import { findFile, getSourceSize, getSourceUrls, SUBTITLE_SOURCES } from '../subtitle/sources'
-import { DOWNLOAD_BASE, fetchLatestManifest, getSevenZipPath } from './update'
-
-const execFileAsync = promisify(execFile)
+import { downloadFile } from '../utils/download'
+import { DOWNLOAD_BASE, extractArchive, fetchLatestManifest, getSevenZipPath } from './release'
 
 /**
  * 依赖的物理包
@@ -330,6 +326,12 @@ interface ISourceDownloadOptions {
     onFallback: () => void
 }
 
+/** 镜像优先状态 */
+interface IMirrorPreference {
+    /** 是否优先使用镜像 */
+    prefer: boolean
+}
+
 /**
  * 依次尝试多个源地址下载
  * @param urls 候选地址，按优先级排列
@@ -341,7 +343,7 @@ async function downloadFromSources(urls: string[], options: ISourceDownloadOptio
 
     for (const [index, url] of urls.entries()) {
         try {
-            return await Helper.downloadFile({ url, ...rest })
+            return await downloadFile({ url, ...rest })
         } catch (error) {
             lastError = error
             if (index === 0) onFallback()
@@ -387,9 +389,10 @@ async function installLocalComponent(
 
     /**
      * 下载单个文件
+     * @param source 源文件
      * @param mirror 镜像优先状态
      */
-    async function downloadSource(source: ISubtitleSource, mirror: { prefer: boolean }) {
+    async function downloadSource(source: ISubtitleSource, mirror: IMirrorPreference) {
         const targetPath = getTargetPath(source)
         if (existsSync(targetPath) && statSync(targetPath).size === source.size) {
             received += source.size
@@ -440,9 +443,7 @@ async function installLocalComponent(
         const extractDir = join(tmpDir, '.extract')
         rmSync(extractDir, { recursive: true, force: true })
         try {
-            await execFileAsync(getSevenZipPath(), ['x', '-y', `-o${extractDir}`, archivePath], {
-                windowsHide: true
-            })
+            await extractArchive(archivePath, extractDir)
         } catch {
             rmSync(extractDir, { recursive: true, force: true })
             throw new Error(`${name} 解压失败，请重试`)
@@ -504,7 +505,7 @@ async function installToolsPackage(
     const archivePath = join(depsDir, asset.name)
     // 已完整下载的压缩包直接复用
     if (!existsSync(archivePath) || statSync(archivePath).size !== asset.size) {
-        await Helper.downloadFile({
+        await downloadFile({
             url: `${DOWNLOAD_BASE}/${tag}/${asset.name}`,
             size: asset.size,
             sha256: asset.sha256,
@@ -518,9 +519,7 @@ async function installToolsPackage(
     rmSync(tmpDir, { recursive: true, force: true })
     mkdirSync(tmpDir, { recursive: true })
     try {
-        await execFileAsync(getSevenZipPath(), ['x', '-y', `-o${tmpDir}`, archivePath], {
-            windowsHide: true
-        })
+        await extractArchive(archivePath, tmpDir)
     } catch {
         rmSync(tmpDir, { recursive: true, force: true })
         throw new Error('工具组件解压失败，请重试')

@@ -1,8 +1,8 @@
-import type { IDependencyState } from './dependencies'
-import type { ReadDirectoryOptions } from './filesystem'
-import type { ImageData, ImageResizeOptions, SaveImageOptions } from './media'
-import type { CookiesSetDetails, IFetchOptions, IProxyConfig } from './net'
-import type { IUpdateState } from './update'
+import type { IDependencyState } from '../services/dependencies'
+import type { ImageData, ImageResizeOptions, SaveImageOptions } from '../services/media'
+import type { IUpdateState } from '../services/update'
+import type { ReadDirectoryOptions } from '../utils/fs'
+import type { CookiesSetDetails, IFetchOptions, IProxyConfig } from '../utils/net'
 
 import { initTRPC } from '@trpc/server'
 import { observable } from '@trpc/server/observable'
@@ -10,21 +10,45 @@ import { app } from 'electron'
 import superjson from 'superjson'
 import { z } from 'zod'
 
+import {
+    agentConfigSchema,
+    agentStreamOptionsSchema,
+    aiLogListOptionsSchema,
+    createAgentStream,
+    log
+} from '../agent'
 import { openCloudflareWindow } from '../CloudflareWindow'
 import { appPath } from '../globalStates'
-import { Helper } from '../helper'
-import { createSubtitleStream } from '../subtitle'
 import {
     getDependencies,
     getDependencyState,
     getLocalDependencies,
     installDependency,
     onDependencyStateChange
-} from './dependencies'
+} from '../services/dependencies'
+import { logTypeSchema, writeLog } from '../services/log'
+import {
+    createReencodeAudioStream,
+    createSuperResolutionImageStream,
+    getSuperResolutionModels,
+    readImage,
+    readMediaInfo,
+    resizeImage,
+    saveImage
+} from '../services/media'
+import { clearFolder, openInExplorer, removeEmptyFolders, setProgressBar } from '../services/system'
+import {
+    applyUpdate,
+    checkUpdate,
+    getUpdateError,
+    getUpdateState,
+    onUpdateStateChange,
+    startDownload
+} from '../services/update'
+import { createSubtitleStream } from '../subtitle'
 import {
     appendFile,
     basename,
-    clearFolder,
     copy,
     createDirectory,
     dirname,
@@ -36,28 +60,14 @@ import {
     isExist,
     isFile,
     join,
-    logTypeSchema,
     move,
-    openInExplorer,
     readDirectory,
     readFile,
     relative,
     remove,
-    removeEmptyFolders,
     resolve,
-    setProgressBar,
-    writeFile,
-    writeLog
-} from './filesystem'
-import {
-    createReencodeAudioStream,
-    createSuperResolutionImageStream,
-    readImage,
-    readMediaInfo,
-    resizeImage,
-    saveImage
-} from './media'
-import { getSuperResolutionModels } from './models'
+    writeFile
+} from '../utils/fs'
 import {
     clearCache,
     clearProxy,
@@ -69,15 +79,7 @@ import {
     proxyConfigSchema,
     setCookie,
     setProxy
-} from './net'
-import {
-    applyUpdate,
-    checkUpdate,
-    getUpdateError,
-    getUpdateState,
-    onUpdateStateChange,
-    startDownload
-} from './update'
+} from '../utils/net'
 
 const t = initTRPC.create({ transformer: superjson })
 
@@ -332,31 +334,31 @@ export const appRouter = t.router({
                     inputPath: z.string(),
                     language: z.enum(['ja', 'en', 'zh', 'ko']),
                     aiOptimize: z.boolean(),
-                    llm: Helper.AI.agentConfigSchema.optional()
+                    llm: agentConfigSchema.optional()
                 })
             )
             .subscription(({ input }) => createSubtitleStream(input))
     }),
     agent: t.router({
         stream: procedure
-            .input(Helper.AI.agentStreamOptionsSchema)
-            .subscription(({ input }) => Helper.AI.createAgentStream(input))
+            .input(agentStreamOptionsSchema)
+            .subscription(({ input }) => createAgentStream(input))
     }),
     aiLog: t.router({
         listSessions: procedure
-            .input(Helper.AI.aiLogListOptionsSchema)
-            .query(({ input }) => Helper.AI.log.listSessions(input)),
-        listSources: procedure.query(() => Helper.AI.log.listSources()),
+            .input(aiLogListOptionsSchema)
+            .query(({ input }) => log.listSessions(input)),
+        listSources: procedure.query(() => log.listSources()),
         getSession: procedure
             .input(z.object({ sessionId: z.string() }))
-            .query(({ input }) => Helper.AI.log.getSessionDetail(input.sessionId)),
+            .query(({ input }) => log.getSessionDetail(input.sessionId)),
         getSteps: procedure
             .input(z.object({ sessionId: z.string() }))
-            .query(({ input }) => Helper.AI.log.getSessionSteps(input.sessionId)),
+            .query(({ input }) => log.getSessionSteps(input.sessionId)),
         deleteSession: procedure
             .input(z.object({ sessionId: z.string() }))
-            .mutation(({ input }) => Helper.AI.log.deleteSession(input.sessionId)),
-        deleteAllSessions: procedure.mutation(() => Helper.AI.log.deleteAllSessions())
+            .mutation(({ input }) => log.deleteSession(input.sessionId)),
+        deleteAllSessions: procedure.mutation(() => log.deleteAllSessions())
     }),
     net: t.router({
         get: procedure

@@ -13,7 +13,7 @@ import {
 import { finished } from 'node:stream/promises'
 import { net } from 'electron'
 
-import { DOWNLOAD_BLOCK_SIZE, DOWNLOAD_CONNECTIONS, runWithConcurrency } from './downloadShared'
+import { DOWNLOAD_BLOCK_SIZE, DOWNLOAD_CONNECTIONS, runWithConcurrency } from './shared'
 
 /** 下载超时 */
 const DOWNLOAD_TIMEOUT = 30 * 60 * 1000
@@ -66,7 +66,7 @@ export async function downloadFile({
     onProgress
 }: IDownloadOptions) {
     if (!sha256) {
-        throw new Error('更新包缺少校验信息，已终止更新')
+        throw new Error('下载文件缺少校验信息，已终止下载')
     }
 
     const partPath = `${targetPath}.part`
@@ -201,7 +201,7 @@ export async function downloadFile({
     if ((await hashFile(partPath)) !== sha256) {
         rmSync(partPath, { force: true })
         rmSync(statePath, { force: true })
-        throw new Error('更新包校验失败，请重新下载')
+        throw new Error('文件校验失败，请重新下载')
     }
 
     renameSync(partPath, targetPath)

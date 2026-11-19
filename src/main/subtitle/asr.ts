@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { writeLog } from '../ipc/filesystem'
+import { writeLog } from '../services/log'
 
 /** 内存不足特征 */
 const OUT_OF_MEMORY_PATTERN = /out of memory|out_of_memory|bad_alloc/i

@@ -1,23 +1,16 @@
-import { execFile, spawn } from 'node:child_process'
+import type { ILatestManifest } from './release'
+
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { promisify } from 'node:util'
 import { app, net } from 'electron'
 import iconv from 'iconv-lite'
 
-import { appPath } from '../globalStates'
-import { Helper } from '../helper'
+import { downloadFile } from '../utils/download'
+import { DOWNLOAD_BASE, extractArchive, fetchLatestManifest, getSevenZipPath } from './release'
 
-const REPO = 'yoyokity/JapaneseLearning-Capture'
-/** 更新清单地址，走 GitHub 下载 CDN，不消耗 API 配额 */
-const LATEST_MANIFEST_URL = `https://github.com/${REPO}/releases/latest/download/latest.json`
-/** 发布资产下载根地址 */
-export const DOWNLOAD_BASE = `https://github.com/${REPO}/releases/download`
-/** 清单缓存时长（毫秒） */
-const MANIFEST_CACHE_TTL = 5_000
 /** 未应用的更新保留时长，超过后清理以释放磁盘 */
 const PENDING_UPDATE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
-const execFileAsync = promisify(execFile)
 
 /**
  * 更新包资产
@@ -80,25 +73,6 @@ export interface IUpdateState {
     error: string | null
 }
 
-/**
- * 更新清单（发布时生成的 latest.json）
- */
-export interface ILatestManifest {
-    version: string
-    tag: string
-    date?: string
-    notes?: string
-    /** 各版本 tag，新版本在前 */
-    versions?: string[]
-    assets: {
-        app: { name: string; size: number; sha256: string }
-        /** 统一工具包 */
-        tools?: { name: string; size: number; sha256: string; version: string }
-        /** 官网直下的依赖，目前只有字幕 */
-        dependencies?: Record<string, { version?: string }>
-    }
-}
-
 /** 更新状态 */
 let state: IUpdateState = {
     status: 'idle',
@@ -116,8 +90,6 @@ let lastChecked: IUpdateInfo | null = null
 let downloadTask: Promise<void> | null = null
 /** 上次更新失败的原因 */
 let lastUpdateError: string | null = null
-/** 清单缓存 */
-let manifestCache: { time: number; promise: Promise<ILatestManifest | null> } | null = null
 
 /**
  * 更新目录，不能放在 temp（退出时会被清空）
@@ -141,13 +113,6 @@ function assertPackaged() {
  */
 function escapeBatPath(value: string) {
     return value.replace(/%/g, '%%')
-}
-
-/**
- * 获取随包携带的解压器路径
- */
-export function getSevenZipPath() {
-    return join(appPath.extraResource, '7za.exe')
 }
 
 /**
@@ -227,41 +192,6 @@ async function fetchReleaseNote(tag: string): Promise<IReleaseNote | null> {
 }
 
 /**
- * 请求最新清单，短时缓存
- * @returns 清单，404 表示暂无
- */
-export function fetchLatestManifest(): Promise<ILatestManifest | null> {
-    if (manifestCache && Date.now() - manifestCache.time < MANIFEST_CACHE_TTL) {
-        return manifestCache.promise
-    }
-
-    const promise = requestLatestManifest()
-    manifestCache = { time: Date.now(), promise }
-    // 失败不缓存
-    void promise.catch(() => {
-        manifestCache = null
-    })
-
-    return promise
-}
-
-/**
- * 请求最新清单
- */
-async function requestLatestManifest(): Promise<ILatestManifest | null> {
-    const response = await net.fetch(LATEST_MANIFEST_URL, {
-        signal: AbortSignal.timeout(15_000)
-    })
-    // 最新 release 尚未附带清单时视为无更新
-    if (response.status === 404) return null
-    if (!response.ok) {
-        throw new Error(`获取更新清单失败（${response.status}）`)
-    }
-
-    return (await response.json()) as ILatestManifest
-}
-
-/**
  * 检查更新清单中的最新版本
  */
 export async function checkUpdate(): Promise<IUpdateInfo | null> {
@@ -320,21 +250,12 @@ export async function checkUpdate(): Promise<IUpdateInfo | null> {
 async function downloadUpdateAsset(asset: IUpdateAsset, stage: IUpdateState['stage']) {
     setState({ status: 'downloading', stage, received: 0, total: asset.size, error: null })
 
-    return Helper.downloadFile({
+    return downloadFile({
         url: asset.url,
         size: asset.size,
         sha256: asset.sha256,
         targetPath: join(getUpdateDir(), asset.name),
         onProgress: (received) => setState({ received })
-    })
-}
-
-/**
- * 解压 7z 包
- */
-async function extractArchive(archivePath: string, targetDir: string) {
-    await execFileAsync(getSevenZipPath(), ['x', '-y', `-o${targetDir}`, archivePath], {
-        windowsHide: true
     })
 }
 

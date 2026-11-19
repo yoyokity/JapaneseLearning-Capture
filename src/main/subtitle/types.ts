@@ -1,4 +1,4 @@
-import type { IAgentConfig } from '../helper/agent'
+import type { IAgentConfig } from '../agent'
 
 export type SubtitleLanguage = 'ja' | 'en' | 'zh' | 'ko'
 

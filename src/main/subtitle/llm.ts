@@ -1,4 +1,4 @@
-import type { IAgentMessage, IAgentResult } from '../helper/agent'
+import type { IAgentMessage, IAgentResult } from '../agent'
 import type { ISegment, ISubtitleLlm, SubtitleLanguage } from './types'
 
 import { randomUUID } from 'node:crypto'
@@ -7,9 +7,9 @@ import { join } from 'node:path'
 import { tool } from 'ai'
 import { z } from 'zod'
 
+import { chat, isAgentSuccess } from '../agent'
 import { appPath } from '../globalStates'
-import { Helper } from '../helper'
-import { writeLog } from '../ipc/filesystem'
+import { writeLog } from '../services/log'
 import { formatSrtTimestamp, MAX_CUE_MS, parseSrtTimestamp, renderSrt } from './cue'
 
 /** 语言名称 */
@@ -183,7 +183,7 @@ export async function translateSegments(
 
     let result: IAgentResult
     try {
-        result = await Helper.AI.chat({
+        result = await chat({
             config: llm,
             messages,
             system,
@@ -206,7 +206,7 @@ export async function translateSegments(
         return null
     }
 
-    if (!Helper.AI.isAgentSuccess(result.finishReason)) {
+    if (!isAgentSuccess(result.finishReason)) {
         writeLog('error', '[字幕生成] AI编辑字幕失败：', result.error ?? result.finishReason)
         cleanup()
         return null
