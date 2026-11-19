@@ -2,9 +2,11 @@ import type { IAgentConfig, IAgentMessage, IAgentResult, IAgentRetryPayload } fr
 import type { ISearchToolConfig } from '../SearchConfig.ts'
 
 import { ipc } from '@renderer/ipc'
+import { settingsStore } from '@renderer/stores'
 import { isAgentSuccess } from '@shared'
 
 import { LogHelper } from '../LogHelper.ts'
+import { getSearchConfig } from '../SearchConfig.ts'
 import { TaskHelper } from '../TaskHelper.ts'
 
 export type TAgentStreamCallback = (data: string, reasoningData: string, reset?: boolean) => void
@@ -28,8 +30,8 @@ export interface IAgentRequestOptions {
     onRetry?: ((info: IAgentRetryPayload) => void) | undefined
     /** 取消信号 */
     signal?: AbortSignal | undefined
-    /** 联网搜索配置，未设置时不启用搜索工具 */
-    search?: ISearchToolConfig | undefined
+    /** 联网搜索配置，true 时使用设置中的搜索服务；未设置时不启用搜索工具 */
+    search?: boolean | ISearchToolConfig | undefined
 }
 
 export interface IAgentAskOptions extends IAgentRequestOptions {
@@ -96,6 +98,9 @@ export class AgentHelper {
             return { text: '', finishReason: 'error', cancelled: true }
         }
 
+        // true 时使用设置中的搜索服务
+        const searchConfig = search === true ? getSearchConfig(settingsStore().search) : search
+
         const re = await TaskHelper.tryExecute(async () => {
             let closed = false
             let isResolved = false
@@ -117,7 +122,7 @@ export class AgentHelper {
                 maxRetries,
                 source,
                 skipLog,
-                ...(search ? { search } : {}),
+                ...(searchConfig ? { search: searchConfig } : {}),
                 ...('messages' in options
                     ? // 复制一份，避免外部修改
                       { messages: options.messages.map((message) => ({ ...message })) }

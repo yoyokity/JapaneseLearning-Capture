@@ -1,6 +1,5 @@
 export * from './editFile'
 export * from './editMatchers'
-export * from './fetch'
 export * from './options'
 export * from './readFile'
 export * from './search'

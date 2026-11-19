@@ -6,8 +6,6 @@ export type SearchDepth = 'basic' | 'advanced'
 export type SearchTopic = 'general' | 'news' | 'finance'
 /** 时间范围 */
 export type SearchTimeRange = 'day' | 'week' | 'month' | 'year'
-/** 网页内容格式 */
-export type FetchFormat = 'markdown' | 'text'
 
 /**
  * 各 provider 专有的搜索参数
@@ -94,52 +92,6 @@ export interface ISearchResponse {
 }
 
 /**
- * 网页提取参数
- */
-export interface IFetchPageOptions {
-    /** 提取深度，仅 Tavily */
-    extractDepth?: SearchDepth | undefined
-    /** 返回格式，仅 Tavily，DeepSeek 固定 markdown */
-    format?: FetchFormat | undefined
-    /** 是否返回页面图片，仅 Tavily */
-    includeImages?: boolean | undefined
-    /** 是否返回网站图标，仅 Tavily */
-    includeFavicon?: boolean | undefined
-    /** 按查询筛选相关片段，仅 Tavily */
-    query?: string | undefined
-}
-
-/**
- * 单个网页的提取结果
- */
-export interface IFetchPageResult {
-    /** 网页地址 */
-    url: string
-    /** 页面标题，仅 DeepSeek 返回 */
-    title?: string | undefined
-    /** 网页内容 */
-    content: string
-    /** 页面图片，includeImages 为 true 时返回 */
-    images?: string[] | undefined
-    /** 网站图标，includeFavicon 为 true 时返回 */
-    favicon?: string | undefined
-}
-
-/**
- * 网页提取结果
- */
-export interface IFetchPageResponse {
-    /** 提取成功的网页 */
-    results: IFetchPageResult[]
-    /** 提取失败的网页 */
-    failedResults: { url: string; error: string }[]
-    /** 服务端耗时（秒） */
-    responseTime: number
-    /** 实际使用的搜索引擎 */
-    provider: SearchProvider
-}
-
-/**
  * 引擎通用配置
  */
 export interface ISearchEngineBaseConfig {
@@ -179,6 +131,4 @@ export type ISearchEngineConfig =
 export interface ISearchEngine {
     /** 搜索网页 */
     search: (options: ISearchOptions) => Promise<ISearchResponse>
-    /** 提取网页内容，DeepSeek 会逐个请求 */
-    fetchPage: (urls: string | string[], options?: IFetchPageOptions) => Promise<IFetchPageResponse>
 }

@@ -450,10 +450,13 @@ export const appRouter = t.router({
             .input(
                 z.object({
                     url: z.string(),
-                    targetCookies: z.array(z.string()).optional()
+                    targetCookies: z.array(z.string()).optional(),
+                    userAgent: z.string().optional()
                 })
             )
-            .mutation(({ input }) => openCloudflareWindow(input.url, input.targetCookies)),
+            .mutation(({ input }) =>
+                openCloudflareWindow(input.url, input.targetCookies, input.userAgent)
+            ),
         encode: procedure
             .input(
                 z.object({

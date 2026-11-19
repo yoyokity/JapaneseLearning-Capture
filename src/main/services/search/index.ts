@@ -1,7 +1,7 @@
 import type { ISearchEngine, ISearchEngineConfig } from './types'
 
-import { fetchPage as deepseekFetchPage, search as deepseekSearch } from './deepseek'
-import { fetchPage as tavilyFetchPage, search as tavilySearch } from './tavily'
+import { search as deepseekSearch } from './deepseek'
+import { search as tavilySearch } from './tavily'
 
 export * from './types'
 
@@ -12,13 +12,11 @@ export * from './types'
 export function createSearchEngine(config: ISearchEngineConfig): ISearchEngine {
     if (config.provider === 'tavily') {
         return {
-            search: (options) => tavilySearch(options, config),
-            fetchPage: (urls, options) => tavilyFetchPage(urls, options, config)
+            search: (options) => tavilySearch(options, config)
         }
     }
 
     return {
-        search: (options) => deepseekSearch(options, config),
-        fetchPage: (urls, options) => deepseekFetchPage(urls, options, config)
+        search: (options) => deepseekSearch(options, config)
     }
 }

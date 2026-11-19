@@ -429,7 +429,9 @@ export class NetHelper {
             async () =>
                 await ipc.net.cloudflareVerify.mutate({
                     url,
-                    targetCookies
+                    targetCookies,
+                    // 校验窗口必须使用和请求相同的 UA，cookie 会绑定 UA
+                    userAgent: NetHelper.defaultUserAgent
                 })
         )
 

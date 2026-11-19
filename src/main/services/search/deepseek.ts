@@ -1,12 +1,4 @@
-import type {
-    IDeepSeekConfig,
-    IFetchPageOptions,
-    IFetchPageResponse,
-    IFetchPageResult,
-    ISearchOptions,
-    ISearchResponse,
-    SearchTimeRange
-} from './types'
+import type { IDeepSeekConfig, ISearchOptions, ISearchResponse, SearchTimeRange } from './types'
 
 import { post } from '../../utils/net'
 
@@ -14,8 +6,6 @@ import { post } from '../../utils/net'
 const DEFAULT_BASE_URL = 'https://api.deepseek.com'
 /** 搜索接口路径 */
 const SEARCH_PATH = '/v1/tools/search'
-/** 网页提取接口路径 */
-const FETCH_PATH = '/v1/tools/fetch'
 /** 默认返回条数 */
 const DEFAULT_COUNT = 10
 /** 搜索结果条数上限 */
@@ -57,14 +47,6 @@ interface IDeepSeekSearchResponse {
         authority?: number
         rerank_score?: number
     }[]
-}
-
-/**
- * DeepSeek 原始网页提取结果
- */
-interface IDeepSeekFetchResponse {
-    title?: string
-    content?: string
 }
 
 /**
@@ -200,51 +182,6 @@ export async function search(
                   ]
                 : []
         ),
-        responseTime: (Date.now() - startTime) / 1000,
-        provider: 'deepseek'
-    }
-}
-
-/**
- * 使用 DeepSeek 提取网页内容
- * @param urls 网页地址，单个或数组，多个时串行请求
- * @param _options 提取参数，DeepSeek 不支持，忽略
- * @param config 引擎配置
- */
-export async function fetchPage(
-    urls: string | string[],
-    _options: IFetchPageOptions = {},
-    config: IDeepSeekConfig = {}
-): Promise<IFetchPageResponse> {
-    const urlList = (Array.isArray(urls) ? urls : [urls]).map((url) => url.trim()).filter(Boolean)
-    if (!urlList.length) {
-        throw new Error('网页地址不能为空')
-    }
-
-    const startTime = Date.now()
-    const results: IFetchPageResult[] = []
-    const failedResults: { url: string; error: string }[] = []
-
-    // DeepSeek 单次只支持一个 URL，串行请求避免触发 5 QPS 限制
-    for (const url of urlList) {
-        try {
-            const data = await request<IDeepSeekFetchResponse>(FETCH_PATH, { url }, config)
-            results.push({
-                url,
-                ...(data.title ? { title: data.title } : {}),
-                content: data.content ?? ''
-            })
-        } catch (error) {
-            failedResults.push({
-                url,
-                error: error instanceof Error ? error.message : String(error)
-            })
-        }
-    }
-
-    return {
-        results,
-        failedResults,
         responseTime: (Date.now() - startTime) / 1000,
         provider: 'deepseek'
     }

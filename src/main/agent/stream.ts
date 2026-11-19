@@ -386,6 +386,27 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         return
                     }
 
+                    // 非正常结束（如工具调用达到上限）视为失败
+                    if (finishReason !== 'stop') {
+                        const error = new Error(
+                            finishReason === 'tool-calls'
+                                ? 'AI 工具调用达到上限，未生成最终结果'
+                                : `AI生成未正常结束：${finishReason}`
+                        )
+
+                        if (hasCommittedOutput) emit.next({ type: 'reset' })
+                        if (!stopped && !outerController.signal.aborted) {
+                            finishWithError(error, { finishReason })
+                            writeLog('error', '[AI] 生成未正常结束', {
+                                attempt: retryCount + 1,
+                                finishReason
+                            })
+                            emit.error(error)
+                            stopped = true
+                        }
+                        return
+                    }
+
                     let totalUsage: unknown = step.usage
                     let responseMessages: unknown
                     try {

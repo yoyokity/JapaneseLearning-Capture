@@ -5,7 +5,6 @@ import type { IReadFileState } from './readFile'
 import { stepCountIs } from 'ai'
 
 import { createEditFileTool } from './editFile'
-import { createWebFetchTool } from './fetch'
 import { createReadFileTool } from './readFile'
 import { createWebSearchTool } from './search'
 
@@ -37,8 +36,7 @@ export function getToolOptions(options: IAgentToolOptions) {
         edit_file: createEditFileTool({ readFileState }),
         ...(options.search?.apiKey?.trim()
             ? {
-                  web_search: createWebSearchTool({ config: options.search }),
-                  web_fetch: createWebFetchTool({ config: options.search })
+                  web_search: createWebSearchTool({ config: options.search })
               }
             : {}),
         ...options.tools

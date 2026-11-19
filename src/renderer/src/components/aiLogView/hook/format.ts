@@ -15,6 +15,7 @@ export function formatSource(source: string | null) {
     if (!source) return 'AI'
     if (source === 'subtitle') return '字幕优化和翻译'
     if (source === 'translate') return '翻译'
+    if (source === 'actor') return '演员信息'
     return source
 }
 
