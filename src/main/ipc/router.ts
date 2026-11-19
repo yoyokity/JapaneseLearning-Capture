@@ -346,6 +346,7 @@ export const appRouter = t.router({
         listSessions: procedure
             .input(Helper.AI.aiLogListOptionsSchema)
             .query(({ input }) => Helper.AI.log.listSessions(input)),
+        listSources: procedure.query(() => Helper.AI.log.listSources()),
         getSession: procedure
             .input(z.object({ sessionId: z.string() }))
             .query(({ input }) => Helper.AI.log.getSessionDetail(input.sessionId)),

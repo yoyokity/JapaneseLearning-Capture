@@ -368,11 +368,7 @@ onBeforeUnmount(abortTests)
 
                     <h1>AI</h1>
 
-                    <InputLine
-                        description="翻译与字幕生成使用的模型服务商"
-                        icon="pi pi-microchip"
-                        title="模型服务商"
-                    >
+                    <InputLine icon="pi pi-microchip" title="模型服务商">
                         <template #right>
                             <Select
                                 v-model="settings.ai.provider"
@@ -489,11 +485,7 @@ onBeforeUnmount(abortTests)
                         <!-- #endregion 自定义配置 -->
                     </InputLine>
 
-                    <InputLine
-                        description="使用当前模型服务商发送一次最小请求"
-                        icon="pi pi-link"
-                        title="测试连接"
-                    >
+                    <InputLine icon="pi pi-link" title="测试连接">
                         <template #right>
                             <Button
                                 label="测试连接"

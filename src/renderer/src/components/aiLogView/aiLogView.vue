@@ -6,6 +6,7 @@ import Markdown from '@renderer/components/control/markdown.vue'
 import Scroll from '@renderer/components/control/scroll/scroll.vue'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
+import MultiSelect from 'primevue/multiselect'
 import Tag from 'primevue/tag'
 import { computed, ref, toRef } from 'vue'
 
@@ -28,6 +29,8 @@ const props = withDefaults(defineProps<IProps>(), { active: true })
 const {
     sessions,
     total,
+    sourceOptions,
+    selectedSources,
     selectedId,
     detail,
     loadingSessions,
@@ -40,6 +43,7 @@ const {
     formatStatus,
     getStatusSeverity,
     formatUsage,
+    formatSessionUsage,
     getWorkLabel,
     getUserMessages,
     getToolIcon,
@@ -100,6 +104,16 @@ function hideSessionContextMenu() {
             <div class="panel-header">
                 <span class="title">会话</span>
                 <span class="count">{{ total }}</span>
+                <MultiSelect
+                    v-model="selectedSources"
+                    :options="sourceOptions"
+                    class="source-filter"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="全部"
+                    show-clear
+                    size="small"
+                />
             </div>
             <Scroll
                 class="session-list"
@@ -130,6 +144,9 @@ function hideSessionContextMenu() {
                         <span v-if="session.attemptCount > 1">
                             {{ session.attemptCount }} 次尝试
                         </span>
+                        <span class="session-stat">
+                            {{ formatSessionUsage(session.totalTokens, session.cacheRate) }}
+                        </span>
                     </div>
                 </div>
 
@@ -150,7 +167,7 @@ function hideSessionContextMenu() {
             <template v-if="detail">
                 <div class="detail-header">
                     <div class="detail-title">
-                        <span>{{ formatSource(detail.session.source) }}</span>
+                        <span class="detail-source">{{ formatSource(detail.session.source) }}</span>
                         <span class="detail-status">
                             <Tag
                                 :severity="getStatusSeverity(detail.session.status)"
@@ -360,6 +377,21 @@ function hideSessionContextMenu() {
     display: flex;
     height: 100%;
     overflow: hidden;
+    /* 允许 auto 高度过渡 */
+    interpolate-size: allow-keywords;
+
+    /* 展开收起过渡 */
+    details::details-content {
+        block-size: 0;
+        overflow: hidden;
+        transition:
+            block-size 0.3s var(--animation-type),
+            content-visibility 0.3s allow-discrete;
+    }
+
+    details[open]::details-content {
+        block-size: auto;
+    }
 }
 
 .session-panel {
@@ -388,6 +420,11 @@ function hideSessionContextMenu() {
     font-size: 0.75rem;
 }
 
+.source-filter {
+    width: 12rem;
+    margin-left: auto;
+}
+
 .session-list {
     flex: 1;
     min-height: 0;
@@ -399,6 +436,10 @@ function hideSessionContextMenu() {
     border-radius: var(--border-radius);
     cursor: pointer;
     transition: background-color 0.2s var(--animation-type);
+
+    & + & {
+        margin-top: 0.5rem;
+    }
 
     &:hover {
         background: var(--p-content-hover-background);
@@ -429,10 +470,17 @@ function hideSessionContextMenu() {
     white-space: nowrap;
 }
 
+.session-stat {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
 .session-meta {
     margin-top: 0.25rem;
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 0.75rem;
     color: var(--p-text-muted-color);
 }
@@ -467,8 +515,16 @@ function hideSessionContextMenu() {
     line-height: 1.2;
 }
 
+.detail-source {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .detail-status {
     display: inline-flex;
+    margin-left: auto;
 }
 
 .detail-meta {
@@ -560,7 +616,7 @@ function hideSessionContextMenu() {
     flex-shrink: 0;
     font-size: 0.75rem;
     color: var(--p-text-muted-color);
-    transition: transform 0.2s var(--animation-type);
+    transition: transform 0.3s var(--animation-type);
 }
 
 .work-group[open] .work-arrow {
@@ -658,8 +714,8 @@ function hideSessionContextMenu() {
     color: var(--p-text-muted-color);
     opacity: 0;
     transition:
-        opacity 0.2s var(--animation-type),
-        transform 0.2s var(--animation-type);
+        opacity 0.3s var(--animation-type),
+        transform 0.3s var(--animation-type);
 }
 
 .reasoning-body {

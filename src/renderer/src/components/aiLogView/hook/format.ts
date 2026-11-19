@@ -86,6 +86,14 @@ export function formatUsage(usage: unknown) {
     return parts.join(' · ')
 }
 
+/** 格式化用量统计 */
+export function formatSessionUsage(totalTokens: number, cacheRate: number | null) {
+    const parts: string[] = []
+    if (totalTokens > 0) parts.push(formatCompactNumber(totalTokens))
+    if (cacheRate !== null) parts.push(`${cacheRate}%`)
+    return parts.join(' · ')
+}
+
 /** 格式化工作区标题 */
 export function getWorkLabel(session: IAiLogSessionRecord) {
     if (session.status === 'cancelled') return '已停止'

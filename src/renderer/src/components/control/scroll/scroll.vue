@@ -18,7 +18,7 @@ const scroller = ref<HTMLElement>()
 const content = ref<HTMLElement>()
 let lenis: Lenis | null = null
 
-/** 外部持续驱动 Lenis，否则鼠标滚轮事件不会产生滚动 */
+/** 持续驱动 Lenis */
 const { resume } = useRafFn(({ timestamp }) => lenis?.raf(timestamp), { immediate: false })
 
 onMounted(() => {
@@ -26,9 +26,10 @@ onMounted(() => {
         if (scroller.value && content.value) {
             lenis = new Lenis({
                 wrapper: scroller.value,
-                content: content.value, // 关键：指向内层的内容包裹层
+                content: content.value, // 指向内容包裹层
                 lerp: 0.15,
-                smoothWheel: true
+                smoothWheel: true,
+                allowNestedScroll: true // 内层优先滚动
             })
 
             resume()

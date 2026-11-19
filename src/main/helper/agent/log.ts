@@ -139,6 +139,7 @@ interface ISessionFinishLog {
 export interface IAiLogListOptions {
     limit: number
     offset: number
+    sources?: string[] | undefined
 }
 
 export interface IAiLogSessionItem {
@@ -153,6 +154,8 @@ export interface IAiLogSessionItem {
     startedAt: number
     finishedAt: number | null
     attemptCount: number
+    totalTokens: number
+    cacheRate: number | null
 }
 
 export interface IAiLogAttemptItem {
@@ -390,6 +393,22 @@ function parseJson(value: unknown) {
     }
 }
 
+/** 提取用量摘要 */
+function summarizeUsage(usage: unknown) {
+    const item = (usage ?? {}) as {
+        inputTokens?: number
+        outputTokens?: number
+        inputTokenDetails?: { cacheReadTokens?: number }
+    }
+    const input = item.inputTokens ?? 0
+    const cacheRead = item.inputTokenDetails?.cacheReadTokens ?? 0
+
+    return {
+        totalTokens: input + (item.outputTokens ?? 0),
+        cacheRate: input > 0 && cacheRead > 0 ? Math.round((cacheRead / input) * 100) : null
+    }
+}
+
 /** 执行数据库写入 */
 function write(action: () => void) {
     try {
@@ -529,22 +548,51 @@ export const log = {
     /** 查询会话列表 */
     listSessions(options: IAiLogListOptions) {
         const database = getDb()
-        const totalRow = database.prepare('SELECT COUNT(*) AS total FROM ai_sessions').get()
+        const sources = options.sources?.length ? options.sources : null
+        // 空串表示无来源
+        const clauses = sources?.map((source) =>
+            source ? 's.source = ?' : "(s.source IS NULL OR s.source = '')"
+        )
+        const where = clauses?.length ? `WHERE (${clauses.join(' OR ')})` : ''
+        const filterParams = sources?.filter((source) => source) ?? []
+
+        const totalRow = database
+            .prepare(`SELECT COUNT(*) AS total FROM ai_sessions s ${where}`)
+            .get(...filterParams)
         const total = Number((totalRow as { total?: number } | undefined)?.total ?? 0)
         const items = database
             .prepare(
                 `SELECT s.id, s.source, s.provider, s.model, s.api_format AS apiFormat,
                         s.reasoning_effort AS reasoningEffort, s.status,
                         s.finish_reason AS finishReason, s.started_at AS startedAt,
-                        s.finished_at AS finishedAt,
+                        s.finished_at AS finishedAt, s.usage_json AS usageJson,
                         (SELECT COUNT(*) FROM ai_attempts a WHERE a.session_id = s.id) AS attemptCount
                  FROM ai_sessions s
+                 ${where}
                  ORDER BY s.started_at DESC
                  LIMIT ? OFFSET ?`
             )
-            .all(options.limit, options.offset) as unknown as IAiLogSessionItem[]
+            .all(...filterParams, options.limit, options.offset) as unknown as (Omit<
+            IAiLogSessionItem,
+            'totalTokens' | 'cacheRate'
+        > & { usageJson: string | null })[]
 
-        return { items, total }
+        return {
+            items: items.map(({ usageJson, ...item }) => ({
+                ...item,
+                ...summarizeUsage(parseJson(usageJson))
+            })),
+            total
+        }
+    },
+
+    /** 查询所有来源 */
+    listSources() {
+        const rows = getDb()
+            .prepare('SELECT DISTINCT source FROM ai_sessions ORDER BY source')
+            .all() as { source: string | null }[]
+
+        return rows.map((row) => row.source)
     },
 
     /** 查询会话详情 */

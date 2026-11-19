@@ -9,6 +9,7 @@ import { useIntervalFn } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
 import {
+    formatSessionUsage,
     formatSource,
     formatStatus,
     formatTime,
@@ -37,6 +38,10 @@ export function useAiLogView(active: Ref<boolean>) {
 
     const sessions = ref<IAiLogSessionItem[]>([])
     const total = ref(0)
+    /** 标题筛选选项 */
+    const sourceOptions = ref<{ label: string; value: string }[]>([])
+    /** 选中的标题 */
+    const selectedSources = ref<string[]>([])
     const selectedId = ref('')
     const detail = ref<IAiLogSessionDetail | null>(null)
     const steps = ref<IAiLogStepItem[]>([])
@@ -44,6 +49,10 @@ export function useAiLogView(active: Ref<boolean>) {
     const loadingDetail = ref(false)
     const loadingSteps = ref(false)
     const loaded = ref(false)
+    /** 列表请求序号 */
+    let sessionsSeq = 0
+    /** 跳过筛选重载 */
+    let skipFilterReload = false
 
     /** 是否还有更多会话 */
     const hasMore = computed(() => sessions.value.length < total.value)
@@ -72,16 +81,39 @@ export function useAiLogView(active: Ref<boolean>) {
         steps.value = result.result
     }
 
+    /** 加载筛选选项 */
+    async function loadSourceOptions() {
+        const result = await TaskHelper.tryExecute(() => ipc.aiLog.listSources.query())
+        if (result.hasError) return
+
+        sourceOptions.value = result.result.map((source) => ({
+            label: formatSource(source),
+            value: source ?? ''
+        }))
+
+        // 清理失效选中项
+        const values = new Set(sourceOptions.value.map((item) => item.value))
+        const valid = selectedSources.value.filter((value) => values.has(value))
+        if (valid.length !== selectedSources.value.length) selectedSources.value = valid
+    }
+
     /** 加载会话列表 */
     async function loadSessions(reset = false) {
-        if (loadingSessions.value) return
+        if (!reset && loadingSessions.value) return
         if (!reset && sessions.value.length >= total.value) return
 
+        // 重置请求可抢占
+        const seq = ++sessionsSeq
         loadingSessions.value = true
         const offset = reset ? 0 : sessions.value.length
         const result = await TaskHelper.tryExecute(() =>
-            ipc.aiLog.listSessions.query({ limit: PAGE_SIZE, offset })
+            ipc.aiLog.listSessions.query({
+                limit: PAGE_SIZE,
+                offset,
+                sources: selectedSources.value
+            })
         )
+        if (seq !== sessionsSeq) return
         loadingSessions.value = false
 
         if (result.hasError) {
@@ -148,6 +180,7 @@ export function useAiLogView(active: Ref<boolean>) {
 
             sessions.value = sessions.value.filter((item) => item.id !== sessionId)
             total.value = Math.max(0, total.value - 1)
+            void loadSourceOptions()
 
             if (selectedId.value === sessionId) {
                 selectedId.value = ''
@@ -174,6 +207,9 @@ export function useAiLogView(active: Ref<boolean>) {
 
             sessions.value = []
             total.value = 0
+            sourceOptions.value = []
+            skipFilterReload = true
+            selectedSources.value = []
             selectedId.value = ''
             detail.value = null
             steps.value = []
@@ -181,25 +217,35 @@ export function useAiLogView(active: Ref<boolean>) {
         })
     }
 
-    /** 静默刷新会话列表（保留选中项与右侧内容） */
+    /** 静默刷新列表 */
     async function syncSessions() {
         if (loadingSessions.value) return
 
-        // 按已加载条数拉取最新列表，后端单次上限 100
+        // 最多拉取 100 条
+        const seq = sessionsSeq
         const limit = Math.min(Math.max(sessions.value.length, PAGE_SIZE), 100)
         const result = await TaskHelper.tryExecute(() =>
-            ipc.aiLog.listSessions.query({ limit, offset: 0 })
+            ipc.aiLog.listSessions.query({
+                limit,
+                offset: 0,
+                sources: selectedSources.value
+            })
         )
-        if (result.hasError) return
+        // 丢弃过期结果
+        if (result.hasError || seq !== sessionsSeq) return
 
         sessions.value = result.result.items
         total.value = result.result.total
+
+        // 新来源时刷新选项
+        const known = new Set(sourceOptions.value.map((item) => item.value))
+        if (sessions.value.some((item) => !known.has(item.source ?? ''))) void loadSourceOptions()
 
         const first = sessions.value[0]
         if (!selectedId.value && first) await selectSession(first.id)
     }
 
-    /** 静默刷新进行中会话的详情 */
+    /** 静默刷新详情 */
     async function syncDetail() {
         const sessionId = selectedId.value
         if (!sessionId || detail.value?.session.status !== 'running') return
@@ -212,13 +258,23 @@ export function useAiLogView(active: Ref<boolean>) {
         await loadSteps(sessionId, true)
     }
 
-    // 页面激活时每秒刷新列表与进行中会话的详情
+    // 每秒刷新列表与详情
     useIntervalFn(() => {
         if (!active.value) return
 
         void syncSessions()
         void syncDetail()
     }, 1000)
+
+    // 筛选变化时重载
+    watch(selectedSources, () => {
+        if (skipFilterReload) {
+            skipFilterReload = false
+            return
+        }
+        if (!active.value) return
+        void loadSessions(true)
+    })
 
     // 首次进入时加载
     watch(
@@ -227,6 +283,7 @@ export function useAiLogView(active: Ref<boolean>) {
             if (!value || loaded.value) return
 
             loaded.value = true
+            void loadSourceOptions()
             void loadSessions(true)
         },
         { immediate: true }
@@ -237,6 +294,10 @@ export function useAiLogView(active: Ref<boolean>) {
         sessions,
         /** 会话总数 */
         total,
+        /** 标题筛选选项 */
+        sourceOptions,
+        /** 选中的标题 */
+        selectedSources,
         /** 当前选中的会话 ID */
         selectedId,
         /** 当前会话详情 */
@@ -261,6 +322,8 @@ export function useAiLogView(active: Ref<boolean>) {
         getStatusSeverity,
         /** 格式化用量 */
         formatUsage,
+        /** 格式化会话用量统计 */
+        formatSessionUsage,
         /** 格式化工作区标题 */
         getWorkLabel,
         /** 提取用户消息 */

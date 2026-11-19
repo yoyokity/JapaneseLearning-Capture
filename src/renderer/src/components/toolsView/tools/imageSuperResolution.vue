@@ -369,7 +369,7 @@ watch(
                             </div>
                         </div>
                     </div>
-                    <div v-else class="image-grid" data-lenis-prevent>
+                    <div v-else class="image-grid">
                         <div v-for="(item, index) in images" :key="index" class="grid-item">
                             <VideoImage
                                 :image-style="containImageStyle"
@@ -620,7 +620,7 @@ watch(
     cursor: pointer;
 }
 
-// 多图网格列表，自身滚动（Lenis 不拦截该区域的滚轮）
+// 网格自身滚动
 .image-grid {
     flex: 1;
     min-height: 0;

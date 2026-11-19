@@ -43,5 +43,6 @@ export const agentStreamOptionsSchema = z.union([
 
 export const aiLogListOptionsSchema = z.object({
     limit: z.number().int().min(1).max(100).default(30),
-    offset: z.number().int().min(0).default(0)
+    offset: z.number().int().min(0).default(0),
+    sources: z.array(z.string()).max(50).optional()
 })
