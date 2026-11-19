@@ -1,4 +1,5 @@
 import type { IAiSettings } from '@renderer/helper/AgentHelper/AiConfig.ts'
+import type { ISearchSettings } from '@renderer/helper/SearchConfig.ts'
 import type { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
 import { NetHelper } from '@renderer/helper'
@@ -79,6 +80,17 @@ export const settingsStore = defineStore(
             }
         })
 
+        // 联网搜索
+        const search = reactive<ISearchSettings>({
+            provider: 'tavily',
+            tavily: {
+                apiKey: ''
+            },
+            deepseek: {
+                apiKey: ''
+            }
+        })
+
         // 翻译
         const translate = reactive<ITranslateSettings>({ ...DEFAULT_TRANSLATE_SETTINGS })
 
@@ -99,6 +111,8 @@ export const settingsStore = defineStore(
             net,
             /** AI 模型配置 */
             ai,
+            /** 联网搜索配置 */
+            search,
             /** 翻译设置 */
             translate,
             /** 更新设置 */

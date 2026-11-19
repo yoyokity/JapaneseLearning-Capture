@@ -5,7 +5,7 @@ import type { ReadDirectoryOptions } from '../utils/fs'
 import type { CookiesSetDetails, IFetchOptions, IProxyConfig } from '../utils/net'
 
 import { initTRPC } from '@trpc/server'
-import { observable } from '@trpc/server/observable'
+import { observable, observableToAsyncIterable } from '@trpc/server/observable'
 import { app } from 'electron'
 import superjson from 'superjson'
 import { z } from 'zod'
@@ -15,7 +15,8 @@ import {
     agentStreamOptionsSchema,
     aiLogListOptionsSchema,
     createAgentStream,
-    log
+    log,
+    searchEngineConfigSchema
 } from '../agent'
 import { openCloudflareWindow } from '../CloudflareWindow'
 import { appPath } from '../globalStates'
@@ -36,6 +37,7 @@ import {
     resizeImage,
     saveImage
 } from '../services/media'
+import { createSearchEngine } from '../services/search'
 import { clearFolder, openInExplorer, removeEmptyFolders, setProgressBar } from '../services/system'
 import {
     applyUpdate,
@@ -95,6 +97,11 @@ function omitUndefined<T extends Record<string, any>>(value: T): T {
     return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T
 }
 
+/** 订阅取消信号 */
+function getAbortSignal(signal?: AbortSignal) {
+    return signal ?? new AbortController().signal
+}
+
 /**
  * IPC 共享 router
  */
@@ -128,13 +135,16 @@ export const appRouter = t.router({
         startDownload: procedure
             .input(z.object({ version: z.string() }))
             .mutation(({ input }) => startDownload(input.version)),
-        progress: procedure.subscription(() =>
-            observable<IUpdateState>((emit) => {
-                emit.next(getUpdateState())
-                return {
-                    unsubscribe: onUpdateStateChange((state) => emit.next(state))
-                }
-            })
+        progress: procedure.subscription(({ signal }) =>
+            observableToAsyncIterable(
+                observable<IUpdateState>((emit) => {
+                    emit.next(getUpdateState())
+                    return {
+                        unsubscribe: onUpdateStateChange((state) => emit.next(state))
+                    }
+                }),
+                getAbortSignal(signal)
+            )
         ),
         applyUpdate: procedure.mutation(() => applyUpdate())
     }),
@@ -144,13 +154,16 @@ export const appRouter = t.router({
         install: procedure
             .input(z.object({ id: z.string() }))
             .mutation(({ input }) => installDependency(input.id)),
-        progress: procedure.subscription(() =>
-            observable<IDependencyState>((emit) => {
-                emit.next(getDependencyState())
-                return {
-                    unsubscribe: onDependencyStateChange((state) => emit.next(state))
-                }
-            })
+        progress: procedure.subscription(({ signal }) =>
+            observableToAsyncIterable(
+                observable<IDependencyState>((emit) => {
+                    emit.next(getDependencyState())
+                    return {
+                        unsubscribe: onDependencyStateChange((state) => emit.next(state))
+                    }
+                }),
+                getAbortSignal(signal)
+            )
         )
     }),
     filesystem: t.router({
@@ -304,8 +317,11 @@ export const appRouter = t.router({
                     modelPath: z.string()
                 })
             )
-            .subscription(({ input }) =>
-                createSuperResolutionImageStream(input.imagePaths, input.modelPath)
+            .subscription(({ input, signal }) =>
+                observableToAsyncIterable(
+                    createSuperResolutionImageStream(input.imagePaths, input.modelPath),
+                    getAbortSignal(signal)
+                )
             ),
         reencodeAudio: procedure
             .input(
@@ -317,13 +333,16 @@ export const appRouter = t.router({
                     bitrate: z.string()
                 })
             )
-            .subscription(({ input }) =>
-                createReencodeAudioStream(
-                    input.inputPath,
-                    input.outputPath,
-                    input.codec,
-                    input.sampleRate,
-                    input.bitrate
+            .subscription(({ input, signal }) =>
+                observableToAsyncIterable(
+                    createReencodeAudioStream(
+                        input.inputPath,
+                        input.outputPath,
+                        input.codec,
+                        input.sampleRate,
+                        input.bitrate
+                    ),
+                    getAbortSignal(signal)
                 )
             )
     }),
@@ -337,12 +356,34 @@ export const appRouter = t.router({
                     llm: agentConfigSchema.optional()
                 })
             )
-            .subscription(({ input }) => createSubtitleStream(input))
+            .subscription(({ input, signal }) =>
+                observableToAsyncIterable(createSubtitleStream(input), getAbortSignal(signal))
+            )
     }),
     agent: t.router({
         stream: procedure
             .input(agentStreamOptionsSchema)
-            .subscription(({ input }) => createAgentStream(input))
+            .subscription(({ input, signal }) =>
+                observableToAsyncIterable(createAgentStream(input), getAbortSignal(signal))
+            )
+    }),
+    search: t.router({
+        test: procedure
+            .input(
+                z.object({
+                    config: searchEngineConfigSchema,
+                    query: z.string().optional()
+                })
+            )
+            .mutation(async ({ input }) => {
+                const engine = createSearchEngine(input.config)
+                const result = await engine.search({
+                    query: input.query ?? 'test',
+                    maxResults: 1
+                })
+
+                return { provider: result.provider, count: result.results.length }
+            })
     }),
     aiLog: t.router({
         listSessions: procedure

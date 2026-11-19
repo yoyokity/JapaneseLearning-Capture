@@ -33,6 +33,7 @@ export type {
     SaveImageOptions,
     SuperResolutionModel
 } from '../services/media'
+export type { ISearchEngineConfig, SearchProvider } from '../services/search'
 export type { IUpdateAsset, IUpdateInfo, IUpdateState, UpdateStatus } from '../services/update'
 export type {
     IGenerateSubtitleInput,

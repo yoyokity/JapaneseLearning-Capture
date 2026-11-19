@@ -13,10 +13,14 @@ import {
     DeepseekReasoningEffortArray,
     getAgentConfig,
     getRetryMessage,
+    getSearchConfig,
     LogHelper,
     OpenAIReasoningEffortArray,
+    SearchProviderDescriptions,
+    SearchProviderOptions,
     TransHelper
 } from '@renderer/helper'
+import { ipc } from '@renderer/ipc'
 import { Scraper } from '@renderer/scraper'
 import { dependencyStore, settingsStore } from '@renderer/stores'
 import { isAgentSuccess } from '@shared'
@@ -39,6 +43,7 @@ const OPENAI_API_KEYS_URL = 'https://platform.openai.com/api-keys'
 const OPENAI_MODELS_URL = 'https://platform.openai.com/docs/models'
 const DEEPSEEK_API_KEYS_URL = 'https://platform.deepseek.com/api_keys'
 const DEEPSEEK_PRICING_URL = 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing'
+const TAVILY_API_KEYS_URL = 'https://app.tavily.com/home'
 const testDefaultText = 'こんにちは世界'
 /** 标签页配置 */
 const tabs = [
@@ -52,10 +57,12 @@ const dependency = dependencyStore()
 const toast = useToast()
 
 const aiConfigRef = ref()
+const searchConfigRef = ref()
 const proxyConfigRef = ref()
 const testText = ref(testDefaultText)
 const testTranslateLoading = ref(false)
 const testConnectionLoading = ref(false)
+const testSearchLoading = ref(false)
 const activeTab = ref('settings')
 /** 连接测试取消句柄 */
 let testConnectionController: AbortController | null = null
@@ -65,6 +72,11 @@ let testTranslateController: AbortController | null = null
 /** 当前服务商名称 */
 const aiProviderLabel = computed(
     () => AiProviderOptions.find((item) => item.value === settings.ai.provider)?.label ?? ''
+)
+
+/** 当前搜索服务商名称 */
+const searchProviderLabel = computed(
+    () => SearchProviderOptions.find((item) => item.value === settings.search.provider)?.label ?? ''
 )
 
 /**
@@ -161,6 +173,46 @@ async function testConnection() {
             testConnectionController = null
         }
         testConnectionLoading.value = false
+    }
+}
+
+/**
+ * 测试搜索连接
+ */
+async function testSearchConnection() {
+    if (testSearchLoading.value) return
+
+    const config = getSearchConfig(settings.search)
+    if (!config) {
+        toast.add({
+            severity: 'error',
+            summary: '连接失败',
+            detail: '请先填写搜索服务商的 API Key',
+            life: 3000
+        })
+        return
+    }
+
+    testSearchLoading.value = true
+
+    try {
+        const result = await ipc.search.test.mutate({ config })
+        toast.add({
+            severity: 'success',
+            summary: '连接成功',
+            detail: `${config.provider}：返回 ${result.count} 条结果`,
+            life: 3000
+        })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        toast.add({
+            severity: 'error',
+            summary: '连接失败',
+            detail: message.slice(0, 200),
+            life: 3000
+        })
+    } finally {
+        testSearchLoading.value = false
     }
 }
 
@@ -497,6 +549,70 @@ onBeforeUnmount(abortTests)
                                 label="测试连接"
                                 :loading="testConnectionLoading"
                                 @click="testConnection"
+                            />
+                        </template>
+                    </InputLine>
+
+                    <h1>联网搜索</h1>
+
+                    <InputLine icon="pi pi-search" title="搜索服务商">
+                        <template #right>
+                            <Select
+                                v-model="settings.search.provider"
+                                :options="SearchProviderOptions as any"
+                                option-label="label"
+                                option-value="value"
+                                @change="searchConfigRef.close()"
+                            />
+                        </template>
+                    </InputLine>
+
+                    <InputLine
+                        ref="searchConfigRef"
+                        :collapsible="true"
+                        :description="SearchProviderDescriptions[settings.search.provider]"
+                        :title="`${searchProviderLabel}配置`"
+                    >
+                        <div v-if="settings.search.provider === 'tavily'">
+                            <InputLineItem title="API Key">
+                                <Button
+                                    as="a"
+                                    :href="TAVILY_API_KEYS_URL"
+                                    target="_blank"
+                                    variant="link"
+                                >
+                                    获取API Key
+                                </Button>
+                                <InputText
+                                    v-model.trim="settings.search.tavily.apiKey"
+                                    type="text"
+                                />
+                            </InputLineItem>
+                        </div>
+                        <div v-if="settings.search.provider === 'deepseek'">
+                            <InputLineItem title="API Key">
+                                <Button
+                                    as="a"
+                                    :href="DEEPSEEK_API_KEYS_URL"
+                                    target="_blank"
+                                    variant="link"
+                                >
+                                    获取API Key
+                                </Button>
+                                <InputText
+                                    v-model.trim="settings.search.deepseek.apiKey"
+                                    type="text"
+                                />
+                            </InputLineItem>
+                        </div>
+                    </InputLine>
+
+                    <InputLine icon="pi pi-link" title="测试连接">
+                        <template #right>
+                            <Button
+                                label="测试连接"
+                                :loading="testSearchLoading"
+                                @click="testSearchConnection"
                             />
                         </template>
                     </InputLine>

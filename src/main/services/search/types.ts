@@ -14,19 +14,23 @@ export type FetchFormat = 'markdown' | 'text'
  */
 export interface ISearchProviderOptions {
     /** 仅 Tavily */
-    tavily?: {
-        /** 搜索深度 */
-        searchDepth?: SearchDepth
-        /** 搜索主题 */
-        topic?: SearchTopic
-    }
+    tavily?:
+        | {
+              /** 搜索深度 */
+              searchDepth?: SearchDepth | undefined
+              /** 搜索主题 */
+              topic?: SearchTopic | undefined
+          }
+        | undefined
     /** 仅 DeepSeek */
-    deepseek?: {
-        /** 用户原始问题，帮助理解搜索意图 */
-        oriQuestion?: string
-        /** 本地化 IP */
-        localization?: string
-    }
+    deepseek?:
+        | {
+              /** 用户原始问题，帮助理解搜索意图 */
+              oriQuestion?: string | undefined
+              /** 本地化 IP */
+              localization?: string | undefined
+          }
+        | undefined
 }
 
 /**
@@ -36,21 +40,21 @@ export interface ISearchOptions {
     /** 搜索关键词 */
     query: string
     /** 返回条数：Tavily 1-20，DeepSeek 1-50 */
-    maxResults?: number
+    maxResults?: number | undefined
     /** 是否生成一段总结，仅 Tavily */
-    includeAnswer?: boolean
+    includeAnswer?: boolean | undefined
     /** 是否返回全文：Tavily raw_content，DeepSeek need_content */
-    includeRawContent?: boolean
+    includeRawContent?: boolean | undefined
     /** 只搜索这些域名：Tavily 独立字段，DeepSeek 拼 site: */
-    includeDomains?: string[]
+    includeDomains?: string[] | undefined
     /** 排除这些域名：Tavily 独立字段，DeepSeek 拼 -site: */
-    excludeDomains?: string[]
+    excludeDomains?: string[] | undefined
     /** 时间范围：Tavily 独立字段，DeepSeek 拼 after: 日期 */
-    timeRange?: SearchTimeRange
+    timeRange?: SearchTimeRange | undefined
     /** 最近 N 天，优先级高于 timeRange */
-    days?: number
+    days?: number | undefined
     /** provider 专有参数 */
-    providerOptions?: ISearchProviderOptions
+    providerOptions?: ISearchProviderOptions | undefined
 }
 
 /**
@@ -66,11 +70,11 @@ export interface ISearchResult {
     /** 相关度 0-1 */
     score: number
     /** 全文，includeRawContent 为 true 时返回 */
-    rawContent?: string
+    rawContent?: string | undefined
     /** 发布时间 */
-    publishedDate?: string
+    publishedDate?: string | undefined
     /** 权威度 -1~4，仅 DeepSeek 返回 */
-    authority?: number
+    authority?: number | undefined
 }
 
 /**
@@ -80,7 +84,7 @@ export interface ISearchResponse {
     /** 实际执行的查询 */
     query: string
     /** LLM 生成的总结，includeAnswer 为 true 时返回 */
-    answer?: string
+    answer?: string | undefined
     /** 搜索结果 */
     results: ISearchResult[]
     /** 服务端耗时（秒） */
@@ -94,15 +98,15 @@ export interface ISearchResponse {
  */
 export interface IFetchPageOptions {
     /** 提取深度，仅 Tavily */
-    extractDepth?: SearchDepth
+    extractDepth?: SearchDepth | undefined
     /** 返回格式，仅 Tavily，DeepSeek 固定 markdown */
-    format?: FetchFormat
+    format?: FetchFormat | undefined
     /** 是否返回页面图片，仅 Tavily */
-    includeImages?: boolean
+    includeImages?: boolean | undefined
     /** 是否返回网站图标，仅 Tavily */
-    includeFavicon?: boolean
+    includeFavicon?: boolean | undefined
     /** 按查询筛选相关片段，仅 Tavily */
-    query?: string
+    query?: string | undefined
 }
 
 /**
@@ -112,13 +116,13 @@ export interface IFetchPageResult {
     /** 网页地址 */
     url: string
     /** 页面标题，仅 DeepSeek 返回 */
-    title?: string
+    title?: string | undefined
     /** 网页内容 */
     content: string
     /** 页面图片，includeImages 为 true 时返回 */
-    images?: string[]
+    images?: string[] | undefined
     /** 网站图标，includeFavicon 为 true 时返回 */
-    favicon?: string
+    favicon?: string | undefined
 }
 
 /**
@@ -139,12 +143,12 @@ export interface IFetchPageResponse {
  * 引擎通用配置
  */
 export interface ISearchEngineBaseConfig {
-    /** API Key，缺省时按 provider 读取环境变量 */
-    apiKey?: string
+    /** API Key */
+    apiKey?: string | undefined
     /** 接口根地址，缺省用 provider 默认值 */
-    baseUrl?: string
+    baseUrl?: string | undefined
     /** 请求超时（毫秒），默认 30000 */
-    timeout?: number
+    timeout?: number | undefined
 }
 
 /**
@@ -152,7 +156,7 @@ export interface ISearchEngineBaseConfig {
  */
 export interface ITavilyConfig extends ISearchEngineBaseConfig {
     /** 默认搜索深度 */
-    defaultDepth?: SearchDepth
+    defaultDepth?: SearchDepth | undefined
 }
 
 /**
@@ -160,11 +164,11 @@ export interface ITavilyConfig extends ISearchEngineBaseConfig {
  */
 export interface IDeepSeekConfig extends ISearchEngineBaseConfig {
     /** 默认结果数，默认 10 */
-    defaultCount?: number
+    defaultCount?: number | undefined
 }
 
 /**
- * 搜索引擎配置
+ * 搜索引擎配置（主进程完整版）
  */
 export type ISearchEngineConfig =
     ({ provider: 'tavily' } & ITavilyConfig) | ({ provider: 'deepseek' } & IDeepSeekConfig)

@@ -35,7 +35,7 @@ export function getToolOptions(options: IAgentToolOptions) {
     const tools: ToolSet = {
         read_file: createReadFileTool({ readFileState }),
         edit_file: createEditFileTool({ readFileState }),
-        ...(options.search?.apiKey
+        ...(options.search?.apiKey?.trim()
             ? {
                   web_search: createWebSearchTool({ config: options.search }),
                   web_fetch: createWebFetchTool({ config: options.search })

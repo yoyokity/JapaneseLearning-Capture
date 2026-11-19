@@ -1,4 +1,5 @@
 import type { IAgentConfig, IAgentMessage, IAgentResult, IAgentRetryPayload } from '@shared'
+import type { ISearchToolConfig } from '../SearchConfig.ts'
 
 import { ipc } from '@renderer/ipc'
 import { isAgentSuccess } from '@shared'
@@ -27,6 +28,8 @@ export interface IAgentRequestOptions {
     onRetry?: ((info: IAgentRetryPayload) => void) | undefined
     /** 取消信号 */
     signal?: AbortSignal | undefined
+    /** 联网搜索配置，未设置时不启用搜索工具 */
+    search?: ISearchToolConfig | undefined
 }
 
 export interface IAgentAskOptions extends IAgentRequestOptions {
@@ -76,8 +79,18 @@ export class AgentHelper {
     private static async request(
         options: IAgentAskOptions | IAgentChatOptions
     ): Promise<IAgentResult> {
-        const { config, system, timeout, maxRetries, source, skipLog, signal, callback, onRetry } =
-            options
+        const {
+            config,
+            system,
+            timeout,
+            maxRetries,
+            source,
+            skipLog,
+            signal,
+            callback,
+            onRetry,
+            search
+        } = options
 
         if (signal?.aborted) {
             return { text: '', finishReason: 'error', cancelled: true }
@@ -104,6 +117,7 @@ export class AgentHelper {
                 maxRetries,
                 source,
                 skipLog,
+                ...(search ? { search } : {}),
                 ...('messages' in options
                     ? // 复制一份，避免外部修改
                       { messages: options.messages.map((message) => ({ ...message })) }

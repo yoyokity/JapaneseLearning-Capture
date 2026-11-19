@@ -14,6 +14,21 @@ export const agentConfigSchema: z.ZodType<IAgentConfig> = z.object({
     webSearch: z.boolean().optional()
 })
 
+export const searchEngineConfigSchema = z.discriminatedUnion('provider', [
+    z.object({
+        provider: z.literal('tavily'),
+        apiKey: z.string(),
+        baseUrl: z.string().optional(),
+        timeout: z.number().int().min(1).optional()
+    }),
+    z.object({
+        provider: z.literal('deepseek'),
+        apiKey: z.string(),
+        baseUrl: z.string().optional(),
+        timeout: z.number().int().min(1).optional()
+    })
+])
+
 export const agentMessageSchema = z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string()
@@ -28,7 +43,8 @@ export const agentStreamOptionsSchema = z.union([
         maxRetries: z.number().int().min(0).optional(),
         sessionId: z.string().optional(),
         source: z.string().optional(),
-        skipLog: z.boolean().optional()
+        skipLog: z.boolean().optional(),
+        search: searchEngineConfigSchema.optional()
     }),
     z.object({
         config: agentConfigSchema,
@@ -38,7 +54,8 @@ export const agentStreamOptionsSchema = z.union([
         maxRetries: z.number().int().min(0).optional(),
         sessionId: z.string().optional(),
         source: z.string().optional(),
-        skipLog: z.boolean().optional()
+        skipLog: z.boolean().optional(),
+        search: searchEngineConfigSchema.optional()
     })
 ])
 

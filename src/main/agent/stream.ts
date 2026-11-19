@@ -55,7 +55,12 @@ export function createAgentStream(options: IAgentStreamOptions) {
         const outerController = new AbortController()
         const baseIdleTimeout = options.timeout ?? AI_STREAM_IDLE_TIMEOUT_MS
         const maxRetries = options.maxRetries ?? AI_MAX_RETRIES
-        const toolOptions = getToolOptions(options)
+        // 官方联网优先，避免重复搜索工具
+        const useDeepSeekWebSearch =
+            options.config.provider === 'deepseek' && options.config.webSearch === true
+        const toolOptions = getToolOptions(
+            useDeepSeekWebSearch ? { ...options, search: undefined } : options
+        )
         const aiLog = options.skipLog ? null : log
         let stopped = false
         let attemptController: AbortController | null = null
@@ -216,7 +221,7 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         ...(options.system ? { system: options.system } : {}),
                         ...toolOptions,
                         // DeepSeek 联网搜索是服务端工具，仅开启时声明
-                        ...(options.config.provider === 'deepseek' && options.config.webSearch
+                        ...(useDeepSeekWebSearch
                             ? {
                                   tools: {
                                       ...toolOptions.tools,

@@ -29,6 +29,8 @@ const TIME_RANGE_DAYS: Record<SearchTimeRange, number> = {
     month: 30,
     year: 365
 }
+/** 查询长度上限 */
+const MAX_QUERY_LENGTH = 128
 
 /**
  * DeepSeek 搜索请求体
@@ -93,18 +95,29 @@ function getErrorMessage(body: unknown) {
  * @param options 搜索参数
  */
 function buildQuery(options: ISearchOptions) {
-    const parts = [options.query.trim()]
+    const base = options.query.trim().slice(0, MAX_QUERY_LENGTH)
+    const filters: string[] = []
+
     for (const domain of options.includeDomains ?? []) {
-        parts.push(`site:${domain}`)
+        filters.push(`site:${domain}`)
     }
     for (const domain of options.excludeDomains ?? []) {
-        parts.push(`-site:${domain}`)
+        filters.push(`-site:${domain}`)
     }
 
     const days = options.days ?? (options.timeRange ? TIME_RANGE_DAYS[options.timeRange] : 0)
     if (days > 0) {
         const after = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-        parts.push(`after:${after}`)
+        filters.push(`after:${after}`)
+    }
+
+    // 按剩余长度追加运算符
+    const parts = [base]
+    let length = base.length
+    for (const filter of filters) {
+        if (length + filter.length + 1 > MAX_QUERY_LENGTH) break
+        parts.push(filter)
+        length += filter.length + 1
     }
 
     return parts.join(' ')

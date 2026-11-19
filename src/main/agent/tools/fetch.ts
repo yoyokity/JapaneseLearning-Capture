@@ -7,6 +7,8 @@ import { createSearchEngine } from '../../services/search'
 
 /** 单页内容最大字符数 */
 const MAX_CONTENT_LENGTH = 50_000
+/** 网页地址协议 */
+const PAGE_PROTOCOL_PATTERN = /^https?$/
 
 /**
  * 网页抓取工具配置
@@ -53,7 +55,7 @@ export function createWebFetchTool(options: IWebFetchToolOptions) {
             '每次调用只支持一个 URL。'
         ].join('\n'),
         inputSchema: z.object({
-            url: z.string().url().describe('要抓取的 HTTP 或 HTTPS URL')
+            url: z.url({ protocol: PAGE_PROTOCOL_PATTERN }).describe('要抓取的 HTTP 或 HTTPS URL')
         }),
         execute: async ({ url }): Promise<IWebFetchOutput> => {
             const response = await engine.fetchPage(url)
@@ -64,7 +66,7 @@ export function createWebFetchTool(options: IWebFetchToolOptions) {
                     url: item.url,
                     content:
                         item.content.length > MAX_CONTENT_LENGTH
-                            ? `${item.content.slice(0, MAX_CONTENT_LENGTH)}\n\n[Content truncated]`
+                            ? `${item.content.slice(0, MAX_CONTENT_LENGTH)}\n\n[内容已截断]`
                             : item.content
                 })),
                 failedResults: response.failedResults
