@@ -51,6 +51,8 @@ export interface IAiSettings {
         model: string
         /** 思考强度 */
         reasoningEffort: (typeof DeepseekReasoningEffortArray)[number]
+        /** 是否开启联网搜索 */
+        webSearch: boolean
     }
     /** 自定义服务配置 */
     custom: {
@@ -87,7 +89,8 @@ export function getAgentConfig(ai: IAiSettings): IAgentConfig | null {
             provider: 'deepseek',
             apiKey: ai.deepseek.apiKey,
             model: ai.deepseek.model,
-            reasoningEffort: ai.deepseek.reasoningEffort
+            reasoningEffort: ai.deepseek.reasoningEffort,
+            webSearch: ai.deepseek.webSearch
         }
     }
 

@@ -1,6 +1,7 @@
 import type { AgentRetryReason, IAgentStreamOptions, IAgentStreamPayload } from './types'
 
 import { randomUUID } from 'node:crypto'
+import { deepSeek } from '@ai-sdk/deepseek'
 import { observable } from '@trpc/server/observable'
 import { streamText } from 'ai'
 
@@ -214,6 +215,15 @@ export function createAgentStream(options: IAgentStreamOptions) {
                         onStepEnd: (step) => aiLog?.saveStep(attemptId, step),
                         ...(options.system ? { system: options.system } : {}),
                         ...toolOptions,
+                        // DeepSeek 联网搜索是服务端工具，仅开启时声明
+                        ...(options.config.provider === 'deepseek' && options.config.webSearch
+                            ? {
+                                  tools: {
+                                      ...toolOptions.tools,
+                                      web_search: deepSeek.tools.webSearch()
+                                  }
+                              }
+                            : {}),
                         ...getReasoningOption(options.config)
                     })
                     const iterator = result.stream[Symbol.asyncIterator]()

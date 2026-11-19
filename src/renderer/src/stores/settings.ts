@@ -67,7 +67,8 @@ export const settingsStore = defineStore(
             deepseek: {
                 apiKey: '',
                 model: 'deepseek-flash',
-                reasoningEffort: 'max'
+                reasoningEffort: 'max',
+                webSearch: true
             },
             custom: {
                 baseUrl: '',

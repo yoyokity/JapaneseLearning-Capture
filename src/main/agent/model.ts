@@ -20,7 +20,7 @@ export function getAgentModel(config: IAgentConfig) {
     }
 
     if (config.provider === 'deepseek') {
-        return createDeepSeek(options)(config.model)
+        return createDeepSeek(options).responses(config.model)
     }
 
     if (config.provider === 'anthropic') {

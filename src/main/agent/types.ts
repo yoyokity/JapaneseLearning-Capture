@@ -27,6 +27,8 @@ export interface IAgentConfig {
     apiFormat?: AgentApiFormat | undefined
     /** 思考强度 */
     reasoningEffort?: AgentReasoningEffort | undefined
+    /** 是否开启联网搜索，仅 DeepSeek */
+    webSearch?: boolean | undefined
 }
 
 export interface IAgentMessage {

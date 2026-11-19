@@ -10,7 +10,8 @@ export const agentConfigSchema: z.ZodType<IAgentConfig> = z.object({
     apiKey: z.string(),
     model: z.string(),
     apiFormat: z.enum(['chat', 'responses']).optional(),
-    reasoningEffort: z.enum(AgentReasoningEffortArray).optional()
+    reasoningEffort: z.enum(AgentReasoningEffortArray).optional(),
+    webSearch: z.boolean().optional()
 })
 
 export const agentMessageSchema = z.object({

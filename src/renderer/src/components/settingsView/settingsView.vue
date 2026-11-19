@@ -449,6 +449,12 @@ onBeforeUnmount(abortTests)
                                     :options="DeepseekReasoningEffortArray as any"
                                 />
                             </InputLineItem>
+                            <InputLineItem title="官方联网搜索">
+                                <ToggleSwitch
+                                    v-model="settings.ai.deepseek.webSearch"
+                                    v-tooltip="'启用模型自身的联网搜索能力'"
+                                />
+                            </InputLineItem>
                         </div>
                         <!-- #endregion Deepseek配置 -->
 
