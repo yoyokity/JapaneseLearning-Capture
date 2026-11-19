@@ -370,69 +370,95 @@ async function installLocalComponent(
 ) {
     const toolsDir = getToolsDir()
     const dependencyDir = join(toolsDir, component.id)
-    // 中断后保留临时目录，已下载文件可复用
+    // 保留临时目录复用
     const tmpDir = join(toolsDir, `.tmp-${component.id}`)
     const depsDir = join(app.getPath('userData'), 'dependency')
     mkdirSync(tmpDir, { recursive: true })
     mkdirSync(depsDir, { recursive: true })
 
     let received = offset
-    let preferMirror = false
 
-    for (const source of sources) {
-        const urls = getSourceUrls(source.url, preferMirror)
-        const downloadOptions = {
+    /** 获取文件保存路径 */
+    function getTargetPath(source: ISubtitleSource) {
+        return source.archive
+            ? join(depsDir, basename(new URL(source.url).pathname))
+            : join(tmpDir, component.id, source.target)
+    }
+
+    /**
+     * 下载单个文件
+     * @param mirror 镜像优先状态
+     */
+    async function downloadSource(source: ISubtitleSource, mirror: { prefer: boolean }) {
+        const targetPath = getTargetPath(source)
+        if (existsSync(targetPath) && statSync(targetPath).size === source.size) {
+            received += source.size
+            setState({ status: 'downloading', received })
+            return
+        }
+
+        mkdirSync(dirname(targetPath), { recursive: true })
+        let current = 0
+        await downloadFromSources(getSourceUrls(source.url, mirror.prefer), {
             size: source.size,
             sha256: source.sha256,
-            onProgress: (value: number) => setState({ received: received + value }),
-            onFallback: () => {
-                preferMirror = true
+            targetPath,
+            onProgress: (value) => {
+                received += Math.max(0, value - current)
+                current = value
+                setState({ status: 'downloading', received })
+            },
+            onFallback: () => (mirror.prefer = true)
+        })
+    }
+
+    // 按域名分组下载
+    const groups = new Map<string, ISubtitleSource[]>()
+    for (const source of sources) {
+        const host = new URL(source.url).host
+        const group = groups.get(host) ?? []
+        group.push(source)
+        groups.set(host, group)
+    }
+
+    const results = await Promise.allSettled(
+        [...groups.values()].map(async (group) => {
+            const mirror = { prefer: false }
+            for (const source of group) {
+                await downloadSource(source, mirror)
             }
+        })
+    )
+    for (const result of results) {
+        if (result.status === 'rejected') throw result.reason
+    }
+
+    // 下载完成后解压
+    for (const source of sources.filter((item) => item.archive)) {
+        setState({ status: 'extracting', received, total })
+        const archivePath = getTargetPath(source)
+        const extractDir = join(tmpDir, '.extract')
+        rmSync(extractDir, { recursive: true, force: true })
+        try {
+            await execFileAsync(getSevenZipPath(), ['x', '-y', `-o${extractDir}`, archivePath], {
+                windowsHide: true
+            })
+        } catch {
+            rmSync(extractDir, { recursive: true, force: true })
+            throw new Error(`${name} 解压失败，请重试`)
         }
 
-        if (source.archive) {
-            const archivePath = join(depsDir, basename(new URL(source.url).pathname))
-            // 已完整下载的压缩包直接复用
-            if (!existsSync(archivePath) || statSync(archivePath).size !== source.size) {
-                await downloadFromSources(urls, { ...downloadOptions, targetPath: archivePath })
-            }
-
-            setState({ status: 'extracting', received, total })
-            const extractDir = join(tmpDir, '.extract')
+        const exePath = findFile(extractDir, 'crispasr.exe')
+        if (!exePath) {
             rmSync(extractDir, { recursive: true, force: true })
-            try {
-                await execFileAsync(
-                    getSevenZipPath(),
-                    ['x', '-y', `-o${extractDir}`, archivePath],
-                    { windowsHide: true }
-                )
-            } catch {
-                rmSync(extractDir, { recursive: true, force: true })
-                throw new Error(`${name} 解压失败，请重试`)
-            }
-
-            const exePath = findFile(extractDir, 'crispasr.exe')
-            if (!exePath) {
-                rmSync(extractDir, { recursive: true, force: true })
-                throw new Error('压缩包中未找到 crispasr.exe')
-            }
-
-            const targetPath = join(tmpDir, component.id, source.target)
-            mkdirSync(targetPath, { recursive: true })
-            cpSync(dirname(exePath), targetPath, { recursive: true })
-            rmSync(extractDir, { recursive: true, force: true })
-            rmSync(archivePath, { force: true })
-        } else {
-            // 已完整下载的文件直接复用
-            const targetPath = join(tmpDir, component.id, source.target)
-            if (!existsSync(targetPath) || statSync(targetPath).size !== source.size) {
-                mkdirSync(dirname(targetPath), { recursive: true })
-                await downloadFromSources(urls, { ...downloadOptions, targetPath })
-            }
+            throw new Error('压缩包中未找到 crispasr.exe')
         }
 
-        received += source.size
-        setState({ status: 'downloading', received })
+        const targetPath = join(tmpDir, component.id, source.target)
+        mkdirSync(targetPath, { recursive: true })
+        cpSync(dirname(exePath), targetPath, { recursive: true })
+        rmSync(extractDir, { recursive: true, force: true })
+        rmSync(archivePath, { force: true })
     }
 
     // 替换旧版本，失败保留
