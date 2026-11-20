@@ -87,8 +87,10 @@ export function createWindow() {
         return { action: 'deny' }
     })
 
-    // 阻止窗口内导航
+    // 阻止窗口内导航到外部链接，放行同源刷新
     mainWindow.webContents.on('will-navigate', (event, url) => {
+        if (new URL(url).origin === new URL(mainWindow.webContents.getURL()).origin) return
+
         event.preventDefault()
         openExternal(url)
     })

@@ -28,6 +28,7 @@ import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Tag from 'primevue/tag'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
@@ -288,11 +289,12 @@ watch(
     }
 )
 
-// 缺少依赖时展示依赖页
+// 缺少依赖或配置时跳转到对应页
 watch(
-    () => dependency.missingRequired,
-    (value) => {
-        if (value) activeTab.value = 'dependency'
+    () => [dependency.missingRequired, settings.aiReady, settings.searchReady] as const,
+    ([missingDependency, aiReady, searchReady]) => {
+        if (missingDependency) activeTab.value = 'dependency'
+        else if (!aiReady || !searchReady) activeTab.value = 'settings'
     }
 )
 
@@ -418,7 +420,10 @@ onBeforeUnmount(abortTests)
                         </InputLineItem>
                     </InputLine>
 
-                    <h1>AI</h1>
+                    <h1>
+                        AI
+                        <Tag v-if="!settings.aiReady" value="必需" severity="danger" />
+                    </h1>
 
                     <InputLine icon="pi pi-microchip" title="模型服务商">
                         <template #right>
@@ -553,7 +558,10 @@ onBeforeUnmount(abortTests)
                         </template>
                     </InputLine>
 
-                    <h1>联网搜索</h1>
+                    <h1>
+                        联网搜索
+                        <Tag v-if="!settings.searchReady" value="必需" severity="danger" />
+                    </h1>
 
                     <InputLine icon="pi pi-search" title="搜索服务商">
                         <template #right>
@@ -770,6 +778,9 @@ onBeforeUnmount(abortTests)
 }
 
 h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 1rem;
     font-weight: bold;
     margin: 1.5rem 0 0 0.5rem;

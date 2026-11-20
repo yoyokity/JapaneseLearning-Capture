@@ -1,15 +1,16 @@
 <script lang="ts" setup>
 import AiLogView from '@renderer/components/aiLogView/aiLogView.vue'
+import { closeGlobalStickyWarn, showGlobalStickyWarn } from '@renderer/components/control/message'
 import ManageView from '@renderer/components/manageView/manageView.vue'
 import ScraperView from '@renderer/components/scraperView/scraperView.vue'
 import SettingsView from '@renderer/components/settingsView/settingsView.vue'
 import { toolsStore } from '@renderer/components/toolsView/toolsStore'
 import ToolsView from '@renderer/components/toolsView/toolsView.vue'
-import { dependencyStore } from '@renderer/stores'
+import { dependencyStore, settingsStore } from '@renderer/stores'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
-/** 标签页配置 */
+/** 标签页 */
 const tabs = [
     { id: 'scraper', name: '刮削', icon: 'pi pi-search', component: ScraperView },
     { id: 'manage', name: '管理', icon: 'pi pi-folder', component: ManageView },
@@ -18,34 +19,54 @@ const tabs = [
     { id: 'settings', name: '设置', icon: 'pi pi-cog', component: SettingsView }
 ]
 
+/** 锁定时可访问页 */
+const accessibleWhenLocked = new Set(['aiLog', 'settings'])
+
 const { pendingRequestCount } = storeToRefs(toolsStore())
 const dependency = dependencyStore()
+const settings = settingsStore()
 
 const activeTab = ref('scraper')
 
-/** 是否锁定标签页 */
-const locked = computed(() => dependency.missingRequired)
+/** 缺失配置 */
+const missingConfigs = computed(() => {
+    const list: string[] = []
+    if (dependency.missingRequired) list.push('依赖')
+    if (!settings.aiReady) list.push('AI')
+    if (!settings.searchReady) list.push('联网搜索')
+    return list
+})
 
-/**
- * 切换标签页
- * @param tabId 标签 ID
- */
+/** 是否锁定 */
+const locked = computed(() => missingConfigs.value.length > 0)
+
+/** 切换标签页 */
 function switchTab(tabId: string) {
     if (tabId === activeTab.value) return
-    // 缺少依赖时只能进设置
-    if (locked.value && tabId !== 'settings') return
+    // 锁定时仅日志与设置可进
+    if (locked.value && !accessibleWhenLocked.has(tabId)) return
     activeTab.value = tabId
 }
 
-// 工具请求时切到工具页
+// 缺失配置常驻提示
+watch(
+    () => missingConfigs.value.join('、'),
+    (value) => {
+        if (value) showGlobalStickyWarn(`请先设置必要配置：${value}`)
+        else closeGlobalStickyWarn()
+    },
+    { immediate: true }
+)
+
+// 工具请求切换
 watch(pendingRequestCount, () => switchTab('tools'))
 
-// 缺少依赖时停留在设置页
+// 锁定时留在可访问页
 watch(locked, (value) => {
-    if (value) activeTab.value = 'settings'
+    if (value && !accessibleWhenLocked.has(activeTab.value)) activeTab.value = 'settings'
 })
 
-// 启动时检查依赖
+// 启动检查依赖
 void dependency.checkLocal()
 </script>
 
@@ -57,13 +78,13 @@ void dependency.checkLocal()
                 :key="tab.id"
                 :class="{
                     active: activeTab === tab.id,
-                    disabled: locked && tab.id !== 'settings'
+                    disabled: locked && !accessibleWhenLocked.has(tab.id)
                 }"
                 :style="{ marginTop: tab.id === 'aiLog' ? 'auto' : undefined }"
                 class="tab-item"
                 @click="switchTab(tab.id)"
             >
-                <!-- Tab按钮内容 -->
+                <!-- 标签按钮 -->
                 <div class="tab-content-wrapper">
                     <i :class="tab.icon" />
                     <span class="tab-name">{{ tab.name }}</span>
@@ -73,7 +94,7 @@ void dependency.checkLocal()
             </div>
         </div>
         <div class="content">
-            <!-- Tab内容区域 -->
+            <!-- 内容区域 -->
             <component
                 :is="tab.component"
                 v-for="tab in tabs"
@@ -152,11 +173,6 @@ void dependency.checkLocal()
     text-align: center;
 }
 
-.padding {
-    padding: 2rem;
-    height: 100%;
-}
-
 .content {
     flex: 1;
     height: auto;
@@ -184,12 +200,6 @@ void dependency.checkLocal()
     &.slide-up {
         animation: slide-up-enter 0.2s var(--animation-type);
     }
-}
-
-h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
 }
 
 .active-indicator {

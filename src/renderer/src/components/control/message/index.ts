@@ -1,3 +1,5 @@
+import type { ToastMessageOptions } from 'primevue/toast'
+
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 
@@ -7,6 +9,8 @@ import { useToast } from 'primevue/usetoast'
 export function useMessage() {
     const confirm = useConfirm()
     const _toast = useToast()
+    /** 常驻提示消息 */
+    let stickyMessage: ToastMessageOptions | null = null
 
     /**
      * 确认对话框
@@ -90,6 +94,24 @@ export function useMessage() {
                 summary: message,
                 life: 5000
             })
+        },
+        /**
+         * 常驻警告提示，重复调用只更新内容
+         * @param message 消息
+         */
+        stickyWarn(message: string) {
+            if (stickyMessage?.summary === message) return
+            if (stickyMessage) _toast.remove(stickyMessage)
+
+            stickyMessage = { severity: 'warn', summary: message, life: 0 }
+            _toast.add(stickyMessage)
+        },
+        /** 关闭常驻警告提示 */
+        closeSticky() {
+            if (!stickyMessage) return
+
+            _toast.remove(stickyMessage)
+            stickyMessage = null
         }
     }
 
@@ -117,4 +139,19 @@ export function setGlobalToast(toast: ToastApi) {
  */
 export function showGlobalWarn(message: string) {
     globalToast?.warn(message)
+}
+
+/**
+ * 全局常驻警告提示，直到手动关闭
+ * @param message 消息
+ */
+export function showGlobalStickyWarn(message: string) {
+    globalToast?.stickyWarn(message)
+}
+
+/**
+ * 关闭全局常驻警告提示
+ */
+export function closeGlobalStickyWarn() {
+    globalToast?.closeSticky()
 }

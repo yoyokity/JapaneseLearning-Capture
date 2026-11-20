@@ -1,7 +1,7 @@
 import type { IDependencyState } from '../services/dependencies'
 import type { ImageData, ImageResizeOptions, SaveImageOptions } from '../services/media'
 import type { IUpdateState } from '../services/update'
-import type { ReadDirectoryOptions } from '../utils/fs'
+import type { IStats, ReadDirectoryOptions } from '../utils/fs'
 import type { CookiesSetDetails, IFetchOptions, IProxyConfig } from '../utils/net'
 
 import { initTRPC } from '@trpc/server'
@@ -172,12 +172,8 @@ export const appRouter = t.router({
         isDirectory: procedure.input(z.string()).query(({ input }) => isDirectory(input)),
         getStatus: procedure
             .input(z.union([z.string(), z.array(z.string())]))
-            .query(({ input }) => {
-                if (Array.isArray(input)) {
-                    return getStatus(input)
-                }
-
-                return getStatus(input)
+            .query(async ({ input }): Promise<IStats | { path: string; stats: IStats }[]> => {
+                return Array.isArray(input) ? getStatus(input) : getStatus(input)
             }),
         join: procedure.input(z.array(z.string())).query(({ input }) => join(...input)),
         resolve: procedure.input(z.array(z.string())).query(({ input }) => resolve(...input)),

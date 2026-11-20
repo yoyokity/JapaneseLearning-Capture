@@ -3,8 +3,10 @@ import type { ISearchSettings } from '@renderer/helper/SearchConfig.ts'
 import type { ITranslateSettings } from '@renderer/helper/TransHelper.ts'
 
 import { NetHelper } from '@renderer/helper'
+import { getAgentConfig } from '@renderer/helper/AgentHelper/AiConfig.ts'
+import { getSearchConfig } from '@renderer/helper/SearchConfig.ts'
 import { defineStore } from 'pinia'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 export const VideoSortTypeList = {
     title: '标题名称',
@@ -92,6 +94,15 @@ export const settingsStore = defineStore(
         // 翻译
         const translate = reactive<ITranslateSettings>({ ...DEFAULT_TRANSLATE_SETTINGS })
 
+        /** AI 是否已配置 */
+        const aiReady = computed(() => Boolean(getAgentConfig(ai)))
+        /** 联网搜索是否可用，未配置搜索时 DeepSeek 官方联网视为可用 */
+        const searchReady = computed(
+            () =>
+                Boolean(getSearchConfig(search)) ||
+                (ai.provider === 'deepseek' && ai.deepseek.webSearch)
+        )
+
         const scraperPath = reactive<Record<string, string>>({})
         const currentScraper = ref('')
         const manageViewSort = ref<VideoSortType>('title')
@@ -111,6 +122,10 @@ export const settingsStore = defineStore(
             ai,
             /** 联网搜索配置 */
             search,
+            /** AI 是否已配置 */
+            aiReady,
+            /** 联网搜索是否可用 */
+            searchReady,
             /** 翻译设置 */
             translate,
             /** 更新设置 */

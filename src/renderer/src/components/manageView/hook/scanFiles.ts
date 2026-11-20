@@ -15,6 +15,7 @@ import {
 import { createVideoFile, Scraper } from '@renderer/scraper'
 import { globalStatesStore, settingsStore } from '@renderer/stores'
 import dayjs from 'dayjs'
+import { delay } from 'es-toolkit'
 import { useToast } from 'primevue/usetoast'
 import { convert } from 'xmlbuilder2'
 
@@ -49,6 +50,8 @@ interface INfoCacheRecord {
 }
 
 const NFO_CACHE_DATA_NAME = '#nfo-cache-data'
+/** 读取分批大小 */
+const READ_BATCH_SIZE = 50
 
 export function useScanFiles() {
     const globalStates = globalStatesStore()
@@ -218,8 +221,13 @@ export function useScanFiles() {
                 }
             }
 
-            // 并发读取视频文件，减少 NFO 读取等待时间
-            videoFiles.push(...(await Promise.all(directories.map((directory) => read(directory)))))
+            // 分批读取视频文件，避免长时间阻塞界面
+            for (let index = 0; index < directories.length; index += READ_BATCH_SIZE) {
+                const batch = directories.slice(index, index + READ_BATCH_SIZE)
+
+                videoFiles.push(...(await Promise.all(batch.map((directory) => read(directory)))))
+                await delay(0)
+            }
 
             // 更新文件列表状态
             display.setManageViewFiles(videoFiles)

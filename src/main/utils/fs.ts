@@ -7,6 +7,9 @@ import { z } from 'zod'
 
 const { ensureDirSync, copySync, moveSync, outputFileSync } = pkg
 
+/** stat 分批大小 */
+const STAT_BATCH_SIZE = 200
+
 export interface ReadDirectoryOptions {
     /**
      * 是否返回文件状态
@@ -161,17 +164,31 @@ export function isDirectory(filePath: string) {
 /**
  * 获取 path 状态信息
  */
-export function getStatus(filePath: string[]): { path: string; stats: IStats }[]
-export function getStatus(filePath: string): IStats
-export function getStatus(filePath: string | string[]): IStats | { path: string; stats: IStats }[] {
+export async function getStatus(filePath: string[]): Promise<{ path: string; stats: IStats }[]>
+export async function getStatus(filePath: string): Promise<IStats>
+export async function getStatus(
+    filePath: string | string[]
+): Promise<IStats | { path: string; stats: IStats }[]> {
+    // 分批 stat，避免阻塞主进程
     if (Array.isArray(filePath)) {
-        return filePath.map((item) => ({
-            path: item,
-            stats: toStats(fs.statSync(path.normalize(item)))
-        }))
+        const result: { path: string; stats: IStats }[] = []
+
+        for (let index = 0; index < filePath.length; index += STAT_BATCH_SIZE) {
+            const batch = filePath.slice(index, index + STAT_BATCH_SIZE)
+            result.push(
+                ...(await Promise.all(
+                    batch.map(async (item) => ({
+                        path: item,
+                        stats: toStats(await fs.promises.stat(path.normalize(item)))
+                    }))
+                ))
+            )
+        }
+
+        return result
     }
 
-    return toStats(fs.statSync(path.normalize(filePath)))
+    return toStats(await fs.promises.stat(path.normalize(filePath)))
 }
 
 /**
@@ -281,18 +298,30 @@ export async function readDirectory(
         return files
     }
 
-    return files.map((filePath) => {
-        const fileStats = fs.statSync(filePath)
-        const extname = fileStats.isDirectory() ? undefined : path.extname(filePath)
+    // 分批 stat，避免阻塞主进程
+    const result: IFile[] = []
 
-        return {
-            name: path.basename(filePath, extname),
-            fullName: path.basename(filePath),
-            path: filePath,
-            stats: toStats(fileStats),
-            ...(extname ? { extname } : {})
-        }
-    })
+    for (let index = 0; index < files.length; index += STAT_BATCH_SIZE) {
+        const batch = files.slice(index, index + STAT_BATCH_SIZE)
+        result.push(
+            ...(await Promise.all(
+                batch.map(async (filePath) => {
+                    const fileStats = await fs.promises.stat(filePath)
+                    const extname = fileStats.isDirectory() ? undefined : path.extname(filePath)
+
+                    return {
+                        name: path.basename(filePath, extname),
+                        fullName: path.basename(filePath),
+                        path: filePath,
+                        stats: toStats(fileStats),
+                        ...(extname ? { extname } : {})
+                    }
+                })
+            ))
+        )
+    }
+
+    return result
 }
 
 /**
