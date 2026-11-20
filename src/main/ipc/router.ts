@@ -352,7 +352,6 @@ export const appRouter = t.router({
                 z.object({
                     inputPath: z.string(),
                     language: z.enum(['ja', 'en', 'zh', 'ko']),
-                    aiOptimize: z.boolean(),
                     llm: agentConfigSchema.optional()
                 })
             )

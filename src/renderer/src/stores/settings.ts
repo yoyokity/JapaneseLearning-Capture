@@ -18,9 +18,7 @@ export type VideoSortType = keyof typeof VideoSortTypeList
 /** 默认翻译设置 */
 const DEFAULT_TRANSLATE_SETTINGS: ITranslateSettings = {
     enable: false,
-    retryWithGoogle: true,
-    targetLanguage: 'zh-CN',
-    ai: true
+    targetLanguage: 'zh-CN'
 }
 
 export const settingsStore = defineStore(

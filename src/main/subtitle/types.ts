@@ -11,8 +11,6 @@ export interface IGenerateSubtitleInput {
     inputPath: string
     /** 识别语言 */
     language: SubtitleLanguage
-    /** 是否使用 AI 翻译 */
-    aiOptimize: boolean
     /** AI 翻译配置 */
     llm?: ISubtitleLlm | undefined
 }

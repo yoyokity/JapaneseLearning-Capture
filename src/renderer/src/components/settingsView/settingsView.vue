@@ -626,29 +626,6 @@ onBeforeUnmount(abortTests)
                     </InputLine>
 
                     <InputLine
-                        description="关闭时使用谷歌翻译"
-                        icon="pi pi-star"
-                        title="启用AI翻译"
-                    >
-                        <template #right>
-                            <ToggleSwitch v-model="settings.translate.ai" />
-                        </template>
-                    </InputLine>
-
-                    <InputLine
-                        description="当一次AI翻译失败后，会自动调用谷歌翻译，再次翻译这段内容"
-                        icon="pi pi-sync"
-                        title="AI翻译失败后用谷歌翻译"
-                    >
-                        <template #right>
-                            <ToggleSwitch
-                                v-model="settings.translate.retryWithGoogle"
-                                :disabled="!settings.translate.ai"
-                            />
-                        </template>
-                    </InputLine>
-
-                    <InputLine
                         description="测试输入文本，看看翻译是否正常工作"
                         icon="pi pi-check"
                         title="测试翻译"

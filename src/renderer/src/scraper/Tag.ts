@@ -4,7 +4,7 @@ import { DataHelper, TransHelper } from '@renderer/helper'
 import { settingsStore } from '@renderer/stores'
 
 const DATA_NAME = '#tag-data'
-// 每批翻译数量
+// 每批数量
 const BATCH_SIZE = 100
 
 export interface ITag {
@@ -18,57 +18,38 @@ export interface ITag {
     translated: string
 }
 
-// 翻译队列，避免并发请求
+// 串行队列
 let translateQueue: Promise<unknown> = Promise.resolve()
 
 /**
- * 翻译tag数组
- * @param tags tag数组
+ * 翻译 tag 数组
+ * @param tags tag 列表
  * @param extraPrompt 附加提示词
- * @returns 去重后的译文数组
+ * @param signal 取消信号
  */
 export function translateTags(
     tags: string[],
     extraPrompt?: string,
     signal?: AbortSignal
 ): Promise<string[]> {
-    // 串行执行，复用前次缓存
     const task = translateQueue.then(() => doTranslateTags(tags, extraPrompt, signal))
-    // 失败不阻塞后续任务
+    // 失败不阻塞后续
     translateQueue = task.catch(() => {})
     return task
 }
 
-/**
- * 翻译tag数组
- * @param tags tag数组
- * @param extraPrompt 附加提示词
- * @returns 去重后的译文数组
- */
+/** 翻译 tag 数组 */
 async function doTranslateTags(
     tags: string[],
     extraPrompt?: string,
     signal?: AbortSignal
 ): Promise<string[]> {
     const uniqueTags = [...new Set(tags)]
-    const settings = settingsStore()
-    if (!settings.translate.enable || uniqueTags.length === 0) return uniqueTags
-    if (signal?.aborted) return uniqueTags
+    const { translate } = settingsStore()
+    if (!translate.enable || uniqueTags.length === 0 || signal?.aborted) return uniqueTags
 
-    const targetLanguage = settings.translate.targetLanguage
-
-    // 谷歌翻译不缓存
-    if (!settings.translate.ai) {
-        const results: string[] = []
-        for (const tag of uniqueTags) {
-            if (signal?.aborted) return uniqueTags
-            results.push((await TransHelper.translate(tag, false, undefined, signal)).text)
-        }
-        return results
-    }
-
-    // 缓存按目标语言区分
-    const getCacheKey = (tag: string) => JSON.stringify([targetLanguage, tag])
+    // 按语言区分缓存
+    const getCacheKey = (tag: string) => JSON.stringify([translate.targetLanguage, tag])
 
     // 读取缓存
     const cached = (await DataHelper.getMany<ITag>(DATA_NAME, uniqueTags.map(getCacheKey))).map(
@@ -92,63 +73,54 @@ async function doTranslateTags(
             translatedMap.set(tag, re.text)
             cacheEntries.push([getCacheKey(tag), { tag, translated: re.text }])
         })
-        // 每批成功后写库
+        // 每批写库
         await DataHelper.setMany(DATA_NAME, cacheEntries)
     }
 
-    // 合并缓存与新译文
+    // 合并结果
     return uniqueTags.map((tag, index) => cached[index] ?? translatedMap.get(tag) ?? tag)
 }
 
 /**
- * 翻译未缓存的tag
- * @param tags 待翻译的tag
+ * 翻译未缓存 tag
+ * @param tags 待翻译 tag
  * @param extraPrompt 附加提示词
+ * @param signal 取消信号
  */
 async function translateUntranslated(
     tags: string[],
     extraPrompt?: string,
     signal?: AbortSignal
 ): Promise<ITranslateResult[]> {
-    const settings = settingsStore()
+    const { targetLanguage } = settingsStore().translate
 
-    // AI一次请求翻译整批
+    // 整批翻译
     const re = await TransHelper.translateWithSystem(
         JSON.stringify(tags),
-        getPrompt(settings.translate.targetLanguage, extraPrompt),
+        getPrompt(targetLanguage, extraPrompt),
         signal
     )
     const translated = re.ok ? parseTranslatedTags(re.text, tags.length) : null
     if (translated) return translated.map((text) => ({ ok: true, text: text.trim() }))
 
-    // 已取消时不再逐条回退
+    // 已取消返回原文
     if (signal?.aborted) return tags.map((tag) => ({ ok: false, text: tag }))
 
-    // 失败时逐条回退
-    const retryWithGoogle = settings.translate.retryWithGoogle
+    // 失败逐条回退
     const results: ITranslateResult[] = []
     for (const tag of tags) {
-        if (signal?.aborted) {
-            results.push({ ok: false, text: tag })
-            continue
-        }
-
-        results.push(
-            retryWithGoogle
-                ? await TransHelper.translateByGoogle(tag, signal)
-                : { ok: false, text: tag }
-        )
+        results.push(await TransHelper.translate(tag, false, undefined, signal))
     }
     return results
 }
 
 /**
- * 解析AI返回的译文
- * @param text AI返回文本
+ * 解析 AI 译文
+ * @param text AI 返回文本
  * @param length 期望长度
  */
 function parseTranslatedTags(text: string, length: number): string[] | null {
-    // 去除md代码块包裹
+    // 去除代码块
     const content = text
         .trim()
         .replace(/^```\w*\s*/, '')
@@ -157,18 +129,14 @@ function parseTranslatedTags(text: string, length: number): string[] | null {
 
     try {
         const data = JSON.parse(content)
-        if (
+        const valid =
             Array.isArray(data) &&
             data.length === length &&
             data.every((item) => typeof item === 'string')
-        ) {
-            return data
-        }
+        return valid ? data : null
     } catch {
-        // 忽略解析失败
+        return null
     }
-
-    return null
 }
 
 /**

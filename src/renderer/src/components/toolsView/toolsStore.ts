@@ -20,8 +20,6 @@ export const toolsStore = defineStore(
         const superResolutionModelName = ref('')
         /** 字幕识别语言 */
         const subtitleLanguage = ref<SubtitleLanguage>('ja')
-        /** 字幕是否启用 AI 翻译 */
-        const subtitleAiOptimize = ref(true)
 
         /**
          * 待处理的音频编码请求（被工具消费后置空）
@@ -75,10 +73,6 @@ export const toolsStore = defineStore(
              */
             subtitleLanguage,
             /**
-             * 字幕是否启用 AI 翻译
-             */
-            subtitleAiOptimize,
-            /**
              * 待处理的音频编码请求（被工具消费后置空）
              */
             pendingAudioEncode,
@@ -104,7 +98,7 @@ export const toolsStore = defineStore(
     },
     {
         persist: {
-            pick: ['superResolutionModelName', 'subtitleLanguage', 'subtitleAiOptimize']
+            pick: ['superResolutionModelName', 'subtitleLanguage']
         }
     }
 )

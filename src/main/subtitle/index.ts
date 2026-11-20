@@ -1,8 +1,8 @@
 import type { ChildProcess } from 'node:child_process'
-import type { IGenerateSubtitleInput, ISegment, ISubtitleProgress } from './types'
+import type { IGenerateSubtitleInput, ISubtitleProgress } from './types'
 
 import { spawn } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { observable } from '@trpc/server/observable'
 import { app } from 'electron'
@@ -10,23 +10,9 @@ import { app } from 'electron'
 import { appPath } from '../globalStates'
 import { parseSegments, runCrispasr } from './asr'
 import { extractAudio } from './audio'
-import { renderSrt } from './cue'
-import { translateCuesWithGoogle } from './google'
 import { translateSegments } from './llm'
 
 export * from './types'
-
-/** 生成初始字幕 */
-function buildSegmentCues(segments: ISegment[]) {
-    return segments
-        .filter((segment) => segment.text.trim())
-        .map((segment, index) => ({
-            id: `c${index}`,
-            from: segment.from,
-            to: segment.to,
-            text: segment.text
-        }))
-}
 
 /** 获取依赖路径 */
 function getSubtitlePaths() {
@@ -55,6 +41,7 @@ function killProcessTree(child: ChildProcess | null) {
 /** 创建字幕生成任务 */
 export function createSubtitleStream(input: IGenerateSubtitleInput) {
     return observable<ISubtitleProgress>((emit) => {
+        const { llm } = input
         let currentChild: ChildProcess | null = null
         let cancelled = false
         const controller = new AbortController()
@@ -69,8 +56,8 @@ export function createSubtitleStream(input: IGenerateSubtitleInput) {
                 if (!existsSync(input.inputPath)) {
                     throw new Error('输入文件不存在')
                 }
-                if (input.aiOptimize && !input.llm) {
-                    throw new Error('未配置 AI 翻译引擎，请先在 设置 → 翻译 中配置')
+                if (!llm) {
+                    throw new Error('未配置 AI 翻译引擎，请先在 设置 → AI 中配置')
                 }
 
                 const paths = getSubtitlePaths()
@@ -138,46 +125,25 @@ export function createSubtitleStream(input: IGenerateSubtitleInput) {
                     `${basename(input.inputPath, extname(input.inputPath))}.zh-CN.srt`
                 )
 
-                let message = '正在翻译'
                 // 3. AI 翻译
-                if (input.aiOptimize && input.llm) {
-                    emitProgress({ stage: 'translate', progress: -1, message: '正在 AI 翻译' })
-                    const aiSrtPath = await translateSegments(
-                        segments,
-                        paths.model,
-                        input.language,
-                        input.llm,
-                        controller.signal
-                    )
-                    if (cancelled) {
-                        if (aiSrtPath) rmSync(aiSrtPath, { force: true })
-                        return
-                    }
-
-                    if (aiSrtPath) {
-                        copyFileSync(aiSrtPath, outputPath)
-                        rmSync(aiSrtPath, { force: true })
-                        emitProgress({ stage: 'translate', progress: 1, outputPath })
-                        emit.complete()
-                        return
-                    }
-
-                    // AI 失败回退谷歌
-                    message = 'AI 翻译失败，改用谷歌翻译'
-                }
-
-                // 4. 谷歌翻译
-                const cues = buildSegmentCues(segments)
-                if (!cues.length) {
-                    throw new Error('未识别到语音内容')
-                }
-                emitProgress({ stage: 'translate', progress: 0, message })
-                await translateCuesWithGoogle(cues, controller.signal, (progress) =>
-                    emitProgress({ stage: 'translate', progress })
+                emitProgress({ stage: 'translate', progress: -1, message: '正在 AI 翻译' })
+                const aiSrtPath = await translateSegments(
+                    segments,
+                    paths.model,
+                    input.language,
+                    llm,
+                    controller.signal
                 )
-                if (cancelled) return
+                if (cancelled) {
+                    if (aiSrtPath) rmSync(aiSrtPath, { force: true })
+                    return
+                }
+                if (!aiSrtPath) {
+                    throw new Error('AI 翻译失败')
+                }
 
-                writeFileSync(outputPath, renderSrt(cues), 'utf8')
+                copyFileSync(aiSrtPath, outputPath)
+                rmSync(aiSrtPath, { force: true })
                 emitProgress({ stage: 'translate', progress: 1, outputPath })
                 emit.complete()
             } catch (error) {

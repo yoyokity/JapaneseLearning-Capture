@@ -11,7 +11,6 @@ import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
-import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import { computed, onActivated, onMounted, ref } from 'vue'
 
@@ -32,7 +31,7 @@ const stageLabels = {
 const logger = LogHelper.title('tool').title('字幕生成')
 const toast = useToast()
 const settings = settingsStore()
-const { subtitleLanguage, subtitleAiOptimize } = storeToRefs(toolsStore())
+const { subtitleLanguage } = storeToRefs(toolsStore())
 
 /**
  * 弹出结果提示
@@ -162,10 +161,11 @@ async function startGenerate() {
         notify('warn', '请先安装字幕生成依赖', '设置 → 依赖')
         return
     }
-    if (subtitleAiOptimize.value && !llm.value) {
+    if (!llm.value) {
         notify('warn', aiHint.value || 'AI 配置不完整')
         return
     }
+    const llmConfig = llm.value
 
     running.value = true
     progress.value = 0
@@ -178,8 +178,7 @@ async function startGenerate() {
         input: {
             inputPath: inputPath.value,
             language: subtitleLanguage.value,
-            aiOptimize: subtitleAiOptimize.value,
-            ...(subtitleAiOptimize.value && llm.value ? { llm: llm.value } : {})
+            llm: llmConfig
         },
         onProgress: (payload) => {
             stageText.value = payload.message ?? stageLabels[payload.stage]
@@ -292,15 +291,6 @@ onActivated(checkDependency)
                             option-label="label"
                             option-value="value"
                         />
-                    </template>
-                </InputLine>
-
-                <InputLine
-                    :description="aiHint || '开启后调用 AI 翻译并修正识别错误，关闭则使用谷歌翻译'"
-                    title="AI 翻译"
-                >
-                    <template #right>
-                        <ToggleSwitch v-model="subtitleAiOptimize" :disabled="running" />
                     </template>
                 </InputLine>
 
