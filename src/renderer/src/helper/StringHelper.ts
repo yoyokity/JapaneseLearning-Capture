@@ -86,6 +86,23 @@ export class StringHelper {
     }
 
     /**
+     * 解析文本中的 JSON 对象（支持 Markdown 代码块包裹）
+     * @param text 原始文本
+     */
+    static parseJson(text: string): Record<string, unknown> | null {
+        const json = text.match(/```(?:json)?(?<json>[\s\S]*?)```/)?.groups?.json ?? text
+        const start = json.indexOf('{')
+        const end = json.lastIndexOf('}')
+        if (start === -1 || end <= start) return null
+
+        try {
+            return JSON.parse(json.slice(start, end + 1)) as Record<string, unknown>
+        } catch {
+            return null
+        }
+    }
+
+    /**
      * 将标点符号替换为空格
      */
     static punctuationsToSpace(str: string) {

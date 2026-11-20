@@ -7,8 +7,8 @@ import { isAgentSuccess } from '@shared'
 import { createConverter } from 'js-opencc'
 
 import { getAgentConfig } from './AgentHelper/AiConfig.ts'
-import { StringHelper } from './EncodeHelper'
 import { LogHelper } from './LogHelper'
+import { StringHelper } from './StringHelper.ts'
 
 /** 句子分段器 */
 const sentenceSegmenter = new Segmenter('zh-CN', { granularity: 'sentence' })

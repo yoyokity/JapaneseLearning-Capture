@@ -82,23 +82,6 @@ export interface IActorFull extends IActor {
 }
 
 /**
- * 从 AI 返回的文本中解析演员信息
- * @param text AI 返回的文本
- */
-function parseActorInfo(text: string) {
-    const json = text.match(/```(?:json)?(?<json>[\s\S]*?)```/)?.groups?.json ?? text
-    const start = json.indexOf('{')
-    const end = json.lastIndexOf('}')
-    if (start === -1 || end <= start) return null
-
-    try {
-        return JSON.parse(json.slice(start, end + 1)) as Record<string, unknown>
-    } catch {
-        return null
-    }
-}
-
-/**
  * 转为去空格的字符串
  */
 function toText(value: unknown) {
@@ -167,7 +150,7 @@ export class Actor implements IActorFull {
             return false
         }
 
-        const data = parseActorInfo(result.text)
+        const data = StringHelper.parseJson(result.text)
         if (!data) {
             LogHelper.warn(`演员信息解析失败：${this.name}`, result.text)
             return false
